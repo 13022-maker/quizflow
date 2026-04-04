@@ -1,0 +1,204 @@
+{
+  "Index": {
+    "meta_title": "QuizFlow - 專為台灣老師設計的線上測驗平台",
+    "meta_description": "幾分鐘內建立測驗，一鍵分享給學生，即時查看作答結果。免費方案提供 3 份測驗，升級 Pro 方案可無限出題並使用 AI 自動生題功能。"
+  },
+  "Navbar": {
+    "sign_in": "登入",
+    "sign_up": "註冊",
+    "product": "產品",
+    "docs": "文件",
+    "blog": "部落格",
+    "community": "社群",
+    "company": "關於我們"
+  },
+  "Hero": {
+    "follow_twitter": "在 Twitter 追蹤 QuizFlow",
+    "title": "更聰明的方式，<important>出題、分享、分析</important>學生作答成效。",
+    "description": "幾分鐘內建立吸引人的測驗，一個連結即可分享，即時掌握學生學習狀況。專為台灣老師設計。",
+    "primary_button": "免費開始使用",
+    "secondary_button": "了解如何運作"
+  },
+  "Sponsors": {
+    "title": "受到以下學校老師信賴"
+  },
+  "Features": {
+    "section_subtitle": "功能特色",
+    "section_title": "老師出題所需的一切功能",
+    "section_description": "QuizFlow 提供您建立、分享與分析測驗所需的工具，簡單直覺，不需複雜設定。",
+    "feature1_title": "快速出題工具",
+    "feature2_title": "一鍵分享連結",
+    "feature3_title": "即時作答結果",
+    "feature4_title": "AI 自動生題",
+    "feature5_title": "學生學習分析",
+    "feature6_title": "匯出成績報告",
+    "feature_description": "從隨堂小測到正式考試，QuizFlow 提供您有效評量所需的完整功能。"
+  },
+  "Pricing": {
+    "section_subtitle": "方案價格",
+    "section_title": "簡單透明的定價",
+    "section_description": "免費開始使用，有需要時再升級。沒有隱藏費用。",
+    "button_text": "立即開始"
+  },
+  "PricingPlan": {
+    "free_plan_name": "免費版",
+    "premium_plan_name": "Pro 方案",
+    "enterprise_plan_name": "企業方案",
+    "free_plan_description": "適合剛開始嘗試的老師",
+    "premium_plan_description": "適合需要無限出題的老師",
+    "enterprise_plan_description": "適合學校與教育機構",
+    "feature_team_member": "{number} 個老師帳號",
+    "feature_website": "{number} 份測驗",
+    "feature_storage": "AI 自動生題功能",
+    "feature_transfer": "{number} TB 傳輸量",
+    "feature_email_support": "電子郵件支援",
+    "plan_interval_month": "月",
+    "plan_interval_year": "年",
+    "next_renew_date": "您的訂閱將於 {date} 自動續約"
+  },
+  "FAQ": {
+    "question": "免費方案可以建立幾份測驗？",
+    "answer": "免費方案最多可建立 3 份測驗。每份測驗題數不限，可分享給任意數量的學生作答。如果需要更多測驗或想使用 AI 自動生題功能，可升級至每月 $9 美元的 Pro 方案，享有無限測驗與所有進階功能。"
+  },
+  "CTA": {
+    "title": "準備好讓出題更輕鬆了嗎？",
+    "description": "加入使用 QuizFlow 的老師行列，節省出題時間，更深入了解學生學習狀況。",
+    "button_text": "免費開始使用"
+  },
+  "Footer": {
+    "product": "產品",
+    "docs": "文件",
+    "blog": "部落格",
+    "community": "社群",
+    "company": "關於我們",
+    "terms_of_service": "服務條款",
+    "privacy_policy": "隱私政策",
+    "footer_text": "© {year} {name}。為台灣老師打造。"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "您沒有執行此操作的權限"
+  },
+  "SignIn": {
+    "meta_title": "登入",
+    "meta_description": "登入您的 QuizFlow 帳號，開始建立測驗。"
+  },
+  "SignUp": {
+    "meta_title": "註冊",
+    "meta_description": "建立免費的 QuizFlow 帳號，幾分鐘內開始出題。"
+  },
+  "DashboardLayout": {
+    "home": "首頁",
+    "quizzes": "我的測驗",
+    "todos": "待辦事項",
+    "members": "成員",
+    "billing": "帳單",
+    "settings": "設定"
+  },
+  "Quizzes": {
+    "title_bar": "我的測驗",
+    "title_bar_description": "管理並分享您的測驗給學生",
+    "add_quiz_button": "建立測驗",
+    "empty_title": "還沒有測驗",
+    "empty_description": "建立第一份測驗，並分享給您的學生。",
+    "empty_button": "建立測驗"
+  },
+  "QuizTableColumns": {
+    "title_header": "標題",
+    "status_header": "狀態",
+    "created_at_header": "建立時間",
+    "open_menu": "開啟選單",
+    "edit": "編輯",
+    "delete": "刪除",
+    "status_draft": "草稿",
+    "status_published": "已發佈",
+    "status_closed": "已關閉"
+  },
+  "AddQuiz": {
+    "title_bar": "建立測驗",
+    "section_title": "測驗基本資料",
+    "section_description": "填寫以下資料以建立新的測驗",
+    "title_label": "測驗標題",
+    "title_placeholder": "例如：第三章隨堂測驗",
+    "description_label": "說明（選填）",
+    "description_placeholder": "為學生寫一段簡短說明",
+    "description_hint": "學生在作答前會看到這段說明。",
+    "submit_button": "建立測驗",
+    "cancel_button": "取消"
+  },
+  "Dashboard": {
+    "meta_title": "QuizFlow 後台管理",
+    "meta_description": "管理您的測驗、查看學生成績，以及追蹤學習表現，全部在同一個地方。"
+  },
+  "DashboardIndex": {
+    "title_bar": "後台首頁",
+    "title_bar_description": "歡迎使用 QuizFlow",
+    "message_state_title": "建立您的第一份測驗",
+    "message_state_description": "從這裡開始建立測驗。您可以編輯 <code>dashboard/page.tsx</code> 來自訂此頁面。",
+    "message_state_button": "建立測驗",
+    "message_state_alternative": "需要無限測驗與 AI 自動生題功能？升級至 <url></url>，每月只需 $9 美元。",
+    "max_message": ""
+  },
+  "UserProfile": {
+    "title_bar": "使用者資料",
+    "title_bar_description": "查看並管理您的個人資料"
+  },
+  "OrganizationProfile": {
+    "title_bar": "組織管理",
+    "title_bar_description": "管理您的組織"
+  },
+  "Billing": {
+    "title_bar": "帳單",
+    "title_bar_description": "管理您的帳單與訂閱方案",
+    "current_section_title": "目前方案",
+    "current_section_description": "調整您的付費方案以符合需求",
+    "manage_subscription_button": "管理訂閱"
+  },
+  "BillingOptions": {
+    "current_plan": "目前方案",
+    "upgrade_plan": "升級至 Pro"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "付款確認",
+    "message_state_title": "付款成功",
+    "message_state_description": "您的付款已成功處理。感謝您的購買！",
+    "message_state_button": "返回帳單頁面"
+  },
+  "QuizTake": {
+    "not_available": "這份測驗目前無法作答",
+    "not_available_description": "測驗可能尚未發佈或已關閉，請聯絡老師確認。",
+    "no_questions": "這份測驗目前沒有題目"
+  },
+  "DataTable": {
+    "no_results": "沒有資料。"
+  },
+  "Todos": {
+    "title_bar": "待辦清單",
+    "title_bar_description": "查看並管理您的待辦事項",
+    "add_todo_button": "新增待辦"
+  },
+  "TodoTableColumns": {
+    "open_menu": "開啟選單",
+    "edit": "編輯",
+    "delete": "刪除",
+    "title_header": "標題",
+    "message_header": "內容",
+    "created_at_header": "建立時間"
+  },
+  "AddTodo": {
+    "title_bar": "新增待辦",
+    "add_todo_section_title": "建立新待辦事項",
+    "add_todo_section_description": "填寫以下表單以建立新的待辦事項"
+  },
+  "EditTodo": {
+    "title_bar": "編輯待辦",
+    "edit_todo_section_title": "修改待辦事項",
+    "edit_todo_section_description": "填寫以下表單以修改待辦事項"
+  },
+  "TodoForm": {
+    "title_label": "標題",
+    "title_description": "為您的待辦事項輸入一個描述性標題。",
+    "message_title": "內容",
+    "message_description": "為您的待辦事項輸入詳細內容。",
+    "submit_button": "送出"
+  }
+}

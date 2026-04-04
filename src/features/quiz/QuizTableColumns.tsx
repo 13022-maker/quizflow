@@ -1,0 +1,103 @@
+'use client';
+
+import type { ColumnDef } from '@tanstack/react-table';
+import type { InferSelectModel } from 'drizzle-orm';
+import { useTranslations } from 'next-intl';
+import Link from 'next/link';
+import { useTransition } from 'react';
+
+import { deleteQuiz } from '@/actions/quizActions';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import type { quizSchema } from '@/models/Schema';
+
+type Quiz = InferSelectModel<typeof quizSchema>;
+
+const STATUS_STYLES: Record<Quiz['status'], string> = {
+  draft: 'bg-gray-100 text-gray-700',
+  published: 'bg-green-100 text-green-700',
+  closed: 'bg-red-100 text-red-600',
+};
+
+function StatusBadge({ status }: { status: Quiz['status'] }) {
+  const t = useTranslations('QuizTableColumns');
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[status]}`}>
+      {t(`status_${status}`)}
+    </span>
+  );
+}
+
+function ActionsCell({ quiz }: { quiz: Quiz }) {
+  const t = useTranslations('QuizTableColumns');
+  const [isPending, startTransition] = useTransition();
+
+  const handleDelete = () => {
+    startTransition(async () => {
+      await deleteQuiz(quiz.id);
+    });
+  };
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" disabled={isPending}>
+          ···
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link href={`/dashboard/quizzes/${quiz.id}/edit`}>
+            {t('edit')}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="text-destructive focus:text-destructive"
+          onClick={handleDelete}
+          disabled={isPending}
+        >
+          {t('delete')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+export function useQuizColumns(): ColumnDef<Quiz>[] {
+  const t = useTranslations('QuizTableColumns');
+
+  return [
+    {
+      accessorKey: 'title',
+      header: t('title_header'),
+      cell: ({ row }) => (
+        <Link
+          href={`/dashboard/quizzes/${row.original.id}/edit`}
+          className="font-medium hover:underline"
+        >
+          {row.original.title}
+        </Link>
+      ),
+    },
+    {
+      accessorKey: 'status',
+      header: t('status_header'),
+      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+    },
+    {
+      accessorKey: 'createdAt',
+      header: t('created_at_header'),
+      cell: ({ row }) =>
+        row.original.createdAt.toLocaleDateString('zh-TW'),
+    },
+    {
+      id: 'actions',
+      cell: ({ row }) => <ActionsCell quiz={row.original} />,
+    },
+  ];
+}

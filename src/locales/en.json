@@ -1,0 +1,204 @@
+{
+  "Index": {
+    "meta_title": "QuizFlow - The online quiz platform built for Taiwan teachers.",
+    "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 3 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
+  },
+  "Navbar": {
+    "sign_in": "Sign In",
+    "sign_up": "Sign Up",
+    "product": "Product",
+    "docs": "Docs",
+    "blog": "Blog",
+    "community": "Community",
+    "company": "Company"
+  },
+  "Hero": {
+    "follow_twitter": "Follow QuizFlow on Twitter",
+    "title": "The smarter way to <important>create and share quizzes</important> for your students.",
+    "description": "Build engaging quizzes in minutes, share with a single link, and get real-time results. Designed for Taiwan teachers.",
+    "primary_button": "Start for Free",
+    "secondary_button": "See How It Works"
+  },
+  "Sponsors": {
+    "title": "Trusted by teachers at"
+  },
+  "Features": {
+    "section_subtitle": "Features",
+    "section_title": "Everything a Teacher Needs to Run Great Quizzes",
+    "section_description": "QuizFlow gives you the tools to create, share, and analyze quizzes — without the complexity.",
+    "feature1_title": "Quick Quiz Builder",
+    "feature2_title": "One-Link Sharing",
+    "feature3_title": "Real-Time Results",
+    "feature4_title": "AI Question Generation",
+    "feature5_title": "Student Analytics",
+    "feature6_title": "Export Reports",
+    "feature_description": "Everything you need to run effective assessments, from quick checks to full exams."
+  },
+  "Pricing": {
+    "section_subtitle": "Pricing",
+    "section_title": "Simple, Transparent Pricing",
+    "section_description": "Start free and upgrade when you need more. No hidden fees.",
+    "button_text": "Get Started"
+  },
+  "PricingPlan": {
+    "free_plan_name": "Free",
+    "premium_plan_name": "Pro",
+    "enterprise_plan_name": "Enterprise",
+    "free_plan_description": "For teachers just getting started",
+    "premium_plan_description": "For teachers who want unlimited power",
+    "enterprise_plan_description": "For schools and institutions",
+    "feature_team_member": "{number} Teacher Account",
+    "feature_website": "{number} Quizzes",
+    "feature_storage": "AI Question Generation",
+    "feature_transfer": "{number} TB Transfer",
+    "feature_email_support": "Email Support",
+    "plan_interval_month": "month",
+    "plan_interval_year": "year",
+    "next_renew_date": "Your subscription renews on {date}"
+  },
+  "FAQ": {
+    "question": "How many quizzes can I create on the free plan?",
+    "answer": "The free plan allows you to create up to 3 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month."
+  },
+  "CTA": {
+    "title": "Ready to make quizzes easier?",
+    "description": "Join teachers who use QuizFlow to save time and get better insights from their students.",
+    "button_text": "Start for Free"
+  },
+  "Footer": {
+    "product": "Product",
+    "docs": "Docs",
+    "blog": "Blog",
+    "community": "Community",
+    "company": "Company",
+    "terms_of_service": "Terms Of Service",
+    "privacy_policy": "Privacy Policy",
+    "footer_text": "© {year} {name}. Built for Taiwan teachers."
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "You do not have the permissions to perform this action"
+  },
+  "SignIn": {
+    "meta_title": "Sign in",
+    "meta_description": "Sign in to your QuizFlow account and start creating quizzes."
+  },
+  "SignUp": {
+    "meta_title": "Sign up",
+    "meta_description": "Create your free QuizFlow account and start building quizzes in minutes."
+  },
+  "DashboardLayout": {
+    "home": "Home",
+    "quizzes": "Quizzes",
+    "todos": "Todos",
+    "members": "Members",
+    "billing": "Billing",
+    "settings": "Settings"
+  },
+  "Quizzes": {
+    "title_bar": "My Quizzes",
+    "title_bar_description": "Manage and share your quizzes with students",
+    "add_quiz_button": "New Quiz",
+    "empty_title": "No quizzes yet",
+    "empty_description": "Create your first quiz and share it with your students.",
+    "empty_button": "Create Quiz"
+  },
+  "QuizTableColumns": {
+    "title_header": "Title",
+    "status_header": "Status",
+    "created_at_header": "Created",
+    "open_menu": "Open menu",
+    "edit": "Edit",
+    "delete": "Delete",
+    "status_draft": "Draft",
+    "status_published": "Published",
+    "status_closed": "Closed"
+  },
+  "AddQuiz": {
+    "title_bar": "New Quiz",
+    "section_title": "Quiz Details",
+    "section_description": "Fill in the details below to create a new quiz",
+    "title_label": "Title",
+    "title_placeholder": "e.g. Chapter 3 Quiz",
+    "description_label": "Description (optional)",
+    "description_placeholder": "Add a short description for your students",
+    "description_hint": "Students will see this before they start the quiz.",
+    "submit_button": "Create Quiz",
+    "cancel_button": "Cancel"
+  },
+  "Dashboard": {
+    "meta_title": "QuizFlow Dashboard",
+    "meta_description": "Manage your quizzes, view student results, and track performance — all in one place."
+  },
+  "DashboardIndex": {
+    "title_bar": "Dashboard",
+    "title_bar_description": "Welcome to QuizFlow",
+    "message_state_title": "Create your first quiz",
+    "message_state_description": "Get started by creating a quiz. You can customize this page by editing <code>dashboard/page.tsx</code>",
+    "message_state_button": "Create Quiz",
+    "message_state_alternative": "Need unlimited quizzes and AI question generation? Upgrade to <url></url> for $9/month.",
+    "max_message": ""
+  },
+  "UserProfile": {
+    "title_bar": "User Profile",
+    "title_bar_description": "View and manage your user profile"
+  },
+  "OrganizationProfile": {
+    "title_bar": "Organization Management",
+    "title_bar_description": "Manage your organization"
+  },
+  "Billing": {
+    "title_bar": "Billing",
+    "title_bar_description": "Manage your billing and subscription",
+    "current_section_title": "Current Plan",
+    "current_section_description": "Adjust your payment plan to best suit your needs",
+    "manage_subscription_button": "Manage Subscription"
+  },
+  "BillingOptions": {
+    "current_plan": "Current Plan",
+    "upgrade_plan": "Upgrade to Pro"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "Payment Confirmation",
+    "message_state_title": "Payment successful",
+    "message_state_description": "Your payment has been successfully processed. Thank you for your purchase!",
+    "message_state_button": "Go back to Billing"
+  },
+  "QuizTake": {
+    "not_available": "This quiz is not available",
+    "not_available_description": "The quiz may not be published yet or has been closed. Please contact your teacher.",
+    "no_questions": "This quiz has no questions yet"
+  },
+  "DataTable": {
+    "no_results": "No results."
+  },
+  "Todos": {
+    "title_bar": "Todo List",
+    "title_bar_description": "View and manage your todo list",
+    "add_todo_button": "New todo"
+  },
+  "TodoTableColumns": {
+    "open_menu": "Open menu",
+    "edit": "Edit",
+    "delete": "Delete",
+    "title_header": "Title",
+    "message_header": "Message",
+    "created_at_header": "Created at"
+  },
+  "AddTodo": {
+    "title_bar": "Add Todo",
+    "add_todo_section_title": "Create a new todo",
+    "add_todo_section_description": "Fill in the form below to create a new todo"
+  },
+  "EditTodo": {
+    "title_bar": "Edit todo",
+    "edit_todo_section_title": "Modify todo",
+    "edit_todo_section_description": "Fill in the form below to edit the todo"
+  },
+  "TodoForm": {
+    "title_label": "Title",
+    "title_description": "Enter a descriptive title for your todo.",
+    "message_title": "Message",
+    "message_description": "Enter a detailed message for your todo.",
+    "submit_button": "Submit"
+  }
+}
