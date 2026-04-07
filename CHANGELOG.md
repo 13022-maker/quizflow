@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/13022-maker/quizflow/compare/v1.0.2...v1.1.0) (2026-04-07)
+
+
+### Features
+
+* PDF 頁數範圍選擇，解決 token 超限問題 ([083a316](https://github.com/13022-maker/quizflow/commit/083a3165e0391e503d862c6d8e28dcf2025c7e50))
+
 ## [1.0.2](https://github.com/13022-maker/quizflow/compare/v1.0.1...v1.0.2) (2026-04-07)
 
 
