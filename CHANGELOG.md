@@ -1,3 +1,10 @@
+## [1.0.1](https://github.com/13022-maker/quizflow/compare/v1.0.0...v1.0.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* skip intlMiddleware for /api/ routes to prevent i18n redirect ([38a4faa](https://github.com/13022-maker/quizflow/commit/38a4faaaa1d978e9f5675758b9bffc323d0350b6))
+
 # 1.0.0 (2026-04-07)
 
 
