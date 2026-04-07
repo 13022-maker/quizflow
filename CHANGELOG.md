@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/13022-maker/quizflow/compare/v1.0.1...v1.0.2) (2026-04-07)
+
+
+### Bug Fixes
+
+* 限制檔案格式為 PDF/圖片，加入大小限制 ([e7e6ddb](https://github.com/13022-maker/quizflow/commit/e7e6ddbc26738fcc324b0af6637b61b1a0588a60))
+
 ## [1.0.1](https://github.com/13022-maker/quizflow/compare/v1.0.0...v1.0.1) (2026-04-07)
 
 
