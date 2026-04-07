@@ -227,13 +227,13 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                 >
                   <input
                     ref={fileRef} type="file"
-                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
                     className="hidden"
                     onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]); }}
                   />
                   <div className="text-4xl mb-2">📂</div>
                   <p className="text-sm font-semibold text-gray-700 mb-1">點擊或拖曳上傳</p>
-                  <p className="text-xs text-gray-400">PDF · Word · JPG · PNG</p>
+                  <p className="text-xs text-gray-400">PDF（1MB 以下）· JPG · PNG</p>
                 </div>
               ) : (
                 <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">

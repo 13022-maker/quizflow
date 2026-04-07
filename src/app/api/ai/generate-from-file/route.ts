@@ -35,6 +35,26 @@ export async function POST(request: Request) {
 
   if (!file) return NextResponse.json({ error: '請上傳檔案' }, { status: 400 });
 
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
+  const isPDF = ext === 'pdf';
+
+  // 不支援 DOCX，提示使用者另存 PDF
+  if (!isImage && !isPDF) {
+    return NextResponse.json(
+      { error: '目前僅支援 PDF 和圖片格式，請將 Word 文件另存為 PDF 後上傳' },
+      { status: 400 },
+    );
+  }
+
+  // PDF 超過 1MB 時拒絕（Anthropic API 對大型 PDF 效果不穩定）
+  if (isPDF && file.size > 1024 * 1024) {
+    return NextResponse.json(
+      { error: 'PDF 檔案過大，請上傳 1MB 以下的 PDF，或截取部分頁面後上傳' },
+      { status: 400 },
+    );
+  }
+
   const types: string[] = JSON.parse(typesRaw || '["mc"]');
   const diffLabel = DIFF_LABELS[difficulty] || '中等';
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
@@ -63,9 +83,6 @@ ${typesPrompt}
   // 轉 base64
   const arrayBuffer = await file.arrayBuffer();
   const base64 = Buffer.from(arrayBuffer).toString('base64');
-  const ext = file.name.split('.').pop()?.toLowerCase() || '';
-  const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-  const isPDF = ext === 'pdf';
 
   let content: Anthropic.MessageParam['content'];
 
@@ -78,15 +95,10 @@ ${typesPrompt}
       { type: 'image', source: { type: 'base64', media_type: (mediaMap[ext] || 'image/png') as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: base64 } },
       { type: 'text', text: prompt },
     ];
-  } else if (isPDF) {
+  } else {
+    // isPDF（已在上方驗證過格式與大小）
     content = [
       { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-      { type: 'text', text: prompt },
-    ];
-  } else {
-    // DOCX：告知 Claude 是 Word 文件
-    content = [
-      { type: 'document', source: { type: 'base64', media_type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' as 'application/pdf', data: base64 } },
       { type: 'text', text: prompt },
     ];
   }
