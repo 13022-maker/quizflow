@@ -26,13 +26,33 @@ import {
   reorderQuestions,
   updateQuestion,
 } from '@/actions/questionActions';
-import { updateQuiz } from '@/actions/quizActions';
+import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import AIQuizModal from '@/components/quiz/AIQuizModal';
+import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import type { questionSchema, quizSchema } from '@/models/Schema';
-
 import { QuestionCard } from './QuestionCard';
 import { QuestionForm } from './QuestionForm';
 import type { QuestionFormValues } from './QuestionForm';
+
+// FileQuizGenerator 回傳的題目格式
+type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
+interface FileGeneratedQuestion {
+  type: FileQuestionType;
+  question: string;
+  options?: string[];
+  answer: string;
+  explanation?: string;
+}
+
+// 題型對應：FileQuizGenerator → DB enum
+const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer'> = {
+  mc: 'single_choice',
+  tf: 'true_false',
+  fill: 'short_answer',
+  short: 'short_answer',
+};
 
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
@@ -46,9 +66,11 @@ const STATUS_MAP: Record<Quiz['status'], { label: string; color: string }> = {
 export function QuizEditor({
   quiz: initialQuiz,
   questions: initialQuestions,
+  isPro,
 }: {
   quiz: Quiz;
   questions: Question[];
+  isPro: boolean;
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
@@ -64,6 +86,25 @@ export function QuizEditor({
 
   // 目前顯示的 status（跟 server 同步後更新）
   const [status, setStatus] = useState(initialQuiz.status);
+
+  // 隨機排序設定
+  const [shuffleQuestions, setShuffleQuestions] = useState(initialQuiz.shuffleQuestions);
+  const [shuffleOptions, setShuffleOptions] = useState(initialQuiz.shuffleOptions);
+
+  // 防作弊設定
+  const [allowedAttempts, setAllowedAttempts] = useState<string>(
+    initialQuiz.allowedAttempts?.toString() ?? 'unlimited',
+  );
+  const [showAnswers, setShowAnswers] = useState(initialQuiz.showAnswers);
+  const [timeLimit, setTimeLimit] = useState<string>(
+    initialQuiz.timeLimitSeconds?.toString() ?? 'unlimited',
+  );
+  const [customTime, setCustomTime] = useState<string>(
+    initialQuiz.timeLimitSeconds
+      && ![600, 1200, 1800, 3600].includes(initialQuiz.timeLimitSeconds)
+      ? String(Math.round(initialQuiz.timeLimitSeconds / 60))
+      : '',
+  );
 
   // ── DnD ──────────────────────────────────────────────────────────
   const sensors = useSensors(
@@ -103,6 +144,106 @@ export function QuizEditor({
       await updateQuiz(initialQuiz.id, { title, status: newStatus });
       router.refresh();
     });
+  };
+
+  // ── 隨機排序設定 ──────────────────────────────────────────────────
+  const handleToggleShuffle = (field: 'shuffleQuestions' | 'shuffleOptions', value: boolean) => {
+    if (field === 'shuffleQuestions') setShuffleQuestions(value);
+    else setShuffleOptions(value);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { [field]: value });
+    });
+  };
+
+  // ── 防作弊設定 ────────────────────────────────────────────────────
+  const handleAllowedAttemptsChange = (value: string) => {
+    setAllowedAttempts(value);
+    const parsed = value === 'unlimited' ? null : Number(value);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { allowedAttempts: parsed });
+    });
+  };
+
+  const handleShowAnswersChange = (value: boolean) => {
+    setShowAnswers(value);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { showAnswers: value });
+    });
+  };
+
+  const handleTimeLimitChange = (value: string) => {
+    setTimeLimit(value);
+    if (value === 'custom') return; // 等使用者輸入自訂分鐘數
+    const seconds = value === 'unlimited' ? null : Number(value);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { timeLimitSeconds: seconds });
+    });
+  };
+
+  const handleCustomTimeBlur = () => {
+    const mins = parseInt(customTime, 10);
+    if (!mins || mins <= 0) return;
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { timeLimitSeconds: mins * 60 });
+    });
+  };
+
+  // 控制 AIQuizModal 顯示
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
+  const handleAIImport = async (questions: FileGeneratedQuestion[], _title: string) => {
+    setIsSubmitting(true);
+    setShowAIModal(false);
+
+    await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions }),
+    });
+
+    setIsSubmitting(false);
+    router.refresh();
+  };
+
+  // 控制「上傳講義命題」Modal 顯示
+  const [showFileGenerator, setShowFileGenerator] = useState(false);
+
+  // ── 從檔案匯入題目 ──────────────────────────────────────────────────
+  const handleFileImport = async (questions: FileGeneratedQuestion[], _title: string) => {
+    setIsSubmitting(true);
+    setShowFileGenerator(false);
+
+    for (const q of questions) {
+      const type = FILE_TYPE_MAP[q.type];
+
+      if (q.type === 'mc' && q.options?.length) {
+        // 選擇題：將 string[] 轉換為 { id, text }[]，並找出正確答案的 id
+        const options = q.options.map((text, i) => ({
+          id: String.fromCharCode(97 + i), // a, b, c, d
+          text,
+        }));
+        const correctOpt = options.find(o => o.text === q.answer);
+        await createQuestion(initialQuiz.id, {
+          type,
+          body: q.question,
+          options,
+          correctAnswers: correctOpt ? [correctOpt.id] : [],
+          points: 1,
+        });
+      } else {
+        // 是非題 / 填空題 / 簡答題：直接存 answer 字串
+        await createQuestion(initialQuiz.id, {
+          type,
+          body: q.question,
+          correctAnswers: q.answer ? [q.answer] : [],
+          points: 1,
+        });
+      }
+    }
+
+    setIsSubmitting(false);
+    router.refresh();
   };
 
   // ── 題目 CRUD ─────────────────────────────────────────────────────
@@ -204,6 +345,149 @@ export function QuizEditor({
             重新開放
           </Button>
         )}
+
+        {/* AI 出題按鈕：開啟 AIQuizModal，Pro 限定 */}
+        {isPro
+          ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAIModal(true)}
+                disabled={isSubmitting}
+                className="gap-1.5"
+              >
+                ✨ AI 出題
+              </Button>
+            )
+          : (
+              <div className="relative">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5"
+                  onClick={() => { window.location.href = '/dashboard/billing'; }}
+                >
+                  ✨ AI 出題
+                </Button>
+              </div>
+            )}
+
+        {/* 上傳講義命題按鈕（Pro 限定） */}
+        {isPro
+          ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFileGenerator(true)}
+                disabled={isSubmitting}
+              >
+                📂 上傳講義命題
+              </Button>
+            )
+          : (
+              <Button size="sm" variant="outline" disabled title="此功能僅限 Pro 方案">
+                📂 上傳講義命題
+              </Button>
+            )}
+      </div>
+
+      {/* AI 出題 Modal */}
+      {showAIModal && (
+        <AIQuizModal
+          onImport={handleAIImport}
+          onClose={() => setShowAIModal(false)}
+        />
+      )}
+
+      {/* 上傳講義命題 Modal */}
+      {showFileGenerator && (
+        <FileQuizGenerator
+          onImport={handleFileImport}
+          onClose={() => setShowFileGenerator(false)}
+        />
+      )}
+
+      {/* ── 測驗設定 ─────────────────────────────────────────────── */}
+      <div className="rounded-lg border bg-card px-4 py-4 space-y-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
+
+        {/* 第一列：兩個 toggle */}
+        <div className="flex flex-wrap gap-x-6 gap-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch
+              checked={shuffleQuestions}
+              onCheckedChange={val => handleToggleShuffle('shuffleQuestions', val)}
+              disabled={isPending}
+            />
+            題目隨機排序
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch
+              checked={shuffleOptions}
+              onCheckedChange={val => handleToggleShuffle('shuffleOptions', val)}
+              disabled={isPending}
+            />
+            選項隨機排序
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch
+              checked={showAnswers}
+              onCheckedChange={handleShowAnswersChange}
+              disabled={isPending}
+            />
+            交卷後顯示解答
+          </label>
+        </div>
+
+        {/* 第二列：兩個 select */}
+        <div className="flex flex-wrap gap-4">
+          {/* 作答次數 */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="shrink-0 text-muted-foreground">作答次數上限</span>
+            <select
+              value={allowedAttempts}
+              onChange={e => handleAllowedAttemptsChange(e.target.value)}
+              disabled={isPending}
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="unlimited">無限制</option>
+              <option value="1">只能作答 1 次</option>
+              <option value="3">只能作答 3 次</option>
+            </select>
+          </div>
+
+          {/* 限時作答 */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="shrink-0 text-muted-foreground">限時作答</span>
+            <select
+              value={timeLimit}
+              onChange={e => handleTimeLimitChange(e.target.value)}
+              disabled={isPending}
+              className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="unlimited">無限制</option>
+              <option value="600">10 分鐘</option>
+              <option value="1200">20 分鐘</option>
+              <option value="1800">30 分鐘</option>
+              <option value="3600">60 分鐘</option>
+              <option value="custom">自訂</option>
+            </select>
+            {timeLimit === 'custom' && (
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={1}
+                  value={customTime}
+                  onChange={e => setCustomTime(e.target.value)}
+                  onBlur={handleCustomTimeBlur}
+                  placeholder="分鐘"
+                  className="w-16 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <span className="text-muted-foreground">分鐘</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ── 題目清單 ────────────────────────────────────────────── */}
