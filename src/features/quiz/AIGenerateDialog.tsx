@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from 'react';
 
-import { generateAIQuestions } from '@/actions/aiActions';
 import type { AIGeneratedQuestion } from '@/actions/aiActions';
+import { generateAIQuestions } from '@/actions/aiActions';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -34,8 +34,7 @@ export function AIGenerateDialog({ isPro, onGenerated }: Props) {
         onGenerated(result.questions);
         setOpen(false);
         setTopic('');
-      }
-      else {
+      } else {
         setError(result.error);
       }
     });
@@ -58,6 +57,7 @@ export function AIGenerateDialog({ isPro, onGenerated }: Props) {
         {open && (
           <>
             {/* 背景遮罩 */}
+            {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
             <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
             {/* 提示卡片 */}
             <div className="absolute right-0 top-10 z-50 w-72 rounded-xl border bg-card p-5 shadow-lg">
@@ -106,6 +106,7 @@ export function AIGenerateDialog({ isPro, onGenerated }: Props) {
       {open && (
         <>
           {/* 背景遮罩 */}
+          {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
           <div className="fixed inset-0 z-40" onClick={() => !isPending && setOpen(false)} />
           {/* 出題表單卡片 */}
           <div className="absolute right-0 top-10 z-50 w-80 rounded-xl border bg-card p-5 shadow-lg">
@@ -115,6 +116,7 @@ export function AIGenerateDialog({ isPro, onGenerated }: Props) {
             </div>
 
             <div className="mb-3">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
               <label className="mb-1 block text-sm font-medium">
                 主題或內容
               </label>
@@ -129,6 +131,7 @@ export function AIGenerateDialog({ isPro, onGenerated }: Props) {
             </div>
 
             <div className="mb-4 flex items-center gap-3">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
               <label className="shrink-0 text-sm font-medium">題數</label>
               <input
                 type="number"

@@ -22,7 +22,7 @@ export type SubmitResult = {
   totalPoints: number;
   details: {
     questionId: number;
-    isCorrect: boolean | null;  // null = 簡答題
+    isCorrect: boolean | null; // null = 簡答題
     points: number;
   }[];
 };
@@ -38,7 +38,9 @@ export async function checkAttemptCount(quizId: number, email: string): Promise<
 
 export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResult> {
   const parsed = SubmitSchema.safeParse(data);
-  if (!parsed.success) throw new Error('格式錯誤');
+  if (!parsed.success) {
+    throw new Error('格式錯誤');
+  }
 
   const { quizId, studentName, studentEmail, answers } = parsed.data;
 
@@ -63,7 +65,9 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     .from(questionSchema)
     .where(eq(questionSchema.quizId, quizId));
 
-  if (questions.length === 0) throw new Error('找不到題目');
+  if (questions.length === 0) {
+    throw new Error('找不到題目');
+  }
 
   // 批改
   let score = 0;
@@ -87,8 +91,12 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
       }
     }
 
-    if (!isShortAnswer) totalPoints += question.points;
-    if (isCorrect === true) score += question.points;
+    if (!isShortAnswer) {
+      totalPoints += question.points;
+    }
+    if (isCorrect === true) {
+      score += question.points;
+    }
 
     details.push({ questionId: question.id, isCorrect, points: question.points });
   }
@@ -105,7 +113,9 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     })
     .returning();
 
-  if (!inserted) throw new Error('儲存失敗');
+  if (!inserted) {
+    throw new Error('儲存失敗');
+  }
 
   // 寫入每題的 answer
   const answerRows = questions

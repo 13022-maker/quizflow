@@ -2,8 +2,8 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferSelectModel } from 'drizzle-orm';
-import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { deleteQuiz } from '@/actions/quizActions';

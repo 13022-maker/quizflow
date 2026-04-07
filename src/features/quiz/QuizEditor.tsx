@@ -1,5 +1,6 @@
 'use client';
 
+import type { DragEndEvent } from '@dnd-kit/core';
 import {
   closestCenter,
   DndContext,
@@ -8,7 +9,6 @@ import {
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
 import {
   arrayMove,
   SortableContext,
@@ -27,24 +27,25 @@ import {
   updateQuestion,
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
 import type { questionSchema, quizSchema } from '@/models/Schema';
+
 import { QuestionCard } from './QuestionCard';
-import { QuestionForm } from './QuestionForm';
 import type { QuestionFormValues } from './QuestionForm';
+import { QuestionForm } from './QuestionForm';
 
 // FileQuizGenerator 回傳的題目格式
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
-interface FileGeneratedQuestion {
+type FileGeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
   answer: string;
   explanation?: string;
-}
+};
 
 // 題型對應：FileQuizGenerator → DB enum
 const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer'> = {
@@ -101,7 +102,7 @@ export function QuizEditor({
   );
   const [customTime, setCustomTime] = useState<string>(
     initialQuiz.timeLimitSeconds
-      && ![600, 1200, 1800, 3600].includes(initialQuiz.timeLimitSeconds)
+    && ![600, 1200, 1800, 3600].includes(initialQuiz.timeLimitSeconds)
       ? String(Math.round(initialQuiz.timeLimitSeconds / 60))
       : '',
   );
@@ -116,7 +117,9 @@ export function QuizEditor({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || active.id === over.id) {
+      return;
+    }
 
     const oldIndex = questions.findIndex(q => q.id === Number(active.id));
     const newIndex = questions.findIndex(q => q.id === Number(over.id));
@@ -130,7 +133,9 @@ export function QuizEditor({
 
   // ── 標題儲存 ──────────────────────────────────────────────────────
   const handleSaveTitle = () => {
-    if (!titleDirty || !title.trim()) return;
+    if (!titleDirty || !title.trim()) {
+      return;
+    }
     startTransition(async () => {
       await updateQuiz(initialQuiz.id, { title: title.trim(), status });
       setTitleDirty(false);
@@ -148,8 +153,11 @@ export function QuizEditor({
 
   // ── 隨機排序設定 ──────────────────────────────────────────────────
   const handleToggleShuffle = (field: 'shuffleQuestions' | 'shuffleOptions', value: boolean) => {
-    if (field === 'shuffleQuestions') setShuffleQuestions(value);
-    else setShuffleOptions(value);
+    if (field === 'shuffleQuestions') {
+      setShuffleQuestions(value);
+    } else {
+      setShuffleOptions(value);
+    }
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { [field]: value });
     });
@@ -173,7 +181,9 @@ export function QuizEditor({
 
   const handleTimeLimitChange = (value: string) => {
     setTimeLimit(value);
-    if (value === 'custom') return; // 等使用者輸入自訂分鐘數
+    if (value === 'custom') {
+      return;
+    } // 等使用者輸入自訂分鐘數
     const seconds = value === 'unlimited' ? null : Number(value);
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { timeLimitSeconds: seconds });
@@ -181,8 +191,10 @@ export function QuizEditor({
   };
 
   const handleCustomTimeBlur = () => {
-    const mins = parseInt(customTime, 10);
-    if (!mins || mins <= 0) return;
+    const mins = Number.parseInt(customTime, 10);
+    if (!mins || mins <= 0) {
+      return;
+    }
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { timeLimitSeconds: mins * 60 });
     });
@@ -365,7 +377,9 @@ export function QuizEditor({
                   size="sm"
                   variant="outline"
                   className="gap-1.5"
-                  onClick={() => { window.location.href = '/dashboard/billing'; }}
+                  onClick={() => {
+                    window.location.href = '/dashboard/billing';
+                  }}
                 >
                   ✨ AI 出題
                 </Button>
@@ -408,11 +422,12 @@ export function QuizEditor({
       )}
 
       {/* ── 測驗設定 ─────────────────────────────────────────────── */}
-      <div className="rounded-lg border bg-card px-4 py-4 space-y-4">
+      <div className="space-y-4 rounded-lg border bg-card p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
 
         {/* 第一列：兩個 toggle */}
         <div className="flex flex-wrap gap-x-6 gap-y-2">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Switch
               checked={shuffleQuestions}
@@ -421,6 +436,7 @@ export function QuizEditor({
             />
             題目隨機排序
           </label>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Switch
               checked={shuffleOptions}
@@ -429,6 +445,7 @@ export function QuizEditor({
             />
             選項隨機排序
           </label>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <Switch
               checked={showAnswers}

@@ -18,7 +18,9 @@ export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 
 export async function createQuiz(data: CreateQuizInput) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
 
   const parsed = CreateQuizSchema.safeParse(data);
   if (!parsed.success) {
@@ -39,7 +41,9 @@ export async function updateQuiz(
   data: { title: string; description?: string; status: 'draft' | 'published' | 'closed' },
 ) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
 
   await db
     .update(quizSchema)
@@ -62,7 +66,9 @@ export async function updateQuizSettings(
   },
 ) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
 
   await db
     .update(quizSchema)
@@ -74,7 +80,9 @@ export async function updateQuizSettings(
 
 export async function deleteQuiz(id: number) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
 
   await db
     .delete(quizSchema)

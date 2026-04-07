@@ -116,6 +116,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
       {/* 題型 + 配分 */}
       <div className="flex gap-3">
         <div className="flex-1">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="mb-1 block text-sm font-medium">題型</label>
           <select
             {...form.register('type')}
@@ -129,6 +130,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
           </select>
         </div>
         <div className="w-20">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
           <label className="mb-1 block text-sm font-medium">配分</label>
           <input
             type="number"
@@ -141,6 +143,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
 
       {/* 題目內容 */}
       <div>
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
         <label className="mb-1 block text-sm font-medium">題目內容</label>
         <textarea
           {...form.register('body')}
@@ -161,7 +164,9 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
           <label className="mb-1 block text-sm font-medium">
             選項
             <span className="ml-1 text-xs font-normal text-muted-foreground">
-              （{type === 'multiple_choice' ? '可選多個正確答案' : '點選正確答案'}）
+              （
+              {type === 'multiple_choice' ? '可選多個正確答案' : '點選正確答案'}
+              ）
             </span>
           </label>
           <div className="space-y-2">

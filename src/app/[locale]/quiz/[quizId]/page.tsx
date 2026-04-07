@@ -1,6 +1,6 @@
 import { and, asc, eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { db } from '@/libs/DB';
@@ -8,7 +8,9 @@ import { questionSchema, quizSchema } from '@/models/Schema';
 
 export async function generateMetadata({ params }: { params: { quizId: string } }) {
   const id = Number(params.quizId);
-  if (Number.isNaN(id)) return {};
+  if (Number.isNaN(id)) {
+    return {};
+  }
 
   const [quiz] = await db
     .select({ title: quizSchema.title })
@@ -23,7 +25,9 @@ export default async function QuizTakePage({ params }: { params: { quizId: strin
   const t = await getTranslations('QuizTake');
   const quizId = Number(params.quizId);
 
-  if (Number.isNaN(quizId)) return notFound();
+  if (Number.isNaN(quizId)) {
+    return notFound();
+  }
 
   const [quiz] = await db
     .select()

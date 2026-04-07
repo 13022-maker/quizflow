@@ -1,19 +1,26 @@
 import { eq } from 'drizzle-orm';
 
-import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
-import { Env } from './Env';
-import { db } from './DB';
 import { organizationSchema } from '@/models/Schema';
+import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
+
+import { db } from './DB';
+import { Env } from './Env';
 
 /**
  * 根據 BILLING_PLAN_ENV 取得對應的 Stripe Price ID
  */
 function getPriceId(planId: string): string {
   const plan = PricingPlanList[planId];
-  if (!plan) return '';
+  if (!plan) {
+    return '';
+  }
   const env = Env.BILLING_PLAN_ENV;
-  if (env === 'prod') return plan.prodPriceId;
-  if (env === 'test') return plan.testPriceId;
+  if (env === 'prod') {
+    return plan.prodPriceId;
+  }
+  if (env === 'test') {
+    return plan.testPriceId;
+  }
   return plan.devPriceId;
 }
 
@@ -39,8 +46,12 @@ export async function getOrgPlanId(orgId: string): Promise<string> {
   const premiumPriceId = getPriceId(PLAN_ID.PREMIUM);
   const enterprisePriceId = getPriceId(PLAN_ID.ENTERPRISE);
 
-  if (org.priceId === enterprisePriceId) return PLAN_ID.ENTERPRISE;
-  if (org.priceId === premiumPriceId) return PLAN_ID.PREMIUM;
+  if (org.priceId === enterprisePriceId) {
+    return PLAN_ID.ENTERPRISE;
+  }
+  if (org.priceId === premiumPriceId) {
+    return PLAN_ID.PREMIUM;
+  }
   return PLAN_ID.FREE;
 }
 

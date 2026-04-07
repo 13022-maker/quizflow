@@ -7,13 +7,13 @@ import { questionSchema, quizSchema } from '@/models/Schema';
 
 // AIQuizModal 回傳的題目格式
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
-interface GeneratedQuestion {
+type GeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
   answer: string;
   explanation?: string;
-}
+};
 
 // 題型對應：AIQuizModal → DB enum
 const DB_TYPE_MAP = {
@@ -29,7 +29,9 @@ export async function POST(
 ) {
   // 驗證登入，批次匯入需要 orgId 才能確認測驗所有權
   const { orgId } = await auth();
-  if (!orgId) return NextResponse.json({ error: '未登入' }, { status: 401 });
+  if (!orgId) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 });
+  }
 
   const quizId = Number(params.id);
   if (Number.isNaN(quizId)) {

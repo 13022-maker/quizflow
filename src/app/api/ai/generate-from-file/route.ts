@@ -1,10 +1,12 @@
 // pdf-lib、Buffer 是 Node.js 專屬 API，必須明確指定 Node.js Runtime
-export const runtime = 'nodejs';
+import { Buffer } from 'node:buffer';
 
-import { auth } from '@clerk/nextjs/server';
 import Anthropic from '@anthropic-ai/sdk';
-import { PDFDocument } from 'pdf-lib';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+import { PDFDocument } from 'pdf-lib';
+
+export const runtime = 'nodejs';
 
 const client = new Anthropic();
 
@@ -22,20 +24,22 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  // debug：確認 cookie 有沒有帶進來
-  console.log('generate-from-file called, cookie:', request.headers.get('cookie')?.slice(0, 50));
   const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: '未登入' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 });
+  }
 
   const formData = await request.formData();
   const file = formData.get('file') as File | null;
   const typesRaw = formData.get('types') as string;
-  const count = parseInt(formData.get('count') as string) || 5;
+  const count = Number.parseInt(formData.get('count') as string) || 5;
   const difficulty = (formData.get('difficulty') as string) || 'medium';
-  const startPage = parseInt(formData.get('startPage') as string) || 1;
-  const endPage = parseInt(formData.get('endPage') as string) || 0; // 0 代表未傳，使用全文
+  const startPage = Number.parseInt(formData.get('startPage') as string) || 1;
+  const endPage = Number.parseInt(formData.get('endPage') as string) || 0; // 0 代表未傳，使用全文
 
-  if (!file) return NextResponse.json({ error: '請上傳檔案' }, { status: 400 });
+  if (!file) {
+    return NextResponse.json({ error: '請上傳檔案' }, { status: 400 });
+  }
 
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
@@ -94,8 +98,11 @@ ${typesPrompt}
     // 圖片直接轉 base64
     const base64 = Buffer.from(arrayBuffer).toString('base64');
     const mediaMap: Record<string, string> = {
-      jpg: 'image/jpeg', jpeg: 'image/jpeg',
-      png: 'image/png', webp: 'image/webp', gif: 'image/gif',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      png: 'image/png',
+      webp: 'image/webp',
+      gif: 'image/gif',
     };
     content = [
       { type: 'image', source: { type: 'base64', media_type: (mediaMap[ext] || 'image/png') as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: base64 } },
@@ -119,8 +126,7 @@ ${typesPrompt}
       const copiedPages = await newDoc.copyPages(srcDoc, indices);
       copiedPages.forEach(page => newDoc.addPage(page));
       pdfBytes = await newDoc.save();
-    }
-    else {
+    } else {
       // 未傳頁數範圍，直接使用原始 PDF
       pdfBytes = new Uint8Array(arrayBuffer);
     }
@@ -148,8 +154,7 @@ ${typesPrompt}
 
     const result = JSON.parse(match[0]);
     return NextResponse.json(result);
-  }
-  catch (err) {
+  } catch (err) {
     const message = err instanceof Error ? err.message : '未知錯誤';
     return NextResponse.json({ error: `AI 命題失敗：${message}` }, { status: 500 });
   }

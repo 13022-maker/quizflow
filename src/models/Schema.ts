@@ -53,31 +53,31 @@ export const organizationSchema = pgTable(
 // ---------- QuizFlow enums ----------
 
 export const questionTypeEnum = pgEnum('question_type', [
-  'single_choice',   // 單選題
+  'single_choice', // 單選題
   'multiple_choice', // 多選題
-  'true_false',      // 是非題
-  'short_answer',    // 簡答題
+  'true_false', // 是非題
+  'short_answer', // 簡答題
 ]);
 
 export const quizStatusEnum = pgEnum('quiz_status', [
-  'draft',     // 草稿
+  'draft', // 草稿
   'published', // 已發佈（學生可作答）
-  'closed',    // 已關閉
+  'closed', // 已關閉
 ]);
 
 // ---------- quizzes ----------
 
 export const quizSchema = pgTable('quiz', {
   id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(),          // Clerk user/org ID
+  ownerId: text('owner_id').notNull(), // Clerk user/org ID
   title: text('title').notNull(),
   description: text('description'),
   status: quizStatusEnum('status').default('draft').notNull(),
   shuffleQuestions: boolean('shuffle_questions').default(false).notNull(),
   shuffleOptions: boolean('shuffle_options').default(false).notNull(),
-  allowedAttempts: integer('allowed_attempts'),     // null = 無限制
+  allowedAttempts: integer('allowed_attempts'), // null = 無限制
   showAnswers: boolean('show_answers').default(true).notNull(),
-  timeLimitSeconds: integer('time_limit_seconds'),  // null = 無限制
+  timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
@@ -96,11 +96,11 @@ export const questionSchema = pgTable('question', {
     .notNull()
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
   type: questionTypeEnum('type').notNull(),
-  body: text('body').notNull(),                        // 題目文字
+  body: text('body').notNull(), // 題目文字
   options: jsonb('options').$type<{ id: string; text: string }[]>(),
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   points: integer('points').default(1).notNull(),
-  position: integer('position').notNull(),             // 排列順序
+  position: integer('position').notNull(), // 排列順序
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
@@ -116,10 +116,10 @@ export const responseSchema = pgTable('response', {
   quizId: integer('quiz_id')
     .notNull()
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
-  studentName: text('student_name'),     // 學生自填，可為空
-  studentEmail: text('student_email'),   // 學生自填，可為空
-  score: integer('score'),               // 計算後寫入（null = 含簡答題，未完整批改）
-  totalPoints: integer('total_points'),  // 滿分（不含簡答題）
+  studentName: text('student_name'), // 學生自填，可為空
+  studentEmail: text('student_email'), // 學生自填，可為空
+  score: integer('score'), // 計算後寫入（null = 含簡答題，未完整批改）
+  totalPoints: integer('total_points'), // 滿分（不含簡答題）
   submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
@@ -135,7 +135,7 @@ export const answerSchema = pgTable('answer', {
     .notNull()
     .references(() => questionSchema.id, { onDelete: 'cascade' }),
   answer: jsonb('answer').$type<string | string[]>().notNull(), // 字串或選項 id 陣列
-  isCorrect: boolean('is_correct'),      // null = 簡答題待批改
+  isCorrect: boolean('is_correct'), // null = 簡答題待批改
 });
 
 // ---------- todo (原有範例，保留供參考) ----------

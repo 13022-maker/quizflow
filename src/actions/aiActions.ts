@@ -32,17 +32,18 @@ export type GenerateQuestionsResult =
  */
 function parseQuestionsJSON(text: string): AIGeneratedQuestion[] | null {
   // 去除 markdown code block 與前後多餘空白
-  let cleaned = text
+  const cleaned = text
     .replace(/^```(?:json)?\s*/i, '')
-    .replace(/\s*```$/i, '')
+    .replace(/\s*```$/, '')
     .trim();
 
   // 第一次嘗試：直接解析
   try {
     const result = JSON.parse(cleaned);
-    if (Array.isArray(result) && result.length > 0) return result as AIGeneratedQuestion[];
-  }
-  catch {
+    if (Array.isArray(result) && result.length > 0) {
+      return result as AIGeneratedQuestion[];
+    }
+  } catch {
     // 繼續嘗試下一步
   }
 
@@ -51,9 +52,10 @@ function parseQuestionsJSON(text: string): AIGeneratedQuestion[] | null {
   if (match) {
     try {
       const result = JSON.parse(match[0]);
-      if (Array.isArray(result) && result.length > 0) return result as AIGeneratedQuestion[];
-    }
-    catch {
+      if (Array.isArray(result) && result.length > 0) {
+        return result as AIGeneratedQuestion[];
+      }
+    } catch {
       // 解析仍失敗，回傳 null
     }
   }
@@ -69,7 +71,9 @@ export async function generateAIQuestions(
   input: { topic: string; count?: number },
 ): Promise<GenerateQuestionsResult> {
   const { orgId } = await auth();
-  if (!orgId) return { success: false, error: '請先登入' };
+  if (!orgId) {
+    return { success: false, error: '請先登入' };
+  }
 
   // 檢查是否為付費方案
   const hasPro = await isProOrAbove(orgId);
@@ -146,8 +150,7 @@ export async function generateAIQuestions(
     }
 
     return { success: true, questions };
-  }
-  catch (err) {
+  } catch (err) {
     const message = err instanceof Error ? err.message : '未知錯誤';
     return { success: false, error: `AI 出題失敗：${message}` };
   }

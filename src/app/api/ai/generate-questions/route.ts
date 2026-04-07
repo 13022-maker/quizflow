@@ -1,9 +1,9 @@
 // Anthropic SDK 需要 Node.js Runtime（Edge 不支援）
-export const runtime = 'nodejs';
-
 import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
 
 const client = new Anthropic();
 
@@ -23,10 +23,10 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  // debug：確認 cookie 有沒有帶進來
-  console.log('generate-questions called, cookie:', request.headers.get('cookie')?.slice(0, 50));
   const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: '未登入' }, { status: 401 });
+  if (!userId) {
+    return NextResponse.json({ error: '未登入' }, { status: 401 });
+  }
 
   const body = await request.json();
   const { topic, types = ['mc'], count = 5, difficulty = 'medium' } = body;
@@ -79,8 +79,7 @@ ${typesPrompt}
 
     const result = JSON.parse(match[0]);
     return NextResponse.json(result);
-  }
-  catch (err) {
+  } catch (err) {
     const msg = err instanceof Error ? err.message : '未知錯誤';
     return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }

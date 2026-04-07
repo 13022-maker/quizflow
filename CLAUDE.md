@@ -3,10 +3,10 @@
 This file provides guidance to Claude Code when working with code in this repository.
 
 ## 專案簡介
-QuizFlow 是專為**台灣老師**設計的測驗 SaaS 平台。  
+QuizFlow 是專為**台灣老師**設計的測驗 SaaS 平台。
 老師可以快速建立測驗、發佈分享連結，學生**無需登入**即可作答，系統自動批改並顯示成績與詳解。
 
-**核心差異化功能（Pro 方案）**：  
+**核心差異化功能（Pro 方案）**：
 使用 **Gemma 4 E4B**（本地運行於 Ollama）進行**多模態 AI 出題**，支援上傳文字、PDF、圖片、影片、語音等素材，自動生成高品質測驗題（選擇題、是非題、問答題、填空題等）並附上詳細解析。
 
 ## 技術架構
@@ -39,7 +39,6 @@ AI 出題功能僅限 Pro 方案使用（Free 方案最多建立 3 個測驗）
 先放置 <image>、<audio> 等多模態內容，再接文字指令
 明確要求輸出結構化格式（JSON），包含題目、選項、正確答案、解析
 建議使用 Thinking Mode（step by step）提升生成品質與準確度
-
 
 開發規則與慣例
 

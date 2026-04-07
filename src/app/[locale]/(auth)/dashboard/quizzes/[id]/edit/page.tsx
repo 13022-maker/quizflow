@@ -13,7 +13,9 @@ export async function generateMetadata({
   params: { id: string };
 }) {
   const quizId = Number(params.id);
-  if (Number.isNaN(quizId)) return {};
+  if (Number.isNaN(quizId)) {
+    return {};
+  }
 
   const [quiz] = await db
     .select({ title: quizSchema.title })
@@ -30,10 +32,14 @@ export default async function EditQuizPage({
   params: { id: string };
 }) {
   const { orgId } = await auth();
-  if (!orgId) return notFound();
+  if (!orgId) {
+    return notFound();
+  }
 
   const quizId = Number(params.id);
-  if (Number.isNaN(quizId)) return notFound();
+  if (Number.isNaN(quizId)) {
+    return notFound();
+  }
 
   // 取得測驗（驗證所有權）
   const [quiz] = await db
@@ -42,7 +48,9 @@ export default async function EditQuizPage({
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
 
-  if (!quiz) return notFound();
+  if (!quiz) {
+    return notFound();
+  }
 
   // 取得題目，依 position 排序
   const questions = await db

@@ -62,14 +62,18 @@ export default function middleware(
       }
 
       // API routes 不經過 intlMiddleware，避免被 i18n 重導向到 /zh/api/...
-      if (req.nextUrl.pathname.startsWith('/api/')) return NextResponse.next();
+      if (req.nextUrl.pathname.startsWith('/api/')) {
+        return NextResponse.next();
+      }
 
       return intlMiddleware(req);
     })(request, event);
   }
 
   // API routes 不需要 intlMiddleware
-  if (request.nextUrl.pathname.startsWith('/api/')) return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
 
   return intlMiddleware(request);
 }

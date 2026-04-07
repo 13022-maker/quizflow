@@ -15,11 +15,13 @@ async function verifyOwnership(quizId: number, orgId: string) {
     .from(quizSchema)
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
-  if (!quiz) throw new Error('Quiz not found or unauthorized');
+  if (!quiz) {
+    throw new Error('Quiz not found or unauthorized');
+  }
   return quiz;
 }
 
-const QuestionInput = z.object({
+const QuestionInputSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer']),
   body: z.string().min(1, '請輸入題目內容'),
   options: z
@@ -29,15 +31,19 @@ const QuestionInput = z.object({
   points: z.coerce.number().min(1).default(1),
 });
 
-export type QuestionInput = z.infer<typeof QuestionInput>;
+export type QuestionInput = z.infer<typeof QuestionInputSchema>;
 
 export async function createQuestion(quizId: number, data: QuestionInput) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
   await verifyOwnership(quizId, orgId);
 
-  const parsed = QuestionInput.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? '格式錯誤' };
+  const parsed = QuestionInputSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? '格式錯誤' };
+  }
 
   // 取得目前最大 position
   const existing = await db
@@ -66,11 +72,15 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
 
 export async function updateQuestion(id: number, quizId: number, data: QuestionInput) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
   await verifyOwnership(quizId, orgId);
 
-  const parsed = QuestionInput.safeParse(data);
-  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? '格式錯誤' };
+  const parsed = QuestionInputSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? '格式錯誤' };
+  }
 
   await db
     .update(questionSchema)
@@ -89,7 +99,9 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
 
 export async function deleteQuestion(id: number, quizId: number) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
   await verifyOwnership(quizId, orgId);
 
   await db.delete(questionSchema).where(eq(questionSchema.id, id));
@@ -99,7 +111,9 @@ export async function deleteQuestion(id: number, quizId: number) {
 
 export async function reorderQuestions(quizId: number, orderedIds: number[]) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('Unauthorized');
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
   await verifyOwnership(quizId, orgId);
 
   await Promise.all(

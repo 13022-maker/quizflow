@@ -1,15 +1,17 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { db } from '@/libs/DB';
-import { answerSchema, questionSchema, responseSchema, quizSchema } from '@/models/Schema';
+import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const quizId = Number(params.id);
-  if (Number.isNaN(quizId)) return {};
+  if (Number.isNaN(quizId)) {
+    return {};
+  }
   const [quiz] = await db.select({ title: quizSchema.title }).from(quizSchema).where(eq(quizSchema.id, quizId)).limit(1);
   return { title: quiz ? `成績：${quiz.title}` : '測驗成績' };
 }
@@ -17,10 +19,14 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 export default async function QuizResultsPage({ params }: { params: { id: string } }) {
   const t = await getTranslations('QuizResults');
   const { orgId } = await auth();
-  if (!orgId) return notFound();
+  if (!orgId) {
+    return notFound();
+  }
 
   const quizId = Number(params.id);
-  if (Number.isNaN(quizId)) return notFound();
+  if (Number.isNaN(quizId)) {
+    return notFound();
+  }
 
   const [quiz] = await db
     .select()
@@ -28,7 +34,9 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
 
-  if (!quiz) return notFound();
+  if (!quiz) {
+    return notFound();
+  }
 
   // Fetch all responses
   const responses = await db
@@ -47,15 +55,15 @@ export default async function QuizResultsPage({ params }: { params: { id: string
   // Fetch all answers for this quiz (via join)
   const answers = responses.length > 0
     ? await db
-        .select({
-          answerId: answerSchema.id,
-          responseId: answerSchema.responseId,
-          questionId: answerSchema.questionId,
-          isCorrect: answerSchema.isCorrect,
-        })
-        .from(answerSchema)
-        .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
-        .where(eq(responseSchema.quizId, quizId))
+      .select({
+        answerId: answerSchema.id,
+        responseId: answerSchema.responseId,
+        questionId: answerSchema.questionId,
+        isCorrect: answerSchema.isCorrect,
+      })
+      .from(answerSchema)
+      .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
+      .where(eq(responseSchema.quizId, quizId))
     : [];
 
   // Compute summary stats
@@ -83,7 +91,9 @@ export default async function QuizResultsPage({ params }: { params: { id: string
             href={`/dashboard/quizzes/${quiz.id}/edit`}
             className="mb-1 text-sm text-muted-foreground hover:underline"
           >
-            ← {quiz.title}
+            ←
+            {' '}
+            {quiz.title}
           </Link>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
         </div>
@@ -201,7 +211,10 @@ function RateBar({ rate }: { rate: number }) {
       <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${rate}%` }} />
       </div>
-      <span className="w-9 text-right text-xs font-medium">{rate}%</span>
+      <span className="w-9 text-right text-xs font-medium">
+        {rate}
+        %
+      </span>
     </div>
   );
 }

@@ -3,8 +3,8 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import { useEffect, useRef, useState, useTransition } from 'react';
 
-import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import type { SubmitResult } from '@/actions/responseActions';
+import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -139,72 +139,72 @@ function ResultScreen({
 
       {/* 逐題對照（showAnswers = false 時隱藏） */}
       {!showAnswers && (
-        <p className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground text-center">
+        <p className="rounded-md bg-muted px-4 py-3 text-center text-sm text-muted-foreground">
           老師已關閉解答顯示。
         </p>
       )}
       {showAnswers && (
-      <div className="space-y-3">
-        {questions.map((question, index) => {
-          const detail = result.details.find(d => d.questionId === question.id);
-          const studentAnswer = answers[question.id];
-          const options = question.options ?? [];
-          const isShort = question.type === 'short_answer';
+        <div className="space-y-3">
+          {questions.map((question, index) => {
+            const detail = result.details.find(d => d.questionId === question.id);
+            const studentAnswer = answers[question.id];
+            const options = question.options ?? [];
+            const isShort = question.type === 'short_answer';
 
-          const borderColor = isShort
-            ? 'border-gray-200'
-            : detail?.isCorrect
-              ? 'border-green-300 bg-green-50/50'
-              : 'border-red-300 bg-red-50/50';
+            const borderColor = isShort
+              ? 'border-gray-200'
+              : detail?.isCorrect
+                ? 'border-green-300 bg-green-50/50'
+                : 'border-red-300 bg-red-50/50';
 
-          return (
-            <div key={question.id} className={`rounded-lg border p-4 ${borderColor}`}>
-              <div className="flex items-start justify-between gap-2">
-                <p className="font-medium text-sm">
-                  Q
-                  {index + 1}
-                  .
-                  {' '}
-                  {question.body}
-                </p>
-                <span className="shrink-0 text-xs text-muted-foreground">
-                  {detail?.points}
-                  {' '}
-                  分
-                </span>
-              </div>
+            return (
+              <div key={question.id} className={`rounded-lg border p-4 ${borderColor}`}>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-medium">
+                    Q
+                    {index + 1}
+                    .
+                    {' '}
+                    {question.body}
+                  </p>
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    {detail?.points}
+                    {' '}
+                    分
+                  </span>
+                </div>
 
-              {/* 學生的答案 */}
-              <div className="mt-2 text-sm">
-                <span className="text-muted-foreground">你的答案：</span>
-                {Array.isArray(studentAnswer)
-                  ? studentAnswer
+                {/* 學生的答案 */}
+                <div className="mt-2 text-sm">
+                  <span className="text-muted-foreground">你的答案：</span>
+                  {Array.isArray(studentAnswer)
+                    ? studentAnswer
                       .map(id => options.find(o => o.id === id)?.text ?? id)
                       .join('、')
-                  : typeof studentAnswer === 'string'
-                    ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
-                        <span className="text-muted-foreground italic">未作答</span>
-                      )
-                    : <span className="text-muted-foreground italic">未作答</span>}
-              </div>
-
-              {/* 正確答案（非簡答題） */}
-              {!isShort && detail?.isCorrect === false && question.correctAnswers && (
-                <div className="mt-1 text-sm text-green-700">
-                  <span className="text-muted-foreground">正確答案：</span>
-                  {question.correctAnswers
-                    .map(id => options.find(o => o.id === id)?.text ?? id)
-                    .join('、')}
+                    : typeof studentAnswer === 'string'
+                      ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
+                          <span className="italic text-muted-foreground">未作答</span>
+                        )
+                      : <span className="italic text-muted-foreground">未作答</span>}
                 </div>
-              )}
 
-              {isShort && (
-                <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                {/* 正確答案（非簡答題） */}
+                {!isShort && detail?.isCorrect === false && question.correctAnswers && (
+                  <div className="mt-1 text-sm text-green-700">
+                    <span className="text-muted-foreground">正確答案：</span>
+                    {question.correctAnswers
+                      .map(id => options.find(o => o.id === id)?.text ?? id)
+                      .join('、')}
+                  </div>
+                )}
+
+                {isShort && (
+                  <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
@@ -226,7 +226,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 隨機排序只在掛載時執行一次（用 useState initializer 避免重新渲染時重洗）
   const [displayQuestions] = useState<Question[]>(() => {
     const ordered = quiz.shuffleQuestions ? shuffle(questions) : questions;
-    if (!quiz.shuffleOptions) return ordered;
+    if (!quiz.shuffleOptions) {
+      return ordered;
+    }
     return ordered.map(q =>
       q.options ? { ...q, options: shuffle(q.options) } : q,
     );
@@ -277,13 +279,11 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           answers: Object.fromEntries(Object.entries(answers)),
         });
         setResult(res);
-      }
-      catch (err) {
+      } catch (err) {
         const msg = err instanceof Error ? err.message : '';
         if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
           setError('您已達到作答上限，無法再次提交。');
-        }
-        else {
+        } else {
           setError('提交失敗，請再試一次');
         }
       }
@@ -292,7 +292,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
   // 倒數計時器：每秒遞減，歸零時自動送出
   useEffect(() => {
-    if (timeLeft === null || result) return;
+    if (timeLeft === null || result) {
+      return;
+    }
     if (timeLeft <= 0) {
       if (!autoSubmittedRef.current) {
         autoSubmittedRef.current = true;
@@ -325,7 +327,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           <h1 className="text-2xl font-bold">{quiz.title}</h1>
           {/* 倒數計時器（有限時才顯示） */}
           {timeLeft !== null && (
-            <div className={`shrink-0 rounded-full px-3 py-1 text-sm font-mono font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
+            <div className={`shrink-0 rounded-full px-3 py-1 font-mono text-sm font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
               {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
               :
               {String(timeLeft % 60).padStart(2, '0')}

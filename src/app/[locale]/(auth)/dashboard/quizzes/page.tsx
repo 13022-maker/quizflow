@@ -1,11 +1,11 @@
 import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 import { buttonVariants } from '@/components/ui/buttonVariants';
-import { TitleBar } from '@/features/dashboard/TitleBar';
 import { MessageState } from '@/features/dashboard/MessageState';
+import { TitleBar } from '@/features/dashboard/TitleBar';
 import { QuizTable } from '@/features/quiz/QuizTable';
 import { db } from '@/libs/DB';
 import { quizSchema } from '@/models/Schema';
@@ -26,13 +26,12 @@ export default async function QuizzesPage() {
   try {
     quizzes = orgId
       ? await db
-          .select()
-          .from(quizSchema)
-          .where(eq(quizSchema.ownerId, orgId))
-          .orderBy(quizSchema.createdAt)
+        .select()
+        .from(quizSchema)
+        .where(eq(quizSchema.ownerId, orgId))
+        .orderBy(quizSchema.createdAt)
       : [];
-  }
-  catch (err) {
+  } catch (err) {
     // 將完整錯誤印到 Vercel Runtime log，方便排查
     console.error('[QuizzesPage] DB query failed:', err);
     throw err;
@@ -45,7 +44,7 @@ export default async function QuizzesPage() {
         description={t('title_bar_description')}
       />
 
-      <div className="flex justify-end mb-4">
+      <div className="mb-4 flex justify-end">
         <Link href="/dashboard/quizzes/new" className={buttonVariants({ size: 'sm' })}>
           {t('add_quiz_button')}
         </Link>
