@@ -1,5 +1,15 @@
-CREATE TYPE "public"."question_type" AS ENUM('single_choice', 'multiple_choice', 'true_false', 'short_answer');--> statement-breakpoint
-CREATE TYPE "public"."quiz_status" AS ENUM('draft', 'published', 'closed');--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."question_type" AS ENUM('single_choice', 'multiple_choice', 'true_false', 'short_answer');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
+DO $$ BEGIN
+ CREATE TYPE "public"."quiz_status" AS ENUM('draft', 'published', 'closed');
+EXCEPTION
+ WHEN duplicate_object THEN null;
+END $$;
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "quiz" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"owner_id" text NOT NULL,

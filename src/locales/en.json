@@ -32,7 +32,12 @@
     "feature4_title": "AI Question Generation",
     "feature5_title": "Student Analytics",
     "feature6_title": "Export Reports",
-    "feature_description": "Everything you need to run effective assessments, from quick checks to full exams."
+    "feature1_description": "Build quizzes with multiple-choice, true/false, fill-in-the-blank, and short-answer questions. Drag to reorder — done in minutes.",
+    "feature2_description": "Every quiz gets a shareable link. Post it to LINE or write it on the board — no app download required for students.",
+    "feature3_description": "Answers are graded automatically the moment a student submits. Scores and explanations appear instantly, no waiting.",
+    "feature4_description": "Upload a textbook, slide deck, or image and let AI draft the questions with explanations — saving hours of manual work (Pro only).",
+    "feature5_description": "See per-question correct rates and answer distributions across your class to quickly identify gaps in understanding.",
+    "feature6_description": "Export all student responses as a CSV file to import into your gradebook or school administration system."
   },
   "Pricing": {
     "section_subtitle": "Pricing",
@@ -57,8 +62,12 @@
     "next_renew_date": "Your subscription renews on {date}"
   },
   "FAQ": {
-    "question": "How many quizzes can I create on the free plan?",
-    "answer": "The free plan allows you to create up to 3 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month."
+    "question1": "How many quizzes can I create on the free plan?",
+    "answer1": "The free plan allows you to create up to 3 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month.",
+    "question2": "Do students need an account to take a quiz?",
+    "answer2": "No account needed. Students simply click the link you share and answer directly in their browser — no sign-up or login required. Once submitted, the score and answer explanations are shown instantly. You can view all responses in your dashboard.",
+    "question3": "What formats does AI question generation support?",
+    "answer3": "The Pro plan's AI generation supports plain text, PDF documents, images (JPG, PNG), video (MP4), and audio files (MP3). Just upload your teaching materials and the AI will generate multiple-choice, true/false, fill-in-the-blank, or short-answer questions with detailed explanations for each."
   },
   "CTA": {
     "title": "Ready to make quizzes easier?",
@@ -108,6 +117,9 @@
     "created_at_header": "Created",
     "open_menu": "Open menu",
     "edit": "Edit",
+    "results": "Results",
+    "copy_link": "Copy Student Link",
+    "copy_link_copied": "Copied!",
     "delete": "Delete",
     "status_draft": "Draft",
     "status_published": "Published",
@@ -162,6 +174,23 @@
     "message_state_title": "Payment successful",
     "message_state_description": "Your payment has been successfully processed. Thank you for your purchase!",
     "message_state_button": "Go back to Billing"
+  },
+  "QuizResults": {
+    "title": "Quiz Results",
+    "total_responses": "Total Responses",
+    "avg_score": "Average Score",
+    "question_count": "Questions",
+    "question_breakdown": "Per-Question Breakdown",
+    "question_body": "Question",
+    "correct_count": "Correct / Total",
+    "correct_rate": "Correct Rate",
+    "short_answer_note": "(short answer, requires manual grading)",
+    "response_list": "All Submissions",
+    "no_responses": "No students have responded yet",
+    "student_name": "Student Name",
+    "student_email": "Email",
+    "score": "Score",
+    "submitted_at": "Submitted At"
   },
   "QuizTake": {
     "not_available": "This quiz is not available",

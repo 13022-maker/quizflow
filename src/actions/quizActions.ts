@@ -50,6 +50,28 @@ export async function updateQuiz(
   revalidatePath('/dashboard/quizzes');
 }
 
+// 更新測驗的防作弊與顯示設定
+export async function updateQuizSettings(
+  id: number,
+  data: {
+    shuffleQuestions?: boolean;
+    shuffleOptions?: boolean;
+    allowedAttempts?: number | null;
+    showAnswers?: boolean;
+    timeLimitSeconds?: number | null;
+  },
+) {
+  const { orgId } = await auth();
+  if (!orgId) throw new Error('Unauthorized');
+
+  await db
+    .update(quizSchema)
+    .set(data)
+    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
+
+  revalidatePath(`/dashboard/quizzes/${id}/edit`);
+}
+
 export async function deleteQuiz(id: number) {
   const { orgId } = await auth();
   if (!orgId) throw new Error('Unauthorized');

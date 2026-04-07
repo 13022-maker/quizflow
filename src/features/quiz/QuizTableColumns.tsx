@@ -4,7 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import type { InferSelectModel } from 'drizzle-orm';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 
 import { deleteQuiz } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
@@ -36,10 +36,20 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
 function ActionsCell({ quiz }: { quiz: Quiz }) {
   const t = useTranslations('QuizTableColumns');
   const [isPending, startTransition] = useTransition();
+  const [copied, setCopied] = useState(false);
 
   const handleDelete = () => {
     startTransition(async () => {
       await deleteQuiz(quiz.id);
+    });
+  };
+
+  // 複製學生作答連結到剪貼板
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/quiz/${quiz.id}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
   };
 
@@ -55,6 +65,14 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
           <Link href={`/dashboard/quizzes/${quiz.id}/edit`}>
             {t('edit')}
           </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href={`/dashboard/quizzes/${quiz.id}/results`}>
+            {t('results')}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleCopyLink}>
+          {copied ? t('copy_link_copied') : t('copy_link')}
         </DropdownMenuItem>
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"

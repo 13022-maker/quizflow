@@ -1,10 +1,10 @@
 'use server';
 
-import { eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
-import { answerSchema, questionSchema, responseSchema } from '@/models/Schema';
+import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
 const SubmitSchema = z.object({
   quizId: z.number().int().positive(),
@@ -27,11 +27,35 @@ export type SubmitResult = {
   }[];
 };
 
+/** 查詢某個 email 在指定測驗的已作答次數 */
+export async function checkAttemptCount(quizId: number, email: string): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(responseSchema)
+    .where(and(eq(responseSchema.quizId, quizId), eq(responseSchema.studentEmail, email)));
+  return row?.value ?? 0;
+}
+
 export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResult> {
   const parsed = SubmitSchema.safeParse(data);
   if (!parsed.success) throw new Error('格式錯誤');
 
   const { quizId, studentName, studentEmail, answers } = parsed.data;
+
+  // 取得測驗設定（用於 server-side 驗證作答次數）
+  const [quiz] = await db
+    .select({ allowedAttempts: quizSchema.allowedAttempts })
+    .from(quizSchema)
+    .where(eq(quizSchema.id, quizId))
+    .limit(1);
+
+  // Server-side 驗證：有 email 且測驗限制作答次數時才檢查
+  if (quiz?.allowedAttempts && studentEmail) {
+    const attemptCount = await checkAttemptCount(quizId, studentEmail);
+    if (attemptCount >= quiz.allowedAttempts) {
+      throw new Error('ATTEMPT_LIMIT_EXCEEDED');
+    }
+  }
 
   // 取得所有題目的正確答案與配分
   const questions = await db

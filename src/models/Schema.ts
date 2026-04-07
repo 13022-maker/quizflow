@@ -75,6 +75,8 @@ export const quizSchema = pgTable('quiz', {
   status: quizStatusEnum('status').default('draft').notNull(),
   shuffleQuestions: boolean('shuffle_questions').default(false).notNull(),
   shuffleOptions: boolean('shuffle_options').default(false).notNull(),
+  allowedAttempts: integer('allowed_attempts'),     // null = 無限制
+  showAnswers: boolean('show_answers').default(true).notNull(),
   timeLimitSeconds: integer('time_limit_seconds'),  // null = 無限制
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()

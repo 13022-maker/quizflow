@@ -32,7 +32,12 @@
     "feature4_title": "AI 自動生題",
     "feature5_title": "學生學習分析",
     "feature6_title": "匯出成績報告",
-    "feature_description": "從隨堂小測到正式考試，QuizFlow 提供您有效評量所需的完整功能。"
+    "feature1_description": "支援選擇題、是非題、填空題與問答題，拖曳即可排序題目，幾分鐘內完成出題。",
+    "feature2_description": "測驗建立後自動產生專屬連結，貼到 LINE 或黑板即可，學生無需下載任何 App。",
+    "feature3_description": "學生送出答案後立即自動批改，分數與每題詳解即時顯示，無需等待。",
+    "feature4_description": "上傳課本、簡報或圖片，AI 自動生成試題並附解析，省去手動出題的時間（Pro 限定）。",
+    "feature5_description": "查看每道題的答對率與全班作答分佈，快速找出學生的學習盲點。",
+    "feature6_description": "將所有作答記錄匯出為 CSV 檔，方便輸入成績簿或與行政系統整合。"
   },
   "Pricing": {
     "section_subtitle": "方案價格",
@@ -57,8 +62,12 @@
     "next_renew_date": "您的訂閱將於 {date} 自動續約"
   },
   "FAQ": {
-    "question": "免費方案可以建立幾份測驗？",
-    "answer": "免費方案最多可建立 3 份測驗。每份測驗題數不限，可分享給任意數量的學生作答。如果需要更多測驗或想使用 AI 自動生題功能，可升級至每月 $9 美元的 Pro 方案，享有無限測驗與所有進階功能。"
+    "question1": "免費方案可以建立幾份測驗？",
+    "answer1": "免費方案最多可建立 3 份測驗。每份測驗題數不限，可分享給任意數量的學生作答。如果需要更多測驗或想使用 AI 自動生題功能，可升級至每月 $9 美元的 Pro 方案，享有無限測驗與所有進階功能。",
+    "question2": "學生需要帳號才能作答嗎？",
+    "answer2": "不需要。學生只要點擊您分享的連結，即可直接在瀏覽器中作答，無需事先註冊或登入任何帳號。作答完成後，系統會立即顯示分數與每題詳解，老師也可以在後台查看所有作答記錄。",
+    "question3": "AI 自動生題支援哪些格式？",
+    "answer3": "Pro 方案的 AI 出題功能支援多種素材格式，包含純文字、PDF 文件、圖片（JPG、PNG）、影片（MP4）以及語音檔案（MP3）。您只需上傳教材內容，AI 會自動生成選擇題、是非題、填空題或問答題，並附上每題的詳細解析。"
   },
   "CTA": {
     "title": "準備好讓出題更輕鬆了嗎？",
@@ -108,6 +117,9 @@
     "created_at_header": "建立時間",
     "open_menu": "開啟選單",
     "edit": "編輯",
+    "results": "成績",
+    "copy_link": "複製學生連結",
+    "copy_link_copied": "已複製！",
     "delete": "刪除",
     "status_draft": "草稿",
     "status_published": "已發佈",
@@ -162,6 +174,23 @@
     "message_state_title": "付款成功",
     "message_state_description": "您的付款已成功處理。感謝您的購買！",
     "message_state_button": "返回帳單頁面"
+  },
+  "QuizResults": {
+    "title": "作答成績",
+    "total_responses": "作答人數",
+    "avg_score": "平均分數",
+    "question_count": "題目數量",
+    "question_breakdown": "各題答對率",
+    "question_body": "題目",
+    "correct_count": "答對 / 作答",
+    "correct_rate": "答對率",
+    "short_answer_note": "（簡答題，需手動批改）",
+    "response_list": "所有作答紀錄",
+    "no_responses": "目前尚無學生作答",
+    "student_name": "學生姓名",
+    "student_email": "電子郵件",
+    "score": "得分",
+    "submitted_at": "作答時間"
   },
   "QuizTake": {
     "not_available": "這份測驗目前無法作答",

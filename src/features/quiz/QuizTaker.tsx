@@ -1,9 +1,9 @@
 'use client';
 
 import type { InferSelectModel } from 'drizzle-orm';
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
-import { submitQuizResponse } from '@/actions/responseActions';
+import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import type { SubmitResult } from '@/actions/responseActions';
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
@@ -101,10 +101,12 @@ function ResultScreen({
   result,
   questions,
   answers,
+  showAnswers,
 }: {
   result: SubmitResult;
   questions: Question[];
   answers: Record<number, string | string[]>;
+  showAnswers: boolean;
 }) {
   const percentage = result.totalPoints > 0
     ? Math.round((result.score / result.totalPoints) * 100)
@@ -135,7 +137,13 @@ function ResultScreen({
         )}
       </div>
 
-      {/* 逐題對照 */}
+      {/* 逐題對照（showAnswers = false 時隱藏） */}
+      {!showAnswers && (
+        <p className="rounded-md bg-muted px-4 py-3 text-sm text-muted-foreground text-center">
+          老師已關閉解答顯示。
+        </p>
+      )}
+      {showAnswers && (
       <div className="space-y-3">
         {questions.map((question, index) => {
           const detail = result.details.find(d => d.questionId === question.id);
@@ -197,13 +205,33 @@ function ResultScreen({
           );
         })}
       </div>
+      )}
     </div>
   );
+}
+
+// ── Fisher-Yates shuffle ──────────────────────────────────────────
+function shuffle<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j]!, result[i]!];
+  }
+  return result;
 }
 
 // ── 主元件 ────────────────────────────────────────────────────────
 
 export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question[] }) {
+  // 隨機排序只在掛載時執行一次（用 useState initializer 避免重新渲染時重洗）
+  const [displayQuestions] = useState<Question[]>(() => {
+    const ordered = quiz.shuffleQuestions ? shuffle(questions) : questions;
+    if (!quiz.shuffleOptions) return ordered;
+    return ordered.map(q =>
+      q.options ? { ...q, options: shuffle(q.options) } : q,
+    );
+  });
+
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
@@ -211,45 +239,80 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
 
+  // 倒數計時器（timeLimitSeconds 有值時啟動）
+  const [timeLeft, setTimeLeft] = useState<number | null>(quiz.timeLimitSeconds ?? null);
+  const autoSubmittedRef = useRef(false); // 防止計時結束後重複送出
+
   const handleAnswer = (questionId: number, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleSubmit = () => {
-    // 確認所有非簡答題都已作答
-    const unanswered = questions.filter(
-      q => q.type !== 'short_answer' && !answers[q.id],
-    );
-    if (unanswered.length > 0) {
-      setError(`還有 ${unanswered.length} 題未作答`);
-      return;
+  // skipValidation = true 時為計時結束自動送出，跳過未作答檢查
+  const handleSubmit = (skipValidation = false) => {
+    if (!skipValidation) {
+      const unanswered = displayQuestions.filter(
+        q => q.type !== 'short_answer' && !answers[q.id],
+      );
+      if (unanswered.length > 0) {
+        setError(`還有 ${unanswered.length} 題未作答`);
+        return;
+      }
     }
     setError('');
 
     startTransition(async () => {
       try {
+        // 作答次數 client-side 預檢（有 email 且測驗有限制時）
+        if (quiz.allowedAttempts && studentEmail) {
+          const attemptCount = await checkAttemptCount(quiz.id, studentEmail);
+          if (attemptCount >= quiz.allowedAttempts) {
+            setError('您已達到作答上限，無法再次提交。');
+            return;
+          }
+        }
         const res = await submitQuizResponse({
           quizId: quiz.id,
           studentName: studentName || undefined,
           studentEmail: studentEmail || undefined,
-          answers: Object.fromEntries(
-            Object.entries(answers).map(([k, v]) => [k, v]),
-          ),
+          answers: Object.fromEntries(Object.entries(answers)),
         });
         setResult(res);
-      } catch {
-        setError('提交失敗，請再試一次');
+      }
+      catch (err) {
+        const msg = err instanceof Error ? err.message : '';
+        if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
+          setError('您已達到作答上限，無法再次提交。');
+        }
+        else {
+          setError('提交失敗，請再試一次');
+        }
       }
     });
   };
 
-  // 已提交 → 顯示成績
+  // 倒數計時器：每秒遞減，歸零時自動送出
+  useEffect(() => {
+    if (timeLeft === null || result) return;
+    if (timeLeft <= 0) {
+      if (!autoSubmittedRef.current) {
+        autoSubmittedRef.current = true;
+        handleSubmit(true);
+      }
+      return;
+    }
+    const id = setTimeout(() => setTimeLeft(t => (t !== null ? t - 1 : null)), 1000);
+    return () => clearTimeout(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, result]);
+
+  // 已提交 → 顯示成績（傳 displayQuestions，確保選項文字對應正確）
   if (result) {
     return (
       <ResultScreen
         result={result}
-        questions={questions}
+        questions={displayQuestions}
         answers={answers}
+        showAnswers={quiz.showAnswers}
       />
     );
   }
@@ -258,21 +321,43 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     <div className="space-y-6">
       {/* 測驗標題 */}
       <div className="rounded-lg border bg-card p-5">
-        <h1 className="text-2xl font-bold">{quiz.title}</h1>
+        <div className="flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-bold">{quiz.title}</h1>
+          {/* 倒數計時器（有限時才顯示） */}
+          {timeLeft !== null && (
+            <div className={`shrink-0 rounded-full px-3 py-1 text-sm font-mono font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
+              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
+              :
+              {String(timeLeft % 60).padStart(2, '0')}
+            </div>
+          )}
+        </div>
         {quiz.description && (
           <p className="mt-2 text-sm text-muted-foreground">{quiz.description}</p>
         )}
         <p className="mt-3 text-sm text-muted-foreground">
           共
           {' '}
-          {questions.length}
+          {displayQuestions.length}
           {' '}
           題
           ·
           {' '}
-          {questions.reduce((sum, q) => sum + q.points, 0)}
+          {displayQuestions.reduce((sum, q) => sum + q.points, 0)}
           {' '}
           分
+          {quiz.allowedAttempts && (
+            <>
+              {' '}
+              ·
+              {' '}
+              每人限作答
+              {' '}
+              {quiz.allowedAttempts}
+              {' '}
+              次
+            </>
+          )}
         </p>
       </div>
 
@@ -297,7 +382,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       </div>
 
       {/* 題目清單 */}
-      {questions.map((question, index) => (
+      {displayQuestions.map((question, index) => (
         <QuestionItem
           key={question.id}
           question={question}
@@ -315,7 +400,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       )}
 
       <Button
-        onClick={handleSubmit}
+        onClick={() => handleSubmit()}
         disabled={isPending}
         className="w-full"
         size="lg"

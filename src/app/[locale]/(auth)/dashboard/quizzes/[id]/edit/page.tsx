@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { QuizEditor } from '@/features/quiz/QuizEditor';
 import { db } from '@/libs/DB';
+import { isProOrAbove } from '@/libs/Plan';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export async function generateMetadata({
@@ -50,7 +51,10 @@ export default async function EditQuizPage({
     .where(eq(questionSchema.quizId, quizId))
     .orderBy(asc(questionSchema.position));
 
-  return <QuizEditor quiz={quiz} questions={questions} />;
+  // 判斷是否為 Pro 方案（決定 AI 出題功能是否可用）
+  const isPro = await isProOrAbove(orgId);
+
+  return <QuizEditor quiz={quiz} questions={questions} isPro={isPro} />;
 }
 
 export const dynamic = 'force-dynamic';

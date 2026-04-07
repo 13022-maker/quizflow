@@ -22,13 +22,21 @@ export default async function QuizzesPage() {
   const { orgId } = await auth();
   const t = await getTranslations('Quizzes');
 
-  const quizzes = orgId
-    ? await db
-        .select()
-        .from(quizSchema)
-        .where(eq(quizSchema.ownerId, orgId))
-        .orderBy(quizSchema.createdAt)
-    : [];
+  let quizzes: (typeof quizSchema.$inferSelect)[] = [];
+  try {
+    quizzes = orgId
+      ? await db
+          .select()
+          .from(quizSchema)
+          .where(eq(quizSchema.ownerId, orgId))
+          .orderBy(quizSchema.createdAt)
+      : [];
+  }
+  catch (err) {
+    // 將完整錯誤印到 Vercel Runtime log，方便排查
+    console.error('[QuizzesPage] DB query failed:', err);
+    throw err;
+  }
 
   return (
     <>

@@ -1,142 +1,78 @@
-# QuizFlow 專案規則
+# CLAUDE.md
+
+This file provides guidance to Claude Code when working with code in this repository.
 
 ## 專案簡介
-QuizFlow 是一個給台灣老師使用的測驗 SaaS 平台，老師可以出題、學生可以作答、系統自動批改並顯示成績 dashboard。
+QuizFlow 是專為**台灣老師**設計的測驗 SaaS 平台。  
+老師可以快速建立測驗、發佈分享連結，學生**無需登入**即可作答，系統自動批改並顯示成績與詳解。
+
+**核心差異化功能（Pro 方案）**：  
+使用 **Gemma 4 E4B**（本地運行於 Ollama）進行**多模態 AI 出題**，支援上傳文字、PDF、圖片、影片、語音等素材，自動生成高品質測驗題（選擇題、是非題、問答題、填空題等）並附上詳細解析。
 
 ## 技術架構
-- Framework: Next.js 14 + TypeScript
-- Auth: Clerk（多租戶，以 Organization 為 tenant 單位）
-- DB: Drizzle ORM + PostgreSQL（開發用 PGlite in-memory，正式用 pg + DATABASE_URL）
-- UI: Tailwind CSS + Shadcn UI
-- 金流: 綠界 ECPay（不用 Stripe，目前用假值）
-- 部署: Vercel
+- **Framework**: Next.js 14 App Router + TypeScript
+- **Auth**: Clerk（以 Organization 為 tenant 單位，`ownerId = orgId`）
+- **Database**: Drizzle ORM（開發環境使用 PGlite in-memory，正式環境使用 PostgreSQL）
+- **UI**: Tailwind CSS + Shadcn UI（基於 Radix primitives）
+- **i18n**: next-intl（預設語系為 `zh` 繁體中文，支援 `en`）
+- **AI 多模態**: Gemma 4 E4B（透過 Ollama 本地運行）
 
 ## 常用指令
-
 ```bash
-npm run dev          # 啟動開發伺服器
-npm run build        # 正式建置
-npm run lint         # ESLint 檢查
-npm run check-types  # TypeScript 型別檢查
-npm run test         # 單元測試（Vitest）
-npm run db:generate  # 根據 src/models/Schema.ts 產生 migration
-npm run db:migrate   # 套用 migration 到正式 DB（需 .env.production）
-```
+npm run dev                    # 啟動開發伺服器
+npm run build                  # 正式建置
+npm run lint                   # ESLint 檢查
+npm run check-types            # TypeScript 型別檢查
+npm run test                   # 執行測試
 
-## 定價方案
-- Free：最多 3 個測驗，1 位老師帳號
-- Pro：$9/月，無限測驗 + AI 出題 + 班級管理
-- Enterprise：$29/月，學校帳號 + 多老師 + 數據報表
+# 資料庫相關
+npm run db:generate            # 生成 migration（修改 Schema 後執行）
+npm run db:migrate             # 執行 migration
+npm run db:studio              # 開啟 Drizzle Studio
+AI 出題核心規則（最重要）
 
-## 語言
-- 介面優先繁體中文
-- 程式碼註解用繁體中文
-- API 路由和變數名稱用英文
+AI 出題功能僅限 Pro 方案使用（Free 方案最多建立 3 個測驗）
+必須使用 Gemma 4 E4B 本地模型（模型名稱：gemma4:e4b）
+所有與 AI 相關的呼叫必須放在 src/lib/ai/ 目錄下
+禁止在 Client Component 直接呼叫 Ollama，必須透過 Server Action
+多模態提示必須遵守 Gemma 4 最佳實踐：
+先放置 <image>、<audio> 等多模態內容，再接文字指令
+明確要求輸出結構化格式（JSON），包含題目、選項、正確答案、解析
+建議使用 Thinking Mode（step by step）提升生成品質與準確度
 
----
 
-## 目前完成進度
+開發規則與慣例
 
-### ✅ 品牌與設定
-- AppConfig、Hero、DemoBanner 全部改成 QuizFlow
-- 定價方案設定（Free / Pro / Enterprise）
-- 繁體中文（zh）為預設語系，同時支援英文（en）
+語言規則：
+UI 文字與程式碼註解使用繁體中文
+變數名稱、函式名稱、路由、檔案名稱一律使用英文
 
-### ✅ 資料模型（src/models/Schema.ts）
-- `quiz` — 測驗（ownerId = Clerk orgId，status: draft/published/closed）
-- `question` — 題目（type: single_choice/multiple_choice/true_false/short_answer，options/correctAnswers JSONB，position 排序）
-- `response` — 學生作答記錄（studentName, studentEmail, score, totalPoints）
-- `answer` — 每題的作答內容（answer JSONB, isCorrect）
-- Migrations: `migrations/0000_init-db.sql`、`migrations/0001_luxuriant_daredevil.sql`
+Server Actions：所有寫入操作必須先驗證 orgId，使用 Zod 進行輸入驗證
+i18n：新增翻譯 key 時，必須同時更新 src/locales/zh.json 與 src/locales/en.json
+資料庫變更：修改 src/models/Schema.ts 後，務必執行 npm run db:generate
+提示詞管理：重要的 Gemma 4 提示詞建議統一放在 src/lib/ai/prompts.ts
 
-### ✅ Server Actions
-| 檔案 | 功能 |
-|---|---|
-| `src/actions/quizActions.ts` | `createQuiz`, `updateQuiz`, `deleteQuiz` |
-| `src/actions/questionActions.ts` | `createQuestion`, `updateQuestion`, `deleteQuestion`, `reorderQuestions` |
-| `src/actions/responseActions.ts` | `submitQuizResponse`（批改 + 寫入 response/answer）|
+目前完成進度
+✅ 已完成
 
-### ✅ 老師後台（需登入，`/dashboard/*`）
-| 檔案 | 說明 |
-|---|---|
-| `src/app/[locale]/(auth)/dashboard/page.tsx` | Dashboard 首頁 |
-| `src/app/[locale]/(auth)/dashboard/quizzes/page.tsx` | 測驗列表（Server Component + DataTable）|
-| `src/app/[locale]/(auth)/dashboard/quizzes/new/page.tsx` | 建立測驗 |
-| `src/app/[locale]/(auth)/dashboard/quizzes/[id]/edit/page.tsx` | 出題編輯器（含拖曳排序）|
+品牌設定、雙語支援、定價方案
+資料模型（quiz、question、response、answer）
+測驗 CRUD + 拖曳排序功能
+學生公開作答頁面（/quiz/[quizId]）與自動批改
 
-### ✅ 出題編輯器相關元件（`src/features/quiz/`）
-| 檔案 | 說明 |
-|---|---|
-| `QuizForm.tsx` | 建立測驗表單 |
-| `QuizTable.tsx` | 測驗列表表格（Client wrapper）|
-| `QuizTableColumns.tsx` | 表格欄位定義 + 刪除操作 |
-| `QuizEditor.tsx` | 主編輯器：DnD 排序、題目 CRUD、狀態切換、inline 標題編輯 |
-| `QuestionCard.tsx` | 單題卡片（@dnd-kit/sortable）|
-| `QuestionForm.tsx` | 題目新增/編輯表單（4 種題型、動態選項、正確答案標記）|
+🔥 下一步優先順序（依序開發）
 
-### ✅ 學生作答（公開，不需登入，`/quiz/*`）
-| 檔案 | 說明 |
-|---|---|
-| `src/app/[locale]/quiz/[quizId]/page.tsx` | 作答頁（只顯示 published 測驗）|
-| `src/features/quiz/QuizTaker.tsx` | 作答介面 + 即時成績畫面（含逐題對照）|
+成績 Dashboard（老師查看每份測驗的統計與答對率）
+Free Plan 限制（建立第 4 個測驗時阻擋並引導升級）
+AI 多模態出題功能（Pro 限定，使用 Gemma 4 E4B）
+綠界 ECPay 金流整合
 
----
+重要設定檔
 
-## 下一步（依序）
-1. 成績 Dashboard — 老師查看每份測驗的作答統計、每題答對率
-2. Free plan 限制 — 建立第 4 個測驗時擋住並提示升級
-3. AI 出題功能（Pro 限定）— 呼叫 Claude API 自動生題
-4. 綠界 ECPay 金流整合
-
----
-
-## 架構模式
-
-### Auth 流程
-- `/dashboard/*`、`/onboarding/*`、`/api/*` 需要登入
-- 登入但未選 Organization → 強制導向 `/onboarding/organization-selection`
-- `ownerId` 一律用 `auth().orgId`
-
-### Server Actions 模式
-```ts
-'use server';
-const { orgId } = await auth();
-// Zod 驗證 → Drizzle 寫 DB → revalidatePath 或 redirect
-```
-
-### Client Component 呼叫 Server Action
-```ts
-const [isPending, startTransition] = useTransition();
-startTransition(async () => { await someAction(data); });
-// 需要刷新資料時 → router.refresh()
-```
-
-### i18n
-- Server Component：`const t = await getTranslations('Namespace')`
-- Client Component：`const t = useTranslations('Namespace')`
-- 翻譯 key 必須同時加入 `zh.json` 和 `en.json`
-
-### UI 元件慣例
-- `<TitleBar>` — 頁面標題列
-- `<DashboardSection>` — 白底卡片區塊
-- `<MessageState>` — 空白狀態引導畫面
-- `<DataTable>` — 通用資料表格（需搭配 `ColumnDef<T>[]`）
-- 表單：react-hook-form + zodResolver + Shadcn `<Form>` 元件
-
-## 重要設定檔
-- `src/utils/AppConfig.ts` — 全站設定、Locale、定價方案
-- `src/libs/Env.ts` — 所有環境變數（啟動時驗證）
-- `src/models/Schema.ts` — Drizzle schema，所有資料表在此，改完要跑 `db:generate`
-- `src/locales/zh.json` / `en.json` — 翻譯字串
-
-## 環境變數（正式環境）
-```
-DATABASE_URL=
-CLERK_SECRET_KEY=
+檔案用途src/utils/AppConfig.ts定價方案、功能限制、語系設定src/libs/Env.ts環境變數驗證src/models/Schema.tsDrizzle 所有資料表定義src/locales/zh.json主要翻譯檔（繁體中文）src/lib/ai/Gemma 4 相關程式碼與提示詞
+環境變數（開發環境）
+開發時只需 .env.local，DATABASE_URL 可省略（會自動使用 PGlite）：
+envCLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-STRIPE_SECRET_KEY=          # 暫用假值，待換 ECPay
-STRIPE_WEBHOOK_SECRET=      # 暫用假值
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=
-BILLING_PLAN_ENV=prod
-```
+STRIPE_SECRET_KEY=any_fake_value
