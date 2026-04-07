@@ -81,6 +81,12 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const fileRef                 = useRef<HTMLInputElement>(null);
 
+  // PDF 頁數範圍
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+  const [startPage, setStartPage]       = useState(1);
+  const [endPage, setEndPage]           = useState(1);
+  const [pageLoading, setPageLoading]   = useState(false);
+
   // State
   const [loading, setLoading] = useState(false);
   const [step, setStep]       = useState('');
@@ -92,7 +98,35 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
     setTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   }
 
-  function handleFile(f: File) { setFile(f); setResult(null); setError(''); }
+  async function handleFile(f: File) {
+    setFile(f);
+    setResult(null);
+    setError('');
+    setPdfPageCount(null);
+
+    // PDF 才讀取頁數
+    const isPdf = f.name.split('.').pop()?.toLowerCase() === 'pdf';
+    if (!isPdf) return;
+
+    setPageLoading(true);
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const total = pdf.numPages;
+      setPdfPageCount(total);
+      setStartPage(1);
+      setEndPage(Math.min(10, total));
+    }
+    catch {
+      // 讀取失敗就不顯示範圍選擇器，讓後端直接處理
+      setPdfPageCount(null);
+    }
+    finally {
+      setPageLoading(false);
+    }
+  }
 
   // ── Generate ──
   async function generate() {
@@ -122,6 +156,11 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
         fd.append('types', JSON.stringify(types));
         fd.append('count', String(count));
         fd.append('difficulty', difficulty);
+        // PDF 頁數範圍（有讀到頁數才傳）
+        if (pdfPageCount !== null) {
+          fd.append('startPage', String(startPage));
+          fd.append('endPage', String(endPage));
+        }
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         data = await res.json();
@@ -236,16 +275,67 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                   <p className="text-xs text-gray-400">PDF（1MB 以下）· JPG · PNG</p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
-                  <span className="text-2xl">{FILE_EMOJIS[ext] ?? '📄'}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{file.name}</p>
-                    <p className="text-xs text-gray-500 font-mono">{fmtSize(file.size)}</p>
+                <div className="space-y-3">
+                  {/* 檔案資訊列 */}
+                  <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                    <span className="text-2xl">{FILE_EMOJIS[ext] ?? '📄'}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{file.name}</p>
+                      <p className="text-xs text-gray-500 font-mono">{fmtSize(file.size)}</p>
+                    </div>
+                    <button
+                      onClick={() => { setFile(null); setResult(null); setPdfPageCount(null); }}
+                      className="text-gray-400 hover:text-red-500 text-xl w-6 h-6 flex items-center justify-center transition-colors"
+                    >×</button>
                   </div>
-                  <button
-                    onClick={() => { setFile(null); setResult(null); }}
-                    className="text-gray-400 hover:text-red-500 text-xl w-6 h-6 flex items-center justify-center transition-colors"
-                  >×</button>
+
+                  {/* PDF 頁數範圍選擇器 */}
+                  {pageLoading && (
+                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                      <span className="animate-spin inline-block">⏳</span> 讀取 PDF 頁數中…
+                    </p>
+                  )}
+                  {pdfPageCount !== null && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 space-y-2">
+                      <p className="text-xs font-bold text-gray-700">
+                        📄 共 {pdfPageCount} 頁，選擇要命題的範圍
+                      </p>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-600 shrink-0">從第</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={pdfPageCount}
+                          value={startPage}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
+                            setStartPage(v);
+                            if (endPage < v) setEndPage(v);
+                          }}
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        />
+                        <span className="text-gray-600 shrink-0">頁到第</span>
+                        <input
+                          type="number"
+                          min={startPage}
+                          max={pdfPageCount}
+                          value={endPage}
+                          onChange={(e) => {
+                            const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
+                            setEndPage(v);
+                          }}
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        />
+                        <span className="text-gray-600 shrink-0">頁</span>
+                        <span className="text-xs text-amber-600 font-semibold">
+                          （共 {endPage - startPage + 1} 頁）
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        建議每次命題不超過 20 頁，避免超過 AI 限制
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

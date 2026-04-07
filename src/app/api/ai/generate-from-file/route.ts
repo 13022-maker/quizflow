@@ -1,9 +1,9 @@
-// Buffer.from() 是 Node.js 專屬 API，必須明確指定 Node.js Runtime
-// 否則 Vercel 預設 Edge Runtime 不支援，會整個壞掉
+// pdf-lib、Buffer 是 Node.js 專屬 API，必須明確指定 Node.js Runtime
 export const runtime = 'nodejs';
 
 import { auth } from '@clerk/nextjs/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { PDFDocument } from 'pdf-lib';
 import { NextResponse } from 'next/server';
 
 const client = new Anthropic();
@@ -32,6 +32,8 @@ export async function POST(request: Request) {
   const typesRaw = formData.get('types') as string;
   const count = parseInt(formData.get('count') as string) || 5;
   const difficulty = (formData.get('difficulty') as string) || 'medium';
+  const startPage = parseInt(formData.get('startPage') as string) || 1;
+  const endPage = parseInt(formData.get('endPage') as string) || 0; // 0 代表未傳，使用全文
 
   if (!file) return NextResponse.json({ error: '請上傳檔案' }, { status: 400 });
 
@@ -47,12 +49,15 @@ export async function POST(request: Request) {
     );
   }
 
-  // PDF 超過 1MB 時拒絕（Anthropic API 對大型 PDF 效果不穩定）
-  if (isPDF && file.size > 1024 * 1024) {
-    return NextResponse.json(
-      { error: 'PDF 檔案過大，請上傳 1MB 以下的 PDF，或截取部分頁面後上傳' },
-      { status: 400 },
-    );
+  // 頁數範圍保護：最多 20 頁
+  if (isPDF && endPage > 0) {
+    const pageCount = endPage - startPage + 1;
+    if (pageCount > 20) {
+      return NextResponse.json(
+        { error: `選取範圍共 ${pageCount} 頁，超過上限 20 頁，請縮小範圍後重試` },
+        { status: 400 },
+      );
+    }
   }
 
   const types: string[] = JSON.parse(typesRaw || '["mc"]');
@@ -80,13 +85,14 @@ ${typesPrompt}
 }
 每種題型各出 ${count} 題，只出勾選的題型。`;
 
-  // 轉 base64
+  // 讀取原始檔案位元組
   const arrayBuffer = await file.arrayBuffer();
-  const base64 = Buffer.from(arrayBuffer).toString('base64');
 
   let content: Anthropic.MessageParam['content'];
 
   if (isImage) {
+    // 圖片直接轉 base64
+    const base64 = Buffer.from(arrayBuffer).toString('base64');
     const mediaMap: Record<string, string> = {
       jpg: 'image/jpeg', jpeg: 'image/jpeg',
       png: 'image/png', webp: 'image/webp', gif: 'image/gif',
@@ -96,7 +102,31 @@ ${typesPrompt}
       { type: 'text', text: prompt },
     ];
   } else {
-    // isPDF（已在上方驗證過格式與大小）
+    // PDF：若有傳頁數範圍，用 pdf-lib 裁切後再傳 Claude
+    let pdfBytes: Uint8Array;
+
+    if (endPage > 0) {
+      // 裁切指定頁面範圍（startPage/endPage 是 1-based）
+      const srcDoc = await PDFDocument.load(arrayBuffer);
+      const newDoc = await PDFDocument.create();
+      const totalPages = srcDoc.getPageCount();
+      const safeStart = Math.max(1, startPage);
+      const safeEnd = Math.min(endPage, totalPages);
+      const indices = Array.from(
+        { length: safeEnd - safeStart + 1 },
+        (_, i) => safeStart - 1 + i, // 轉為 0-based index
+      );
+      const copiedPages = await newDoc.copyPages(srcDoc, indices);
+      copiedPages.forEach(page => newDoc.addPage(page));
+      pdfBytes = await newDoc.save();
+    }
+    else {
+      // 未傳頁數範圍，直接使用原始 PDF
+      pdfBytes = new Uint8Array(arrayBuffer);
+    }
+
+    const base64 = Buffer.from(pdfBytes).toString('base64');
+    // isPDF（已在上方驗證過格式）
     content = [
       { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
       { type: 'text', text: prompt },
