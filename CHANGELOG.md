@@ -1,3 +1,12 @@
+# 1.0.0 (2026-04-07)
+
+
+### Features
+
+* add generate-questions API route ([b6293c0](https://github.com/13022-maker/quizflow/commit/b6293c0d70e677a99b1c8ab0f410968eb08533d3))
+* AI 出題 API routes 與 Modal 元件 ([38e352e](https://github.com/13022-maker/quizflow/commit/38e352ea1b67c59b86fa64b04a43f8ede748c9eb))
+* integrate AI quiz generation with file upload support ([054e997](https://github.com/13022-maker/quizflow/commit/054e997e9e6a1a79f0a9e7a101c87f7a0d49599f))
+
 ## [1.7.7](https://github.com/ixartz/SaaS-Boilerplate/compare/v1.7.6...v1.7.7) (2025-12-12)
 
 
