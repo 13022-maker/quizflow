@@ -1,13 +1,15 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
+import { getOrgPlanId } from '@/libs/Plan';
 import { quizSchema } from '@/models/Schema';
+import { PricingPlanList } from '@/utils/AppConfig';
 
 const CreateQuizSchema = z.object({
   title: z.string().min(1, '請輸入測驗標題').max(200),
@@ -25,6 +27,19 @@ export async function createQuiz(data: CreateQuizInput) {
   const parsed = CreateQuizSchema.safeParse(data);
   if (!parsed.success) {
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
+  }
+
+  // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
+  const planId = await getOrgPlanId(orgId);
+  const quizLimit = PricingPlanList[planId]?.features.website ?? 3;
+  if (quizLimit < 999) {
+    const [row] = await db
+      .select({ total: count() })
+      .from(quizSchema)
+      .where(eq(quizSchema.ownerId, orgId));
+    if ((row?.total ?? 0) >= quizLimit) {
+      return { error: 'QUOTA_EXCEEDED' };
+    }
   }
 
   await db.insert(quizSchema).values({

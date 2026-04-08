@@ -41,6 +41,11 @@ export function QuizForm() {
     startTransition(async () => {
       const result = await createQuiz(data);
       if (result?.error) {
+        // QUOTA_EXCEEDED：免費方案已達測驗上限，引導升級
+        if (result.error === 'QUOTA_EXCEEDED') {
+          window.location.href = '/dashboard/billing';
+          return;
+        }
         form.setError('title', { message: result.error });
       }
     });
