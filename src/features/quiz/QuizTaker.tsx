@@ -1,7 +1,7 @@
 'use client';
 
 import type { InferSelectModel } from 'drizzle-orm';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
@@ -10,6 +10,12 @@ import type { questionSchema, quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
+
+// 弱點分析結果型別
+type WeakPoint = { concept: string; suggestion: string };
+
+// 錯題重做結果型別
+type RetryResult = { correct: number; total: number };
 
 // ── 個別題目元件 ─────────────────────────────────────────────────
 
@@ -95,24 +101,87 @@ function QuestionItem({
   );
 }
 
-// ── 成績畫面 ─────────────────────────────────────────────────────
+// ── 成績畫面（含 AI 弱點分析 + 錯題重做按鈕） ──────────────────
 
 function ResultScreen({
   result,
   questions,
   answers,
   showAnswers,
+  onRetry,
 }: {
   result: SubmitResult;
   questions: Question[];
   answers: Record<number, string | string[]>;
   showAnswers: boolean;
+  onRetry: () => void;
 }) {
   const percentage = result.totalPoints > 0
     ? Math.round((result.score / result.totalPoints) * 100)
     : 0;
 
   const hasShortAnswer = questions.some(q => q.type === 'short_answer');
+
+  // 可重做的錯題（排除簡答題）
+  const retryableWrongCount = result.details.filter(
+    d => d.isCorrect === false && questions.find(q => q.id === d.questionId)?.type !== 'short_answer',
+  ).length;
+
+  // ── AI 弱點分析狀態 ───────────────────────────────────────────
+  const [weakPoints, setWeakPoints] = useState<WeakPoint[] | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [analysisError, setAnalysisError] = useState('');
+
+  // 有顯示解答且有答錯時，自動呼叫 AI 分析
+  useEffect(() => {
+    if (!showAnswers) {
+      return;
+    }
+
+    const wrongQuestions = result.details
+      .filter(d => d.isCorrect === false)
+      .map((d) => {
+        const q = questions.find(qItem => qItem.id === d.questionId);
+        if (!q || q.type === 'short_answer') {
+          return null;
+        }
+
+        const options = q.options ?? [];
+        const studentAns = answers[d.questionId];
+        const studentText = Array.isArray(studentAns)
+          ? studentAns.map(id => options.find(o => o.id === id)?.text ?? id).join('、')
+          : options.find(o => o.id === studentAns)?.text ?? studentAns ?? '（未作答）';
+
+        const correctText = (q.correctAnswers ?? [])
+          .map(id => options.find(o => o.id === id)?.text ?? id)
+          .join('、');
+
+        return { question: q.body, correctAnswer: correctText, studentAnswer: String(studentText) };
+      })
+      .filter(Boolean) as { question: string; correctAnswer: string; studentAnswer: string }[];
+
+    if (wrongQuestions.length === 0) {
+      return;
+    }
+
+    setAnalysisLoading(true);
+    fetch('/api/ai/analyze-weak-points', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ wrongQuestions }),
+    })
+      .then(res => res.json())
+      .then((data) => {
+        if (data.weakPoints) {
+          setWeakPoints(data.weakPoints);
+        } else {
+          setAnalysisError('分析失敗，請稍後再試');
+        }
+      })
+      .catch(() => setAnalysisError('分析失敗，請稍後再試'))
+      .finally(() => setAnalysisLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -135,7 +204,47 @@ function ResultScreen({
             簡答題需老師批改，最終成績可能有所調整。
           </p>
         )}
+
+        {/* 錯題重做按鈕 */}
+        {retryableWrongCount > 0 && (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="mt-4 rounded-lg border border-primary px-5 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            重做錯題（
+            {retryableWrongCount}
+            {' '}
+            題）
+          </button>
+        )}
       </div>
+
+      {/* AI 弱點分析區塊（有答錯且有解答時顯示） */}
+      {showAnswers && (
+        <div className="rounded-lg border bg-blue-50/60 p-5">
+          <h3 className="mb-3 font-semibold text-blue-800">需要加強的概念</h3>
+          {analysisLoading && (
+            <p className="text-sm text-blue-700">AI 正在分析你的學習弱點…</p>
+          )}
+          {analysisError && (
+            <p className="text-sm text-red-600">{analysisError}</p>
+          )}
+          {weakPoints !== null && weakPoints.length === 0 && (
+            <p className="text-sm text-blue-700">太棒了！本次沒有答錯的題目。</p>
+          )}
+          {weakPoints && weakPoints.length > 0 && (
+            <ul className="space-y-3">
+              {weakPoints.map(wp => (
+                <li key={wp.concept} className="rounded-md bg-white px-4 py-3 text-sm shadow-sm">
+                  <p className="font-medium text-blue-900">{wp.concept}</p>
+                  <p className="mt-0.5 text-muted-foreground">{wp.suggestion}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {/* 逐題對照（showAnswers = false 時隱藏） */}
       {!showAnswers && (
@@ -188,7 +297,7 @@ function ResultScreen({
                       : <span className="italic text-muted-foreground">未作答</span>}
                 </div>
 
-                {/* 正確答案（非簡答題） */}
+                {/* 正確答案（非簡答題且答錯） */}
                 {!isShort && detail?.isCorrect === false && question.correctAnswers && (
                   <div className="mt-1 text-sm text-green-700">
                     <span className="text-muted-foreground">正確答案：</span>
@@ -210,6 +319,145 @@ function ResultScreen({
   );
 }
 
+// ── 錯題重做畫面 ──────────────────────────────────────────────────
+
+function RetryScreen({
+  wrongQuestions,
+  originalWrongCount,
+  onBack,
+}: {
+  wrongQuestions: Question[];
+  originalWrongCount: number;
+  onBack: () => void;
+}) {
+  const [retryAnswers, setRetryAnswers] = useState<Record<number, string | string[]>>({});
+  const [retryResult, setRetryResult] = useState<RetryResult | null>(null);
+  const [error, setError] = useState('');
+
+  const handleRetrySubmit = () => {
+    // 檢查是否全部作答
+    const unanswered = wrongQuestions.filter(q => !retryAnswers[q.id]);
+    if (unanswered.length > 0) {
+      setError(`還有 ${unanswered.length} 題未作答`);
+      return;
+    }
+    setError('');
+
+    // 本機批改（不送 server，不計入正式統計）
+    let correct = 0;
+    wrongQuestions.forEach((q) => {
+      const ans = retryAnswers[q.id];
+      if (!q.correctAnswers || !ans) {
+        return;
+      }
+
+      if (q.type === 'single_choice' || q.type === 'true_false') {
+        if (q.correctAnswers.includes(ans as string)) {
+          correct++;
+        }
+      } else if (q.type === 'multiple_choice') {
+        const given = Array.isArray(ans) ? [...ans].sort() : [];
+        const expected = [...q.correctAnswers].sort();
+        if (JSON.stringify(given) === JSON.stringify(expected)) {
+          correct++;
+        }
+      }
+    });
+
+    setRetryResult({ correct, total: wrongQuestions.length });
+  };
+
+  // 顯示重做結果
+  if (retryResult) {
+    const improved = retryResult.correct;
+    return (
+      <div className="space-y-6">
+        <div className="rounded-lg border bg-card p-6 text-center">
+          <p className="text-sm text-muted-foreground">錯題重做完成！</p>
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">上次</p>
+              <p className="text-3xl font-bold text-red-500">0</p>
+              <p className="text-xs text-muted-foreground">
+                /
+                {originalWrongCount}
+              </p>
+            </div>
+            <span className="text-2xl text-muted-foreground">→</span>
+            <div className="text-center">
+              <p className="text-xs text-muted-foreground">這次</p>
+              <p className={`text-3xl font-bold ${improved === retryResult.total ? 'text-green-600' : 'text-amber-600'}`}>
+                {improved}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                /
+                {retryResult.total}
+              </p>
+            </div>
+          </div>
+          {improved === retryResult.total && (
+            <p className="mt-4 text-sm font-medium text-green-700">全部答對！進步顯著！</p>
+          )}
+          <p className="mt-2 text-xs text-muted-foreground">此次重做成績不計入正式統計</p>
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full rounded-lg border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
+        >
+          返回成績頁
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* 提示 */}
+      <div className="rounded-lg border bg-amber-50 p-4">
+        <p className="text-sm font-medium text-amber-800">錯題重做模式</p>
+        <p className="mt-0.5 text-xs text-amber-700">
+          共
+          {' '}
+          {wrongQuestions.length}
+          {' '}
+          題 · 此次成績不計入正式統計
+        </p>
+      </div>
+
+      {/* 題目 */}
+      {wrongQuestions.map((question, index) => (
+        <QuestionItem
+          key={question.id}
+          question={question}
+          index={index}
+          answer={retryAnswers[question.id]}
+          onChange={value => setRetryAnswers(prev => ({ ...prev, [question.id]: value }))}
+        />
+      ))}
+
+      {error && (
+        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex-1 rounded-lg border px-4 py-2 text-sm text-muted-foreground hover:bg-muted"
+        >
+          返回
+        </button>
+        <Button onClick={handleRetrySubmit} className="flex-1">
+          送出重做
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 // ── Fisher-Yates shuffle ──────────────────────────────────────────
 function shuffle<T>(arr: T[]): T[] {
   const result = [...arr];
@@ -223,7 +471,7 @@ function shuffle<T>(arr: T[]): T[] {
 // ── 主元件 ────────────────────────────────────────────────────────
 
 export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question[] }) {
-  // 隨機排序只在掛載時執行一次（用 useState initializer 避免重新渲染時重洗）
+  // 隨機排序只在掛載時執行一次
   const [displayQuestions] = useState<Question[]>(() => {
     const ordered = quiz.shuffleQuestions ? shuffle(questions) : questions;
     if (!quiz.shuffleOptions) {
@@ -241,15 +489,29 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
 
-  // 倒數計時器（timeLimitSeconds 有值時啟動）
+  // 錯題重做狀態
+  const [retryMode, setRetryMode] = useState(false);
+
+  // 可重做的錯題（非簡答題且答錯）
+  const retryQuestions = useMemo(() => {
+    if (!result) {
+      return [];
+    }
+    return displayQuestions.filter(
+      q =>
+        q.type !== 'short_answer'
+        && result.details.some(d => d.questionId === q.id && d.isCorrect === false),
+    );
+  }, [result, displayQuestions]);
+
+  // 倒數計時器
   const [timeLeft, setTimeLeft] = useState<number | null>(quiz.timeLimitSeconds ?? null);
-  const autoSubmittedRef = useRef(false); // 防止計時結束後重複送出
+  const autoSubmittedRef = useRef(false);
 
   const handleAnswer = (questionId: number, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
-  // skipValidation = true 時為計時結束自動送出，跳過未作答檢查
   const handleSubmit = (skipValidation = false) => {
     if (!skipValidation) {
       const unanswered = displayQuestions.filter(
@@ -264,7 +526,6 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
     startTransition(async () => {
       try {
-        // 作答次數 client-side 預檢（有 email 且測驗有限制時）
         if (quiz.allowedAttempts && studentEmail) {
           const attemptCount = await checkAttemptCount(quiz.id, studentEmail);
           if (attemptCount >= quiz.allowedAttempts) {
@@ -290,7 +551,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     });
   };
 
-  // 倒數計時器：每秒遞減，歸零時自動送出
+  // 倒數計時器
   useEffect(() => {
     if (timeLeft === null || result) {
       return;
@@ -307,7 +568,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, result]);
 
-  // 已提交 → 顯示成績（傳 displayQuestions，確保選項文字對應正確）
+  // 錯題重做模式
+  if (result && retryMode) {
+    return (
+      <RetryScreen
+        wrongQuestions={retryQuestions}
+        originalWrongCount={retryQuestions.length}
+        onBack={() => setRetryMode(false)}
+      />
+    );
+  }
+
+  // 成績畫面
   if (result) {
     return (
       <ResultScreen
@@ -315,17 +587,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         questions={displayQuestions}
         answers={answers}
         showAnswers={quiz.showAnswers}
+        onRetry={() => setRetryMode(true)}
       />
     );
   }
 
+  // 作答畫面
   return (
     <div className="space-y-6">
       {/* 測驗標題 */}
       <div className="rounded-lg border bg-card p-5">
         <div className="flex items-start justify-between gap-4">
           <h1 className="text-2xl font-bold">{quiz.title}</h1>
-          {/* 倒數計時器（有限時才顯示） */}
           {timeLeft !== null && (
             <div className={`shrink-0 rounded-full px-3 py-1 font-mono text-sm font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
               {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
@@ -363,7 +636,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         </p>
       </div>
 
-      {/* 學生資料（可選填） */}
+      {/* 學生資料（選填） */}
       <div className="rounded-lg border bg-card p-5">
         <p className="mb-3 text-sm font-medium">作答者資料（選填）</p>
         <div className="flex gap-3 max-sm:flex-col">

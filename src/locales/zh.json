@@ -148,7 +148,18 @@
     "message_state_description": "從這裡開始建立測驗。您可以編輯 <code>dashboard/page.tsx</code> 來自訂此頁面。",
     "message_state_button": "建立測驗",
     "message_state_alternative": "需要無限測驗與 AI 自動生題功能？升級至 <url></url>，每月只需 $9 美元。",
-    "max_message": ""
+    "max_message": "",
+    "stat_quiz_count": "測驗總數",
+    "stat_responses": "學生作答次數",
+    "stat_avg_rate": "平均答對率",
+    "recent_quizzes": "最近的測驗",
+    "new_quiz_button": "+ 建立新測驗",
+    "view_all_quizzes": "查看全部測驗 →",
+    "col_title": "標題",
+    "col_status": "狀態",
+    "col_actions": "操作",
+    "action_edit": "編輯",
+    "action_results": "成績"
   },
   "UserProfile": {
     "title_bar": "使用者資料",

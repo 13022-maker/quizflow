@@ -148,7 +148,18 @@
     "message_state_description": "Get started by creating a quiz. You can customize this page by editing <code>dashboard/page.tsx</code>",
     "message_state_button": "Create Quiz",
     "message_state_alternative": "Need unlimited quizzes and AI question generation? Upgrade to <url></url> for $9/month.",
-    "max_message": ""
+    "max_message": "",
+    "stat_quiz_count": "Total Quizzes",
+    "stat_responses": "Student Responses",
+    "stat_avg_rate": "Avg. Correct Rate",
+    "recent_quizzes": "Recent Quizzes",
+    "new_quiz_button": "+ New Quiz",
+    "view_all_quizzes": "View all quizzes →",
+    "col_title": "Title",
+    "col_status": "Status",
+    "col_actions": "Actions",
+    "action_edit": "Edit",
+    "action_results": "Results"
   },
   "UserProfile": {
     "title_bar": "User Profile",
