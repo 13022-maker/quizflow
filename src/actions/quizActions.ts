@@ -32,7 +32,7 @@ export async function createQuiz(data: CreateQuizInput) {
 
   // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
   const planId = await getOrgPlanId(orgId);
-  const quizLimit = PricingPlanList[planId]?.features.website ?? 3;
+  const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
   if (quizLimit < 999) {
     const [row] = await db
       .select({ total: count() })

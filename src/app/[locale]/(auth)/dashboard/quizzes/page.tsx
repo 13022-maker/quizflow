@@ -36,7 +36,7 @@ export default async function QuizzesPage() {
         getOrgPlanId(orgId),
         db.select().from(quizSchema).where(eq(quizSchema.ownerId, orgId)).orderBy(quizSchema.createdAt),
       ]);
-      quizLimit = PricingPlanList[planId]?.features.website ?? 3;
+      quizLimit = PricingPlanList[planId]?.features.website ?? 10;
       quizCount = quizzes.length;
     }
   } catch (err) {

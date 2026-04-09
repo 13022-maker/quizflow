@@ -1,7 +1,7 @@
 {
   "Index": {
     "meta_title": "QuizFlow - The online quiz platform built for Taiwan teachers.",
-    "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 3 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
+    "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 10 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
   },
   "Navbar": {
     "sign_in": "Sign In",
@@ -63,7 +63,7 @@
   },
   "FAQ": {
     "question1": "How many quizzes can I create on the free plan?",
-    "answer1": "The free plan allows you to create up to 3 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month.",
+    "answer1": "The free plan allows you to create up to 10 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month.",
     "question2": "Do students need an account to take a quiz?",
     "answer2": "No account needed. Students simply click the link you share and answer directly in their browser — no sign-up or login required. Once submitted, the score and answer explanations are shown instantly. You can view all responses in your dashboard.",
     "question3": "What formats does AI question generation support?",

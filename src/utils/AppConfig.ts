@@ -32,7 +32,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     prodPriceId: '',
     features: {
       teamMember: 1,
-      website: 3, // 最多 3 個測驗
+      website: 10, // 最多 10 個測驗
       storage: 0,
       transfer: 0,
     },
