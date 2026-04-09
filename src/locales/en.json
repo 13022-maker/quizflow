@@ -3,10 +3,15 @@
     "meta_title": "QuizFlow - The online quiz platform built for Taiwan teachers.",
     "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 10 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
   },
+  "PricingPage": {
+    "meta_title": "QuizFlow Pricing - Start Free, Upgrade Anytime",
+    "meta_description": "Free plan includes 10 quizzes. Upgrade to Pro ($9/month) for unlimited quizzes and AI question generation."
+  },
   "Navbar": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
     "product": "Product",
+    "pricing": "Pricing",
     "docs": "Docs",
     "blog": "Blog",
     "community": "Community",

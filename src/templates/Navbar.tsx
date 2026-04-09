@@ -37,6 +37,10 @@ export const Navbar = () => {
         </li>
 
         <li>
+          <Link href="/pricing">{t('pricing')}</Link>
+        </li>
+
+        <li>
           <Link href="/sign-up">{t('docs')}</Link>
         </li>
 
