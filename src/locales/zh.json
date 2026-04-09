@@ -87,6 +87,7 @@
     "company": "關於我們",
     "terms_of_service": "服務條款",
     "privacy_policy": "隱私政策",
+    "refund_policy": "退款政策",
     "footer_text": "© {year} {name}。為台灣老師打造。"
   },
   "ProtectFallback": {
