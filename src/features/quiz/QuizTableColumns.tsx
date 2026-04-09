@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { deleteQuiz } from '@/actions/quizActions';
+import QRCodeModal from '@/components/quiz/QRCodeModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -37,6 +38,7 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
   const t = useTranslations('QuizTableColumns');
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [showQR, setShowQR] = useState(false);
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -44,9 +46,10 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
     });
   };
 
-  // 複製學生作答連結到剪貼板
+  // 複製學生作答連結（使用 accessCode，避免學生猜測 ID）
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/quiz/${quiz.id}`;
+    const path = quiz.accessCode ? `/quiz/${quiz.accessCode}` : `/quiz/${quiz.id}`;
+    const url = `${window.location.origin}${path}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -54,35 +57,52 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="sm" disabled={isPending}>
-          ···
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem asChild>
-          <Link href={`/dashboard/quizzes/${quiz.id}/edit`}>
-            {t('edit')}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href={`/dashboard/quizzes/${quiz.id}/results`}>
-            {t('results')}
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyLink}>
-          {copied ? t('copy_link_copied') : t('copy_link')}
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          className="text-destructive focus:text-destructive"
-          onClick={handleDelete}
-          disabled={isPending}
-        >
-          {t('delete')}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="sm" disabled={isPending}>
+            ···
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/quizzes/${quiz.id}/edit`}>
+              {t('edit')}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href={`/dashboard/quizzes/${quiz.id}/results`}>
+              {t('results')}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleCopyLink}>
+            {copied ? t('copy_link_copied') : t('copy_link')}
+          </DropdownMenuItem>
+          {/* QR Code：僅在有 accessCode 時顯示 */}
+          {quiz.accessCode && (
+            <DropdownMenuItem onClick={() => setShowQR(true)}>
+              {t('qr_code')}
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="text-destructive focus:text-destructive"
+            onClick={handleDelete}
+            disabled={isPending}
+          >
+            {t('delete')}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* QR Code Modal */}
+      {showQR && quiz.accessCode && (
+        <QRCodeModal
+          quizTitle={quiz.title}
+          accessCode={quiz.accessCode}
+          onClose={() => setShowQR(false)}
+        />
+      )}
+    </>
   );
 }
 

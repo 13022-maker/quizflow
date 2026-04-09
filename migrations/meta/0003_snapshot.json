@@ -1,6 +1,6 @@
 {
-  "id": "f021a623-a221-4a70-8c71-6d4bf795b187",
-  "prevId": "400db9e7-780a-44b8-b0be-2db504f59104",
+  "id": "9530fbd5-4a5b-4210-bdfc-162d40853380",
+  "prevId": "f021a623-a221-4a70-8c71-6d4bf795b187",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -266,6 +266,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "access_code": {
+          "name": "access_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "status": {
           "name": "status",
           "type": "quiz_status",
@@ -325,7 +331,15 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "quiz_access_code_unique": {
+          "name": "quiz_access_code_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "access_code"
+          ]
+        }
+      },
       "checkConstraints": {}
     },
     "public.response": {

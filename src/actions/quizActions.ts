@@ -2,6 +2,7 @@
 
 import { auth } from '@clerk/nextjs/server';
 import { and, count, eq } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -46,6 +47,7 @@ export async function createQuiz(data: CreateQuizInput) {
     ownerId: orgId,
     title: parsed.data.title,
     description: parsed.data.description,
+    accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
   });
 
   redirect('/dashboard/quizzes');

@@ -29,6 +29,7 @@ import {
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
+import QRCodeModal from '@/components/quiz/QRCodeModal';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import type { questionSchema, quizSchema } from '@/models/Schema';
@@ -200,6 +201,9 @@ export function QuizEditor({
     });
   };
 
+  // 控制 QR Code Modal 顯示
+  const [showQRModal, setShowQRModal] = useState(false);
+
   // 控制 AIQuizModal 顯示
   const [showAIModal, setShowAIModal] = useState(false);
 
@@ -358,6 +362,18 @@ export function QuizEditor({
           </Button>
         )}
 
+        {/* QR Code 按鈕：僅在有 accessCode 時顯示 */}
+        {initialQuiz.accessCode && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setShowQRModal(true)}
+            className="gap-1.5"
+          >
+            📱 QR Code
+          </Button>
+        )}
+
         {/* AI 出題按鈕：開啟 AIQuizModal，Pro 限定 */}
         {isPro
           ? (
@@ -404,6 +420,15 @@ export function QuizEditor({
               </Button>
             )}
       </div>
+
+      {/* QR Code Modal */}
+      {showQRModal && initialQuiz.accessCode && (
+        <QRCodeModal
+          quizTitle={initialQuiz.title}
+          accessCode={initialQuiz.accessCode}
+          onClose={() => setShowQRModal(false)}
+        />
+      )}
 
       {/* AI 出題 Modal */}
       {showAIModal && (

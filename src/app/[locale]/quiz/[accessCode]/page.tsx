@@ -1,41 +1,31 @@
-import { and, asc, eq } from 'drizzle-orm';
-import { notFound } from 'next/navigation';
+import { asc, eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
-export async function generateMetadata({ params }: { params: { quizId: string } }) {
-  const id = Number(params.quizId);
-  if (Number.isNaN(id)) {
-    return {};
-  }
-
+export async function generateMetadata({ params }: { params: { accessCode: string } }) {
   const [quiz] = await db
     .select({ title: quizSchema.title })
     .from(quizSchema)
-    .where(eq(quizSchema.id, id))
+    .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
 
   return { title: quiz?.title ?? '測驗' };
 }
 
-export default async function QuizTakePage({ params }: { params: { quizId: string } }) {
+export default async function QuizTakePage({ params }: { params: { accessCode: string } }) {
   const t = await getTranslations('QuizTake');
-  const quizId = Number(params.quizId);
 
-  if (Number.isNaN(quizId)) {
-    return notFound();
-  }
-
+  // 依 accessCode 查詢測驗（只顯示已發佈的）
   const [quiz] = await db
     .select()
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.status, 'published')))
+    .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
 
-  if (!quiz) {
+  if (!quiz || quiz.status !== 'published') {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="rounded-lg border bg-card p-8 text-center">
@@ -49,7 +39,7 @@ export default async function QuizTakePage({ params }: { params: { quizId: strin
   const questions = await db
     .select()
     .from(questionSchema)
-    .where(eq(questionSchema.quizId, quizId))
+    .where(eq(questionSchema.quizId, quiz.id))
     .orderBy(asc(questionSchema.position));
 
   if (questions.length === 0) {

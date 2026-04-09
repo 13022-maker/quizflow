@@ -72,6 +72,7 @@ export const quizSchema = pgTable('quiz', {
   ownerId: text('owner_id').notNull(), // Clerk user/org ID
   title: text('title').notNull(),
   description: text('description'),
+  accessCode: text('access_code').unique(), // 8 碼隨機英數字，學生連結用（防猜測）
   status: quizStatusEnum('status').default('draft').notNull(),
   shuffleQuestions: boolean('shuffle_questions').default(false).notNull(),
   shuffleOptions: boolean('shuffle_options').default(false).notNull(),
