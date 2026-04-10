@@ -57,8 +57,15 @@ export async function getOrgPlanId(orgId: string): Promise<string> {
 
 /**
  * 判斷是否為付費方案（Pro 或 Enterprise）
+ * 2026/4 月測試期間：所有用戶視為 Pro，5 月起正式分級
  */
-export async function isProOrAbove(orgId: string): Promise<boolean> {
-  const planId = await getOrgPlanId(orgId);
+export async function isProOrAbove(_orgId: string): Promise<boolean> {
+  // 測試期間：2026 年 4 月底前所有用戶視為 Pro
+  const now = new Date();
+  if (now.getFullYear() === 2026 && now.getMonth() <= 3) { // 0-based: 3 = 四月
+    return true;
+  }
+
+  const planId = await getOrgPlanId(_orgId);
   return planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE;
 }
