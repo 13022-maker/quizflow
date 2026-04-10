@@ -35,6 +35,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       website: 10, // 最多 10 個測驗
       storage: 0,
       transfer: 0,
+      aiQuota: 10, // 免費用戶每月 10 次 AI 出題
     },
   },
   [PLAN_ID.PREMIUM]: {
@@ -49,6 +50,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       website: 999, // 無限測驗（用 999 代表無上限）
       storage: 1,
       transfer: 0,
+      aiQuota: 999, // Pro 無限 AI 出題
     },
   },
   [PLAN_ID.ENTERPRISE]: {
@@ -63,6 +65,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       website: 999, // 無限測驗
       storage: 10,
       transfer: 0,
+      aiQuota: 999, // Enterprise 無限 AI 出題
     },
   },
 };

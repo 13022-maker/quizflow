@@ -139,6 +139,20 @@ export const answerSchema = pgTable('answer', {
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
 });
 
+// ---------- ai_usage ----------
+// 記錄每個 org 每月的 AI 出題次數（用於 Free Plan quota 限制）
+
+export const aiUsageSchema = pgTable('ai_usage', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk org ID
+  yearMonth: text('year_month').notNull(), // 格式：'2026-04'
+  count: integer('count').default(0).notNull(), // 當月已使用次數
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 // ---------- todo (原有範例，保留供參考) ----------
 
 export const todoSchema = pgTable('todo', {

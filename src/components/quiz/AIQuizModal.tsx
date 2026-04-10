@@ -101,6 +101,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState('');
   const [error, setError] = useState('');
+  const [upgradeRequired, setUpgradeRequired] = useState(false); // quota 超限時顯示升級按鈕
   const [result, setResult] = useState<GeneratedResult | null>(null);
 
   // ── Helpers ──
@@ -155,6 +156,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
 
     setLoading(true);
     setError('');
+    setUpgradeRequired(false);
     setResult(null);
 
     try {
@@ -170,6 +172,9 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
         });
         data = await res.json();
         if (!res.ok) {
+          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
+            setUpgradeRequired(true);
+          }
           throw new Error((data as { error?: string }).error || '命題失敗');
         }
       } else {
@@ -188,6 +193,9 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         data = await res.json();
         if (!res.ok) {
+          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
+            setUpgradeRequired(true);
+          }
           throw new Error((data as { error?: string }).error || '命題失敗');
         }
       }
@@ -497,7 +505,15 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
           {/* ── Error ── */}
           {error && (
             <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
+              <p>{error}</p>
+              {upgradeRequired && (
+                <button
+                  onClick={() => { window.location.href = '/dashboard/billing'; }}
+                  className="mt-2 w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-600"
+                >
+                  升級至 Pro 方案
+                </button>
+              )}
             </div>
           )}
 

@@ -28,6 +28,7 @@ export type PricingPlan = {
     website: number;
     storage: number;
     transfer: number;
+    aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）
   };
 };
 

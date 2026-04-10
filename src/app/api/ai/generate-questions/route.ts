@@ -3,6 +3,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+
 export const runtime = 'nodejs';
 
 const client = new Anthropic();
@@ -23,9 +25,18 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
+  const { userId, orgId } = await auth();
+  if (!userId || !orgId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
+  }
+
+  // 檢查 AI 出題 quota
+  const quota = await checkAndIncrementAiUsage(orgId);
+  if (!quota.allowed) {
+    return NextResponse.json(
+      { error: quota.reason, upgradeRequired: true, remaining: 0 },
+      { status: 403 },
+    );
   }
 
   const body = await request.json();

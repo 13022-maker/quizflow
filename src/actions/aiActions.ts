@@ -7,6 +7,8 @@ import { z } from 'zod';
 import { Env } from '@/libs/Env';
 import { isProOrAbove } from '@/libs/Plan';
 
+import { checkAndIncrementAiUsage } from './aiUsageActions';
+
 // 回傳給前端的單一題目格式
 export type AIGeneratedQuestion = {
   body: string;
@@ -79,6 +81,12 @@ export async function generateAIQuestions(
   const hasPro = await isProOrAbove(orgId);
   if (!hasPro) {
     return { success: false, error: '此功能僅限 Pro 方案使用', upgradeRequired: true };
+  }
+
+  // 檢查 AI 出題 quota（Free 用戶每月 10 次）
+  const quotaCheck = await checkAndIncrementAiUsage(orgId);
+  if (!quotaCheck.allowed) {
+    return { success: false, error: quotaCheck.reason, upgradeRequired: true };
   }
 
   // 驗證輸入
