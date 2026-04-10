@@ -8,6 +8,8 @@ import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
+import { FlashCard } from './FlashCard';
+
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
 
@@ -515,6 +517,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+
+  // 快閃卡複習模式
+  const [flashCardMode, setFlashCardMode] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -598,6 +603,16 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, result]);
 
+  // 快閃卡複習模式
+  if (flashCardMode) {
+    return (
+      <FlashCard
+        questions={displayQuestions}
+        onExit={() => setFlashCardMode(false)}
+      />
+    );
+  }
+
   // 錯題重做模式
   if (result && retryMode) {
     return (
@@ -664,6 +679,12 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             </>
           )}
         </p>
+        <button
+          onClick={() => setFlashCardMode(true)}
+          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          🃏 複習模式
+        </button>
       </div>
 
       {/* 學生資料（選填） */}

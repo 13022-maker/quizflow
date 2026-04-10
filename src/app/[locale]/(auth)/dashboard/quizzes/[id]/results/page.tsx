@@ -186,7 +186,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
                   難
                 </span>
                 <div className="flex-1">
-                  <p className="text-sm font-medium line-clamp-2">{question.body}</p>
+                  <p className="line-clamp-2 text-sm font-medium">{question.body}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     答對率：
                     <span className="font-medium text-red-600">

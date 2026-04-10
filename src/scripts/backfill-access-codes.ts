@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * 補齊舊測驗的 accessCode 欄位（針對 PostgreSQL 生產環境）
  *

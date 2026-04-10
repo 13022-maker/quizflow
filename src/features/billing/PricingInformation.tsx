@@ -31,16 +31,17 @@ export const PricingInformation = (props: {
             })}
           </PricingFeature>
 
-          <PricingFeature>
-            {t('feature_storage', {
-              number: plan.features.storage,
-            })}
-          </PricingFeature>
+          {/* AI 出題：Free (storage=0) 顯示「Pro 限定」，Pro 以上正常顯示 */}
+          {plan.features.storage > 0 && (
+            <PricingFeature>
+              {t('feature_storage', {
+                number: plan.features.storage,
+              })}
+            </PricingFeature>
+          )}
 
           <PricingFeature>
-            {t('feature_transfer', {
-              number: plan.features.transfer,
-            })}
+            {t('feature_transfer')}
           </PricingFeature>
 
           <PricingFeature>{t('feature_email_support')}</PricingFeature>

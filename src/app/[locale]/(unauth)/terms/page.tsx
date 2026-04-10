@@ -1,3 +1,4 @@
+/* eslint-disable no-irregular-whitespace */
 import Link from 'next/link';
 import { unstable_setRequestLocale } from 'next-intl/server';
 

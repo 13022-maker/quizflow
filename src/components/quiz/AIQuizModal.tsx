@@ -508,7 +508,9 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
               <p>{error}</p>
               {upgradeRequired && (
                 <button
-                  onClick={() => { window.location.href = '/dashboard/billing'; }}
+                  onClick={() => {
+                    window.location.href = '/dashboard/billing';
+                  }}
                   className="mt-2 w-full rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-amber-600"
                 >
                   升級至 Pro 方案

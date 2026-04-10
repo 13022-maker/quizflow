@@ -44,7 +44,8 @@ export default async function BillingPage() {
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold">
-                ${plan.price}
+                $
+                {plan.price}
                 <span className="text-base font-normal text-muted-foreground">/月</span>
               </p>
             </div>
