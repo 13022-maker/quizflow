@@ -568,19 +568,25 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             return;
           }
         }
+        // 將 answers key 轉為 string（Server Action 序列化需要）
+        const stringKeyAnswers: Record<string, string | string[]> = {};
+        for (const [key, value] of Object.entries(answers)) {
+          stringKeyAnswers[String(key)] = value;
+        }
+
         const res = await submitQuizResponse({
           quizId: quiz.id,
           studentName: studentName || undefined,
           studentEmail: studentEmail || undefined,
-          answers: Object.fromEntries(Object.entries(answers)),
+          answers: stringKeyAnswers,
         });
         setResult(res);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : '';
+        const msg = err instanceof Error ? err.message : String(err);
         if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
           setError('您已達到作答上限，無法再次提交。');
         } else {
-          setError('提交失敗，請再試一次');
+          setError(`提交失敗：${msg || '未知錯誤'}，請再試一次`);
         }
       }
     });
