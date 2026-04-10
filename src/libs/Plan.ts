@@ -57,6 +57,8 @@ export async function getOrgPlanId(orgId: string): Promise<string> {
 
 /**
  * 判斷是否為付費方案（Pro 或 Enterprise）
- * 測試用：暫時 return true，之後串金流再還原
  */
-export const isProOrAbove = async (_orgId: string) => true;
+export async function isProOrAbove(orgId: string): Promise<boolean> {
+  const planId = await getOrgPlanId(orgId);
+  return planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE;
+}
