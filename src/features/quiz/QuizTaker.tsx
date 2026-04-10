@@ -30,7 +30,14 @@ function QuestionItem({
   answer: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
 }) {
-  const options = question.options ?? [];
+  // 是非題若 DB 中沒有 options，自動補上預設選項
+  const TRUE_FALSE_DEFAULTS = [
+    { id: 'tf-true', text: '正確' },
+    { id: 'tf-false', text: '錯誤' },
+  ];
+  const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
+    ? TRUE_FALSE_DEFAULTS
+    : (question.options ?? []);
 
   const handleSingleChange = (optionId: string) => onChange(optionId);
 
@@ -163,7 +170,10 @@ function ResultScreen({
           return null;
         }
 
-        const options = q.options ?? [];
+        const tfDefs = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+        const options = q.type === 'true_false' && (!q.options || q.options.length === 0)
+          ? tfDefs
+          : (q.options ?? []);
         const studentAns = answers[d.questionId];
         const studentText = Array.isArray(studentAns)
           ? studentAns.map(id => options.find(o => o.id === id)?.text ?? id).join('、')
@@ -274,7 +284,10 @@ function ResultScreen({
           {questions.map((question, index) => {
             const detail = result.details.find(d => d.questionId === question.id);
             const studentAnswer = answers[question.id];
-            const options = question.options ?? [];
+            const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+            const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
+              ? tfDefaults
+              : (question.options ?? []);
             const isShort = question.type === 'short_answer';
 
             const borderColor = isShort
