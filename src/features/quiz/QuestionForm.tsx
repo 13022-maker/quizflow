@@ -186,13 +186,17 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
         </div>
         {/* 圖片預覽 */}
         {form.watch('imageUrl') && (
-          <div className="mt-2 overflow-hidden rounded-md border">
+          <div className="mt-2 flex items-center justify-center overflow-hidden rounded-lg bg-[#f5f5f5]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={form.watch('imageUrl')}
               alt="題目圖片預覽"
-              className="h-[200px] w-full object-cover"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              className="max-h-[300px] w-full object-contain"
+              onError={(e) => {
+                const el = e.target as HTMLImageElement;
+                el.style.display = 'none';
+                el.parentElement!.innerHTML = '<p class="py-6 text-sm text-muted-foreground">圖片無法載入</p>';
+              }}
             />
           </div>
         )}

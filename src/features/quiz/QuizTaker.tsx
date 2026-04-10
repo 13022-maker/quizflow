@@ -51,9 +51,18 @@ function QuestionItem({
 
       {/* 題目圖片 */}
       {question.imageUrl && (
-        <div className="mb-3 overflow-hidden rounded-md">
+        <div className="mb-4 flex items-center justify-center overflow-hidden rounded-lg border border-[#e0e0e0] bg-white">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={question.imageUrl} alt="題目圖片" className="h-[200px] w-full object-cover" />
+          <img
+            src={question.imageUrl}
+            alt="題目圖片"
+            className="max-h-[400px] w-full object-contain"
+            onError={(e) => {
+              const el = e.target as HTMLImageElement;
+              el.style.display = 'none';
+              el.parentElement!.innerHTML = '<p class="py-6 text-sm text-muted-foreground">圖片無法載入</p>';
+            }}
+          />
         </div>
       )}
 

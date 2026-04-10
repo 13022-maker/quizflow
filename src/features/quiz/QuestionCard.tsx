@@ -71,9 +71,18 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting }: 
         </div>
         <p className="line-clamp-2 text-sm">{question.body}</p>
         {question.imageUrl && (
-          <div className="mt-2 overflow-hidden rounded-md">
+          <div className="mt-2 inline-block overflow-hidden rounded">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={question.imageUrl} alt="題目圖片" className="h-[200px] w-full object-cover" />
+            <img
+              src={question.imageUrl}
+              alt="題目圖片"
+              className="h-[60px] w-[80px] object-cover"
+              onError={(e) => {
+                const el = e.target as HTMLImageElement;
+                el.style.display = 'none';
+                el.parentElement!.innerHTML = '<span class="flex h-[60px] w-[80px] items-center justify-center bg-muted text-xs text-muted-foreground">無圖片</span>';
+              }}
+            />
           </div>
         )}
         {question.options && question.options.length > 0 && (
