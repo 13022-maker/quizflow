@@ -567,6 +567,7 @@ export function QuizEditor({
                           defaultValues={{
                             type: question.type,
                             body: question.body,
+                            imageUrl: question.imageUrl ?? '',
                             options: question.options ?? undefined,
                             correctAnswers: question.correctAnswers ?? undefined,
                             points: question.points,

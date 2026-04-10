@@ -24,6 +24,7 @@ async function verifyOwnership(quizId: number, orgId: string) {
 const QuestionInputSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer']),
   body: z.string().min(1, '請輸入題目內容'),
+  imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
@@ -60,6 +61,7 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     quizId,
     type: parsed.data.type,
     body: parsed.data.body,
+    imageUrl: parsed.data.imageUrl || null,
     options: parsed.data.options ?? null,
     correctAnswers: parsed.data.correctAnswers ?? null,
     points: parsed.data.points,
@@ -87,6 +89,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
     .set({
       type: parsed.data.type,
       body: parsed.data.body,
+      imageUrl: parsed.data.imageUrl || null,
       options: parsed.data.options ?? null,
       correctAnswers: parsed.data.correctAnswers ?? null,
       points: parsed.data.points,

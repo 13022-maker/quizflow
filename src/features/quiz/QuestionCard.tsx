@@ -70,6 +70,12 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting }: 
           </span>
         </div>
         <p className="line-clamp-2 text-sm">{question.body}</p>
+        {question.imageUrl && (
+          <div className="mt-2 overflow-hidden rounded-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={question.imageUrl} alt="題目圖片" className="h-[200px] w-full object-cover" />
+          </div>
+        )}
         {question.options && question.options.length > 0 && (
           <p className="mt-1 text-xs text-muted-foreground">
             {question.options.length}

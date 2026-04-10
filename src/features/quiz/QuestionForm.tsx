@@ -22,6 +22,7 @@ const TRUE_FALSE_OPTIONS = [
 const QuestionSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer']),
   body: z.string().min(1, '請輸入題目內容'),
+  imageUrl: z.string().optional(), // 題目圖片網址
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
@@ -46,10 +47,11 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(QuestionSchema),
     defaultValues: defaultValues
-      ? { points: 1, correctAnswers: [], ...defaultValues }
+      ? { points: 1, correctAnswers: [], imageUrl: '', ...defaultValues }
       : {
           type: 'single_choice',
           body: '',
+          imageUrl: '',
           options: [
             { id: id1, text: '' },
             { id: id2, text: '' },
@@ -155,6 +157,44 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
           <p className="mt-1 text-xs text-destructive">
             {form.formState.errors.body.message}
           </p>
+        )}
+      </div>
+
+      {/* 插入圖片 */}
+      <div>
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label className="mb-1 block text-sm font-medium">
+          題目圖片
+          <span className="ml-1 text-xs font-normal text-muted-foreground">（選填，貼上圖片網址）</span>
+        </label>
+        <div className="flex gap-2">
+          <input
+            {...form.register('imageUrl')}
+            placeholder="https://example.com/image.jpg"
+            className="h-8 flex-1 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          />
+          <button
+            type="button"
+            onClick={() => {
+              const keyword = form.getValues('body') || '教學圖片';
+              window.open(`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(keyword)}`, '_blank');
+            }}
+            className="shrink-0 rounded-md border border-input bg-background px-3 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            搜尋圖片
+          </button>
+        </div>
+        {/* 圖片預覽 */}
+        {form.watch('imageUrl') && (
+          <div className="mt-2 overflow-hidden rounded-md border">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={form.watch('imageUrl')}
+              alt="題目圖片預覽"
+              className="h-[200px] w-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            />
+          </div>
         )}
       </div>
 

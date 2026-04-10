@@ -98,6 +98,7 @@ export const questionSchema = pgTable('question', {
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
   type: questionTypeEnum('type').notNull(),
   body: text('body').notNull(), // 題目文字
+  imageUrl: text('image_url'), // 題目圖片網址
   options: jsonb('options').$type<{ id: string; text: string }[]>(),
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   points: integer('points').default(1).notNull(),

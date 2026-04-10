@@ -49,6 +49,14 @@ function QuestionItem({
         <p className="font-medium leading-snug">{question.body}</p>
       </div>
 
+      {/* 題目圖片 */}
+      {question.imageUrl && (
+        <div className="mb-3 overflow-hidden rounded-md">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={question.imageUrl} alt="題目圖片" className="h-[200px] w-full object-cover" />
+        </div>
+      )}
+
       {/* 單選題 / 是非題 */}
       {(question.type === 'single_choice' || question.type === 'true_false') && (
         <div className="space-y-2 pl-2">
