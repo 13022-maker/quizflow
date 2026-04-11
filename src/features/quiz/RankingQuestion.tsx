@@ -11,11 +11,11 @@
  * 此檔案會在 QuizTaker 內以 next/dynamic + ssr:false 的方式載入。
  */
 
+import 'survey-core/survey-core.css';
+
 import { useEffect, useMemo } from 'react';
 import { Model } from 'survey-core';
 import { Survey } from 'survey-react-ui';
-
-import 'survey-core/survey-core.css';
 
 type Option = { id: string; text: string };
 
@@ -46,7 +46,6 @@ export function RankingQuestion({ questionId, options, value, onChange }: Props)
       showNavigationButtons: 'none',
     });
     return model;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionId, options]);
 
   // 同步父層 value 進 SurveyJS（受控元件）
