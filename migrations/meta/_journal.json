@@ -43,6 +43,13 @@
       "when": 1775829393058,
       "tag": "0005_glorious_madrox",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775945448401,
+      "tag": "0006_quiet_sasquatch",
+      "breakpoints": true
     }
   ]
 }
