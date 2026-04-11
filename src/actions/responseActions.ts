@@ -10,7 +10,7 @@ const SubmitSchema = z.object({
   quizId: z.number().int().positive(),
   studentName: z.string().max(100).optional(),
   studentEmail: z.string().email().max(200).optional(),
-  // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題）
+  // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題/排序題）
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
 });
 
@@ -88,6 +88,10 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
         const given = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];
         const expected = [...correct].sort();
         isCorrect = JSON.stringify(given) === JSON.stringify(expected);
+      } else if (question.type === 'ranking') {
+        // 排序題：學生答案順序必須與正確順序完全一致才算對
+        const given = Array.isArray(studentAnswer) ? studentAnswer : [];
+        isCorrect = JSON.stringify(given) === JSON.stringify(correct);
       }
     }
 
