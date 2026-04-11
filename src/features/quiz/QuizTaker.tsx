@@ -1,6 +1,7 @@
 'use client';
 
 import type { InferSelectModel } from 'drizzle-orm';
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
@@ -9,6 +10,16 @@ import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { FlashCard } from './FlashCard';
+
+// 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
+// 避免一般測驗的學生作答頁被 ~200KB 的依賴拖累
+const RankingQuestion = dynamic(
+  () => import('./RankingQuestion').then(m => m.RankingQuestion),
+  {
+    ssr: false,
+    loading: () => <p className="text-sm text-muted-foreground">載入排序題…</p>,
+  },
+);
 
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
@@ -123,6 +134,19 @@ function QuestionItem({
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       )}
+
+      {/* 排序題 */}
+      {question.type === 'ranking' && (
+        <div className="pl-2">
+          <p className="mb-2 text-xs text-muted-foreground">請拖曳選項排出正確順序</p>
+          <RankingQuestion
+            questionId={question.id}
+            options={options}
+            value={Array.isArray(answer) ? answer : undefined}
+            onChange={v => onChange(v)}
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -177,13 +201,15 @@ function ResultScreen({
           ? tfDefs
           : (q.options ?? []);
         const studentAns = answers[d.questionId];
+        // 排序題用 → 串接，其他題型用 、 串接
+        const sep = q.type === 'ranking' ? ' → ' : '、';
         const studentText = Array.isArray(studentAns)
-          ? studentAns.map(id => options.find(o => o.id === id)?.text ?? id).join('、')
+          ? studentAns.map(id => options.find(o => o.id === id)?.text ?? id).join(sep)
           : options.find(o => o.id === studentAns)?.text ?? studentAns ?? '（未作答）';
 
         const correctText = (q.correctAnswers ?? [])
           .map(id => options.find(o => o.id === id)?.text ?? id)
-          .join('、');
+          .join(sep);
 
         return { question: q.body, correctAnswer: correctText, studentAnswer: String(studentText) };
       })
@@ -321,7 +347,7 @@ function ResultScreen({
                   {Array.isArray(studentAnswer)
                     ? studentAnswer
                       .map(id => options.find(o => o.id === id)?.text ?? id)
-                      .join('、')
+                      .join(question.type === 'ranking' ? ' → ' : '、')
                     : typeof studentAnswer === 'string'
                       ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
                           <span className="italic text-muted-foreground">未作答</span>
@@ -335,7 +361,7 @@ function ResultScreen({
                     <span className="text-muted-foreground">正確答案：</span>
                     {question.correctAnswers
                       .map(id => options.find(o => o.id === id)?.text ?? id)
-                      .join('、')}
+                      .join(question.type === 'ranking' ? ' → ' : '、')}
                   </div>
                 )}
 
@@ -391,6 +417,12 @@ function RetryScreen({
         const given = Array.isArray(ans) ? [...ans].sort() : [];
         const expected = [...q.correctAnswers].sort();
         if (JSON.stringify(given) === JSON.stringify(expected)) {
+          correct++;
+        }
+      } else if (q.type === 'ranking') {
+        // 排序題：完全相同才算對
+        const given = Array.isArray(ans) ? ans : [];
+        if (JSON.stringify(given) === JSON.stringify(q.correctAnswers)) {
           correct++;
         }
       }
@@ -506,12 +538,16 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 隨機排序只在掛載時執行一次
   const [displayQuestions] = useState<Question[]>(() => {
     const ordered = quiz.shuffleQuestions ? shuffle(questions) : questions;
-    if (!quiz.shuffleOptions) {
-      return ordered;
-    }
-    return ordered.map(q =>
-      q.options ? { ...q, options: shuffle(q.options) } : q,
-    );
+    return ordered.map((q) => {
+      // 排序題：永遠強制打亂選項，否則學生「不拖也對」
+      if (q.type === 'ranking' && q.options) {
+        return { ...q, options: shuffle(q.options) };
+      }
+      if (quiz.shuffleOptions && q.options) {
+        return { ...q, options: shuffle(q.options) };
+      }
+      return q;
+    });
   });
 
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
@@ -549,9 +585,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
   const handleSubmit = (skipValidation = false) => {
     if (!skipValidation) {
-      const unanswered = displayQuestions.filter(
-        q => q.type !== 'short_answer' && !answers[q.id],
-      );
+      const unanswered = displayQuestions.filter((q) => {
+        if (q.type === 'short_answer') {
+          return false;
+        }
+        const ans = answers[q.id];
+        // 排序題：必須拖完所有選項才算作答完成
+        if (q.type === 'ranking') {
+          const expectedLen = q.options?.length ?? 0;
+          return !Array.isArray(ans) || ans.length !== expectedLen;
+        }
+        return !ans;
+      });
       if (unanswered.length > 0) {
         setError(`還有 ${unanswered.length} 題未作答`);
         return;
