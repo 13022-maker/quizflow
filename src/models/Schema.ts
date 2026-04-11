@@ -57,6 +57,7 @@ export const questionTypeEnum = pgEnum('question_type', [
   'multiple_choice', // 多選題
   'true_false', // 是非題
   'short_answer', // 簡答題
+  'ranking', // 排序題（拖拉排序）
 ]);
 
 export const quizStatusEnum = pgEnum('quiz_status', [
