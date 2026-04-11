@@ -6,6 +6,8 @@ import { NextResponse } from 'next/server';
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 
 export const runtime = 'nodejs';
+// 設定最大執行時間 60 秒，避免 Vercel Hobby 方案預設 10 秒 timeout 導致 AI 出題失敗
+export const maxDuration = 60;
 
 const client = new Anthropic();
 
@@ -22,6 +24,7 @@ const TYPE_LABELS: Record<string, string> = {
   tf: '是非題（答案為「○」或「✕」）',
   fill: '填空題（用 ___ 標空格，附答案）',
   short: '簡答題（附參考答案）',
+  rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
 };
 
 export async function POST(request: Request) {
@@ -70,7 +73,8 @@ ${typesPrompt}
     { "type": "mc", "question": "題目", "options": ["(A)選項一","(B)選項二","(C)選項三","(D)選項四"], "answer": "A", "explanation": "說明" },
     { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
     { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
-    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" }
+    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
+    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" }
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;

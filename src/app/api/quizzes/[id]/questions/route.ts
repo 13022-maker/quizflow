@@ -6,12 +6,13 @@ import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 // AIQuizModal 回傳的題目格式
-type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
+type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
 type GeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
-  answer: string;
+  // rank 題的 answer 是字串陣列（依正確順序）；其他題型是字串
+  answer: string | string[];
   explanation?: string;
 };
 
@@ -21,7 +22,8 @@ const DB_TYPE_MAP = {
   tf: 'true_false',
   fill: 'short_answer',
   short: 'short_answer',
-} as const satisfies Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer'>;
+  rank: 'ranking',
+} as const satisfies Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer' | 'ranking'>;
 
 export async function POST(
   request: Request,
@@ -80,14 +82,30 @@ export async function POST(
         text,
       }));
       // answer 可能是 "A"/"B" 大寫字母，或選項文字本身
-      const answerKey = q.answer.trim().toLowerCase();
+      const ansStr = typeof q.answer === 'string' ? q.answer : '';
+      const answerKey = ansStr.trim().toLowerCase();
       const byLetter = options.find(o => o.id === answerKey);
-      const byText = options.find(o => o.text === q.answer);
+      const byText = options.find(o => o.text === ansStr);
       const matched = byLetter ?? byText;
       correctAnswers = matched ? [matched.id] : [];
+    } else if (q.type === 'rank' && q.options?.length) {
+      // 排序題：每個選項配 id，correctAnswers 為依 q.answer 文字順序對映的 id 陣列
+      options = q.options.map((text, i) => ({
+        id: String.fromCharCode(97 + i),
+        text,
+      }));
+      const answerArr = Array.isArray(q.answer) ? q.answer : [];
+      correctAnswers = answerArr
+        .map(ansText => options!.find(o => o.text === ansText)?.id)
+        .filter((id): id is string => Boolean(id));
+      // AI 幻覺保險：若對映失敗，回退到輸入順序當正解
+      if (correctAnswers.length !== options.length) {
+        correctAnswers = options.map(o => o.id);
+      }
     } else {
       // 是非題 / 填空 / 簡答：直接存 answer 字串
-      correctAnswers = q.answer ? [q.answer] : [];
+      const ansStr = typeof q.answer === 'string' ? q.answer : '';
+      correctAnswers = ansStr ? [ansStr] : [];
     }
 
     return {

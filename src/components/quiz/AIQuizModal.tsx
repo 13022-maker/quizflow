@@ -15,7 +15,7 @@
 import { useRef, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
-type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
+type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
 type Difficulty = 'easy' | 'medium' | 'hard';
 type Mode = 'text' | 'file';
 
@@ -23,7 +23,8 @@ type GeneratedQuestion = {
   type: QuestionType;
   question: string;
   options?: string[];
-  answer: string;
+  // rank 題的 answer 是字串陣列；其他題型是字串
+  answer: string | string[];
   explanation?: string;
 };
 
@@ -44,6 +45,7 @@ const QUESTION_TYPES = [
   { value: 'tf' as QuestionType, emoji: '⭕', label: '是非題', sub: '○ / ✕' },
   { value: 'fill' as QuestionType, emoji: '✏️', label: '填空題', sub: '填入答案' },
   { value: 'short' as QuestionType, emoji: '📝', label: '簡答題', sub: '短文作答' },
+  { value: 'rank' as QuestionType, emoji: '🔢', label: '排序題', sub: '依序排列' },
 ];
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [

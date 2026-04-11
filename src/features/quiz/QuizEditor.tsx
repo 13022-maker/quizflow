@@ -38,13 +38,23 @@ import { QuestionCard } from './QuestionCard';
 import type { QuestionFormValues } from './QuestionForm';
 import { QuestionForm } from './QuestionForm';
 
-// FileQuizGenerator 回傳的題目格式
+// FileQuizGenerator 回傳的題目格式（純文字 answer，不含 rank）
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
 type FileGeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
   answer: string;
+  explanation?: string;
+};
+
+// AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
+type AIQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
+type AIGeneratedQuestion = {
+  type: AIQuestionType;
+  question: string;
+  options?: string[];
+  answer: string | string[];
   explanation?: string;
 };
 
@@ -208,7 +218,7 @@ export function QuizEditor({
   const [showAIModal, setShowAIModal] = useState(false);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
-  const handleAIImport = async (questions: FileGeneratedQuestion[], _title: string) => {
+  const handleAIImport = async (questions: AIGeneratedQuestion[], _title: string) => {
     setIsSubmitting(true);
     setShowAIModal(false);
 
