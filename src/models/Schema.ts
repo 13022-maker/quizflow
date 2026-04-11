@@ -80,6 +80,7 @@ export const quizSchema = pgTable('quiz', {
   allowedAttempts: integer('allowed_attempts'), // null = 無限制
   showAnswers: boolean('show_answers').default(true).notNull(),
   timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
+  preventLeave: boolean('prevent_leave').default(false).notNull(), // 考試防作弊：攔截離開頁面
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
@@ -123,6 +124,7 @@ export const responseSchema = pgTable('response', {
   studentEmail: text('student_email'), // 學生自填，可為空
   score: integer('score'), // 計算後寫入（null = 含簡答題，未完整批改）
   totalPoints: integer('total_points'), // 滿分（不含簡答題）
+  leaveCount: integer('leave_count').default(0).notNull(), // 考試防作弊：學生離開頁面次數
   submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
 });
 

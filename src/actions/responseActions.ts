@@ -12,6 +12,8 @@ const SubmitSchema = z.object({
   studentEmail: z.string().email().max(200).optional(),
   // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題/排序題）
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+  // 考試防作弊：學生離開頁面次數（preventLeave 開啟時才有意義）
+  leaveCount: z.number().int().min(0).optional(),
 });
 
 export type SubmitInput = z.infer<typeof SubmitSchema>;
@@ -42,7 +44,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     throw new Error('格式錯誤');
   }
 
-  const { quizId, studentName, studentEmail, answers } = parsed.data;
+  const { quizId, studentName, studentEmail, answers, leaveCount } = parsed.data;
 
   // 取得測驗設定（用於 server-side 驗證作答次數）
   const [quiz] = await db
@@ -114,6 +116,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
       studentEmail: studentEmail || null,
       score,
       totalPoints,
+      leaveCount: leaveCount ?? 0,
     })
     .returning();
 

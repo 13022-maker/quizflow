@@ -50,6 +50,13 @@
       "when": 1775945448401,
       "tag": "0006_quiet_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775950753436,
+      "tag": "0007_rainy_sentinels",
+      "breakpoints": true
     }
   ]
 }

@@ -554,6 +554,13 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
 
+  // 考試防作弊：離開頁面次數與警告等級
+  const [leaveCount, setLeaveCount] = useState(0);
+  // 警告等級：null（無）/ 'warning'（1-2 次黃色）/ 'danger'（3+ 次紅色）
+  const [leaveWarning, setLeaveWarning] = useState<'warning' | 'danger' | null>(null);
+  // 用 ref 讀取最新 leaveCount，避免 visibilitychange handler 拿到過期閉包
+  const leaveCountRef = useRef(0);
+
   // 快閃卡複習模式
   const [flashCardMode, setFlashCardMode] = useState(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
@@ -578,6 +585,39 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 倒數計時器
   const [timeLeft, setTimeLeft] = useState<number | null>(quiz.timeLimitSeconds ?? null);
   const autoSubmittedRef = useRef(false);
+
+  // ── 考試防作弊：離開頁面偵測 ─────────────────────────────────
+  // 只在 preventLeave = true 且尚未送出作答時啟動
+  useEffect(() => {
+    if (!quiz.preventLeave || result) {
+      return;
+    }
+
+    // beforeunload：攔截關閉分頁 / 重新整理 / 關閉瀏覽器
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '考試進行中，確定要離開？';
+      return '考試進行中，確定要離開？';
+    };
+
+    // visibilitychange：偵測切換分頁 / 視窗失焦
+    const handleVisibilityChange = () => {
+      if (document.visibilityState !== 'hidden') {
+        return;
+      }
+      const next = leaveCountRef.current + 1;
+      leaveCountRef.current = next;
+      setLeaveCount(next);
+      setLeaveWarning(next >= 3 ? 'danger' : 'warning');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [quiz.preventLeave, result]);
 
   const handleAnswer = (questionId: number, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -624,6 +664,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           studentName: studentName || undefined,
           studentEmail: studentEmail || undefined,
           answers: stringKeyAnswers,
+          leaveCount: quiz.preventLeave ? leaveCountRef.current : undefined,
         });
         setResult(res);
       } catch (err) {
@@ -691,6 +732,34 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 作答畫面
   return (
     <div className="space-y-6">
+      {/* 考試防作弊：離開頁面警告 banner */}
+      {leaveWarning === 'warning' && (
+        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          ⚠️ 偵測到你離開考試頁面，請專心作答
+          {leaveCount > 1 && (
+            <span className="ml-2 text-xs text-amber-700">
+              （已離開
+              {' '}
+              {leaveCount}
+              {' '}
+              次）
+            </span>
+          )}
+        </div>
+      )}
+      {leaveWarning === 'danger' && (
+        <div className="rounded-lg border border-red-400 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+          🚨 多次離開頁面已被記錄，老師將會看到此記錄
+          <span className="ml-2 text-xs text-red-700">
+            （已離開
+            {' '}
+            {leaveCount}
+            {' '}
+            次）
+          </span>
+        </div>
+      )}
+
       {/* 測驗標題 */}
       <div className="rounded-lg border bg-card p-5">
         <div className="flex items-start justify-between gap-4">

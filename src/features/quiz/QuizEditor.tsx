@@ -108,6 +108,11 @@ export function QuizEditor({
     initialQuiz.allowedAttempts?.toString() ?? 'unlimited',
   );
   const [showAnswers, setShowAnswers] = useState(initialQuiz.showAnswers);
+  const [preventLeave, setPreventLeave] = useState(initialQuiz.preventLeave);
+
+  // 目前選中的快速方案（null = 未選或手動調整後取消）
+  type ModePreset = 'exam' | 'practice' | 'review';
+  const [activePreset, setActivePreset] = useState<ModePreset | null>(null);
   const [timeLimit, setTimeLimit] = useState<string>(
     initialQuiz.timeLimitSeconds?.toString() ?? 'unlimited',
   );
@@ -169,8 +174,49 @@ export function QuizEditor({
     } else {
       setShuffleOptions(value);
     }
+    // 手動改 Toggle 後取消方案選中
+    setActivePreset(null);
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { [field]: value });
+    });
+  };
+
+  // ── 防離頁保護 ────────────────────────────────────────────────────
+  const handlePreventLeaveChange = (value: boolean) => {
+    setPreventLeave(value);
+    setActivePreset(null);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { preventLeave: value });
+    });
+  };
+
+  // ── 快速套用方案 ──────────────────────────────────────────────────
+  // 對照：考試(隨題✅/隨選✅/顯解❌/防離✅)
+  //      練習(隨題❌/隨選❌/顯解✅/防離❌)
+  //      複習(隨題✅/隨選✅/顯解✅/防離❌)
+  const applyPreset = (preset: ModePreset) => {
+    const presets: Record<ModePreset, {
+      shuffleQuestions: boolean;
+      shuffleOptions: boolean;
+      showAnswers: boolean;
+      preventLeave: boolean;
+    }> = {
+      exam: { shuffleQuestions: true, shuffleOptions: true, showAnswers: false, preventLeave: true },
+      practice: { shuffleQuestions: false, shuffleOptions: false, showAnswers: true, preventLeave: false },
+      review: { shuffleQuestions: true, shuffleOptions: true, showAnswers: true, preventLeave: false },
+    };
+    const config = presets[preset];
+
+    // 同步更新 UI 狀態
+    setShuffleQuestions(config.shuffleQuestions);
+    setShuffleOptions(config.shuffleOptions);
+    setShowAnswers(config.showAnswers);
+    setPreventLeave(config.preventLeave);
+    setActivePreset(preset);
+
+    // 一次送出整組設定到 server
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, config);
     });
   };
 
@@ -185,6 +231,7 @@ export function QuizEditor({
 
   const handleShowAnswersChange = (value: boolean) => {
     setShowAnswers(value);
+    setActivePreset(null);
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { showAnswers: value });
     });
@@ -458,7 +505,33 @@ export function QuizEditor({
 
       {/* ── 測驗設定 ─────────────────────────────────────────────── */}
       <div className="space-y-4 rounded-lg border bg-card p-4">
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
+        {/* 標題 + 快速套用方案按鈕 */}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
+          <div className="flex gap-1.5">
+            {(
+              [
+                { key: 'exam' as const, label: '📝 考試' },
+                { key: 'practice' as const, label: '✏️ 練習' },
+                { key: 'review' as const, label: '🔄 複習' },
+              ]
+            ).map(p => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => applyPreset(p.key)}
+                disabled={isPending}
+                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                  activePreset === p.key
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-input bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* 第一列：兩個 toggle */}
         <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -488,6 +561,15 @@ export function QuizEditor({
               disabled={isPending}
             />
             交卷後顯示解答
+          </label>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label className="flex cursor-pointer items-center gap-2 text-sm">
+            <Switch
+              checked={preventLeave}
+              onCheckedChange={handlePreventLeaveChange}
+              disabled={isPending}
+            />
+            防止學生中途離開（考試防作弊）
           </label>
         </div>
 

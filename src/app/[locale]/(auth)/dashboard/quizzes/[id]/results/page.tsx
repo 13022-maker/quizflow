@@ -98,6 +98,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     studentEmail: r.studentEmail,
     score: r.score,
     totalPoints: r.totalPoints,
+    leaveCount: r.leaveCount,
     submittedAt: r.submittedAt.toISOString(),
   }));
 

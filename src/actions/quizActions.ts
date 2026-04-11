@@ -80,6 +80,7 @@ export async function updateQuizSettings(
     allowedAttempts?: number | null;
     showAnswers?: boolean;
     timeLimitSeconds?: number | null;
+    preventLeave?: boolean;
   },
 ) {
   const { orgId } = await auth();

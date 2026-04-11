@@ -9,6 +9,7 @@ export type ResponseRow = {
   studentEmail: string | null;
   score: number | null;
   totalPoints: number | null;
+  leaveCount: number;
   submittedAt: string; // ISO string
 };
 
@@ -57,12 +58,13 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
 
   // 匯出 CSV
   const handleExportCsv = () => {
-    const header = ['姓名', 'Email', '答對題數', '答對率', '作答時間'];
+    const header = ['姓名', 'Email', '答對題數', '答對率', '離開次數', '作答時間'];
     const rows = sorted.map(r => [
       r.studentName ?? '',
       r.studentEmail ?? '',
       r.score !== null && r.totalPoints !== null ? `${r.score}/${r.totalPoints}` : '—',
       calcRate(r) !== null ? `${calcRate(r)}%` : '—',
+      String(r.leaveCount),
       new Date(r.submittedAt).toLocaleString('zh-TW'),
     ]);
 
@@ -137,7 +139,23 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
               const rate = calcRate(r);
               return (
                 <tr key={r.id} className="hover:bg-muted/30">
-                  <td className="px-4 py-3">{r.studentName ?? <span className="text-muted-foreground">—</span>}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {r.studentName ?? <span className="text-muted-foreground">—</span>}
+                      {r.leaveCount > 0 && (
+                        <span
+                          className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
+                          title="考試期間離開頁面次數（防作弊記錄）"
+                        >
+                          ⚠️ 離開
+                          {' '}
+                          {r.leaveCount}
+                          {' '}
+                          次
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{r.studentEmail ?? <span className="text-muted-foreground">—</span>}</td>
                   <td className="px-4 py-3 text-center">
                     {r.score !== null && r.totalPoints !== null ? `${r.score} / ${r.totalPoints}` : '—'}
