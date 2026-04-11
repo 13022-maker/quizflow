@@ -18,7 +18,7 @@ import {
 import type { InferSelectModel } from 'drizzle-orm';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import {
   createQuestion,
@@ -86,6 +86,16 @@ export function QuizEditor({
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
+
+  // 同步 initialQuestions prop → local state
+  // 原因：router.refresh() 會讓 server component 重新傳入新的 initialQuestions，
+  // 但 useState(initialQuestions) 只在第一次 render 讀取 prop，後續不會自動更新。
+  // 沒有這個 sync，AI 匯入、新增題目、編輯題目、講義匯入後畫面都不會即時更新
+  // （要手動 F5 才看得到）。
+  useEffect(() => {
+    setQuestions(initialQuestions);
+  }, [initialQuestions]);
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [addingNew, setAddingNew] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
