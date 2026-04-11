@@ -69,6 +69,8 @@
     "recharts": "^3.8.1",
     "sharp": "^0.33.5",
     "stripe": "^16.12.0",
+    "survey-core": "^2.5.19",
+    "survey-react-ui": "^2.5.19",
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
   },
