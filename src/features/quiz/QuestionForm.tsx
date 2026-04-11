@@ -78,8 +78,21 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
     } else if (type === 'short_answer') {
       replace([]);
       form.setValue('correctAnswers', []);
+    } else if (type === 'ranking') {
+      // 排序題：至少 3 個選項才有意義
+      const current = form.getValues('options') ?? [];
+      const isTrueFalseShape = current[0]?.id === 'tf-true';
+      if (current.length < 3 || isTrueFalseShape) {
+        replace([
+          { id: crypto.randomUUID(), text: '' },
+          { id: crypto.randomUUID(), text: '' },
+          { id: crypto.randomUUID(), text: '' },
+        ]);
+      }
+      // 排序題的 correctAnswers 在 submit 時根據選項順序決定，這裡先清空
+      form.setValue('correctAnswers', []);
     } else {
-      // 從 true_false / short_answer 切換到選擇題時，初始化兩個空選項
+      // 從 true_false / short_answer / ranking 切換到一般選擇題，初始化兩個空選項
       const current = form.getValues('options') ?? [];
       const isTrueFalse = current[0]?.id === 'tf-true';
       if (current.length === 0 || isTrueFalse) {
@@ -109,10 +122,16 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
   };
 
   const handleSubmit = form.handleSubmit(async (data) => {
+    // 排序題：correctAnswers 由選項輸入順序決定（從上到下即正解）
+    if (data.type === 'ranking' && data.options) {
+      data.correctAnswers = data.options.map(o => o.id);
+    }
     await onSubmit(data);
   });
 
   const isChoiceType = type === 'single_choice' || type === 'multiple_choice';
+  const isOrderingType = type === 'ranking';
+  const allowsMultipleOptions = isChoiceType || isOrderingType;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border bg-muted/30 p-4">
@@ -203,14 +222,18 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
         )}
       </div>
 
-      {/* 選項清單（選擇題 / 是非題） */}
+      {/* 選項清單（選擇題 / 是非題 / 排序題） */}
       {type !== 'short_answer' && (
         <div>
           <label className="mb-1 block text-sm font-medium">
             選項
             <span className="ml-1 text-xs font-normal text-muted-foreground">
               （
-              {type === 'multiple_choice' ? '可選多個正確答案' : '點選正確答案'}
+              {type === 'multiple_choice'
+                ? '可選多個正確答案'
+                : isOrderingType
+                  ? '由上到下即正確順序，學生作答時順序會被打亂'
+                  : '點選正確答案'}
               ）
             </span>
           </label>
@@ -219,25 +242,33 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
               const isCorrect = correctAnswers.includes(field.id);
               return (
                 <div key={field.id} className="flex items-center gap-2">
-                  {/* 正確答案按鈕 */}
-                  <button
-                    type="button"
-                    onClick={() => toggleCorrect(field.id)}
-                    className={`size-5 shrink-0 rounded-full border-2 transition-colors ${
-                      isCorrect
-                        ? 'border-green-500 bg-green-500'
-                        : 'border-input bg-background hover:border-green-400'
-                    }`}
-                    title="設為正確答案"
-                    aria-label={isCorrect ? '取消正確答案' : '設為正確答案'}
-                  />
+                  {/* 排序題：左側顯示順序編號；其他題型：正解圓鈕 */}
+                  {isOrderingType
+                    ? (
+                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                          {index + 1}
+                        </span>
+                      )
+                    : (
+                        <button
+                          type="button"
+                          onClick={() => toggleCorrect(field.id)}
+                          className={`size-5 shrink-0 rounded-full border-2 transition-colors ${
+                            isCorrect
+                              ? 'border-green-500 bg-green-500'
+                              : 'border-input bg-background hover:border-green-400'
+                          }`}
+                          title="設為正確答案"
+                          aria-label={isCorrect ? '取消正確答案' : '設為正確答案'}
+                        />
+                      )}
                   <input
                     {...form.register(`options.${index}.text`)}
                     placeholder={`選項 ${index + 1}`}
                     disabled={type === 'true_false'}
                     className="h-8 flex-1 rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                   />
-                  {isChoiceType && fields.length > 2 && (
+                  {allowsMultipleOptions && fields.length > (isOrderingType ? 3 : 2) && (
                     <button
                       type="button"
                       onClick={() => remove(index)}
@@ -251,7 +282,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
               );
             })}
           </div>
-          {isChoiceType && (
+          {allowsMultipleOptions && (
             <button
               type="button"
               onClick={() => append({ id: crypto.randomUUID(), text: '' })}
