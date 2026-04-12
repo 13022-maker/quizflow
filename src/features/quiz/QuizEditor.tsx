@@ -23,6 +23,7 @@ import { useEffect, useState, useTransition } from 'react';
 import {
   createQuestion,
   deleteQuestion,
+  distributePoints,
   reorderQuestions,
   updateQuestion,
 } from '@/actions/questionActions';
@@ -101,6 +102,9 @@ export function QuizEditor({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 平均配分成功提示
+  const [distributeMsg, setDistributeMsg] = useState('');
 
   // 標題 inline 編輯
   const [title, setTitle] = useState(initialQuiz.title);
@@ -641,7 +645,7 @@ export function QuizEditor({
 
       {/* ── 題目清單 ────────────────────────────────────────────── */}
       <div>
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <h2 className="font-medium">
             題目（
             {questions.length}
@@ -649,6 +653,28 @@ export function QuizEditor({
           </h2>
           {questions.length > 1 && (
             <span className="text-xs text-muted-foreground">拖曳左側圓點可排序</span>
+          )}
+          {questions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setDistributeMsg('');
+                startTransition(async () => {
+                  await distributePoints(initialQuiz.id);
+                  setDistributeMsg('已平均分配，總分 100 分');
+                  router.refresh();
+                  // 3 秒後自動消除提示
+                  setTimeout(() => setDistributeMsg(''), 3000);
+                });
+              }}
+              disabled={isPending}
+              className="ml-auto inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
+            >
+              ⚖️ 平均配分（總分 100）
+            </button>
+          )}
+          {distributeMsg && (
+            <span className="text-xs font-medium text-green-600">{distributeMsg}</span>
           )}
         </div>
 

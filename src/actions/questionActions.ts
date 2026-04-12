@@ -130,3 +130,39 @@ export async function reorderQuestions(quizId: number, orderedIds: number[]) {
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 }
+
+// 平均分配總分 100 分到所有題目
+export async function distributePoints(quizId: number) {
+  const { orgId } = await auth();
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
+  await verifyOwnership(quizId, orgId);
+
+  // 取得所有題目 id（依 position 排序）
+  const questions = await db
+    .select({ id: questionSchema.id })
+    .from(questionSchema)
+    .where(eq(questionSchema.quizId, quizId))
+    .orderBy(questionSchema.position);
+
+  if (questions.length === 0) {
+    return;
+  }
+
+  const total = 100;
+  const baseScore = Math.floor(total / questions.length);
+  const remainder = total - baseScore * questions.length;
+
+  // 批次更新：每題 baseScore，最後一題補足餘數
+  await Promise.all(
+    questions.map((q, i) =>
+      db
+        .update(questionSchema)
+        .set({ points: i === questions.length - 1 ? baseScore + remainder : baseScore })
+        .where(eq(questionSchema.id, q.id)),
+    ),
+  );
+
+  revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
+}
