@@ -301,17 +301,22 @@ export function QuizEditor({
       const type = FILE_TYPE_MAP[q.type];
 
       if (q.type === 'mc' && q.options?.length) {
-        // 選擇題：將 string[] 轉換為 { id, text }[]，並找出正確答案的 id
+        // 選擇題：將 string[] 轉成 { id, text }[]，並找出正確答案的 id
         const options = q.options.map((text, i) => ({
           id: String.fromCharCode(97 + i), // a, b, c, d
           text,
         }));
-        const correctOpt = options.find(o => o.text === q.answer);
+        // AI 回傳的 answer 可能是字母（"A"）或完整選項文字
+        // 先用字母匹配 option id，再用文字完全匹配做 fallback
+        const answerKey = q.answer.trim().toLowerCase();
+        const byLetter = options.find(o => o.id === answerKey);
+        const byText = options.find(o => o.text === q.answer);
+        const matched = byLetter ?? byText;
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
           options,
-          correctAnswers: correctOpt ? [correctOpt.id] : [],
+          correctAnswers: matched ? [matched.id] : undefined,
           points: 1,
         });
       } else {
@@ -319,7 +324,7 @@ export function QuizEditor({
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
-          correctAnswers: q.answer ? [q.answer] : [],
+          correctAnswers: q.answer ? [q.answer] : undefined,
           points: 1,
         });
       }
