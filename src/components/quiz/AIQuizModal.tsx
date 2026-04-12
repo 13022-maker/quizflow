@@ -369,7 +369,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                     </p>
                   )}
                   {pdfPageCount !== null && (
-                    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
+                    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:px-4">
                       <p className="text-xs font-bold text-gray-700">
                         📄 共
                         {' '}
@@ -377,7 +377,8 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                         {' '}
                         頁，選擇要命題的範圍
                       </p>
-                      <div className="flex items-center gap-2 text-sm">
+                      {/* 手機版改兩行顯示，避免一排塞不下 */}
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
                         <span className="shrink-0 text-gray-600">從第</span>
                         <input
                           type="number"
@@ -391,7 +392,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                               setEndPage(v);
                             }
                           }}
-                          className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                         />
                         <span className="shrink-0 text-gray-600">頁到第</span>
                         <input
@@ -403,7 +404,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                             const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
                             setEndPage(v);
                           }}
-                          className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                         />
                         <span className="shrink-0 text-gray-600">頁</span>
                         <span className="text-xs font-semibold text-amber-600">
