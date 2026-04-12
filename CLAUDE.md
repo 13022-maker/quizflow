@@ -6,6 +6,12 @@ This file provides guidance to Claude Code when working with code in this reposi
 QuizFlow 是專為**台灣老師**設計的 AI 測驗 SaaS 平台。
 老師可快速上傳 PDF（或其他素材），AI 自動生成高品質測驗題，發佈分享連結，讓學生**無需登入**即可作答，系統自動批改並顯示成績與詳解。
 
+## 每次啟動請先做
+1. 確認目前在 ~/quizflow-A 目錄
+2. 確認在 main 分支：git branch
+3. 確認有無未 commit 的改動：git status
+4. 回報目前待辦事項（來自本文件底部的 TODO 清
+
 **核心價值**：讓老師大幅節省出題時間，生成題目品質需達到或超越 MagicSchool / Eduaide 水準（正確性高、無幻覺、來源可追溯、難度均勻）。
 
 **目標用戶**：中小學、大學老師、補習班、線上課程創作者。
@@ -152,8 +158,15 @@ STRIPE_SECRET_KEY=any_fake_value
 - **AI 出題**：文字模式 + 檔案模式（PDF/圖片），支援 mc/tf/fill/short/rank 五種題型
 - **快閃卡**（`FlashCard.tsx`）：3D 翻牌 + 進度追蹤
 - **考試模式防作弊**：`quiz.preventLeave` boolean 控制；學生端 `beforeunload` 攔截 + `visibilitychange` 偵測切換分頁；`response.leaveCount` 記錄離開次數；老師成績頁顯示「⚠️ 離開 N 次」紅色標記 + CSV 匯出
-- **測驗快速方案**：考試（隨機題✅/隨機選✅/顯解❌/防離✅）、練習（❌/❌/✅/❌）、複習（✅/✅/✅/❌），手動改 Toggle 自動取消方案選中
+- **測驗快速方案**：考試（隨機題✅/隨機選✅/顯解❌/防離✅）、練習（❌/❌/✅/❌）、複習（✅/✅/✅/❌），手動改 Toggle 自動取消方案選中。按鈕視覺：考試 `bg-gray-900`、練習 `bg-amber-400`、複習 `bg-blue-500`，未選中 `bg-white text-gray-500 border-2`
 - **平均配分**：`distributePoints` server action，`Math.floor(100/N)` 每題基礎分，最後一題補足餘數至 100
+- **分享頁面**（`ShareModal.tsx` 取代舊 `QRCodeModal`）：
+  - 6 碼房間碼（`quiz.roomCode`，大寫英數 A-Z 0-9，UNIQUE，建立測驗時自動生成）
+  - `GET /api/quiz/join?code=XXXXXX` → redirect 到 `/quiz/[accessCode]`
+  - LINE 分享按鈕（LINE Social Plugins share URL，綠色 `#06C755`）
+  - Google Classroom 分享按鈕（`classroom.google.com/share` URL）
+  - 到期時間設定：`quiz.expiresAt`（TIMESTAMP nullable），快速選項 1h/24h/3天/7天/永不到期/自訂 datetime-local
+  - 學生作答頁 + join API 檢查到期 → 過期顯示「此測驗已結束」
 - **題目插入圖片**：URL 貼上 + Google 搜尋 + 預覽
 - **錯題重做**：本機批改，不計入正式統計
 - **老師成績報表**：可排序表格、CSV 匯出、前 3 難題、AI 班級建議
@@ -178,16 +191,16 @@ STRIPE_SECRET_KEY=any_fake_value
 - 快閃卡複習模式（3D 翻牌 + 進度追蹤）
 - 排序題（ranking）：survey-react-ui 拖拉排序，動態載入
 - 考試模式防作弊（beforeunload + visibilitychange + leaveCount）
-- 測驗快速方案（考試/練習/複習 一鍵套用）
+- 測驗快速方案（考試/練習/複習 一鍵套用，各色按鈕）
 - 大 PDF 前端裁切上傳（pdf-lib client-side page trimming）
+- 分享頁面強化（6 碼房間碼 + LINE + Google Classroom + 到期時間 + QR Code）
 
 ### 🔥 下一步優先順序（依序開發）
 1. ECPay 金流整合（5月上線，參考 Quizlet 結帳設計：30天免費試用、年繳方案、折扣碼）
 2. 免費試用機制（Pro 功能 30 天體驗，到期自動降級）
-3. 分享頁面強化（房間碼 6 碼英數、LINE 分享按鈕、到期時間設定）
-4. 多語系擴展（日語、韓語、英語、簡體中文）
-5. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
-6. Playwright E2E 測試覆蓋核心流程
+3. 多語系擴展（日語、韓語、英語、簡體中文）
+4. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
+5. Playwright E2E 測試覆蓋核心流程
 
 ## 技術債與技術決策
 
