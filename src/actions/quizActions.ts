@@ -12,6 +12,33 @@ import { getOrgPlanId } from '@/libs/Plan';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
+// 生成 6 碼大寫英數房間碼（A-Z, 0-9）
+function generateRoomCode(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
+// 生成不重複的房間碼（最多重試 5 次）
+async function generateUniqueRoomCode(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const code = generateRoomCode();
+    const [existing] = await db
+      .select({ id: quizSchema.id })
+      .from(quizSchema)
+      .where(eq(quizSchema.roomCode, code))
+      .limit(1);
+    if (!existing) {
+      return code;
+    }
+  }
+  // 極低機率碰撞 5 次，回退到 nanoid
+  return generateRoomCode() + generateRoomCode().slice(0, 1);
+}
+
 const CreateQuizSchema = z.object({
   title: z.string().min(1, '請輸入測驗標題').max(200),
   description: z.string().max(500).optional(),
@@ -43,11 +70,13 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
+  const roomCode = await generateUniqueRoomCode();
   await db.insert(quizSchema).values({
     ownerId: orgId,
     title: parsed.data.title,
     description: parsed.data.description,
     accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
+    roomCode, // 6 碼大寫英數房間碼
   });
 
   redirect('/dashboard/quizzes');
@@ -81,6 +110,7 @@ export async function updateQuizSettings(
     showAnswers?: boolean;
     timeLimitSeconds?: number | null;
     preventLeave?: boolean;
+    expiresAt?: Date | null;
   },
 ) {
   const { orgId } = await auth();

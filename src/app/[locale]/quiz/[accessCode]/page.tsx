@@ -36,6 +36,18 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
     );
   }
 
+  // 到期時間檢查
+  if (quiz.expiresAt && new Date() > quiz.expiresAt) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="rounded-lg border bg-card p-8 text-center">
+          <p className="text-lg font-semibold">此測驗已結束</p>
+          <p className="mt-2 text-sm text-muted-foreground">測驗連結已過期，無法作答。</p>
+        </div>
+      </div>
+    );
+  }
+
   const questions = await db
     .select()
     .from(questionSchema)

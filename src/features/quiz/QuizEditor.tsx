@@ -30,7 +30,7 @@ import {
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
-import QRCodeModal from '@/components/quiz/QRCodeModal';
+import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import type { questionSchema, quizSchema } from '@/models/Schema';
@@ -438,7 +438,7 @@ export function QuizEditor({
           </Button>
         )}
 
-        {/* QR Code 按鈕：僅在有 accessCode 時顯示 */}
+        {/* 分享按鈕：含房間碼、QR Code、LINE、Google Classroom、到期設定 */}
         {initialQuiz.accessCode && (
           <Button
             size="sm"
@@ -446,7 +446,7 @@ export function QuizEditor({
             onClick={() => setShowQRModal(true)}
             className="gap-1.5"
           >
-            📱 QR Code
+            🔗 分享
           </Button>
         )}
 
@@ -497,11 +497,14 @@ export function QuizEditor({
             )}
       </div>
 
-      {/* QR Code Modal */}
+      {/* 分享 Modal（房間碼 + QR Code + LINE + Google Classroom + 到期） */}
       {showQRModal && initialQuiz.accessCode && (
-        <QRCodeModal
+        <ShareModal
+          quizId={initialQuiz.id}
           quizTitle={initialQuiz.title}
           accessCode={initialQuiz.accessCode}
+          roomCode={initialQuiz.roomCode}
+          expiresAt={initialQuiz.expiresAt?.toISOString() ?? null}
           onClose={() => setShowQRModal(false)}
         />
       )}

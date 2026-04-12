@@ -7,7 +7,7 @@ import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { deleteQuiz } from '@/actions/quizActions';
-import QRCodeModal from '@/components/quiz/QRCodeModal';
+import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -94,11 +94,14 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* QR Code Modal */}
+      {/* 分享 Modal */}
       {showQR && quiz.accessCode && (
-        <QRCodeModal
+        <ShareModal
+          quizId={quiz.id}
           quizTitle={quiz.title}
           accessCode={quiz.accessCode}
+          roomCode={quiz.roomCode}
+          expiresAt={quiz.expiresAt?.toISOString() ?? null}
           onClose={() => setShowQR(false)}
         />
       )}

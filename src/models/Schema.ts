@@ -81,6 +81,8 @@ export const quizSchema = pgTable('quiz', {
   showAnswers: boolean('show_answers').default(true).notNull(),
   timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
   preventLeave: boolean('prevent_leave').default(false).notNull(), // 考試防作弊：攔截離開頁面
+  roomCode: text('room_code').unique(), // 6 碼大寫英數房間碼（學生用來快速加入）
+  expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
