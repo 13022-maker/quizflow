@@ -133,24 +133,53 @@ STRIPE_SECRET_KEY=any_fake_value
 # ANTHROPIC_API_KEY= （analyze-weak-points / analyze-class-performance 需要）
 ```
 
+## 已修復的問題（Bug Fix 記錄）
+
+- **PDF 上傳限制**：大 PDF（>4.5MB）不阻擋，顯示黃色警告並讓用戶選頁數範圍，前端用 pdf-lib 裁切後再上傳
+- **是非題作答**：DB 無 options 時自動補上 `[{id:'tf-true',text:'正確'},{id:'tf-false',text:'錯誤'}]`
+- **AI 匯入後題目列表不更新**：`QuizEditor` 的 `useState(initialQuestions)` 不會隨 prop 更新，加 `useEffect` 同步 `initialQuestions → questions` state
+- **講義匯入正確答案空白**：`handleFileImport` 的 MC 答案匹配只做 text 比對，AI 回傳字母（"A"）永遠不符。加入 letter-based 匹配（`answer.toLowerCase() → option.id`）
+- **quiz submission Server Action**：answers key 明確轉為 string（`String(key)`），確保序列化正確
+- **Vercel API Route timeout**：AI 出題 route 需加 `export const maxDuration = 60`
+- **.next 快取損壞**：修復方式 `rm -rf .next && npm run dev`
+- **手機版 PDF 頁數範圍選擇器**：flex 不 wrap 在 375px 溢出，改 `flex-wrap` + 調整 padding
+
+## 功能規格（已實作）
+
+- **題型**：single_choice、multiple_choice、true_false、short_answer、ranking（排序題）
+- **排序題（ranking）**：學生端用 `survey-react-ui` ranking widget（`next/dynamic` + `ssr:false` 動態載入），老師端輸入順序即正確答案，批改為全對才給分，學生端永遠強制打亂選項
+- **AI quota**：免費版每月 10 次，Pro 無限（4 月測試期全 Pro）
+- **AI 出題**：文字模式 + 檔案模式（PDF/圖片），支援 mc/tf/fill/short/rank 五種題型
+- **快閃卡**（`FlashCard.tsx`）：3D 翻牌 + 進度追蹤
+- **考試模式防作弊**：`quiz.preventLeave` boolean 控制；學生端 `beforeunload` 攔截 + `visibilitychange` 偵測切換分頁；`response.leaveCount` 記錄離開次數；老師成績頁顯示「⚠️ 離開 N 次」紅色標記 + CSV 匯出
+- **測驗快速方案**：考試（隨機題✅/隨機選✅/顯解❌/防離✅）、練習（❌/❌/✅/❌）、複習（✅/✅/✅/❌），手動改 Toggle 自動取消方案選中
+- **平均配分**：`distributePoints` server action，`Math.floor(100/N)` 每題基礎分，最後一題補足餘數至 100
+- **題目插入圖片**：URL 貼上 + Google 搜尋 + 預覽
+- **錯題重做**：本機批改，不計入正式統計
+- **老師成績報表**：可排序表格、CSV 匯出、前 3 難題、AI 班級建議
+
 ## 目前完成進度
 
 ### ✅ 已完成
 - 品牌設定、雙語支援（zh/en）、定價方案
-- 資料模型：quiz、question、response、answer
-- 測驗 CRUD + 拖曳排序功能
-- 學生公開作答頁面（`/quiz/[quizId]`）與自動批改
-- AI 出題（文字提示 + PDF/圖片上傳，使用 Claude API）
+- 資料模型：quiz、question、response、answer + ai_usage
+- 測驗 CRUD + 拖曳排序 + 平均配分（總分 100）
+- 學生公開作答頁面（`/quiz/[accessCode]`）與自動批改
+- AI 出題（文字提示 + PDF/圖片上傳，使用 Claude API，支援 5 種題型含排序題）
 - Dashboard 智慧首頁（統計卡片 + 最近測驗列表）
 - 新手引導步驟（OnboardingSteps，localStorage 記錄）
 - 學生成績頁 AI 弱點分析（`/api/ai/analyze-weak-points`）
 - 錯題重做功能（本機批改，不計入統計）
-- 老師成績報表：可排序表格、CSV 匯出、前 3 難題、AI 班級建議
-- AI 出題 quota 限制（Free 10次/月，Pro 無限，4月測試期全 Pro）
+- 老師成績報表：可排序表格、CSV 匯出（含離開次數）、前 3 難題、AI 班級建議
+- AI 出題 quota 限制（Free 10次/月，Pro 無限）
 - Billing 方案頁面（用量顯示 + 方案比較表）
 - 題目插入圖片功能（URL 貼上 + Google 搜尋 + 預覽）
 - 是非題選項修復（自動補上預設「正確/錯誤」選項）
 - 快閃卡複習模式（3D 翻牌 + 進度追蹤）
+- 排序題（ranking）：survey-react-ui 拖拉排序，動態載入
+- 考試模式防作弊（beforeunload + visibilitychange + leaveCount）
+- 測驗快速方案（考試/練習/複習 一鍵套用）
+- 大 PDF 前端裁切上傳（pdf-lib client-side page trimming）
 
 ### 🔥 下一步優先順序（依序開發）
 1. ECPay 金流整合（5月上線，參考 Quizlet 結帳設計：30天免費試用、年繳方案、折扣碼）
@@ -159,3 +188,23 @@ STRIPE_SECRET_KEY=any_fake_value
 4. 多語系擴展（日語、韓語、英語、簡體中文）
 5. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
 6. Playwright E2E 測試覆蓋核心流程
+
+## 技術債與技術決策
+
+### AI SDK 維持 @anthropic-ai/sdk（不遷移）
+目前使用 @anthropic-ai/sdk 直接呼叫。Vercel 驗證器建議改成 @ai-sdk/anthropic（Vercel AI SDK）。
+影響範圍：generate-questions、generate-from-file、analyze-weak-points、analyze-class-performance
+三條出題鏈需同時遷移，不能分開改。列為低優先，功能穩定後再處理。
+
+### PDF 大型檔案長期解法
+目前前端用 pdf-lib 裁切後上傳（繞過 Vercel 4.5MB body 限制）。
+長期改法：改用 Vercel Blob 直傳，server 端從 Blob URL 讀取，不受 body size 限制。尚未實作。
+
+### Stripe 金鑰
+目前用測試金鑰（`STRIPE_SECRET_KEY`），5 月替換為正式金鑰。
+
+### ECPay 金流
+5 月整合，需綠界商店帳號與 API 金鑰。
+
+### GitHub Actions CI 紅燈
+`.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
