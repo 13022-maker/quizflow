@@ -111,23 +111,20 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
     setTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   }
 
-  // 前端檔案大小上限（Vercel Serverless 限制約 4.5MB）
-  const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+  // Vercel Serverless request body 上限約 4.5MB
+  const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
 
   async function handleFile(f: File) {
     setResult(null);
     setError('');
     setPdfPageCount(null);
-
-    // 立即檢查檔案大小，不等到按「開始 AI 命題」才報錯
-    if (f.size > MAX_FILE_SIZE) {
-      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
-      setError(`檔案過大（${sizeMB}MB），上限 4.5MB，請壓縮或減少頁數後再試`);
-      setFile(null);
-      return;
-    }
-
     setFile(f);
+
+    // 大檔案顯示黃色警告，但不阻擋 — 讓用戶選頁數後前端裁切再上傳
+    if (f.size > MAX_UPLOAD_SIZE) {
+      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+      setError(`檔案較大（${sizeMB}MB），請選擇較少頁數，系統會自動裁切後上傳`);
+    }
 
     // PDF 才讀取頁數
     const isPdf = f.name.split('.').pop()?.toLowerCase() === 'pdf';
@@ -194,15 +191,39 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
       } else {
         setStep('讀取檔案…');
         const fd = new FormData();
-        fd.append('file', file!);
+
+        // 大 PDF 且有選頁數範圍：前端先裁切成小 PDF 再上傳，避免超過 Vercel 4.5MB 限制
+        const isPdf = file!.name.split('.').pop()?.toLowerCase() === 'pdf';
+        if (isPdf && pdfPageCount !== null && file!.size > MAX_UPLOAD_SIZE) {
+          setStep('裁切 PDF 中…');
+          const { PDFDocument } = await import('pdf-lib');
+          const srcBytes = await file!.arrayBuffer();
+          const srcDoc = await PDFDocument.load(srcBytes);
+          const newDoc = await PDFDocument.create();
+          const safeStart = Math.max(1, startPage);
+          const safeEnd = Math.min(endPage, pdfPageCount);
+          const indices = Array.from(
+            { length: safeEnd - safeStart + 1 },
+            (_, i) => safeStart - 1 + i,
+          );
+          const copiedPages = await newDoc.copyPages(srcDoc, indices);
+          copiedPages.forEach(page => newDoc.addPage(page));
+          const trimmedBytes = await newDoc.save();
+          const trimmedFile = new File([trimmedBytes], file!.name, { type: 'application/pdf' });
+          fd.append('file', trimmedFile);
+          // 裁切後的 PDF 已經只包含選中頁面，不需要再傳 startPage/endPage
+        } else {
+          fd.append('file', file!);
+          // 未裁切的檔案：傳頁數範圍讓 server 端裁切（小檔案走原本邏輯）
+          if (pdfPageCount !== null) {
+            fd.append('startPage', String(startPage));
+            fd.append('endPage', String(endPage));
+          }
+        }
+
         fd.append('types', JSON.stringify(types));
         fd.append('count', String(count));
         fd.append('difficulty', difficulty);
-        // PDF 頁數範圍（有讀到頁數才傳）
-        if (pdfPageCount !== null) {
-          fd.append('startPage', String(startPage));
-          fd.append('endPage', String(endPage));
-        }
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         data = await res.json();
@@ -517,9 +538,14 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
             </div>
           </div>
 
-          {/* ── Error ── */}
+          {/* ── Error / Warning ── */}
           {error && (
-            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+            <div className={`rounded-xl border px-4 py-3 text-sm ${
+              error.includes('較大')
+                ? 'border-amber-300 bg-amber-50 text-amber-700'
+                : 'border-red-200 bg-red-50 text-red-600'
+            }`}
+            >
               <p>{error}</p>
               {upgradeRequired && (
                 <button
