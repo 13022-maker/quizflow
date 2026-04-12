@@ -530,12 +530,27 @@ export function QuizEditor({
         {/* 標題 + 快速套用方案按鈕 */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
-          <div className="flex gap-1.5">
+          <div className="flex gap-2">
             {(
               [
-                { key: 'exam' as const, label: '📝 考試' },
-                { key: 'practice' as const, label: '✏️ 練習' },
-                { key: 'review' as const, label: '🔄 複習' },
+                {
+                  key: 'exam' as const,
+                  label: '📝 考試',
+                  active: 'border-gray-900 bg-gray-900 text-white',
+                  hover: 'hover:border-gray-400',
+                },
+                {
+                  key: 'practice' as const,
+                  label: '✏️ 練習',
+                  active: 'border-amber-400 bg-amber-400 text-white',
+                  hover: 'hover:border-amber-300',
+                },
+                {
+                  key: 'review' as const,
+                  label: '🔄 複習',
+                  active: 'border-blue-500 bg-blue-500 text-white',
+                  hover: 'hover:border-blue-300',
+                },
               ]
             ).map(p => (
               <button
@@ -543,10 +558,10 @@ export function QuizEditor({
                 type="button"
                 onClick={() => applyPreset(p.key)}
                 disabled={isPending}
-                className={`rounded-md border px-2.5 py-1 text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1.5 rounded-lg border-2 px-5 py-2.5 text-sm font-semibold transition-all duration-150 ${
                   activePreset === p.key
-                    ? 'border-gray-900 bg-gray-900 text-white'
-                    : 'border-input bg-background text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                    ? p.active
+                    : `border-gray-200 bg-white text-gray-500 ${p.hover}`
                 }`}
               >
                 {p.label}
