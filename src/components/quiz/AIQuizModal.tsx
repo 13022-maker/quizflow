@@ -111,11 +111,23 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
     setTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
   }
 
+  // 前端檔案大小上限（Vercel Serverless 限制約 4.5MB）
+  const MAX_FILE_SIZE = 4.5 * 1024 * 1024;
+
   async function handleFile(f: File) {
-    setFile(f);
     setResult(null);
     setError('');
     setPdfPageCount(null);
+
+    // 立即檢查檔案大小，不等到按「開始 AI 命題」才報錯
+    if (f.size > MAX_FILE_SIZE) {
+      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+      setError(`檔案過大（${sizeMB}MB），上限 4.5MB，請壓縮或減少頁數後再試`);
+      setFile(null);
+      return;
+    }
+
+    setFile(f);
 
     // PDF 才讀取頁數
     const isPdf = f.name.split('.').pop()?.toLowerCase() === 'pdf';
