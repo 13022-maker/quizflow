@@ -154,12 +154,12 @@ export async function distributePoints(quizId: number) {
   const baseScore = Math.floor(total / questions.length);
   const remainder = total - baseScore * questions.length;
 
-  // 批次更新：每題 baseScore，最後一題補足餘數
+  // 批次更新：餘數平均分配給前 N 題，每題 +1 分
   await Promise.all(
     questions.map((q, i) =>
       db
         .update(questionSchema)
-        .set({ points: i === questions.length - 1 ? baseScore + remainder : baseScore })
+        .set({ points: i < remainder ? baseScore + 1 : baseScore })
         .where(eq(questionSchema.id, q.id)),
     ),
   );
