@@ -504,7 +504,7 @@ export function QuizEditor({
           quizTitle={initialQuiz.title}
           accessCode={initialQuiz.accessCode}
           roomCode={initialQuiz.roomCode}
-          expiresAt={initialQuiz.expiresAt?.toISOString() ?? null}
+          expiresAt={initialQuiz.expiresAt instanceof Date ? initialQuiz.expiresAt.toISOString() : (initialQuiz.expiresAt ?? null)}
           onClose={() => setShowQRModal(false)}
         />
       )}

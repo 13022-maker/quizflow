@@ -555,6 +555,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [studentEmail, setStudentEmail] = useState('');
 
   // 考試防作弊：離開頁面次數與警告等級
+  // 防禦性預設：quiz.preventLeave 可能在舊資料中不存在
+  const preventLeave = quiz.preventLeave ?? false;
   const [leaveCount, setLeaveCount] = useState(0);
   // 警告等級：null（無）/ 'warning'（1-2 次黃色）/ 'danger'（3+ 次紅色）
   const [leaveWarning, setLeaveWarning] = useState<'warning' | 'danger' | null>(null);
@@ -589,7 +591,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // ── 考試防作弊：離開頁面偵測 ─────────────────────────────────
   // 只在 preventLeave = true 且尚未送出作答時啟動
   useEffect(() => {
-    if (!quiz.preventLeave || result) {
+    if (!preventLeave || result) {
       return;
     }
 
@@ -617,7 +619,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [quiz.preventLeave, result]);
+  }, [preventLeave, result]);
 
   const handleAnswer = (questionId: number, value: string | string[]) => {
     setAnswers(prev => ({ ...prev, [questionId]: value }));
@@ -664,7 +666,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           studentName: studentName || undefined,
           studentEmail: studentEmail || undefined,
           answers: stringKeyAnswers,
-          leaveCount: quiz.preventLeave ? leaveCountRef.current : undefined,
+          leaveCount: preventLeave ? leaveCountRef.current : undefined,
         });
         setResult(res);
       } catch (err) {
