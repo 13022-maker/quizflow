@@ -221,3 +221,38 @@ STRIPE_SECRET_KEY=any_fake_value
 
 ### GitHub Actions CI 紅燈
 `.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
+
+## 金流整合（Paddle Billing）
+
+### 狀態：進行中（feature/paddle-billing 分支）
+
+### 已完成
+- 安裝 @paddle/paddle-node-sdk 和 @paddle/paddle-js
+- 建立 lib/paddle.ts（含 getOrCreatePaddleCustomer、getUserSubscription）
+- 建立 app/api/webhook/route.ts
+- 建立 app/api/paddle/checkout/route.ts
+- 建立 components/providers/paddle-provider.tsx（已掛載至 layout）
+- 建立 hooks/use-checkout.ts
+- 建立 components/pricing/pricing-card.tsx
+- 建立 components/pricing/pricing-section.tsx
+- 建立 docs/smoke-test.md
+- Paddle Dashboard 正式環境設定完成（產品、4 個 Price、API Key、Client Token、Webhook destination）
+
+### 待完成
+- [ ] 填入 PADDLE_WEBHOOK_SECRET（Webhook destination 儲存後取得）
+- [ ] 執行資料庫 migration：npm run db:migrate
+- [ ] 確認 quizflow-psi.vercel.app 的 domain approval 通過
+- [ ] 部署 feature/paddle-billing 到 Vercel 測試
+- [ ] 跑完 docs/smoke-test.md 金流區塊所有項目
+- [ ] merge 回 main：git checkout main && git merge feature/paddle-billing
+
+### 環境變數（.env.local）
+所有 PADDLE_ 開頭的變數已新增，使用正式環境（production）
+Price ID 對應：
+- PRO_MONTHLY = pri_01kp3nbts21fh1saqfxgat7kgb
+- PRO_YEARLY = pri_01kp3nerfqeama1ga5b54vgpk6
+- TEAM_MONTHLY = pri_01kp3nhjp1xw9g1jyxvxynhtp4
+- TEAM_YEARLY = pri_01kp3nnjdzkj64jv7ra0ygtaf1
+
+### 下次開新對話時
+直接說「繼續 Paddle 金流整合，讀 CLAUDE.md」即可，不需要重新解釋背景。
