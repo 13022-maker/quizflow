@@ -5,6 +5,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   serial,
   text,
   timestamp,
@@ -82,6 +83,8 @@ export const quizSchema = pgTable('quiz', {
   timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
   preventLeave: boolean('prevent_leave').default(false).notNull(), // 考試防作弊：攔截離開頁面
   roomCode: text('room_code').unique(), // 6 碼大寫英數房間碼（學生用來快速加入）
+  scoringMode: text('scoring_mode').default('highest').notNull(), // highest / latest / first / decay
+  attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
   expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
@@ -143,6 +146,43 @@ export const answerSchema = pgTable('answer', {
     .references(() => questionSchema.id, { onDelete: 'cascade' }),
   answer: jsonb('answer').$type<string | string[]>().notNull(), // 字串或選項 id 陣列
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
+});
+
+// ---------- quiz_attempts ----------
+// 每次作答的詳細記錄（支援多次作答計分）
+
+export const quizAttemptSchema = pgTable('quiz_attempt', {
+  id: serial('id').primaryKey(),
+  quizId: integer('quiz_id')
+    .notNull()
+    .references(() => quizSchema.id, { onDelete: 'cascade' }),
+  studentEmail: text('student_email').notNull(), // 學生 email（QuizFlow 學生不登入）
+  attemptNumber: integer('attempt_number').notNull(), // 第幾次作答（1-indexed）
+  rawScore: real('raw_score').notNull(), // 原始分數（0–100）
+  weightedScore: real('weighted_score').notNull(), // 加權後分數（decay 模式用）
+  timeSpentSecs: integer('time_spent_secs'), // 作答耗時（秒）
+  responseId: integer('response_id')
+    .references(() => responseSchema.id, { onDelete: 'set null' }), // 連結到既有 response 表
+  submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// ---------- quiz_final_scores ----------
+// 學生在某份測驗的最終成績（由 scoring 模式決定取哪一次）
+
+export const quizFinalScoreSchema = pgTable('quiz_final_score', {
+  id: serial('id').primaryKey(),
+  quizId: integer('quiz_id')
+    .notNull()
+    .references(() => quizSchema.id, { onDelete: 'cascade' }),
+  studentEmail: text('student_email').notNull(), // 學生 email
+  finalScore: real('final_score').notNull(), // 最終分數
+  totalAttempts: integer('total_attempts').default(1).notNull(),
+  winningAttemptId: integer('winning_attempt_id')
+    .references(() => quizAttemptSchema.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
 });
 
 // ---------- ai_usage ----------
