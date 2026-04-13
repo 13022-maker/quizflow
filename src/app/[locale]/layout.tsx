@@ -5,6 +5,7 @@ import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
 import { DemoBadge } from '@/components/DemoBadge';
+import { PaddleProvider } from '@/components/providers/PaddleProvider';
 import { AllLocales } from '@/utils/AppConfig';
 
 export const metadata: Metadata = {
@@ -60,6 +61,7 @@ export default function RootLayout(props: {
         >
           {props.children}
 
+          <PaddleProvider />
           <DemoBadge />
         </NextIntlClientProvider>
       </body>

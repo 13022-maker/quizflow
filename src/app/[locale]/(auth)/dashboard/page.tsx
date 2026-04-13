@@ -3,6 +3,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { and, count, desc, eq, isNotNull } from 'drizzle-orm';
 import Link from 'next/link';
 
+import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { db } from '@/libs/DB';
@@ -86,6 +87,9 @@ export default async function DashboardIndexPage() {
         title="後台首頁"
         description="歡迎使用 QuizFlow"
       />
+
+      {/* Paddle 結帳成功提示 */}
+      <CheckoutSuccessBanner />
 
       <div className="px-4 pb-8">
         {hasQuizzes

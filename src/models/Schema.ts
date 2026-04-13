@@ -159,6 +159,42 @@ export const aiUsageSchema = pgTable('ai_usage', {
     .notNull(),
 });
 
+// ---------- paddle_customers ----------
+// Clerk 用戶與 Paddle 客戶的對映關係
+
+export const paddleCustomerSchema = pgTable('paddle_customer', {
+  id: serial('id').primaryKey(),
+  clerkUserId: text('clerk_user_id').notNull().unique(), // Clerk user ID
+  paddleCustomerId: text('paddle_customer_id').notNull().unique(), // Paddle 客戶 ID
+  email: text('email').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// ---------- subscriptions ----------
+// Paddle 訂閱記錄（由 webhook 寫入/更新）
+
+export const subscriptionSchema = pgTable('subscription', {
+  id: serial('id').primaryKey(),
+  clerkUserId: text('clerk_user_id').notNull(), // Clerk user ID
+  paddleSubscriptionId: text('paddle_subscription_id').unique(), // Paddle 訂閱 ID
+  paddleCustomerId: text('paddle_customer_id').notNull(), // Paddle 客戶 ID
+  plan: text('plan').default('free').notNull(), // free / pro / team
+  billingCycle: text('billing_cycle'), // monthly / yearly
+  status: text('status').default('inactive').notNull(), // active / inactive / canceled / past_due
+  currentPeriodStart: timestamp('current_period_start', { mode: 'date' }),
+  currentPeriodEnd: timestamp('current_period_end', { mode: 'date' }),
+  cancelAtPeriodEnd: boolean('cancel_at_period_end').default(false).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 // ---------- todo (原有範例，保留供參考) ----------
 
 export const todoSchema = pgTable('todo', {
