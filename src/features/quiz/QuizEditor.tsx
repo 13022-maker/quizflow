@@ -289,6 +289,8 @@ export function QuizEditor({
       body: JSON.stringify({ questions }),
     });
 
+    // 匯入完成後自動平均配分（總分 100）
+    await distributePoints(initialQuiz.id);
     setIsSubmitting(false);
     router.refresh();
   };
@@ -334,6 +336,8 @@ export function QuizEditor({
       }
     }
 
+    // 匯入完成後自動平均配分（總分 100）
+    await distributePoints(initialQuiz.id);
     setIsSubmitting(false);
     router.refresh();
   };
@@ -342,6 +346,8 @@ export function QuizEditor({
   const handleAddQuestion = async (data: QuestionFormValues) => {
     setIsSubmitting(true);
     await createQuestion(initialQuiz.id, data);
+    // 新增題目後自動重新平均配分（總分 100）
+    await distributePoints(initialQuiz.id);
     setIsSubmitting(false);
     setAddingNew(false);
     router.refresh();
