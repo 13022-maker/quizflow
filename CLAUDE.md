@@ -221,3 +221,8 @@ STRIPE_SECRET_KEY=any_fake_value
 
 ### GitHub Actions CI 紅燈
 `.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
+
+### Paddle Sandbox 測試分支
+`feature/paddle-sandbox` 分支專門綁 Paddle Sandbox 環境（非正式交易）。
+Vercel preview env 需設：PADDLE_API_KEY（sandbox）、NEXT_PUBLIC_PADDLE_ENV=sandbox、4 個 sandbox Price ID、PADDLE_WEBHOOK_SECRET（待 webhook 建立後取得）。
+smoke test 完成後此分支可刪除。
