@@ -1,10 +1,10 @@
 import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 
+import { PricingSection } from '@/components/pricing/PricingSection';
 import { CTA } from '@/templates/CTA';
 import { FAQ } from '@/templates/FAQ';
 import { Footer } from '@/templates/Footer';
 import { Navbar } from '@/templates/Navbar';
-import { Pricing } from '@/templates/Pricing';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
   const t = await getTranslations({
@@ -24,7 +24,7 @@ const PricingPage = (props: { params: { locale: string } }) => {
   return (
     <>
       <Navbar />
-      <Pricing />
+      <PricingSection />
       <FAQ />
       <CTA />
       <Footer />
