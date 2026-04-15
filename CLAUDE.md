@@ -194,9 +194,14 @@ STRIPE_SECRET_KEY=any_fake_value
 - 測驗快速方案（考試/練習/複習 一鍵套用，各色按鈕）
 - 大 PDF 前端裁切上傳（pdf-lib client-side page trimming）
 - 分享頁面強化（6 碼房間碼 + LINE + Google Classroom + 到期時間 + QR Code）
+- Paddle Billing 整合（sandbox smoke test 全通過）：
+  - `/zh/pricing` 頁用 `components/pricing/PricingSection`，三方案 + 月/年切換
+  - `POST /api/paddle/checkout` 建立 customer（含 try/catch），`useCheckout` hook 開 overlay
+  - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 created/updated/canceled
+  - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix）
 
 ### 🔥 下一步優先順序（依序開發）
-1. ECPay 金流整合（5月上線，參考 Quizlet 結帳設計：30天免費試用、年繳方案、折扣碼）
+1. **Paddle production 上線**（階段 2）：production env 補上 PADDLE_* 變數、webhook destination 改回 `https://quizflow-psi.vercel.app/api/webhook`、merge `feature/paddle-sandbox` → main
 2. 免費試用機制（Pro 功能 30 天體驗，到期自動降級）
 3. 多語系擴展（日語、韓語、英語、簡體中文）
 4. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
@@ -222,7 +227,9 @@ STRIPE_SECRET_KEY=any_fake_value
 ### GitHub Actions CI 紅燈
 `.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
 
-### Paddle Sandbox 測試分支
-`feature/paddle-sandbox` 分支專門綁 Paddle Sandbox 環境（非正式交易）。
-Vercel preview env 需設：PADDLE_API_KEY（sandbox）、NEXT_PUBLIC_PADDLE_ENV=sandbox、4 個 sandbox Price ID、PADDLE_WEBHOOK_SECRET（待 webhook 建立後取得）。
-smoke test 完成後此分支可刪除。
+### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15）
+`feature/paddle-sandbox` 分支綁 Paddle Sandbox 環境，完整 flow 驗證：訂閱 → webhook → DB upsert → 取消 → status=canceled。
+- Vercel preview env（已設）：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`NEXT_PUBLIC_PADDLE_ENV=sandbox`、4 個 sandbox Price ID、`PADDLE_WEBHOOK_SECRET`、`DATABASE_URL`（指 Neon preview branch `preview-paddle-sandbox`）
+- Paddle Sandbox webhook destination：`ntfset_01kp66qw6wj7f3z0htq5ktg2qy`（目前指到 preview URL）
+- Neon preview branch：`br-sparkling-hat-a1j73ctc`（24h TTL，測完可刪）
+- production merge 前要處理：移除 Vercel preview 的 sandbox env（或窄化成只綁該分支）、刪 Neon preview branch、Paddle sandbox webhook destination 移除或獨立
