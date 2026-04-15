@@ -29,15 +29,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '找不到用戶 email' }, { status: 400 });
     }
 
-    console.log('[Checkout API] creating customer for', { userId, email, priceId });
-
     const paddleCustomerId = await getOrCreatePaddleCustomer({
       clerkUserId: userId,
       email,
       name: user.fullName ?? undefined,
     });
-
-    console.log('[Checkout API] customerId:', paddleCustomerId);
 
     return NextResponse.json({
       customerId: paddleCustomerId,
