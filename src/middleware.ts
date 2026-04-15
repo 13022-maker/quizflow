@@ -14,6 +14,12 @@ const intlMiddleware = createMiddleware({
   defaultLocale: AppConfig.defaultLocale,
 });
 
+// 公開可存取、不需登入的 API 路徑（Paddle webhook 等外部服務呼叫）
+const isPublicApiRoute = createRouteMatcher([
+  '/api/webhook(.*)',
+  '/:locale/api/webhook(.*)',
+]);
+
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/:locale/dashboard(.*)',
@@ -27,6 +33,11 @@ export default function middleware(
   request: NextRequest,
   event: NextFetchEvent,
 ) {
+  // 外部 webhook 不經過 Clerk 驗證，直接放行
+  if (isPublicApiRoute(request)) {
+    return NextResponse.next();
+  }
+
   if (
     request.nextUrl.pathname.includes('/sign-in')
     || request.nextUrl.pathname.includes('/sign-up')
