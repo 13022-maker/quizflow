@@ -32,13 +32,17 @@ export function useCheckout() {
       const { customerId } = await res.json();
       const paddleInstance = getPaddleInstance();
 
-      paddleInstance?.Checkout.open({
+      const openParams = {
         customer: { id: customerId },
         items: [{ priceId, quantity: 1 }],
         settings: {
           successUrl: `${window.location.origin}/dashboard?checkout=success`,
         },
-      });
+      };
+      console.log('[Paddle] Checkout.open params:', openParams);
+      console.log('[Paddle] paddleInstance:', paddleInstance ? 'OK' : 'MISSING');
+
+      paddleInstance?.Checkout.open(openParams);
     } catch (err) {
       setError(err instanceof Error ? err.message : '結帳失敗');
     } finally {

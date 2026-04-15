@@ -11,16 +11,27 @@ import { useEffect } from 'react';
 export function PaddleProvider() {
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
+    const env = process.env.NEXT_PUBLIC_PADDLE_ENV;
+
+    console.log('[Paddle] init params:', {
+      tokenPrefix: token ? `${token.slice(0, 12)}...` : 'MISSING',
+      environment: env,
+      priceIds: {
+        proMonthly: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY,
+        proYearly: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY,
+        teamMonthly: process.env.NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY,
+        teamYearly: process.env.NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY,
+      },
+    });
+
     if (!token) {
-      return; // 未設定 token 時不初始化（開發中）
+      console.error('[Paddle] NEXT_PUBLIC_PADDLE_CLIENT_TOKEN 未設定');
+      return;
     }
 
     initializePaddle({
       token,
-      environment:
-        process.env.NEXT_PUBLIC_PADDLE_ENV === 'production'
-          ? 'production'
-          : 'sandbox',
+      environment: env === 'production' ? 'production' : 'sandbox',
       checkout: {
         settings: {
           displayMode: 'overlay',
@@ -28,7 +39,9 @@ export function PaddleProvider() {
           locale: 'zh',
         },
       },
-    });
+    })
+      .then(() => console.log('[Paddle] initialized OK'))
+      .catch(err => console.error('[Paddle] init failed:', err));
   }, []);
 
   return null;
