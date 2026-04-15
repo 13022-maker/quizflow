@@ -9,7 +9,7 @@ import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
 import { paddle } from '@/libs/paddle';
-import { subscriptionSchema } from '@/models/Schema';
+import { paddleCustomerSchema, subscriptionSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
 
@@ -42,8 +42,19 @@ export async function POST(req: Request) {
     case EventName.SubscriptionCreated:
     case EventName.SubscriptionUpdated: {
       const sub = event.data;
-      const clerkUserId = (sub.customData as Record<string, unknown>)?.clerkUserId as string;
+
+      // 優先從 subscription.customData 取 clerkUserId；沒有的話用 customer_id 反查 paddle_customer 表
+      let clerkUserId = (sub.customData as Record<string, unknown>)?.clerkUserId as string | undefined;
+      if (!clerkUserId && sub.customerId) {
+        const [row] = await db
+          .select({ clerkUserId: paddleCustomerSchema.clerkUserId })
+          .from(paddleCustomerSchema)
+          .where(eq(paddleCustomerSchema.paddleCustomerId, sub.customerId))
+          .limit(1);
+        clerkUserId = row?.clerkUserId;
+      }
       if (!clerkUserId) {
+        console.warn('[Paddle Webhook] 找不到 clerkUserId, sub=', sub.id, 'cust=', sub.customerId);
         break;
       }
 
