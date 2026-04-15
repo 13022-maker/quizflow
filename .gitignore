@@ -43,6 +43,13 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.env.preview
+.env.prod
+.env.production
+.env.development
+
+# claude code internal
+.claude/scheduled_tasks.lock
 
 # local folder
 local
