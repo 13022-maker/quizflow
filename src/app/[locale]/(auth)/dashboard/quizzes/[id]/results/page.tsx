@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
 import { ClassAIAnalysis } from '@/features/quiz/ClassAIAnalysis';
+import type { BreakdownQuestion, BreakdownRow, OptionStats } from '@/features/quiz/QuestionBreakdownTable';
+import { QuestionBreakdownTable } from '@/features/quiz/QuestionBreakdownTable';
 import type { ResponseRow } from '@/features/quiz/ResultsResponseTable';
 import { ResultsResponseTable } from '@/features/quiz/ResultsResponseTable';
 import { db } from '@/libs/DB';
@@ -63,6 +65,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         responseId: answerSchema.responseId,
         questionId: answerSchema.questionId,
         isCorrect: answerSchema.isCorrect,
+        answer: answerSchema.answer,
       })
       .from(answerSchema)
       .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
@@ -85,6 +88,22 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     return { question: q, total, correct, rate };
   });
 
+  // 每題選項分佈：{ [questionId]: { [optionId]: count } }
+  // single_choice / true_false 的 answer 是單一 option id 字串
+  // multiple_choice 的 answer 是 option id 陣列
+  // ranking / short_answer 不統計（展開 UI 也不顯示）
+  const optionStats: OptionStats = {};
+  for (const a of answers) {
+    const stats = (optionStats[a.questionId] ||= {});
+    if (Array.isArray(a.answer)) {
+      for (const optId of a.answer) {
+        stats[optId] = (stats[optId] ?? 0) + 1;
+      }
+    } else if (typeof a.answer === 'string' && a.answer.length > 0) {
+      stats[a.answer] = (stats[a.answer] ?? 0) + 1;
+    }
+  }
+
   // 前 3 難題（答對率最低，排除簡答題和作答數為 0 的題目）
   const hardestQuestions = [...questionStats]
     .filter(qs => qs.question.type !== 'short_answer' && qs.rate !== null)
@@ -106,6 +125,20 @@ export default async function QuizResultsPage({ params }: { params: { id: string
   const aiQuestionStats = questionStats
     .filter(qs => qs.question.type !== 'short_answer' && qs.rate !== null)
     .map(qs => ({ question: qs.question.body, correctRate: qs.rate! }));
+
+  // 給答對率表格客戶端元件的序列化資料（去掉 Date）
+  const breakdownRows: BreakdownRow[] = questionStats.map(qs => ({
+    question: {
+      id: qs.question.id,
+      body: qs.question.body,
+      type: qs.question.type,
+      options: qs.question.options,
+      correctAnswers: qs.question.correctAnswers,
+    } satisfies BreakdownQuestion,
+    total: qs.total,
+    correct: qs.correct,
+    rate: qs.rate,
+  }));
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -134,43 +167,23 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         <StatCard label={t('question_count')} value={String(questions.length)} />
       </div>
 
-      {/* 每題答對率長條圖 */}
+      {/* 每題答對率（含展開選項分佈） */}
       {questions.length > 0 && (
         <section className="mb-8">
           <h2 className="mb-3 text-lg font-semibold">{t('question_breakdown')}</h2>
-          <div className="overflow-hidden rounded-lg border">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/50">
-                <tr>
-                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">#</th>
-                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">{t('question_body')}</th>
-                  <th className="px-4 py-2 text-center font-medium text-muted-foreground">{t('correct_count')}</th>
-                  <th className="px-4 py-2 text-center font-medium text-muted-foreground">{t('correct_rate')}</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {questionStats.map(({ question, total, correct, rate }, i) => (
-                  <tr key={question.id} className="hover:bg-muted/30">
-                    <td className="px-4 py-3 text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3">
-                      <p className="line-clamp-2">{question.body}</p>
-                      {question.type === 'short_answer' && (
-                        <span className="mt-0.5 text-xs text-muted-foreground">{t('short_answer_note')}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {question.type === 'short_answer' ? '—' : `${correct} / ${total}`}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {rate !== null && question.type !== 'short_answer'
-                        ? <RateBar rate={rate} />
-                        : '—'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <QuestionBreakdownTable
+            rows={breakdownRows}
+            optionStats={optionStats}
+            labels={{
+              header_index: '#',
+              header_question: t('question_body'),
+              header_correct: t('correct_count'),
+              header_rate: t('correct_rate'),
+              short_answer_note: t('short_answer_note'),
+              expand_distribution: '展開選項分佈',
+              collapse_distribution: '收合選項分佈',
+            }}
+          />
         </section>
       )}
 
@@ -223,22 +236,6 @@ function StatCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border bg-card px-5 py-4">
       <p className="text-sm text-muted-foreground">{label}</p>
       <p className="mt-1 text-3xl font-bold">{value}</p>
-    </div>
-  );
-}
-
-// CSS 長條圖（顏色依答對率變化）
-function RateBar({ rate }: { rate: number }) {
-  const color = rate >= 70 ? 'bg-green-500' : rate >= 40 ? 'bg-yellow-500' : 'bg-red-500';
-  return (
-    <div className="flex items-center justify-center gap-2">
-      <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${rate}%` }} />
-      </div>
-      <span className="w-9 text-right text-xs font-medium">
-        {rate}
-        %
-      </span>
     </div>
   );
 }
