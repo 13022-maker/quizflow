@@ -229,7 +229,19 @@ STRIPE_SECRET_KEY=any_fake_value
 
 ### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15）
 `feature/paddle-sandbox` 分支綁 Paddle Sandbox 環境，完整 flow 驗證：訂閱 → webhook → DB upsert → 取消 → status=canceled。
-- Vercel preview env（已設）：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`NEXT_PUBLIC_PADDLE_ENV=sandbox`、4 個 sandbox Price ID、`PADDLE_WEBHOOK_SECRET`、`DATABASE_URL`（指 Neon preview branch `preview-paddle-sandbox`）
+- Vercel preview env（已設）：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`NEXT_PUBLIC_PADDLE_ENV=sandbox`、4 個 sandbox Price ID、`PADDLE_WEBHOOK_SECRET`、`DATABASE_URL`（指 Neon preview branch `preview-paddle-sandbox` = `br-mute-darkness-a1i746p8`，舊的 `br-sparkling-hat-a1j73ctc` 24h TTL 過期已被刪）
 - Paddle Sandbox webhook destination：`ntfset_01kp66qw6wj7f3z0htq5ktg2qy`（目前指到 preview URL）
-- Neon preview branch：`br-sparkling-hat-a1j73ctc`（24h TTL，測完可刪）
 - production merge 前要處理：移除 Vercel preview 的 sandbox env（或窄化成只綁該分支）、刪 Neon preview branch、Paddle sandbox webhook destination 移除或獨立
+
+### Paddle production 上線清單（階段 2，未做）
+production Vercel env 目前**完全沒有 PADDLE_*** 變數，merge `feature/paddle-sandbox` → main 前必補：
+1. `vercel env add PADDLE_API_KEY production`（production key `pdl_apikey_*`）
+2. `vercel env add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN production`（live_*）
+3. `vercel env add NEXT_PUBLIC_PADDLE_ENV production` value=`production`
+4. `vercel env add PADDLE_WEBHOOK_SECRET production`（取自 production Paddle Dashboard）
+5. 4 個 production Price ID：
+   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`
+   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`
+   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`
+   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`
+6. 更新 Paddle **Production** Dashboard webhook destination 指到 `https://quizflow-psi.vercel.app/api/webhook`（與 sandbox 那條不同個）

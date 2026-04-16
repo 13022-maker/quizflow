@@ -11,6 +11,24 @@ export const maxDuration = 60;
 
 const client = new Anthropic();
 
+// Anthropic API 過載（529）自動重試，最多 3 次，每次遞增等待
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const isOverloaded
+        = (err as { status?: number }).status === 529
+        || (err instanceof Error && err.message.includes('overloaded'));
+      if (!isOverloaded || i === maxRetries - 1) {
+        throw err;
+      }
+      await new Promise(r => setTimeout(r, (i + 1) * 1500));
+    }
+  }
+  throw new Error('Anthropic API 目前過載，請稍後再試');
+}
+
 // 難度說明
 const DIFF_LABELS: Record<string, string> = {
   easy: '簡單（基礎記憶型）',
@@ -80,11 +98,12 @@ ${typesPrompt}
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;
 
   try {
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: prompt }],
-    });
+    const message = await callWithRetry(() =>
+      client.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      }));
 
     const raw = (message.content[0] as { type: string; text: string }).text ?? '';
     const match = raw.match(/\{[\s\S]*\}/);
@@ -95,6 +114,15 @@ ${typesPrompt}
     const result = JSON.parse(match[0]);
     return NextResponse.json(result);
   } catch (err) {
+    const isOverloaded
+      = (err as { status?: number }).status === 529
+      || (err instanceof Error && err.message.includes('overloaded'));
+    if (isOverloaded) {
+      return NextResponse.json(
+        { error: 'AI 伺服器目前忙碌，請稍後再試', retryable: true },
+        { status: 503 },
+      );
+    }
     const msg = err instanceof Error ? err.message : '未知錯誤';
     return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }

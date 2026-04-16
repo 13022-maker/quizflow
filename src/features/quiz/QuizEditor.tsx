@@ -279,16 +279,21 @@ export function QuizEditor({
   const [showAIModal, setShowAIModal] = useState(false);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
-  const handleAIImport = async (questions: AIGeneratedQuestion[], _title: string) => {
+  const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], _title: string) => {
     setIsSubmitting(true);
     setShowAIModal(false);
 
     await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questions }),
+      body: JSON.stringify({ questions: aiQuestions }),
     });
 
+    // 既有題目都還是預設 1 分時才自動平均配分，避免覆蓋老師手動調整的配分
+    const allDefault = questions.length === 0 || questions.every(q => q.points === 1);
+    if (allDefault) {
+      await distributePoints(initialQuiz.id);
+    }
     setIsSubmitting(false);
     router.refresh();
   };
@@ -297,11 +302,11 @@ export function QuizEditor({
   const [showFileGenerator, setShowFileGenerator] = useState(false);
 
   // ── 從檔案匯入題目 ──────────────────────────────────────────────────
-  const handleFileImport = async (questions: FileGeneratedQuestion[], _title: string) => {
+  const handleFileImport = async (fileQuestions: FileGeneratedQuestion[], _title: string) => {
     setIsSubmitting(true);
     setShowFileGenerator(false);
 
-    for (const q of questions) {
+    for (const q of fileQuestions) {
       const type = FILE_TYPE_MAP[q.type];
 
       if (q.type === 'mc' && q.options?.length) {
@@ -334,6 +339,11 @@ export function QuizEditor({
       }
     }
 
+    // 既有題目都還是預設 1 分時才自動平均配分
+    const allDefault = questions.length === 0 || questions.every(q => q.points === 1);
+    if (allDefault) {
+      await distributePoints(initialQuiz.id);
+    }
     setIsSubmitting(false);
     router.refresh();
   };
@@ -342,6 +352,11 @@ export function QuizEditor({
   const handleAddQuestion = async (data: QuestionFormValues) => {
     setIsSubmitting(true);
     await createQuestion(initialQuiz.id, data);
+    // 所有題目都還是預設 1 分時才自動平均配分
+    const allDefault = questions.every(q => q.points === 1);
+    if (allDefault) {
+      await distributePoints(initialQuiz.id);
+    }
     setIsSubmitting(false);
     setAddingNew(false);
     router.refresh();

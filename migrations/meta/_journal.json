@@ -71,6 +71,13 @@
       "when": 1776090263304,
       "tag": "0009_wild_stingray",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1776096674468,
+      "tag": "0010_living_matthew_murdock",
+      "breakpoints": true
     }
   ]
 }

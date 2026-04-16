@@ -237,7 +237,13 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
 
       setResult(data);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : '命題失敗，請重試');
+      // AI 伺服器忙碌（503 + retryable）時顯示特定提示
+      const msg = e instanceof Error ? e.message : '命題失敗，請重試';
+      if (msg.includes('忙碌') || msg.includes('overloaded')) {
+        setError('AI 伺服器目前忙碌，已自動重試，請再按一次');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
       setStep('');
