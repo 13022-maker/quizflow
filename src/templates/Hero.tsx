@@ -15,7 +15,7 @@ export const Hero = () => {
           // Hero 頂部的小標籤（墨綠 + 白底，強化產品定位）
           <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-xs font-medium text-primary">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-            專為台灣老師設計
+            老師出題、學生自學的最佳助手
           </span>
         )}
         title={t.rich('title', {
