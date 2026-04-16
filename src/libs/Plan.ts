@@ -1,71 +1,76 @@
+/**
+ * 方案查詢工具
+ *
+ * 訂閱資料現在來自 Paddle，由 webhook 寫入 subscription 表（key = clerkUserId）。
+ * 注意：QuizFlow 採用 Clerk Organization 作為多租戶 tenant（quiz/quota 以 orgId 為單位），
+ * 但訂閱本身是「個人」付費，因此查詢時需要透過 auth() 取得當下 userId。
+ *
+ * 函式簽名（getOrgPlanId(orgId)）保留向後相容，呼叫者不需要改。
+ */
+
+import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 
-import { organizationSchema } from '@/models/Schema';
-import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
+import { subscriptionSchema } from '@/models/Schema';
+import { PLAN_ID } from '@/utils/AppConfig';
 
 import { db } from './DB';
-import { Env } from './Env';
 
-/**
- * 根據 BILLING_PLAN_ENV 取得對應的 Stripe Price ID
- */
-function getPriceId(planId: string): string {
-  const plan = PricingPlanList[planId];
-  if (!plan) {
-    return '';
-  }
-  const env = Env.BILLING_PLAN_ENV;
-  if (env === 'prod') {
-    return plan.prodPriceId;
-  }
-  if (env === 'test') {
-    return plan.testPriceId;
-  }
-  return plan.devPriceId;
-}
+// 視為「有效付費」的 Paddle 訂閱狀態
+const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due']);
 
-/**
- * 檢查指定 orgId 是否擁有 Pro 或 Enterprise 方案的有效訂閱
- * 開發環境下若 DB 沒有訂閱記錄，視為 Free
- */
-export async function getOrgPlanId(orgId: string): Promise<string> {
-  const [org] = await db
-    .select({
-      status: organizationSchema.stripeSubscriptionStatus,
-      priceId: organizationSchema.stripeSubscriptionPriceId,
-    })
-    .from(organizationSchema)
-    .where(eq(organizationSchema.id, orgId))
-    .limit(1);
-
-  if (!org || org.status !== 'active' || !org.priceId) {
-    return PLAN_ID.FREE;
-  }
-
-  // 比對 priceId 判斷方案
-  const premiumPriceId = getPriceId(PLAN_ID.PREMIUM);
-  const enterprisePriceId = getPriceId(PLAN_ID.ENTERPRISE);
-
-  if (org.priceId === enterprisePriceId) {
+// subscription.plan 字串 ↔ PLAN_ID
+function mapPlan(plan: string): string {
+  if (plan === 'team') {
     return PLAN_ID.ENTERPRISE;
   }
-  if (org.priceId === premiumPriceId) {
+  if (plan === 'pro') {
     return PLAN_ID.PREMIUM;
   }
   return PLAN_ID.FREE;
 }
 
 /**
- * 判斷是否為付費方案（Pro 或 Enterprise）
- * 2026/4 月測試期間：所有用戶視為 Pro，5 月起正式分級
+ * 取得目前登入用戶的方案 ID
+ * 簽名保留 orgId 參數以維持向後相容（暫不使用，僅作未來 org-level 分潤識別）
  */
-export async function isProOrAbove(_orgId: string): Promise<boolean> {
-  // 測試期間：2026 年 4 月底前所有用戶視為 Pro
-  const now = new Date();
-  if (now.getFullYear() === 2026 && now.getMonth() <= 3) { // 0-based: 3 = 四月
+export async function getOrgPlanId(_orgId: string): Promise<string> {
+  const { userId } = await auth();
+  if (!userId) {
+    return PLAN_ID.FREE;
+  }
+
+  const [sub] = await db
+    .select({
+      plan: subscriptionSchema.plan,
+      status: subscriptionSchema.status,
+    })
+    .from(subscriptionSchema)
+    .where(eq(subscriptionSchema.clerkUserId, userId))
+    .limit(1);
+
+  if (!sub || !ACTIVE_STATUSES.has(sub.status)) {
+    return PLAN_ID.FREE;
+  }
+
+  return mapPlan(sub.plan);
+}
+
+/**
+ * 是否為 Pro 或以上方案（用於 AI 出題、進階功能解鎖等地方）
+ *
+ * 測試期延長至 2026-06-30：所有登入用戶視為 Pro。
+ * 此期限到期後（或 30 天試用機制上線後）刪除這段 hardcode。
+ * TODO: 整合 30 天試用機制（待實作 trial schema + 倒數）
+ */
+export async function isProOrAbove(orgId: string): Promise<boolean> {
+  // 測試期 hardcode：2026-06-30 23:59:59 (UTC) 前所有用戶視為 Pro
+  // 用 UTC ms timestamp 避免時區誤判
+  const TEST_PERIOD_END = Date.UTC(2026, 5, 30, 23, 59, 59); // 月份 0-indexed: 5 = 6 月
+  if (Date.now() < TEST_PERIOD_END) {
     return true;
   }
 
-  const planId = await getOrgPlanId(_orgId);
+  const planId = await getOrgPlanId(orgId);
   return planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE;
 }
