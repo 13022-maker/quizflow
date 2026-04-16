@@ -5,17 +5,19 @@ export const CenteredHero = (props: {
   buttons: React.ReactNode;
 }) => (
   <>
-    <div className="text-center">{props.banner}</div>
+    {props.banner && (
+      <div className="mb-6 flex justify-center">{props.banner}</div>
+    )}
 
-    <div className="mt-3 text-center text-5xl font-bold tracking-tight">
+    <h1 className="text-center text-4xl font-bold leading-[1.15] tracking-tight text-foreground sm:text-5xl md:text-6xl">
       {props.title}
-    </div>
+    </h1>
 
-    <div className="mx-auto mt-5 max-w-screen-md text-center text-xl text-muted-foreground">
+    <p className="mx-auto mt-6 max-w-2xl text-center text-lg leading-relaxed text-muted-foreground sm:text-xl">
       {props.description}
-    </div>
+    </p>
 
-    <div className="mt-8 flex justify-center gap-x-5 gap-y-3 max-sm:flex-col">
+    <div className="mt-10 flex justify-center gap-3 max-sm:flex-col max-sm:items-stretch max-sm:px-4">
       {props.buttons}
     </div>
   </>

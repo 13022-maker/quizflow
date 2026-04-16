@@ -3,15 +3,18 @@ export const FeatureCard = (props: {
   title: string;
   children: React.ReactNode;
 }) => (
-  <div className="rounded-xl border border-border bg-card p-5">
-    <div className="size-12 rounded-lg bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 p-2 [&_svg]:stroke-white [&_svg]:stroke-2">
+  <div className="rounded-xl border bg-card p-6 transition-colors hover:border-primary/40">
+    {/* 墨綠色 icon 方塊，配合主色系 */}
+    <div className="size-11 rounded-lg bg-primary p-2.5 [&_svg]:size-full [&_svg]:stroke-primary-foreground [&_svg]:stroke-2">
       {props.icon}
     </div>
 
-    <div className="mt-2 text-lg font-bold">{props.title}</div>
+    <h3 className="mt-5 text-lg font-semibold tracking-tight text-foreground">
+      {props.title}
+    </h3>
 
-    <div className="my-3 w-8 border-t border-purple-400" />
-
-    <div className="mt-2 text-muted-foreground">{props.children}</div>
+    <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+      {props.children}
+    </p>
   </div>
 );
