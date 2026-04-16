@@ -30,18 +30,64 @@ type WeakPoint = { concept: string; suggestion: string };
 // 錯題重做結果型別
 type RetryResult = { correct: number; total: number };
 
+// ── 家教模式：本機批改（與 server-side 邏輯一致） ───────────────
+// 簡答題回傳 null（無法自動判對錯，只能顯示參考答案）
+function gradeAnswer(question: Question, answer: string | string[] | undefined): boolean | null {
+  if (question.type === 'short_answer') {
+    return null;
+  }
+  if (!question.correctAnswers || answer === undefined) {
+    return false;
+  }
+  if (question.type === 'single_choice' || question.type === 'true_false') {
+    return question.correctAnswers.includes(answer as string);
+  }
+  if (question.type === 'multiple_choice') {
+    const given = Array.isArray(answer) ? [...answer].sort() : [];
+    const expected = [...question.correctAnswers].sort();
+    return JSON.stringify(given) === JSON.stringify(expected);
+  }
+  if (question.type === 'ranking') {
+    const given = Array.isArray(answer) ? answer : [];
+    return JSON.stringify(given) === JSON.stringify(question.correctAnswers);
+  }
+  return false;
+}
+
+// 將 option id 陣列翻成顯示文字（家教模式呈現正解用）
+function answerToText(question: Question, ids: string[] | null | undefined): string {
+  if (!ids || ids.length === 0) {
+    return '—';
+  }
+  const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+  const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
+    ? tfDefaults
+    : (question.options ?? []);
+  const sep = question.type === 'ranking' ? ' → ' : '、';
+  return ids.map(id => options.find(o => o.id === id)?.text ?? id).join(sep);
+}
+
 // ── 個別題目元件 ─────────────────────────────────────────────────
+
+type TutorState = {
+  checked: boolean; // 是否已點「確認答案」
+  correct: boolean | null; // 對錯（短答題 = null）
+  onCheck: () => void;
+  onReset: () => void;
+};
 
 function QuestionItem({
   question,
   index,
   answer,
   onChange,
+  tutor,
 }: {
   question: Question;
   index: number;
   answer: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
+  tutor?: TutorState;
 }) {
   // 是非題若 DB 中沒有 options，自動補上預設選項
   const TRUE_FALSE_DEFAULTS = [
@@ -145,6 +191,62 @@ function QuestionItem({
             value={Array.isArray(answer) ? answer : undefined}
             onChange={v => onChange(v)}
           />
+        </div>
+      )}
+
+      {/* 家教模式：確認按鈕 + 即時批改 feedback */}
+      {tutor && (
+        <div className="mt-4 border-t pt-4">
+          {!tutor.checked
+            ? (
+                <button
+                  type="button"
+                  onClick={tutor.onCheck}
+                  disabled={answer === undefined || (Array.isArray(answer) && answer.length === 0)}
+                  className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                >
+                  確認答案
+                </button>
+              )
+            : (
+                <div className="space-y-2">
+                  {/* 短答題：只顯示參考答案，不判對錯 */}
+                  {question.type === 'short_answer'
+                    ? (
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+                          <p className="font-medium text-amber-800">📝 短答題不自動批改</p>
+                          {question.correctAnswers && question.correctAnswers.length > 0 && (
+                            <p className="mt-1 text-amber-700">
+                              <span className="font-medium">參考答案：</span>
+                              {question.correctAnswers.join('、')}
+                            </p>
+                          )}
+                        </div>
+                      )
+                    : tutor.correct
+                      ? (
+                          <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
+                            ✓ 答對了！
+                          </div>
+                        )
+                      : (
+                          <div className="space-y-1.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
+                            <p className="font-medium text-red-700">✗ 答錯了</p>
+                            <p className="text-foreground/80">
+                              <span className="text-muted-foreground">正解：</span>
+                              {answerToText(question, question.correctAnswers)}
+                            </p>
+                          </div>
+                        )}
+                  <button
+                    type="button"
+                    onClick={tutor.onReset}
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    再試一次
+                  </button>
+                </div>
+              )}
         </div>
       )}
     </div>
@@ -565,6 +667,11 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
   // 快閃卡複習模式
   const [flashCardMode, setFlashCardMode] = useState(false);
+
+  // 家教模式（即時批改、不送 server、不計成績）
+  const [tutorMode, setTutorMode] = useState(false);
+  const [tutorChecks, setTutorChecks] = useState<Record<number, boolean>>({});
+
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
@@ -801,33 +908,83 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             </>
           )}
         </p>
-        <button
-          onClick={() => setFlashCardMode(true)}
-          className="mt-3 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-        >
-          🃏 複習模式
-        </button>
-      </div>
-
-      {/* 學生資料（選填） */}
-      <div className="rounded-xl border bg-card p-6">
-        <p className="mb-3 text-sm font-medium">作答者資料（選填）</p>
-        <div className="flex gap-3 max-sm:flex-col">
-          <input
-            value={studentName}
-            onChange={e => setStudentName(e.target.value)}
-            placeholder="姓名"
-            className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-          />
-          <input
-            type="email"
-            value={studentEmail}
-            onChange={e => setStudentEmail(e.target.value)}
-            placeholder="Email"
-            className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-          />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setFlashCardMode(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            🃏 複習模式
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setTutorMode(true);
+              setTutorChecks({});
+              setError('');
+            }}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            🎓 家教模式
+          </button>
         </div>
       </div>
+
+      {/* 家教模式 banner（即時批改、不計成績） */}
+      {tutorMode && (
+        <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-primary">🎓 家教模式</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                每題作答後點「確認答案」即時看對錯與正解 · 此模式不計入成績
+                {' · '}
+                已完成
+                {' '}
+                {Object.values(tutorChecks).filter(Boolean).length}
+                {' '}
+                /
+                {' '}
+                {displayQuestions.length}
+                {' '}
+                題
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setTutorMode(false);
+                setTutorChecks({});
+              }}
+              className="shrink-0 rounded-lg border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              結束家教模式
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 學生資料（選填）— 家教模式不顯示，因為不送 DB */}
+      {!tutorMode && (
+        <div className="rounded-xl border bg-card p-6">
+          <p className="mb-3 text-sm font-medium">作答者資料（選填）</p>
+          <div className="flex gap-3 max-sm:flex-col">
+            <input
+              value={studentName}
+              onChange={e => setStudentName(e.target.value)}
+              placeholder="姓名"
+              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+            />
+            <input
+              type="email"
+              value={studentEmail}
+              onChange={e => setStudentEmail(e.target.value)}
+              placeholder="Email"
+              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+            />
+          </div>
+        </div>
+      )}
 
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
@@ -837,24 +994,42 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           index={index}
           answer={answers[question.id]}
           onChange={value => handleAnswer(question.id, value)}
+          tutor={
+            tutorMode
+              ? {
+                  checked: !!tutorChecks[question.id],
+                  correct: tutorChecks[question.id]
+                    ? gradeAnswer(question, answers[question.id])
+                    : null,
+                  onCheck: () => setTutorChecks(prev => ({ ...prev, [question.id]: true })),
+                  onReset: () => setTutorChecks((prev) => {
+                    const next = { ...prev };
+                    delete next[question.id];
+                    return next;
+                  }),
+                }
+              : undefined
+          }
         />
       ))}
 
-      {/* 錯誤訊息 + 提交 */}
+      {/* 錯誤訊息 + 提交（家教模式不顯示送出鈕） */}
       {error && (
         <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
 
-      <Button
-        onClick={() => handleSubmit()}
-        disabled={isPending}
-        className="w-full"
-        size="lg"
-      >
-        {isPending ? '提交中…' : '送出作答'}
-      </Button>
+      {!tutorMode && (
+        <Button
+          onClick={() => handleSubmit()}
+          disabled={isPending}
+          className="w-full"
+          size="lg"
+        >
+          {isPending ? '提交中…' : '送出作答'}
+        </Button>
+      )}
     </div>
   );
 }
