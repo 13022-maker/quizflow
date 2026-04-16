@@ -32,7 +32,19 @@ function mapPlan(plan: string): string {
 
 /**
  * 取得目前登入用戶的方案 ID
- * 簽名保留 orgId 參數以維持向後相容（暫不使用，僅作未來 org-level 分潤識別）
+ *
+ * 目前實作：方案 1（純 user-level 訂閱）— 老師個人付費，自己受惠
+ * 短期內 99% 用戶是 1 人 = 1 org，行為等同方案 3
+ *
+ * TODO（方案 3：Team org-fanout）— 等第一個學校採購（Team plan）時實作：
+ *   1. 先用 userId 查當下用戶訂閱 → 若為 PREMIUM/ENTERPRISE 直接回傳
+ *   2. 若無，再查 org 內所有 member 的 subscription，
+ *      若有任一 member 持有 plan = 'team' 的有效訂閱 → 整 org 視為 ENTERPRISE
+ *   3. 否則回傳 FREE
+ *   做法：透過 clerkClient().organizations.getOrganizationMembershipList({ organizationId: orgId })
+ *   取得所有 userId，再 IN 查 subscription
+ *
+ * 簽名保留 orgId 參數以便未來方案 3 升級不需修改 8 處呼叫。
  */
 export async function getOrgPlanId(_orgId: string): Promise<string> {
   const { userId } = await auth();
