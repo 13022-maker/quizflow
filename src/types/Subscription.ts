@@ -11,41 +11,16 @@ export const BILLING_INTERVAL = {
 
 export type BillingInterval = EnumValues<typeof BILLING_INTERVAL>;
 
-export const SUBSCRIPTION_STATUS = {
-  ACTIVE: 'active',
-  PENDING: 'pending',
-} as const;
-
+// 方案資料結構（Paddle Price ID 改用 env 變數管理，這裡只留顯示 / 配額用欄位）
 export type PricingPlan = {
   id: PlanId;
-  price: number;
+  price: number; // 月繳價（NT$）
   interval: BillingInterval;
-  testPriceId: string; // Use for testing
-  devPriceId: string;
-  prodPriceId: string;
   features: {
     teamMember: number;
-    website: number;
+    website: number; // 測驗數量上限（999 = 無限）
     storage: number;
     transfer: number;
     aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）
   };
 };
-
-export type IStripeSubscription = {
-  stripeSubscriptionId: string | null;
-  stripeSubscriptionPriceId: string | null;
-  stripeSubscriptionStatus: string | null;
-  stripeSubscriptionCurrentPeriodEnd: number | null;
-};
-
-export type PlanDetails =
-  | {
-    isPaid: true;
-    plan: PricingPlan;
-    stripeDetails: IStripeSubscription;
-  } | {
-    isPaid: false;
-    plan: PricingPlan;
-    stripeDetails?: undefined;
-  };

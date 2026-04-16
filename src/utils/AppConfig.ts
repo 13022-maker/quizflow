@@ -27,9 +27,6 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     id: PLAN_ID.FREE,
     price: 0,
     interval: BILLING_INTERVAL.MONTH,
-    testPriceId: '',
-    devPriceId: '',
-    prodPriceId: '',
     features: {
       teamMember: 1,
       website: 10, // 最多 10 個測驗
@@ -42,9 +39,6 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     id: PLAN_ID.PREMIUM,
     price: 299, // Pro 老師：NT$299/月（年繳 NT$2,490），無限測驗 + AI 出題
     interval: BILLING_INTERVAL.MONTH,
-    testPriceId: 'price_premium_test',
-    devPriceId: 'price_1PNksvKOp3DEwzQlGOXO7YBK',
-    prodPriceId: '',
     features: {
       teamMember: 1,
       website: 999, // 無限測驗（用 999 代表無上限）
@@ -57,9 +51,6 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     id: PLAN_ID.ENTERPRISE,
     price: 1990, // 學校方案：NT$1,990/月（年繳 NT$16,990），最多 30 位老師
     interval: BILLING_INTERVAL.MONTH,
-    testPriceId: 'price_enterprise_test',
-    devPriceId: '',
-    prodPriceId: '',
     features: {
       teamMember: 30, // 最多 30 位老師帳號（學校方案）
       website: 999, // 無限測驗
