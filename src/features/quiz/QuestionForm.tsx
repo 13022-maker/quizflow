@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -38,9 +38,10 @@ type Props = {
   onSubmit: (data: QuestionFormValues) => Promise<void>;
   onCancel: () => void;
   isPending?: boolean;
+  quizId: number; // 圖片上傳需指定所屬測驗
 };
 
-export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: Props) {
+export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, quizId }: Props) {
   // useId() 保證 server/client 渲染一致，避免 hydration mismatch
   const id1 = useId();
   const id2 = useId();
@@ -69,6 +70,49 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
 
   const type = form.watch('type');
   const correctAnswers = form.watch('correctAnswers') ?? [];
+
+  // 圖片上傳（本地檔案 → Vercel Blob）
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    setUploadError('');
+    if (!file.type.startsWith('image/')) {
+      setUploadError('請選擇圖片檔');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('檔案超過 5 MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/upload/quiz-image/${quizId}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? '上傳失敗');
+      }
+      form.setValue('imageUrl', data.url, { shouldDirty: true });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : '上傳失敗');
+    } finally {
+      setUploading(false);
+      // 清空 input 以便重複選同一檔案
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   // 切換題型時重設選項
   useEffect(() => {
@@ -185,14 +229,30 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
         {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
         <label className="mb-1 block text-sm font-medium">
           題目圖片
-          <span className="ml-1 text-xs font-normal text-muted-foreground">（選填，貼上圖片網址）</span>
+          <span className="ml-1 text-xs font-normal text-muted-foreground">（選填，可上傳、貼網址或搜尋）</span>
         </label>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <input
             {...form.register('imageUrl')}
             placeholder="https://example.com/image.jpg"
-            className="h-8 flex-1 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
+          {/* 本地上傳（hidden input + 按鈕觸發） */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="shrink-0 rounded-md border border-input bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+          >
+            {uploading ? '上傳中…' : '📤 上傳'}
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -201,9 +261,12 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending }: P
             }}
             className="shrink-0 rounded-md border border-input bg-background px-3 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
           >
-            搜尋圖片
+            🔍 搜尋
           </button>
         </div>
+        {uploadError && (
+          <p className="mt-1 text-xs text-destructive">{uploadError}</p>
+        )}
         {/* 圖片預覽 */}
         {form.watch('imageUrl') && (
           <div className="mt-2 flex items-center justify-center overflow-hidden rounded-lg bg-[#f5f5f5]">

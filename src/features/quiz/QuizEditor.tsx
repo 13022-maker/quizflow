@@ -736,6 +736,7 @@ export function QuizEditor({
                           {index + 1}
                         </p>
                         <QuestionForm
+                          quizId={initialQuiz.id}
                           defaultValues={{
                             type: question.type,
                             body: question.body,
@@ -779,6 +780,7 @@ export function QuizEditor({
       {addingNew
         ? (
             <QuestionForm
+              quizId={initialQuiz.id}
               onSubmit={handleAddQuestion}
               onCancel={() => setAddingNew(false)}
               isPending={isSubmitting}
