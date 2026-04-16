@@ -28,7 +28,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   if (!quiz || quiz.status !== 'published') {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="rounded-lg border bg-card p-8 text-center">
+        <div className="rounded-xl border bg-card p-10 text-center shadow-sm">
           <p className="text-lg font-semibold">{t('not_available')}</p>
           <p className="mt-2 text-sm text-muted-foreground">{t('not_available_description')}</p>
         </div>
@@ -40,7 +40,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   if (quiz.expiresAt && new Date() > quiz.expiresAt) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="rounded-lg border bg-card p-8 text-center">
+        <div className="rounded-xl border bg-card p-10 text-center shadow-sm">
           <p className="text-lg font-semibold">此測驗已結束</p>
           <p className="mt-2 text-sm text-muted-foreground">測驗連結已過期，無法作答。</p>
         </div>
@@ -57,7 +57,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   if (questions.length === 0) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="rounded-lg border bg-card p-8 text-center">
+        <div className="rounded-xl border bg-card p-10 text-center shadow-sm">
           <p className="text-lg font-semibold">{t('no_questions')}</p>
         </div>
       </div>
@@ -65,7 +65,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   }
 
   return (
-    <div className="min-h-screen bg-muted py-10">
+    <div className="min-h-screen bg-muted/50 py-12 md:py-16">
       <div className="mx-auto max-w-2xl px-4">
         <QuizTaker quiz={quiz} questions={questions} />
       </div>

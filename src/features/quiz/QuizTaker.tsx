@@ -60,7 +60,7 @@ function QuestionItem({
   };
 
   return (
-    <div className="rounded-lg border bg-card p-5">
+    <div className="rounded-xl border bg-card p-6">
       <div className="mb-3 flex items-start gap-2">
         <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
           Q
@@ -241,9 +241,9 @@ function ResultScreen({
   return (
     <div className="space-y-6">
       {/* 總分 */}
-      <div className="rounded-lg border bg-card p-6 text-center">
-        <p className="text-sm text-muted-foreground">作答完成</p>
-        <p className="mt-2 text-5xl font-bold">
+      <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
+        <p className="text-sm font-medium text-muted-foreground">作答完成</p>
+        <p className="mt-3 text-5xl font-bold tabular-nums tracking-tight">
           {result.score}
           <span className="text-2xl text-muted-foreground">
             /
@@ -277,22 +277,22 @@ function ResultScreen({
 
       {/* AI 弱點分析區塊（有答錯且有解答時顯示） */}
       {showAnswers && (
-        <div className="rounded-lg border bg-blue-50/60 p-5">
-          <h3 className="mb-3 font-semibold text-blue-800">需要加強的概念</h3>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-6">
+          <h3 className="mb-4 font-semibold tracking-tight text-foreground">需要加強的概念</h3>
           {analysisLoading && (
-            <p className="text-sm text-blue-700">AI 正在分析你的學習弱點…</p>
+            <p className="text-sm text-muted-foreground">AI 正在分析你的學習弱點…</p>
           )}
           {analysisError && (
-            <p className="text-sm text-red-600">{analysisError}</p>
+            <p className="text-sm text-destructive">{analysisError}</p>
           )}
           {weakPoints !== null && weakPoints.length === 0 && (
-            <p className="text-sm text-blue-700">太棒了！本次沒有答錯的題目。</p>
+            <p className="text-sm text-primary">太棒了！本次沒有答錯的題目。</p>
           )}
           {weakPoints && weakPoints.length > 0 && (
             <ul className="space-y-3">
               {weakPoints.map(wp => (
-                <li key={wp.concept} className="rounded-md bg-white px-4 py-3 text-sm shadow-sm">
-                  <p className="font-medium text-blue-900">{wp.concept}</p>
+                <li key={wp.concept} className="rounded-lg bg-card px-4 py-3 text-sm shadow-sm">
+                  <p className="font-medium text-foreground">{wp.concept}</p>
                   <p className="mt-0.5 text-muted-foreground">{wp.suggestion}</p>
                 </li>
               ))}
@@ -319,13 +319,13 @@ function ResultScreen({
             const isShort = question.type === 'short_answer';
 
             const borderColor = isShort
-              ? 'border-gray-200'
+              ? ''
               : detail?.isCorrect
                 ? 'border-green-300 bg-green-50/50'
                 : 'border-red-300 bg-red-50/50';
 
             return (
-              <div key={question.id} className={`rounded-lg border p-4 ${borderColor}`}>
+              <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-sm font-medium">
                     Q
@@ -436,8 +436,8 @@ function RetryScreen({
     const improved = retryResult.correct;
     return (
       <div className="space-y-6">
-        <div className="rounded-lg border bg-card p-6 text-center">
-          <p className="text-sm text-muted-foreground">錯題重做完成！</p>
+        <div className="rounded-xl border bg-card p-8 text-center shadow-sm">
+          <p className="text-sm font-medium text-muted-foreground">錯題重做完成！</p>
           <div className="mt-4 flex items-center justify-center gap-4">
             <div className="text-center">
               <p className="text-xs text-muted-foreground">上次</p>
@@ -478,7 +478,7 @@ function RetryScreen({
   return (
     <div className="space-y-6">
       {/* 提示 */}
-      <div className="rounded-lg border bg-amber-50 p-4">
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
         <p className="text-sm font-medium text-amber-800">錯題重做模式</p>
         <p className="mt-0.5 text-xs text-amber-700">
           共
@@ -736,7 +736,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     <div className="space-y-6">
       {/* 考試防作弊：離開頁面警告 banner */}
       {leaveWarning === 'warning' && (
-        <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-3.5 text-sm text-amber-800">
           ⚠️ 偵測到你離開考試頁面，請專心作答
           {leaveCount > 1 && (
             <span className="ml-2 text-xs text-amber-700">
@@ -750,7 +750,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         </div>
       )}
       {leaveWarning === 'danger' && (
-        <div className="rounded-lg border border-red-400 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
+        <div className="rounded-xl border border-red-400 bg-red-50 px-5 py-3.5 text-sm font-medium text-red-800">
           🚨 多次離開頁面已被記錄，老師將會看到此記錄
           <span className="ml-2 text-xs text-red-700">
             （已離開
@@ -763,9 +763,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       )}
 
       {/* 測驗標題 */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-xl border bg-card p-6">
         <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold">{quiz.title}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">{quiz.title}</h1>
           {timeLeft !== null && (
             <div className={`shrink-0 rounded-full px-3 py-1 font-mono text-sm font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
               {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
@@ -810,7 +810,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       </div>
 
       {/* 學生資料（選填） */}
-      <div className="rounded-lg border bg-card p-5">
+      <div className="rounded-xl border bg-card p-6">
         <p className="mb-3 text-sm font-medium">作答者資料（選填）</p>
         <div className="flex gap-3 max-sm:flex-col">
           <input
