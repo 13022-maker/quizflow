@@ -36,17 +36,17 @@ export default async function BillingPage() {
               <p className="text-sm text-muted-foreground">目前方案</p>
               <p className="mt-1 text-2xl font-bold">
                 {planId === PLAN_ID.ENTERPRISE
-                  ? 'Enterprise'
+                  ? '學校方案'
                   : isPro
-                    ? 'Pro'
+                    ? 'Pro 老師'
                     : '免費版'}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold">
-                $
-                {plan.price}
-                <span className="text-base font-normal text-muted-foreground">/月</span>
+              <p className="text-3xl font-bold tabular-nums">
+                <span className="mr-0.5 text-base font-medium text-muted-foreground">NT$</span>
+                {plan.price.toLocaleString()}
+                <span className="ml-1 text-base font-normal text-muted-foreground">/月</span>
               </p>
             </div>
           </div>
@@ -104,12 +104,13 @@ export default async function BillingPage() {
                   <FeatureItem text="班級 AI 分析報表" />
                   <FeatureItem text="CSV 成績匯出" />
                 </ul>
-                {/* TODO: 串接 ECPay / Stripe checkout */}
+                {/* TODO: 串接 Paddle Checkout overlay（hooks/useCheckout） */}
                 <button
+                  type="button"
                   disabled
                   className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60"
                 >
-                  即將推出 — $9/月
+                  即將推出 — NT$299/月
                 </button>
                 <p className="mt-2 text-center text-xs text-muted-foreground">
                   付款功能開發中，敬請期待
@@ -122,12 +123,13 @@ export default async function BillingPage() {
                 <p className="mb-4 text-sm text-muted-foreground">
                   你目前使用的是
                   {' '}
-                  <strong>{planId === PLAN_ID.ENTERPRISE ? 'Enterprise' : 'Pro'}</strong>
+                  <strong>{planId === PLAN_ID.ENTERPRISE ? '學校方案' : 'Pro 老師'}</strong>
                   {' '}
                   方案。
                 </p>
-                {/* TODO: 串接 Stripe Customer Portal */}
+                {/* TODO: 串接 Paddle Customer Portal（管理訂閱、取消、變更付款方式） */}
                 <button
+                  type="button"
                   disabled
                   className="rounded-lg border border-destructive/30 px-5 py-2 text-sm text-destructive opacity-60"
                 >
@@ -145,17 +147,17 @@ export default async function BillingPage() {
                 <tr className="border-b">
                   <th className="px-4 py-2 text-left font-medium text-muted-foreground">功能</th>
                   <th className="px-4 py-2 text-center font-medium">免費版</th>
-                  <th className="px-4 py-2 text-center font-medium">Pro</th>
-                  <th className="px-4 py-2 text-center font-medium">Enterprise</th>
+                  <th className="px-4 py-2 text-center font-medium">Pro 老師</th>
+                  <th className="px-4 py-2 text-center font-medium">學校方案</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
                 <CompareRow feature="測驗數量" free="10 份" pro="無限" enterprise="無限" />
                 <CompareRow feature="AI 出題" free="10 次/月" pro="無限" enterprise="無限" />
-                <CompareRow feature="團隊成員" free="1 人" pro="1 人" enterprise="無限" />
+                <CompareRow feature="團隊成員" free="1 人" pro="1 人" enterprise="最多 30 人" />
                 <CompareRow feature="AI 班級分析" free="—" pro="✓" enterprise="✓" />
                 <CompareRow feature="CSV 匯出" free="—" pro="✓" enterprise="✓" />
-                <CompareRow feature="價格" free="免費" pro="$9/月" enterprise="$29/月" />
+                <CompareRow feature="價格" free="免費" pro="NT$299/月" enterprise="NT$1,990/月" />
               </tbody>
             </table>
           </div>
