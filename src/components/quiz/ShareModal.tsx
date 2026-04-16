@@ -39,6 +39,9 @@ export default function ShareModal({
   const [expiryPreset, setExpiryPreset] = useState<string>('none');
 
   const quizUrl = `${window.location.origin}/quiz/${accessCode}`;
+  // LINE 內建瀏覽器 block 登入、檔案上傳等功能，分享時加上 ?openExternalBrowser=1
+  // LINE 會辨識此官方參數並強制用系統預設瀏覽器（Safari / Chrome）開啟
+  const shareUrl = `${quizUrl}?openExternalBrowser=1`;
 
   // 下載 QR Code 為 PNG
   const handleDownload = () => {
@@ -69,9 +72,9 @@ export default function ShareModal({
     img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
   };
 
-  // 複製連結
+  // 複製連結（含 LINE 外部瀏覽器參數）
   const handleCopy = () => {
-    navigator.clipboard.writeText(quizUrl).then(() => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
@@ -90,15 +93,15 @@ export default function ShareModal({
 
   // LINE 分享
   const handleShareLine = () => {
-    const text = `加入測驗「${quizTitle}」${roomCode ? `，房間碼：${roomCode}` : ''}，點擊加入：${quizUrl}`;
-    const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(quizUrl)}&text=${encodeURIComponent(text)}`;
+    const text = `加入測驗「${quizTitle}」${roomCode ? `，房間碼：${roomCode}` : ''}，點擊加入：${shareUrl}`;
+    const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
     window.open(url, '_blank', 'width=500,height=600');
   };
 
   // Google Classroom 分享
   const handleShareClassroom = () => {
-    const body = `${roomCode ? `房間碼：${roomCode}\n` : ''}點擊加入：${quizUrl}`;
-    const url = `https://classroom.google.com/share?url=${encodeURIComponent(quizUrl)}&title=${encodeURIComponent(quizTitle)}&body=${encodeURIComponent(body)}`;
+    const body = `${roomCode ? `房間碼：${roomCode}\n` : ''}點擊加入：${shareUrl}`;
+    const url = `https://classroom.google.com/share?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(quizTitle)}&body=${encodeURIComponent(body)}`;
     window.open(url, '_blank', 'width=600,height=600');
   };
 
@@ -179,7 +182,7 @@ export default function ShareModal({
           className="mx-auto mb-3 flex items-center justify-center rounded-lg bg-white p-3"
           style={{ width: 180, height: 180 }}
         >
-          <QRCode value={quizUrl} size={156} bgColor="#ffffff" fgColor="#000000" />
+          <QRCode value={shareUrl} size={156} bgColor="#ffffff" fgColor="#000000" />
         </div>
 
         {/* 連結 */}
