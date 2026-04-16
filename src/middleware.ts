@@ -14,10 +14,13 @@ const intlMiddleware = createMiddleware({
   defaultLocale: AppConfig.defaultLocale,
 });
 
-// 公開可存取、不需登入的 API 路徑（Paddle webhook 等外部服務呼叫）
+// 公開可存取、不需登入的 API 路徑（Paddle webhook、學生作答相關）
 const isPublicApiRoute = createRouteMatcher([
   '/api/webhook(.*)',
   '/:locale/api/webhook(.*)',
+  // AI 助教：學生作答前查看 AI 提示，匿名作答所以不需登入
+  '/api/ai/generate-hints/(.*)',
+  '/:locale/api/ai/generate-hints/(.*)',
 ]);
 
 const isProtectedRoute = createRouteMatcher([

@@ -9,6 +9,7 @@ import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
+import { AIAssistant } from './AIAssistant';
 import { FlashCard } from './FlashCard';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
@@ -668,6 +669,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 快閃卡複習模式
   const [flashCardMode, setFlashCardMode] = useState(false);
 
+  // AI 助教模式
+  const [aiAssistantMode, setAiAssistantMode] = useState(false);
+
   // 家教模式（即時批改、不送 server、不計成績）
   const [tutorMode, setTutorMode] = useState(false);
   const [tutorChecks, setTutorChecks] = useState<Record<number, boolean>>({});
@@ -814,6 +818,17 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     );
   }
 
+  // AI 助教模式
+  if (aiAssistantMode) {
+    return (
+      <AIAssistant
+        quizId={quiz.id}
+        questions={displayQuestions}
+        onExit={() => setAiAssistantMode(false)}
+      />
+    );
+  }
+
   // 錯題重做模式
   if (result && retryMode) {
     return (
@@ -915,6 +930,13 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             🃏 複習模式
+          </button>
+          <button
+            type="button"
+            onClick={() => setAiAssistantMode(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            🤖 AI 助教
           </button>
           {/*
             家教模式按鈕暫時隱藏（保留 tutor logic 在下方，之後想啟用直接還原此區塊即可）

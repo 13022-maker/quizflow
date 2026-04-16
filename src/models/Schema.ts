@@ -110,6 +110,7 @@ export const questionSchema = pgTable('question', {
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
+  aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
