@@ -70,10 +70,11 @@ const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | '
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
 
-const STATUS_MAP: Record<Quiz['status'], { label: string; color: string }> = {
-  draft: { label: '草稿', color: 'bg-gray-100 text-gray-700' },
-  published: { label: '已發佈', color: 'bg-green-100 text-green-700' },
-  closed: { label: '已關閉', color: 'bg-red-100 text-red-600' },
+// 狀態樣式：小色點 + 文字（與 Dashboard 一致）
+const STATUS_MAP: Record<Quiz['status'], { label: string; dot: string }> = {
+  draft: { label: '草稿', dot: 'bg-muted-foreground/60' },
+  published: { label: '已發佈', dot: 'bg-primary' },
+  closed: { label: '已關閉', dot: 'bg-destructive' },
 };
 
 export function QuizEditor({
@@ -382,7 +383,7 @@ export function QuizEditor({
   const currentStatus = STATUS_MAP[status];
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-8">
       {/* ── 頂部操作列 ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
         <Link
@@ -401,14 +402,16 @@ export function QuizEditor({
           }}
           onBlur={handleSaveTitle}
           onKeyDown={e => e.key === 'Enter' && (e.currentTarget.blur())}
-          className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-xl font-semibold hover:border-input focus:border-input focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-3 py-1.5 text-xl font-semibold tracking-tight text-foreground hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring"
           aria-label="測驗標題"
         />
 
-        {/* 狀態 badge */}
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${currentStatus.color}`}
-        >
+        {/* 狀態 badge（小色點 + 文字，與 Dashboard 統一） */}
+        <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+          <span
+            className={`size-1.5 rounded-full ${currentStatus.dot}`}
+            aria-hidden="true"
+          />
           {currentStatus.label}
         </span>
 
@@ -541,10 +544,10 @@ export function QuizEditor({
       )}
 
       {/* ── 測驗設定 ─────────────────────────────────────────────── */}
-      <div className="space-y-4 rounded-lg border bg-card p-4">
+      <div className="space-y-5 rounded-xl border bg-card p-6">
         {/* 標題 + 快速套用方案按鈕 */}
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">測驗設定</p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">測驗設定</p>
           <div className="flex gap-2">
             {(
               [
@@ -576,7 +579,7 @@ export function QuizEditor({
                 className={`flex items-center gap-1.5 rounded-lg border-2 px-5 py-2.5 text-sm font-semibold transition-all duration-150 ${
                   activePreset === p.key
                     ? p.active
-                    : `border-gray-200 bg-white text-gray-500 ${p.hover}`
+                    : `border bg-card text-muted-foreground ${p.hover}`
                 }`}
               >
                 {p.label}
@@ -678,11 +681,14 @@ export function QuizEditor({
 
       {/* ── 題目清單 ────────────────────────────────────────────── */}
       <div>
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="font-medium">
-            題目（
-            {questions.length}
-            ）
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-semibold tracking-tight">
+            題目
+            <span className="ml-1 text-base font-normal text-muted-foreground">
+              （
+              {questions.length}
+              ）
+            </span>
           </h2>
           {questions.length > 1 && (
             <span className="text-xs text-muted-foreground">拖曳左側圓點可排序</span>
@@ -763,7 +769,7 @@ export function QuizEditor({
         </DndContext>
 
         {questions.length === 0 && !addingNew && (
-          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             還沒有題目，點選下方按鈕新增第一題
           </div>
         )}
@@ -780,11 +786,12 @@ export function QuizEditor({
           )
         : (
             <button
+              type="button"
               onClick={() => {
                 setEditingId(null);
                 setAddingNew(true);
               }}
-              className="w-full rounded-lg border border-dashed py-3 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground"
+              className="w-full rounded-xl border border-dashed py-3.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
               + 新增題目
             </button>
