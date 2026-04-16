@@ -26,8 +26,11 @@ export async function TrialBanner({ clerkUserId, orgId }: Props) {
     return null;
   }
 
-  // 試用中
+  // 試用中：只在剩 ≤ 7 天才顯示 banner（避免每天都看到干擾）
   if (trial.inTrial) {
+    if (trial.daysLeft > 7) {
+      return null;
+    }
     const urgent = trial.daysLeft <= 3;
     return (
       <div
