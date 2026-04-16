@@ -916,17 +916,20 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           >
             🃏 複習模式
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTutorMode(true);
-              setTutorChecks({});
-              setError('');
-            }}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
-          >
-            🎓 家教模式
-          </button>
+          {/*
+            家教模式按鈕暫時隱藏（保留 tutor logic 在下方，之後想啟用直接還原此區塊即可）
+            <button
+              type="button"
+              onClick={() => {
+                setTutorMode(true);
+                setTutorChecks({});
+                setError('');
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+            >
+              🎓 家教模式
+            </button>
+          */}
         </div>
       </div>
 
