@@ -287,11 +287,9 @@ function ResultScreen({
   const [analysisError, setAnalysisError] = useState('');
 
   // ── AI 助教提示（每題 ≤57 字解題提示） ──────────────────────
+  // 獨立於 showAnswers：即使老師設定不顯示解答，仍顯示概念提示（57 字不洩答）
   const [hints, setHints] = useState<Record<number, string>>({});
   useEffect(() => {
-    if (!showAnswers) {
-      return;
-    }
     fetch(`/api/ai/generate-hints/${quizId}`, { method: 'POST' })
       .then(r => (r.ok ? r.json() : null))
       .then((data) => {
@@ -302,7 +300,7 @@ function ResultScreen({
       .catch(() => {
         // 提示載入失敗就安靜忽略，不影響成績顯示
       });
-  }, [quizId, showAnswers]);
+  }, [quizId]);
 
   // 有顯示解答且有答錯時，自動呼叫 AI 分析
   useEffect(() => {
@@ -423,88 +421,88 @@ function ResultScreen({
         </div>
       )}
 
-      {/* 逐題對照（showAnswers = false 時隱藏） */}
-      {!showAnswers && (
-        <p className="rounded-md bg-muted px-4 py-3 text-center text-sm text-muted-foreground">
-          老師已關閉解答顯示。
-        </p>
-      )}
-      {showAnswers && (
-        <div className="space-y-3">
-          {questions.map((question, index) => {
-            const detail = result.details.find(d => d.questionId === question.id);
-            const studentAnswer = answers[question.id];
-            const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
-            const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
-              ? tfDefaults
-              : (question.options ?? []);
-            const isShort = question.type === 'short_answer';
+      {/* 逐題對照 + AI 助教提示
+          正確答案跟老師 showAnswers 設定走；AI 助教提示獨立於 showAnswers 永遠顯示 */}
+      <div className="space-y-3">
+        {questions.map((question, index) => {
+          const detail = result.details.find(d => d.questionId === question.id);
+          const studentAnswer = answers[question.id];
+          const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+          const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
+            ? tfDefaults
+            : (question.options ?? []);
+          const isShort = question.type === 'short_answer';
 
-            const borderColor = isShort
+          // 只有 showAnswers 時才用對錯色，否則中性邊框
+          const borderColor = !showAnswers
+            ? ''
+            : isShort
               ? ''
               : detail?.isCorrect
                 ? 'border-green-300 bg-green-50/50'
                 : 'border-red-300 bg-red-50/50';
 
-            return (
-              <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium">
-                    Q
-                    {index + 1}
-                    .
-                    {' '}
-                    {question.body}
-                  </p>
-                  <span className="shrink-0 text-xs text-muted-foreground">
-                    {detail?.points}
-                    {' '}
-                    分
-                  </span>
-                </div>
-
-                {/* 學生的答案 */}
-                <div className="mt-2 text-sm">
-                  <span className="text-muted-foreground">你的答案：</span>
-                  {Array.isArray(studentAnswer)
-                    ? studentAnswer
-                      .map(id => options.find(o => o.id === id)?.text ?? id)
-                      .join(question.type === 'ranking' ? ' → ' : '、')
-                    : typeof studentAnswer === 'string'
-                      ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
-                          <span className="italic text-muted-foreground">未作答</span>
-                        )
-                      : <span className="italic text-muted-foreground">未作答</span>}
-                </div>
-
-                {/* 正確答案（非簡答題且答錯） */}
-                {!isShort && detail?.isCorrect === false && question.correctAnswers && (
-                  <div className="mt-1 text-sm text-green-700">
-                    <span className="text-muted-foreground">正確答案：</span>
-                    {question.correctAnswers
-                      .map(id => options.find(o => o.id === id)?.text ?? id)
-                      .join(question.type === 'ranking' ? ' → ' : '、')}
-                  </div>
-                )}
-
-                {isShort && (
-                  <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
-                )}
-
-                {/* AI 助教提示（≤57 字，國中程度，每題都顯示） */}
-                {hints[question.id] && (
-                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
-                    <p className="text-xs font-semibold text-amber-800">💡 AI 助教</p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-amber-900">
-                      {hints[question.id]}
-                    </p>
-                  </div>
-                )}
+          return (
+            <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium">
+                  Q
+                  {index + 1}
+                  .
+                  {' '}
+                  {question.body}
+                </p>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  {detail?.points}
+                  {' '}
+                  分
+                </span>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              {/* 學生的答案 + 正解（皆受 showAnswers 控制） */}
+              {showAnswers && (
+                <>
+                  <div className="mt-2 text-sm">
+                    <span className="text-muted-foreground">你的答案：</span>
+                    {Array.isArray(studentAnswer)
+                      ? studentAnswer
+                        .map(id => options.find(o => o.id === id)?.text ?? id)
+                        .join(question.type === 'ranking' ? ' → ' : '、')
+                      : typeof studentAnswer === 'string'
+                        ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
+                            <span className="italic text-muted-foreground">未作答</span>
+                          )
+                        : <span className="italic text-muted-foreground">未作答</span>}
+                  </div>
+
+                  {!isShort && detail?.isCorrect === false && question.correctAnswers && (
+                    <div className="mt-1 text-sm text-green-700">
+                      <span className="text-muted-foreground">正確答案：</span>
+                      {question.correctAnswers
+                        .map(id => options.find(o => o.id === id)?.text ?? id)
+                        .join(question.type === 'ranking' ? ' → ' : '、')}
+                    </div>
+                  )}
+
+                  {isShort && (
+                    <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
+                  )}
+                </>
+              )}
+
+              {/* AI 助教提示（獨立於 showAnswers，永遠顯示解題概念） */}
+              {hints[question.id] && (
+                <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                  <p className="text-xs font-semibold text-amber-800">💡 AI 助教</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-amber-900">
+                    {hints[question.id]}
+                  </p>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
