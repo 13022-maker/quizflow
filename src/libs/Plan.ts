@@ -15,6 +15,7 @@ import { subscriptionSchema } from '@/models/Schema';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 import { db } from './DB';
+import { ensureTrialRecord } from './trial';
 
 // 視為「有效付費」的 Paddle 訂閱狀態
 const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due']);
@@ -71,18 +72,23 @@ export async function getOrgPlanId(_orgId: string): Promise<string> {
 /**
  * 是否為 Pro 或以上方案（用於 AI 出題、進階功能解鎖等地方）
  *
- * 測試期延長至 2026-06-30：所有登入用戶視為 Pro。
- * 此期限到期後（或 30 天試用機制上線後）刪除這段 hardcode。
- * TODO: 整合 30 天試用機制（待實作 trial schema + 倒數）
+ * 判斷順序：
+ *   1. subscription 表有 active / trialing / past_due → Pro
+ *   2. user_trial 表在試用期內（30 天） → Pro
+ *      lazy init：新用戶首次呼叫時會自動建立試用紀錄
+ *   3. 都沒有 → Free
  */
 export async function isProOrAbove(orgId: string): Promise<boolean> {
-  // 測試期 hardcode：2026-06-30 23:59:59 (UTC) 前所有用戶視為 Pro
-  // 用 UTC ms timestamp 避免時區誤判
-  const TEST_PERIOD_END = Date.UTC(2026, 5, 30, 23, 59, 59); // 月份 0-indexed: 5 = 6 月
-  if (Date.now() < TEST_PERIOD_END) {
+  const planId = await getOrgPlanId(orgId);
+  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE) {
     return true;
   }
 
-  const planId = await getOrgPlanId(orgId);
-  return planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE;
+  const { userId } = await auth();
+  if (!userId) {
+    return false;
+  }
+
+  const trial = await ensureTrialRecord(userId);
+  return trial.inTrial;
 }

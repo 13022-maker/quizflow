@@ -7,6 +7,7 @@ import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanne
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
 import { StreakCard } from '@/features/dashboard/StreakCard';
 import { TitleBar } from '@/features/dashboard/TitleBar';
+import { TrialBanner } from '@/features/dashboard/TrialBanner';
 import { db } from '@/libs/DB';
 import type { quizSchema as quizSchemaType } from '@/models/Schema';
 import { quizSchema, responseSchema } from '@/models/Schema';
@@ -28,7 +29,7 @@ const STATUS_DOT: Record<string, string> = {
 };
 
 export default async function DashboardIndexPage() {
-  const { orgId } = await auth();
+  const { orgId, userId } = await auth();
 
   let recentQuizzes: Quiz[] = [];
   let totalQuizCount = 0;
@@ -105,6 +106,13 @@ export default async function DashboardIndexPage() {
       <CheckoutSuccessBanner />
 
       <div className="px-4 pb-8">
+        {/* Pro 試用倒數 / 到期提示（已付費用戶不顯示） */}
+        {userId && (
+          <div className="mb-6">
+            <TrialBanner clerkUserId={userId} orgId={orgId} />
+          </div>
+        )}
+
         {/* 連勝卡片（所有登入使用者皆顯示） */}
         <div className="mb-6">
           <StreakCard />

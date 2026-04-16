@@ -204,6 +204,23 @@ export const userStreakSchema = pgTable('user_streak', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
+// ---------- user_trial ----------
+// 新註冊老師自動獲得 30 天 Pro 試用（首次查詢 lazy init 建立此紀錄）
+// ends_at 獨立儲存方便未來支援延長試用 / 客製化天數
+// 若有付費訂閱（subscription 表 status = active/trialing/past_due），試用紀錄會被忽略
+
+export const userTrialSchema = pgTable('user_trial', {
+  id: serial('id').primaryKey(),
+  clerkUserId: text('clerk_user_id').notNull().unique(),
+  startedAt: timestamp('started_at', { mode: 'date' }).defaultNow().notNull(),
+  endsAt: timestamp('ends_at', { mode: 'date' }).notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 // ---------- ai_usage ----------
 // 記錄每個 org 每月的 AI 出題次數（用於 Free Plan quota 限制）
 
