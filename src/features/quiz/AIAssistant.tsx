@@ -27,21 +27,29 @@ export function AIAssistant({ quizId, questions, onExit }: Props) {
   const [hints, setHints] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    setLoading(true);
+    setError('');
     fetch(`/api/ai/generate-hints/${quizId}`, { method: 'POST' })
-      .then((r) => {
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
         if (!r.ok) {
-          throw new Error('載入失敗');
+          throw new Error(data?.error ?? '載入失敗');
         }
-        return r.json();
+        return data;
       })
       .then((data) => {
         setHints(data.hints ?? {});
       })
-      .catch(() => setError('AI 助教暫時無法使用，請稍後再試'))
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'AI 助教暫時無法使用，請稍後再試');
+      })
       .finally(() => setLoading(false));
-  }, [quizId]);
+  }, [quizId, retryKey]);
+
+  const handleRetry = () => setRetryKey(k => k + 1);
 
   const current = questions[index];
   const total = questions.length;
@@ -106,7 +114,16 @@ export function AIAssistant({ quizId, questions, onExit }: Props) {
               )
             : error
               ? (
-                  <p className="text-sm text-destructive">{error}</p>
+                  <div className="space-y-2">
+                    <p className="text-sm text-destructive">{error}</p>
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      🔄 重試
+                    </button>
+                  </div>
                 )
               : currentHint
                 ? (

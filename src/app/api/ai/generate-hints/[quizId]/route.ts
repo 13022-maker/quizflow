@@ -25,6 +25,31 @@ export const maxDuration = 60;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 
+// Gemini 過載 / 限流自動重試（429 / 5xx）
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      const status = (err as { status?: number; code?: number }).status
+        ?? (err as { code?: number }).code;
+      // 從 message 中也抓 status（Gemini 有時錯誤物件包在 JSON 字串裡）
+      const extractedStatus = msg.match(/"code":(\d{3})/)?.[1];
+      const effectiveStatus = status ?? (extractedStatus ? Number.parseInt(extractedStatus, 10) : undefined);
+      const retryable
+        = effectiveStatus === 429
+        || effectiveStatus === 503
+        || (typeof effectiveStatus === 'number' && effectiveStatus >= 500);
+      if (!retryable || i === maxRetries - 1) {
+        throw err;
+      }
+      await new Promise(r => setTimeout(r, (i + 1) * 2000));
+    }
+  }
+  throw new Error('Gemini API 目前忙碌，請稍後再試');
+}
+
 export async function POST(
   _req: Request,
   { params }: { params: { quizId: string } },
@@ -80,14 +105,15 @@ JSON 格式（index 對應上面編號）：
 {"hints":[{"index":0,"hint":"..."},{"index":1,"hint":"..."}]}`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: {
-        maxOutputTokens: 4096,
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await callWithRetry(() =>
+      ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        config: {
+          maxOutputTokens: 4096,
+          responseMimeType: 'application/json',
+        },
+      }));
 
     const raw = response.text ?? '';
     let parsed: { hints?: { index: number; hint: string }[] };
@@ -121,6 +147,18 @@ JSON 格式（index 對應上面編號）：
   } catch (err) {
     console.error('[generate-hints] Gemini 呼叫失敗：', err);
     const msg = err instanceof Error ? err.message : '未知錯誤';
+    // 判斷是否為 Gemini 服務忙碌（過載 / 限流），回 503 讓前端知道可重試
+    const overloaded
+      = /"code":(?:429|50\d)/.test(msg)
+      || msg.includes('high demand')
+      || msg.includes('UNAVAILABLE')
+      || msg.includes('overloaded');
+    if (overloaded) {
+      return NextResponse.json(
+        { error: 'AI 助教正忙碌中，請等 30 秒後重試', retryable: true },
+        { status: 503 },
+      );
+    }
     return NextResponse.json({ error: `AI 生成失敗：${msg}` }, { status: 500 });
   }
 }
