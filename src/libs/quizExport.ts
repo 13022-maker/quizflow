@@ -211,7 +211,21 @@ export async function generateQuizDocx(
     styles: {
       default: {
         document: {
-          run: { font: 'PMingLiU', size: 24 }, // 預設 12pt 新細明體（相容 Word）
+          run: {
+            // 中英分離字型：英文 / 數字用 Times New Roman，中文用新細明體
+            // 字型大小 12pt（docx 的 size 單位是 half-point，24 = 12pt）
+            font: {
+              ascii: 'Times New Roman',
+              hAnsi: 'Times New Roman',
+              eastAsia: 'PMingLiU',
+              cs: 'Times New Roman',
+            },
+            size: 24,
+          },
+          paragraph: {
+            // 行距 16pt 固定（docx 單位：twip，20 twip = 1pt，16pt = 320 twip）
+            spacing: { line: 320, lineRule: 'exact' },
+          },
         },
       },
     },
