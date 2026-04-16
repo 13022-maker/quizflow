@@ -66,47 +66,59 @@ export function PricingSection() {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
 
   return (
-    <section className="px-4 py-20">
+    <section className="px-4 py-24">
       <div className="mx-auto max-w-5xl">
-        <div className="mb-12 text-center">
-          <h2 className="text-3xl font-extrabold text-gray-900">
+        {/* 區塊標題 */}
+        <div className="mb-14 text-center">
+          <p className="mb-3 text-sm font-medium text-primary">方案與定價</p>
+          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
             每個月省下的備課時間，比訂閱費值錢多了
           </h2>
-          <p className="mt-3 text-gray-500">選擇適合你的方案，隨時可以升級或取消</p>
+          <p className="mx-auto mt-4 max-w-xl text-base text-muted-foreground">
+            選擇適合你的方案，隨時可以升級或取消
+          </p>
 
           {/* 月繳/年繳切換 */}
-          <div className="mt-6 inline-flex rounded-xl border border-gray-200 bg-gray-50 p-1">
-            {(['monthly', 'yearly'] as const).map(cycle => (
-              <button
-                key={cycle}
-                type="button"
-                onClick={() => setBillingCycle(cycle)}
-                className={`rounded-lg px-5 py-2 text-sm font-medium transition-all ${
-                  billingCycle === cycle
-                    ? 'bg-white text-gray-900 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {cycle === 'monthly' ? '月繳' : '年繳'}
-                {cycle === 'yearly' && (
-                  <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700">
-                    省最多
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="mt-8 inline-flex items-center rounded-full border bg-muted/40 p-1">
+            {(['monthly', 'yearly'] as const).map((cycle) => {
+              const isActive = billingCycle === cycle;
+              return (
+                <button
+                  key={cycle}
+                  type="button"
+                  onClick={() => setBillingCycle(cycle)}
+                  className={`rounded-full px-5 py-1.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {cycle === 'monthly' ? '月繳' : '年繳'}
+                  {cycle === 'yearly' && (
+                    <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary">
+                      省最多
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 三個方案卡片 */}
-        <div className="grid gap-6 md:grid-cols-3">
+        {/* 三個方案卡片（手機單欄、桌機三欄，正中間 highlighted 放第二張） */}
+        <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
           {PLANS.map(plan => (
             <PricingCard key={plan.name} plan={plan} billingCycle={billingCycle} />
           ))}
         </div>
 
-        <p className="mt-8 text-center text-xs text-gray-400">
-          付款由 Paddle 安全處理 · 可隨時取消 · 不需綁約
+        {/* 底部信任訊息 */}
+        <p className="mt-10 text-center text-xs text-muted-foreground">
+          付款由
+          {' '}
+          <span className="font-medium text-foreground/80">Paddle</span>
+          {' '}
+          安全處理 · 可隨時取消 · 不需綁約
         </p>
       </div>
     </section>
