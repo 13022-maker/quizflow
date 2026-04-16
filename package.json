@@ -54,6 +54,7 @@
     "@vercel/blob": "^2.3.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "docx": "^9.6.1",
     "drizzle-orm": "^0.35.1",
     "lucide-react": "^0.453.0",
     "nanoid": "^5.1.7",

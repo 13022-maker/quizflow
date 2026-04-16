@@ -513,6 +513,30 @@ export function QuizEditor({
                 📂 上傳講義命題
               </Button>
             )}
+
+        {/* 匯出 Word 下拉（老師版含答案 / 學生版空白考卷） */}
+        {questions.length > 0 && (
+          <details className="relative">
+            {/* summary 當成按鈕，點擊展開 menu */}
+            <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden">
+              📥 匯出 Word
+            </summary>
+            <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-md border bg-popover text-sm shadow-md">
+              <a
+                href={`/api/quizzes/${initialQuiz.id}/export?variant=teacher`}
+                className="block px-4 py-2 hover:bg-muted"
+              >
+                👨‍🏫 老師版（含答案）
+              </a>
+              <a
+                href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}
+                className="block border-t px-4 py-2 hover:bg-muted"
+              >
+                📝 學生版（空白考卷）
+              </a>
+            </div>
+          </details>
+        )}
       </div>
 
       {/* 分享 Modal（房間碼 + QR Code + LINE + Google Classroom + 到期） */}
