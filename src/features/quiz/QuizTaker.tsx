@@ -9,7 +9,6 @@ import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
-import { AIAssistant } from './AIAssistant';
 import { FlashCard } from './FlashCard';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
@@ -257,12 +256,14 @@ function QuestionItem({
 // ── 成績畫面（含 AI 弱點分析 + 錯題重做按鈕） ──────────────────
 
 function ResultScreen({
+  quizId,
   result,
   questions,
   answers,
   showAnswers,
   onRetry,
 }: {
+  quizId: number;
   result: SubmitResult;
   questions: Question[];
   answers: Record<number, string | string[]>;
@@ -284,6 +285,24 @@ function ResultScreen({
   const [weakPoints, setWeakPoints] = useState<WeakPoint[] | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+
+  // ── AI 助教提示（每題 ≤57 字解題提示） ──────────────────────
+  const [hints, setHints] = useState<Record<number, string>>({});
+  useEffect(() => {
+    if (!showAnswers) {
+      return;
+    }
+    fetch(`/api/ai/generate-hints/${quizId}`, { method: 'POST' })
+      .then(r => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.hints) {
+          setHints(data.hints);
+        }
+      })
+      .catch(() => {
+        // 提示載入失敗就安靜忽略，不影響成績顯示
+      });
+  }, [quizId, showAnswers]);
 
   // 有顯示解答且有答錯時，自動呼叫 AI 分析
   useEffect(() => {
@@ -470,6 +489,16 @@ function ResultScreen({
 
                 {isShort && (
                   <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
+                )}
+
+                {/* AI 助教提示（≤57 字，國中程度，每題都顯示） */}
+                {hints[question.id] && (
+                  <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2">
+                    <p className="text-xs font-semibold text-amber-800">💡 AI 助教</p>
+                    <p className="mt-0.5 text-sm leading-relaxed text-amber-900">
+                      {hints[question.id]}
+                    </p>
+                  </div>
                 )}
               </div>
             );
@@ -669,9 +698,6 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 快閃卡複習模式
   const [flashCardMode, setFlashCardMode] = useState(false);
 
-  // AI 助教模式
-  const [aiAssistantMode, setAiAssistantMode] = useState(false);
-
   // 家教模式（即時批改、不送 server、不計成績）
   const [tutorMode, setTutorMode] = useState(false);
   const [tutorChecks, setTutorChecks] = useState<Record<number, boolean>>({});
@@ -818,17 +844,6 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     );
   }
 
-  // AI 助教模式
-  if (aiAssistantMode) {
-    return (
-      <AIAssistant
-        quizId={quiz.id}
-        questions={displayQuestions}
-        onExit={() => setAiAssistantMode(false)}
-      />
-    );
-  }
-
   // 錯題重做模式
   if (result && retryMode) {
     return (
@@ -844,6 +859,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   if (result) {
     return (
       <ResultScreen
+        quizId={quiz.id}
         result={result}
         questions={displayQuestions}
         answers={answers}
@@ -930,13 +946,6 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
           >
             🃏 複習模式
-          </button>
-          <button
-            type="button"
-            onClick={() => setAiAssistantMode(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
-          >
-            🤖 AI 助教
           </button>
           {/*
             家教模式按鈕暫時隱藏（保留 tutor logic 在下方，之後想啟用直接還原此區塊即可）
