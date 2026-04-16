@@ -185,6 +185,25 @@ export const quizFinalScoreSchema = pgTable('quiz_final_score', {
     .notNull(),
 });
 
+// ---------- user_streak ----------
+// 老師個人「每日活動連勝」紀錄（以 Clerk userId 為 key）
+// 活動定義：成功建立一份測驗即視為當日活動一次，同一天多次不重複計算
+
+export const userStreakSchema = pgTable('user_streak', {
+  id: serial('id').primaryKey(),
+  clerkUserId: text('clerk_user_id').notNull().unique(), // Clerk user ID
+  currentStreak: integer('current_streak').default(0).notNull(), // 目前連勝天數
+  longestStreak: integer('longest_streak').default(0).notNull(), // 歷史最長連勝
+  lastActivityAt: timestamp('last_activity_at', { mode: 'date' }), // 最後一次活動時間
+  freezesLeft: integer('freezes_left').default(0).notNull(), // 剩餘補簽次數
+  frozenUntil: timestamp('frozen_until', { mode: 'date' }), // 最近一次使用補簽的時間
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 // ---------- ai_usage ----------
 // 記錄每個 org 每月的 AI 出題次數（用於 Free Plan quota 限制）
 

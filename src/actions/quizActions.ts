@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { db } from '@/libs/DB';
 import { getOrgPlanId } from '@/libs/Plan';
+import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -47,7 +48,7 @@ const CreateQuizSchema = z.object({
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 
 export async function createQuiz(data: CreateQuizInput) {
-  const { orgId } = await auth();
+  const { orgId, userId } = await auth();
   if (!orgId) {
     throw new Error('Unauthorized');
   }
@@ -78,6 +79,15 @@ export async function createQuiz(data: CreateQuizInput) {
     accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
     roomCode, // 6 碼大寫英數房間碼
   });
+
+  // 紀錄老師當日活動（streak）；失敗不阻擋測驗建立
+  if (userId) {
+    try {
+      await recordStreakActivity(userId);
+    } catch (err) {
+      console.error('[Streak] createQuiz 記錄失敗', err);
+    }
+  }
 
   redirect('/dashboard/quizzes');
 }

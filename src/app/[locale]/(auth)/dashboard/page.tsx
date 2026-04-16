@@ -5,6 +5,7 @@ import Link from 'next/link';
 
 import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
+import { StreakCard } from '@/features/dashboard/StreakCard';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { db } from '@/libs/DB';
 import type { quizSchema as quizSchemaType } from '@/models/Schema';
@@ -92,6 +93,11 @@ export default async function DashboardIndexPage() {
       <CheckoutSuccessBanner />
 
       <div className="px-4 pb-8">
+        {/* 連勝卡片（所有登入使用者皆顯示） */}
+        <div className="mb-6">
+          <StreakCard />
+        </div>
+
         {hasQuizzes
           ? (
               <>
