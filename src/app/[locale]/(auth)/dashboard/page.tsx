@@ -15,16 +15,16 @@ export const dynamic = 'force-dynamic';
 
 type Quiz = InferSelectModel<typeof quizSchemaType>;
 
-// 狀態文字與顏色對應
+// 狀態文字與顏色對應（用小點點 + 文字，比填色 pill 更低調）
 const STATUS_LABEL: Record<string, string> = {
   draft: '草稿',
   published: '已發佈',
   closed: '已關閉',
 };
-const STATUS_COLOR: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700',
-  published: 'bg-green-100 text-green-700',
-  closed: 'bg-red-100 text-red-700',
+const STATUS_DOT: Record<string, string> = {
+  draft: 'bg-muted-foreground/60',
+  published: 'bg-primary',
+  closed: 'bg-destructive',
 };
 
 export default async function DashboardIndexPage() {
@@ -82,11 +82,23 @@ export default async function DashboardIndexPage() {
 
   const hasQuizzes = recentQuizzes.length > 0;
 
+  // 右上角「建立新測驗」按鈕，TitleBar 與空狀態共用
+  const newQuizButton = (
+    <Link
+      href="/dashboard/quizzes/new"
+      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+    >
+      <span className="text-base leading-none">+</span>
+      建立新測驗
+    </Link>
+  );
+
   return (
     <>
       <TitleBar
         title="後台首頁"
-        description="歡迎使用 QuizFlow"
+        description="管理你的測驗、追蹤學生作答狀況"
+        action={newQuizButton}
       />
 
       {/* Paddle 結帳成功提示 */}
@@ -102,7 +114,7 @@ export default async function DashboardIndexPage() {
           ? (
               <>
                 {/* 統計卡片 */}
-                <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">
+                <div className="mb-10 grid grid-cols-2 gap-4 sm:grid-cols-3">
                   <StatCard label="測驗總數" value={String(totalQuizCount)} />
                   <StatCard label="學生作答次數" value={String(totalResponses)} />
                   <StatCard
@@ -114,44 +126,48 @@ export default async function DashboardIndexPage() {
 
                 {/* 最近的測驗列表 */}
                 <section>
-                  <div className="mb-3 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">最近的測驗</h2>
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 className="text-lg font-semibold tracking-tight">最近的測驗</h2>
                     <Link
-                      href="/dashboard/quizzes/new"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                      href="/dashboard/quizzes"
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground"
                     >
-                      + 建立新測驗
+                      查看全部 →
                     </Link>
                   </div>
 
-                  <div className="overflow-hidden rounded-lg border">
+                  <div className="overflow-hidden rounded-xl border bg-card">
                     <table className="w-full text-sm">
-                      <thead className="bg-muted/50">
+                      <thead className="border-b bg-muted/30">
                         <tr>
-                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">標題</th>
-                          <th className="px-4 py-2 text-left font-medium text-muted-foreground">狀態</th>
-                          <th className="px-4 py-2 text-right font-medium text-muted-foreground">操作</th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">標題</th>
+                          <th className="px-5 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted-foreground">狀態</th>
+                          <th className="px-5 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted-foreground">操作</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
                         {recentQuizzes.map(quiz => (
-                          <tr key={quiz.id} className="hover:bg-muted/30">
-                            <td className="px-4 py-3 font-medium">{quiz.title}</td>
-                            <td className="px-4 py-3">
-                              <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_COLOR[quiz.status] ?? ''}`}>
+                          <tr key={quiz.id} className="transition-colors hover:bg-muted/20">
+                            <td className="px-5 py-3.5 font-medium text-foreground">{quiz.title}</td>
+                            <td className="px-5 py-3.5">
+                              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <span
+                                  className={`size-1.5 rounded-full ${STATUS_DOT[quiz.status] ?? 'bg-muted-foreground/60'}`}
+                                  aria-hidden="true"
+                                />
                                 {STATUS_LABEL[quiz.status] ?? quiz.status}
                               </span>
                             </td>
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-5 py-3.5 text-right">
                               <Link
                                 href={`/dashboard/quizzes/${quiz.id}/edit`}
-                                className="mr-3 text-primary hover:underline"
+                                className="mr-4 text-sm font-medium text-primary hover:underline"
                               >
                                 編輯
                               </Link>
                               <Link
                                 href={`/dashboard/quizzes/${quiz.id}/results`}
-                                className="text-muted-foreground hover:underline"
+                                className="text-sm font-medium text-muted-foreground hover:text-foreground"
                               >
                                 成績
                               </Link>
@@ -161,28 +177,12 @@ export default async function DashboardIndexPage() {
                       </tbody>
                     </table>
                   </div>
-
-                  <div className="mt-3 text-right">
-                    <Link href="/dashboard/quizzes" className="text-sm text-primary hover:underline">
-                      查看全部測驗 →
-                    </Link>
-                  </div>
                 </section>
               </>
             )
           : (
-              // 沒有測驗時：顯示建立按鈕 + 新手引導
-              <div>
-                <div className="mb-6 flex justify-end">
-                  <Link
-                    href="/dashboard/quizzes/new"
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                  >
-                    + 建立新測驗
-                  </Link>
-                </div>
-                <OnboardingSteps />
-              </div>
+              // 沒有測驗時：只顯示新手引導（TitleBar 已有建立按鈕）
+              <OnboardingSteps />
             )}
       </div>
     </>
@@ -192,9 +192,9 @@ export default async function DashboardIndexPage() {
 // 統計數字卡片
 function StatCard({ label, value, className }: { label: string; value: string; className?: string }) {
   return (
-    <div className={`rounded-lg border bg-card px-5 py-4 ${className ?? ''}`}>
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <p className="mt-1 text-3xl font-bold">{value}</p>
+    <div className={`rounded-xl border bg-card p-5 ${className ?? ''}`}>
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
+      <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-foreground">{value}</p>
     </div>
   );
 }
