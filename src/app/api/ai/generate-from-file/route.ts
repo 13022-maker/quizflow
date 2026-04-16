@@ -1,33 +1,37 @@
 // pdf-lib、Buffer 是 Node.js 專屬 API，必須明確指定 Node.js Runtime
 import { Buffer } from 'node:buffer';
 
-import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
+import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 
-const client = new Anthropic();
+// 使用 Gemini 2.5 Flash：多模態品質佳、速度快、成本約 Claude Sonnet 1/10
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
-// Anthropic API 過載（529）自動重試，最多 3 次，每次遞增等待
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
+
+// Gemini 過載 / 限流時自動重試（429 / 5xx），最多 3 次遞增 backoff
 async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await fn();
     } catch (err) {
-      const isOverloaded
-        = (err as { status?: number }).status === 529
-        || (err instanceof Error && err.message.includes('overloaded'));
-      if (!isOverloaded || i === maxRetries - 1) {
+      const status = (err as { status?: number; code?: number }).status
+        ?? (err as { code?: number }).code;
+      const retryable = status === 429 || (typeof status === 'number' && status >= 500);
+      if (!retryable || i === maxRetries - 1) {
         throw err;
       }
       await new Promise(r => setTimeout(r, (i + 1) * 1500));
     }
   }
-  throw new Error('Anthropic API 目前過載，請稍後再試');
+  throw new Error('Gemini API 目前過載，請稍後再試');
 }
 
 const DIFF_LABELS: Record<string, string> = {
@@ -128,28 +132,25 @@ ${typesPrompt}
   // 讀取原始檔案位元組
   const arrayBuffer = await file.arrayBuffer();
 
-  let content: Anthropic.MessageParam['content'];
+  // 統一的 mime type 對映
+  const imageMimeMap: Record<string, string> = {
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+    webp: 'image/webp',
+    gif: 'image/gif',
+  };
+
+  let mimeType: string;
+  let base64: string;
 
   if (isImage) {
-    // 圖片直接轉 base64
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const mediaMap: Record<string, string> = {
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      png: 'image/png',
-      webp: 'image/webp',
-      gif: 'image/gif',
-    };
-    content = [
-      { type: 'image', source: { type: 'base64', media_type: (mediaMap[ext] || 'image/png') as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif', data: base64 } },
-      { type: 'text', text: prompt },
-    ];
+    mimeType = imageMimeMap[ext] || 'image/png';
+    base64 = Buffer.from(arrayBuffer).toString('base64');
   } else {
-    // PDF：若有傳頁數範圍，用 pdf-lib 裁切後再傳 Claude
+    // PDF：若有傳頁數範圍，用 pdf-lib 裁切後再傳 Gemini
     let pdfBytes: Uint8Array;
-
     if (endPage > 0) {
-      // 裁切指定頁面範圍（startPage/endPage 是 1-based）
       const srcDoc = await PDFDocument.load(arrayBuffer);
       const newDoc = await PDFDocument.create();
       const totalPages = srcDoc.getPageCount();
@@ -157,51 +158,64 @@ ${typesPrompt}
       const safeEnd = Math.min(endPage, totalPages);
       const indices = Array.from(
         { length: safeEnd - safeStart + 1 },
-        (_, i) => safeStart - 1 + i, // 轉為 0-based index
+        (_, i) => safeStart - 1 + i, // 0-based
       );
       const copiedPages = await newDoc.copyPages(srcDoc, indices);
       copiedPages.forEach(page => newDoc.addPage(page));
       pdfBytes = await newDoc.save();
     } else {
-      // 未傳頁數範圍，直接使用原始 PDF
       pdfBytes = new Uint8Array(arrayBuffer);
     }
-
-    const base64 = Buffer.from(pdfBytes).toString('base64');
-    // isPDF（已在上方驗證過格式）
-    content = [
-      { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
-      { type: 'text', text: prompt },
-    ];
+    mimeType = 'application/pdf';
+    base64 = Buffer.from(pdfBytes).toString('base64');
   }
 
   try {
-    const message = await callWithRetry(() =>
-      client.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content }],
+    const response = await callWithRetry(() =>
+      ai.models.generateContent({
+        model: GEMINI_MODEL,
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType, data: base64 } },
+              { text: prompt },
+            ],
+          },
+        ],
+        // 強制輸出 JSON，避免解析失敗
+        config: {
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json',
+        },
       }));
 
-    const raw = (message.content[0] as { type: string; text: string }).text ?? '';
+    const raw = response.text ?? '';
+
+    // Gemini 強制 JSON mode 通常會直接回乾淨 JSON，保險起見再 regex 提取一次
     const match = raw.match(/\{[\s\S]*\}/);
-    if (!match) {
+    const jsonText = match ? match[0] : raw;
+
+    let result;
+    try {
+      result = JSON.parse(jsonText);
+    } catch {
+      console.error('[generate-from-file] Gemini 回傳非 JSON：', raw.slice(0, 500));
       return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
     }
 
-    const result = JSON.parse(match[0]);
     return NextResponse.json(result);
   } catch (err) {
-    const isOverloaded
-      = (err as { status?: number }).status === 529
-      || (err instanceof Error && err.message.includes('overloaded'));
-    if (isOverloaded) {
+    const status = (err as { status?: number; code?: number }).status
+      ?? (err as { code?: number }).code;
+    if (status === 429 || (typeof status === 'number' && status >= 500)) {
       return NextResponse.json(
         { error: 'AI 伺服器目前忙碌，請稍後再試', retryable: true },
         { status: 503 },
       );
     }
     const msg = err instanceof Error ? err.message : '未知錯誤';
+    console.error('[generate-from-file] Gemini 呼叫失敗：', err);
     return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }
 }
