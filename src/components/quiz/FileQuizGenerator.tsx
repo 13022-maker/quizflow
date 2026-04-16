@@ -50,6 +50,9 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+// Vercel Serverless request body 上限 ~4.5MB，超過就要在前端裁切
+const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
+
 export default function FileQuizGenerator({ onImport, onClose }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [types, setTypes] = useState<QuestionType[]>(['mc']);
@@ -61,10 +64,46 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function handleFile(f: File) {
+  // PDF 頁數範圍選擇器
+  const [pdfPageCount, setPdfPageCount] = useState<number | null>(null);
+  const [startPage, setStartPage] = useState(1);
+  const [endPage, setEndPage] = useState(1);
+  const [pageLoading, setPageLoading] = useState(false);
+
+  async function handleFile(f: File) {
     setFile(f);
     setResult(null);
     setError('');
+    setPdfPageCount(null);
+
+    // 大檔案顯示黃色警告（不阻擋，讓用戶選頁數後前端裁切再上傳）
+    if (f.size > MAX_UPLOAD_SIZE) {
+      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
+      setError(`檔案較大（${sizeMB}MB），請選擇較少頁數，系統會自動裁切後上傳`);
+    }
+
+    // 僅 PDF 才讀取頁數
+    const isPdf = f.name.split('.').pop()?.toLowerCase() === 'pdf';
+    if (!isPdf) {
+      return;
+    }
+
+    setPageLoading(true);
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+      const arrayBuffer = await f.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+      const total = pdf.numPages;
+      setPdfPageCount(total);
+      setStartPage(1);
+      setEndPage(Math.min(10, total));
+    } catch {
+      // 讀頁數失敗就不顯示選擇器，讓後端直接處理
+      setPdfPageCount(null);
+    } finally {
+      setPageLoading(false);
+    }
   }
 
   function toggleType(t: QuestionType) {
@@ -83,7 +122,35 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
 
     try {
       const fd = new FormData();
-      fd.append('file', file);
+
+      // 大 PDF 且已讀到頁數：前端先裁切成小 PDF 再上傳（繞過 Vercel 4.5MB body 限制）
+      const isPdf = file.name.split('.').pop()?.toLowerCase() === 'pdf';
+      if (isPdf && pdfPageCount !== null && file.size > MAX_UPLOAD_SIZE) {
+        const { PDFDocument } = await import('pdf-lib');
+        const srcBytes = await file.arrayBuffer();
+        const srcDoc = await PDFDocument.load(srcBytes);
+        const newDoc = await PDFDocument.create();
+        const safeStart = Math.max(1, startPage);
+        const safeEnd = Math.min(endPage, pdfPageCount);
+        const indices = Array.from(
+          { length: safeEnd - safeStart + 1 },
+          (_, i) => safeStart - 1 + i,
+        );
+        const copiedPages = await newDoc.copyPages(srcDoc, indices);
+        copiedPages.forEach(page => newDoc.addPage(page));
+        const trimmedBytes = await newDoc.save();
+        const trimmedFile = new File([trimmedBytes], file.name, { type: 'application/pdf' });
+        fd.append('file', trimmedFile);
+        // 裁切過的檔案已只含選中頁面，不需再傳 startPage/endPage
+      } else {
+        fd.append('file', file);
+        // 未裁切：傳頁數範圍讓 server 端裁切
+        if (pdfPageCount !== null) {
+          fd.append('startPage', String(startPage));
+          fd.append('endPage', String(endPage));
+        }
+      }
+
       fd.append('types', JSON.stringify(types));
       fd.append('count', String(count));
       fd.append('difficulty', difficulty);
@@ -156,13 +223,85 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                 </div>
               )
             : (
-                <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                  <span className="text-2xl">{FILE_ICONS[ext] || '📄'}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-gray-800">{file.name}</p>
-                    <p className="font-mono text-xs text-gray-500">{formatSize(file.size)}</p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+                    <span className="text-2xl">{FILE_ICONS[ext] || '📄'}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-800">{file.name}</p>
+                      <p className="font-mono text-xs text-gray-500">{formatSize(file.size)}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFile(null);
+                        setPdfPageCount(null);
+                        setError('');
+                      }}
+                      className="text-xl text-gray-400 hover:text-red-500"
+                    >
+                      ×
+                    </button>
                   </div>
-                  <button onClick={() => setFile(null)} className="text-xl text-gray-400 hover:text-red-500">×</button>
+
+                  {/* PDF 頁數範圍選擇器 */}
+                  {pageLoading && (
+                    <p className="flex items-center gap-1 text-xs text-gray-400">
+                      <span className="inline-block animate-spin">⏳</span>
+                      {' '}
+                      讀取 PDF 頁數中…
+                    </p>
+                  )}
+                  {pdfPageCount !== null && (
+                    <div className="space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:px-4">
+                      <p className="text-xs font-bold text-gray-700">
+                        📄 共
+                        {' '}
+                        {pdfPageCount}
+                        {' '}
+                        頁，選擇要命題的範圍
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
+                        <span className="shrink-0 text-gray-600">從第</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={pdfPageCount}
+                          value={startPage}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
+                            setStartPage(v);
+                            if (endPage < v) {
+                              setEndPage(v);
+                            }
+                          }}
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        />
+                        <span className="shrink-0 text-gray-600">頁到第</span>
+                        <input
+                          type="number"
+                          min={startPage}
+                          max={pdfPageCount}
+                          value={endPage}
+                          onChange={(e) => {
+                            const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
+                            setEndPage(v);
+                          }}
+                          className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                        />
+                        <span className="shrink-0 text-gray-600">頁</span>
+                        <span className="text-xs font-semibold text-amber-600">
+                          （共
+                          {' '}
+                          {endPage - startPage + 1}
+                          {' '}
+                          頁）
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-400">
+                        建議每次命題不超過 20 頁，避免超過 AI 限制
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
