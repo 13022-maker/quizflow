@@ -43,6 +43,7 @@ const TYPE_LABELS: Record<string, string> = {
   fill: '填空題（用 ___ 標空格，附答案）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
+  listening: '聽力題（type 為 "listening"，4選1，額外提供 listeningText 欄位存放要念的口語化對話或短文）',
 };
 
 export async function POST(request: Request) {
@@ -97,10 +98,12 @@ ${typesPrompt}
     { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
     { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
     { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
-    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" }
+    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" },
+    { "type": "listening", "question": "根據對話內容，小明最後決定做什麼？", "options": ["(A)去圖書館","(B)回家寫功課","(C)去打球","(D)去吃飯"], "answer": "C", "explanation": "說明", "listeningText": "小華：嘿，小明，等一下要不要一起去打球？\n小明：好啊！我剛好寫完功課了。" }
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
+聽力題特別注意：listeningText 必須使用口語化的對話或短文，避免書面語，模擬真實聽力情境。`;
 
   try {
     const message = await callWithRetry(() =>

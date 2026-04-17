@@ -6,24 +6,26 @@ import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 // AIQuizModal 回傳的題目格式
-type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
+type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
 type GeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
-  // rank 題的 answer 是字串陣列（依正確順序）；其他題型是字串
   answer: string | string[];
   explanation?: string;
+  listeningText?: string; // 聽力題要念的口語化文字
+  audioUrl?: string; // 聽力題已生成的音檔 URL
 };
 
 // 題型對應：AIQuizModal → DB enum
-const DB_TYPE_MAP = {
+const DB_TYPE_MAP: Record<FileQuestionType, string> = {
   mc: 'single_choice',
   tf: 'true_false',
   fill: 'short_answer',
   short: 'short_answer',
   rank: 'ranking',
-} as const satisfies Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer' | 'ranking'>;
+  listening: 'listening',
+};
 
 export async function POST(
   request: Request,
@@ -71,11 +73,11 @@ export async function POST(
 
   // 將 AIQuizModal 格式轉換為 DB 格式，批次組成 rows
   const rows = questions.map((q) => {
-    const type = DB_TYPE_MAP[q.type] ?? 'short_answer';
+    const type = (DB_TYPE_MAP[q.type] ?? 'short_answer') as typeof questionSchema.$inferInsert.type;
     let options: { id: string; text: string }[] | null = null;
     let correctAnswers: string[] = [];
 
-    if (q.type === 'mc' && q.options?.length) {
+    if ((q.type === 'mc' || q.type === 'listening') && q.options?.length) {
       // 選擇題：將 string[] 轉成 { id, text }[]
       options = q.options.map((text, i) => ({
         id: String.fromCharCode(97 + i), // a, b, c, d
@@ -114,6 +116,8 @@ export async function POST(
       body: q.question,
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
+      audioUrl: q.audioUrl || null,
+      audioTranscript: q.listeningText || null,
       points: 1,
       position: nextPosition++,
     };

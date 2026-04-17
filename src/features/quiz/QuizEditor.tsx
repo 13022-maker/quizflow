@@ -50,13 +50,15 @@ type FileGeneratedQuestion = {
 };
 
 // AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
-type AIQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
+type AIQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
 type AIGeneratedQuestion = {
   type: AIQuestionType;
   question: string;
   options?: string[];
   answer: string | string[];
   explanation?: string;
+  listeningText?: string; // 聽力題口語化文字
+  audioUrl?: string; // 聽力題 TTS 音檔 URL
 };
 
 // 題型對應：FileQuizGenerator → DB enum

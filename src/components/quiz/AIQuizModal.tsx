@@ -15,7 +15,7 @@
 import { useRef, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
-type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
+type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
 type Difficulty = 'easy' | 'medium' | 'hard';
 type Mode = 'text' | 'file' | 'url';
 
@@ -23,9 +23,10 @@ type GeneratedQuestion = {
   type: QuestionType;
   question: string;
   options?: string[];
-  // rank 題的 answer 是字串陣列；其他題型是字串
   answer: string | string[];
   explanation?: string;
+  listeningText?: string; // 聽力題要念的口語化文字
+  audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
 };
 
 type GeneratedResult = {
@@ -46,6 +47,7 @@ const QUESTION_TYPES = [
   { value: 'fill' as QuestionType, emoji: '✏️', label: '填空題', sub: '填入答案' },
   { value: 'short' as QuestionType, emoji: '📝', label: '簡答題', sub: '短文作答' },
   { value: 'rank' as QuestionType, emoji: '🔢', label: '排序題', sub: '依序排列' },
+  { value: 'listening' as QuestionType, emoji: '🎧', label: '聽力題', sub: 'AI 語音 + 選擇' },
 ];
 
 const DIFFICULTIES: { value: Difficulty; label: string }[] = [
@@ -104,6 +106,12 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
 
   // AI 模型選擇（僅檔案模式會用到，預設 Gemini 省錢快速）
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
+
+  // 聽力題 TTS 參數
+  const [ttsVoice, setTtsVoice] = useState('zephyr');
+  const [ttsSpeed, setTtsSpeed] = useState('normal');
+  const [ttsGenerating, setTtsGenerating] = useState(false);
+  const [ttsProgress, setTtsProgress] = useState('');
 
   // State
   const [loading, setLoading] = useState(false);
@@ -266,6 +274,35 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
           }
           throw new Error((data as { error?: string }).error || '命題失敗');
         }
+      }
+
+      // 聽力題自動呼叫 TTS 生成音檔
+      const listeningQs = data.questions?.filter((q: GeneratedQuestion) => q.type === 'listening' && q.listeningText) ?? [];
+      if (listeningQs.length > 0) {
+        setTtsGenerating(true);
+        let done = 0;
+        setTtsProgress(`音檔生成中 (0/${listeningQs.length})...`);
+        await Promise.all(
+          listeningQs.map(async (q: GeneratedQuestion) => {
+            try {
+              const res = await fetch('/api/ai/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: q.listeningText, voice: ttsVoice, speed: ttsSpeed }),
+              });
+              if (res.ok) {
+                const ttsData = await res.json();
+                q.audioUrl = ttsData.url;
+              }
+            } catch {
+              // TTS 失敗不阻擋匯入，老師可事後手動上傳音檔
+            }
+            done++;
+            setTtsProgress(`音檔生成中 (${done}/${listeningQs.length})...`);
+          }),
+        );
+        setTtsGenerating(false);
+        setTtsProgress('');
       }
 
       setResult(data);
@@ -540,6 +577,49 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
             </div>
           )}
 
+          {/* ── 聽力題 TTS 參數（選了聽力題時顯示） ── */}
+          {types.includes('listening') && (
+            <div className="space-y-3">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                聽力語音設定
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {/* 語音 */}
+                <div>
+                  <p className="mb-1 text-xs text-gray-500">語音</p>
+                  <select
+                    value={ttsVoice}
+                    onChange={e => setTtsVoice(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="zephyr">Zephyr（中性）</option>
+                    <option value="kore">Kore（女聲）</option>
+                    <option value="puck">Puck（男聲）</option>
+                    <option value="charon">Charon（低沉男聲）</option>
+                  </select>
+                </div>
+                {/* 語速 */}
+                <div>
+                  <p className="mb-1 text-xs text-gray-500">語速</p>
+                  <select
+                    value={ttsSpeed}
+                    onChange={e => setTtsSpeed(e.target.value)}
+                    className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none"
+                  >
+                    <option value="slow">慢速（適合初學）</option>
+                    <option value="normal">正常</option>
+                    <option value="fast">快速（進階挑戰）</option>
+                  </select>
+                </div>
+              </div>
+              {/* TOCFL 分級提示 */}
+              <p className="text-xs text-gray-400">
+                💡 搭配上方難度設定：簡單≈TOCFL A1-A2，中等≈B1-B2，困難≈C1
+              </p>
+            </div>
+          )}
+
           {/* ── AI 模型選擇（檔案模式 + 連結模式顯示） ── */}
           {((mode === 'file' && file) || (mode === 'url' && sourceUrl.trim())) && (
             <div>
@@ -700,7 +780,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
             ? (
                 <button
                   onClick={generate}
-                  disabled={!canGenerate || loading}
+                  disabled={!canGenerate || loading || ttsGenerating}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold text-white transition-all disabled:cursor-not-allowed"
                   style={{
                     background: (!canGenerate || loading)
@@ -712,7 +792,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                     ? (
                         <>
                           <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                          {step || 'AI 命題中…'}
+                          {ttsProgress || step || 'AI 命題中…'}
                         </>
                       )
                     : (
