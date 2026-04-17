@@ -17,7 +17,7 @@ import { useRef, useState } from 'react';
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank';
 type Difficulty = 'easy' | 'medium' | 'hard';
-type Mode = 'text' | 'file';
+type Mode = 'text' | 'file' | 'url';
 
 type GeneratedQuestion = {
   type: QuestionType;
@@ -87,6 +87,9 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
 
   // Text mode
   const [topic, setTopic] = useState('');
+
+  // URL mode（YouTube / Google Docs）
+  const [sourceUrl, setSourceUrl] = useState('');
 
   // File mode
   const [file, setFile] = useState<File | null>(null);
@@ -167,6 +170,10 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
       setError('請上傳一份教材檔案');
       return;
     }
+    if (mode === 'url' && !sourceUrl.trim()) {
+      setError('請貼入 YouTube 或 Google Docs 連結');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -191,7 +198,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
           }
           throw new Error((data as { error?: string }).error || '命題失敗');
         }
-      } else {
+      } else if (mode === 'file') {
         setStep('讀取檔案…');
         const fd = new FormData();
 
@@ -237,6 +244,28 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
           }
           throw new Error((data as { error?: string }).error || '命題失敗');
         }
+      } else {
+        // URL 模式（YouTube / Google Docs）
+        setStep('抓取連結內容中…');
+        const res = await fetch('/api/ai/generate-from-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            url: sourceUrl.trim(),
+            types,
+            count,
+            difficulty,
+            model,
+          }),
+        });
+        data = await res.json();
+        if (!res.ok) {
+          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
+            setUpgradeRequired(true);
+          }
+          throw new Error((data as { error?: string }).error || '命題失敗');
+        }
       }
 
       setResult(data);
@@ -255,7 +284,12 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
   }
 
   const ext = file?.name.split('.').pop()?.toLowerCase() ?? '';
-  const canGenerate = types.length > 0 && (mode === 'text' ? topic.trim().length > 0 : !!file);
+  const canGenerate = types.length > 0
+    && (mode === 'text'
+      ? topic.trim().length > 0
+      : mode === 'file'
+        ? !!file
+        : sourceUrl.trim().length > 0);
 
   // ─── Render ────────────────────────────────────────────
   return (
@@ -313,11 +347,49 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
             >
               📂 上傳講義
             </button>
+            <button
+              onClick={() => {
+                setMode('url');
+                setResult(null);
+                setError('');
+              }}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                mode === 'url'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🔗 連結
+            </button>
           </div>
         </div>
 
         {/* ── Scrollable body ── */}
         <div className="flex-1 space-y-4 overflow-y-auto px-5 pb-5">
+
+          {/* ── URL MODE ── */}
+          {mode === 'url' && (
+            <div className="space-y-3">
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">
+                  貼入 YouTube 或 Google Docs 連結
+                </p>
+                <input
+                  type="url"
+                  value={sourceUrl}
+                  onChange={e => setSourceUrl(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=... 或 https://docs.google.com/document/d/..."
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm placeholder:text-gray-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                />
+              </div>
+              <div className="flex gap-2 text-xs text-gray-400">
+                <span className="rounded-full bg-red-50 px-2 py-0.5 text-red-600">YouTube</span>
+                <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-600">Google 文件</span>
+                <span className="text-gray-300">｜</span>
+                <span>自動偵測連結類型並抓取內容</span>
+              </div>
+            </div>
+          )}
 
           {/* ── TEXT MODE ── */}
           {mode === 'text' && (
@@ -468,8 +540,8 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
             </div>
           )}
 
-          {/* ── AI 模型選擇（僅檔案模式顯示） ── */}
-          {mode === 'file' && file && (
+          {/* ── AI 模型選擇（檔案模式 + 連結模式顯示） ── */}
+          {((mode === 'file' && file) || (mode === 'url' && sourceUrl.trim())) && (
             <div>
               {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
