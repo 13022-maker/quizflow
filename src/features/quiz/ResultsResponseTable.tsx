@@ -56,8 +56,8 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
     return <span className="ml-1">{sortAsc ? '↑' : '↓'}</span>;
   };
 
-  // 匯出 CSV
-  const handleExportCsv = () => {
+  // 共用：把資料轉成表格列
+  const getTableRows = () => {
     const header = ['姓名', 'Email', '答對題數', '答對率', '離開次數', '作答時間'];
     const rows = sorted.map(r => [
       r.studentName ?? '',
@@ -67,7 +67,12 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
       String(r.leaveCount),
       new Date(r.submittedAt).toLocaleString('zh-TW'),
     ]);
+    return { header, rows };
+  };
 
+  // 匯出 CSV
+  const handleExportCsv = () => {
+    const { header, rows } = getTableRows();
     const csvContent = [header, ...rows]
       .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
       .join('\n');
@@ -80,6 +85,18 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
     link.download = `quiz-results-${Date.now()}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  // 一鍵開啟 Google Sheets：複製 TSV 到剪貼簿 + 開新試算表
+  const [sheetsCopied, setSheetsCopied] = useState(false);
+  const handleOpenGoogleSheets = async () => {
+    const { header, rows } = getTableRows();
+    // TSV（Tab 分隔）Google Sheets 直接 Ctrl+V 就能正確解析成多欄
+    const tsv = [header, ...rows].map(row => row.join('\t')).join('\n');
+    await navigator.clipboard.writeText(tsv);
+    setSheetsCopied(true);
+    setTimeout(() => setSheetsCopied(false), 5000);
+    window.open('https://docs.google.com/spreadsheets/create', '_blank');
   };
 
   if (responses.length === 0) {
@@ -101,13 +118,22 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
           {' '}
           筆作答記錄
         </p>
-        <button
-          type="button"
-          onClick={handleExportCsv}
-          className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-        >
-          ↓ 匯出 CSV
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          >
+            ↓ 匯出 CSV
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenGoogleSheets}
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5 text-sm font-medium text-primary hover:bg-primary/10"
+          >
+            {sheetsCopied ? '✅ 已複製，請在試算表貼上' : '📊 Google Sheets'}
+          </button>
+        </div>
       </div>
 
       {/* 表格 */}
