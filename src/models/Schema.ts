@@ -59,6 +59,7 @@ export const questionTypeEnum = pgEnum('question_type', [
   'true_false', // 是非題
   'short_answer', // 簡答題
   'ranking', // 排序題（拖拉排序）
+  'listening', // 聽力題（播放音檔 + 選擇題）
 ]);
 
 export const quizStatusEnum = pgEnum('quiz_status', [
@@ -106,6 +107,8 @@ export const questionSchema = pgTable('question', {
   type: questionTypeEnum('type').notNull(),
   body: text('body').notNull(), // 題目文字
   imageUrl: text('image_url'), // 題目圖片網址
+  audioUrl: text('audio_url'), // 聽力題音檔網址（Vercel Blob）
+  audioTranscript: text('audio_transcript'), // 音檔逐字稿（老師可選填，供 AI 出題 / 輔助）
   options: jsonb('options').$type<{ id: string; text: string }[]>(),
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   points: integer('points').default(1).notNull(),

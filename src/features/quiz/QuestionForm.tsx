@@ -13,6 +13,7 @@ export const QUESTION_TYPE_LABELS = {
   true_false: '是非題',
   short_answer: '簡答題',
   ranking: '排序題',
+  listening: '聽力題',
 } as const;
 
 const TRUE_FALSE_OPTIONS = [
@@ -21,7 +22,7 @@ const TRUE_FALSE_OPTIONS = [
 ];
 
 const QuestionSchema = z.object({
-  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking']),
+  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
   body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().optional(), // 題目圖片網址
   options: z
