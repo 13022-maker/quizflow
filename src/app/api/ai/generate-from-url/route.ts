@@ -59,16 +59,22 @@ function detectUrlType(url: string): UrlType {
 // 抓 YouTube 字幕文字
 async function fetchYouTubeTranscript(videoId: string): Promise<string> {
   // 優先抓繁中 → 簡中 → 英文 → 自動生成
-  const transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, {
-    lang: 'zh-TW',
-  }).catch(() =>
-    YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh' }),
-  ).catch(() =>
-    YoutubeTranscript.fetchTranscript(videoId),
-  );
+  let transcriptItems;
+  try {
+    transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh-TW' })
+      .catch(() => YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh' }))
+      .catch(() => YoutubeTranscript.fetchTranscript(videoId));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '';
+    // youtube-transcript 字幕被關閉 / 不存在時會拋 "Transcript is disabled"
+    if (msg.includes('disabled') || msg.includes('Transcript')) {
+      throw new Error('此 YouTube 影片未開放字幕，無法自動擷取內容。請嘗試其他影片，或改用「上傳講義」模式。');
+    }
+    throw new Error('YouTube 字幕擷取失敗，請確認連結正確後重試');
+  }
 
   if (!transcriptItems || transcriptItems.length === 0) {
-    throw new Error('此影片沒有可用的字幕');
+    throw new Error('此 YouTube 影片未開放字幕，無法自動擷取內容。請嘗試其他影片，或改用「上傳講義」模式。');
   }
 
   return transcriptItems.map(item => item.text).join(' ');
