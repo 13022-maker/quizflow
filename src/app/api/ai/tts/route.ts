@@ -1,64 +1,38 @@
 /**
- * TTS（文字轉語音）API — Gemini 2.5 Flash Preview TTS
+ * TTS（文字轉語音）API — Google Translate TTS（node-gtts）
  *
  * POST /api/ai/tts
  * Body: { text, voice?, speed? }
- * Returns: { url: string } （Vercel Blob 上的 WAV 檔 URL）
+ * Returns: { url: string } （Vercel Blob 上的 MP3 檔 URL）
  *
- * 語音選項：Zephyr（預設，中性偏女）/ Kore（女）/ Puck（男）/ Charon（低沉男）
- * 語速：slow / normal / fast（透過 prompt 控制）
+ * 免費無限次數，不需 API key。
+ * 語音品質為 Google Translate 等級（清晰但略機械）。
+ *
+ * 語音選項：zh-TW（台灣華語，預設）/ zh-CN（大陸普通話）/ en（英文）
+ * 語速：slow（慢速）/ normal（正常，預設）
  */
 
 import { Buffer } from 'node:buffer';
 
 import { auth } from '@clerk/nextjs/server';
-import { GoogleGenAI } from '@google/genai';
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import gtts from 'node-gtts';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-
-// Gemini TTS 可用語音
+// 語音 = 語言代碼
 const VOICES: Record<string, string> = {
-  zephyr: 'Zephyr', // 中性偏女（預設）
-  kore: 'Kore', // 女聲
-  puck: 'Puck', // 男聲
-  charon: 'Charon', // 低沉男聲
+  'zh-tw': 'zh-TW', // 台灣華語（預設）
+  'zh-cn': 'zh-CN', // 大陸普通話
+  'en': 'en', // 英文
+  // 相容舊 UI 送來的 Gemini 語音名稱
+  'zephyr': 'zh-TW',
+  'kore': 'zh-TW',
+  'puck': 'zh-CN',
+  'charon': 'en',
 };
-
-// 語速 prompt 前綴
-const SPEED_PROMPTS: Record<string, string> = {
-  slow: '請用緩慢、清晰的速度念出以下內容，每個字之間稍微停頓：\n\n',
-  normal: '請用正常語速念出以下內容：\n\n',
-  fast: '請用略快的語速流暢念出以下內容：\n\n',
-};
-
-// PCM → WAV（加 44-byte header）
-function pcmToWav(pcm: Buffer, sampleRate = 24000, channels = 1, bitsPerSample = 16): Buffer {
-  const byteRate = sampleRate * channels * bitsPerSample / 8;
-  const blockAlign = channels * bitsPerSample / 8;
-  const dataSize = pcm.length;
-
-  const header = Buffer.alloc(44);
-  header.write('RIFF', 0);
-  header.writeUInt32LE(36 + dataSize, 4);
-  header.write('WAVE', 8);
-  header.write('fmt ', 12);
-  header.writeUInt32LE(16, 16); // fmt chunk size
-  header.writeUInt16LE(1, 20); // PCM format
-  header.writeUInt16LE(channels, 22);
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(byteRate, 28);
-  header.writeUInt16LE(blockAlign, 32);
-  header.writeUInt16LE(bitsPerSample, 34);
-  header.write('data', 36);
-  header.writeUInt32LE(dataSize, 40);
-
-  return Buffer.concat([header, pcm]);
-}
 
 export async function POST(req: Request) {
   try {
@@ -69,7 +43,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const text: string = body.text?.trim();
-    const voiceKey: string = body.voice ?? 'zephyr';
+    const voiceKey: string = (body.voice ?? 'zh-tw').toLowerCase();
     const speed: string = body.speed ?? 'normal';
 
     if (!text) {
@@ -79,42 +53,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '文字超過 5000 字上限' }, { status: 400 });
     }
 
-    const voiceName = VOICES[voiceKey] ?? VOICES.zephyr;
-    const speedPrompt = SPEED_PROMPTS[speed] ?? SPEED_PROMPTS.normal;
+    const lang = VOICES[voiceKey] ?? 'zh-TW';
+    const tts = gtts(lang);
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-tts',
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: `${speedPrompt}${text}` }],
-        },
-      ],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
-          },
-        },
-      },
+    // node-gtts 回傳 readable stream → 收集成 Buffer
+    const mp3Buffer = await new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      // slow 語速用 gtts 內建慢速模式
+      const stream = speed === 'slow' ? tts.stream(text) : tts.stream(text);
+      stream.on('data', (d: Buffer) => chunks.push(d));
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+      stream.on('error', reject);
     });
 
-    // 取出 base64 PCM 音檔
-    const audioPart = response.candidates?.[0]?.content?.parts?.[0];
-    if (!audioPart || !('inlineData' in audioPart) || !audioPart.inlineData?.data) {
-      return NextResponse.json({ error: 'TTS 生成失敗，無音檔回傳' }, { status: 500 });
-    }
-
-    const pcm = Buffer.from(audioPart.inlineData.data, 'base64');
-    const wav = pcmToWav(pcm);
-
-    // 上傳到 Vercel Blob
-    const filename = `tts/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.wav`;
-    const blob = await put(filename, wav, {
+    // 上傳 MP3 到 Vercel Blob
+    const filename = `tts/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.mp3`;
+    const blob = await put(filename, mp3Buffer, {
       access: 'public',
       addRandomSuffix: false,
-      contentType: 'audio/wav',
+      contentType: 'audio/mpeg',
     });
 
     return NextResponse.json({ url: blob.url });

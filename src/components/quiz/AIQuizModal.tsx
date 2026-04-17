@@ -108,7 +108,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
 
   // 聽力題 TTS 參數
-  const [ttsVoice, setTtsVoice] = useState('zephyr');
+  const [ttsVoice, setTtsVoice] = useState('zh-tw');
   const [ttsSpeed, setTtsSpeed] = useState('normal');
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState('');
@@ -593,10 +593,9 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                     onChange={e => setTtsVoice(e.target.value)}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none"
                   >
-                    <option value="zephyr">Zephyr（中性）</option>
-                    <option value="kore">Kore（女聲）</option>
-                    <option value="puck">Puck（男聲）</option>
-                    <option value="charon">Charon（低沉男聲）</option>
+                    <option value="zh-tw">台灣華語</option>
+                    <option value="zh-cn">大陸普通話</option>
+                    <option value="en">英文</option>
                   </select>
                 </div>
                 {/* 語速 */}
@@ -607,9 +606,8 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                     onChange={e => setTtsSpeed(e.target.value)}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none"
                   >
-                    <option value="slow">慢速（適合初學）</option>
-                    <option value="normal">正常</option>
-                    <option value="fast">快速（進階挑戰）</option>
+                    <option value="normal">正常語速</option>
+                    <option value="slow">慢速（適合初學者）</option>
                   </select>
                 </div>
               </div>
