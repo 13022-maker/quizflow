@@ -1,6 +1,6 @@
 {
   "Index": {
-    "meta_title": "QuizFlow - 專為台灣老師設計的線上測驗平台",
+    "meta_title": "QuizFlow - AI 智慧測驗平台，出題改考分析一次搞定",
     "meta_description": "幾分鐘內建立測驗，一鍵分享給學生，即時查看作答結果。免費方案提供 10 份測驗，升級 Pro 方案可無限出題並使用 AI 自動生題功能。"
   },
   "PricingPage": {
@@ -20,7 +20,7 @@
   "Hero": {
     "follow_twitter": "在 Twitter 追蹤 QuizFlow",
     "title": "更聰明的方式，<important>出題、分享、分析</important>學生作答成效。",
-    "description": "幾分鐘內建立吸引人的測驗，一個連結即可分享，即時掌握學生學習狀況。專為台灣老師設計。",
+    "description": "幾分鐘內建立吸引人的測驗，一個連結即可分享，即時掌握學生學習狀況。為現代教育者而生，讓出題、改考、分析一次搞定。",
     "primary_button": "免費開始使用",
     "secondary_button": "了解如何運作"
   },
@@ -89,7 +89,7 @@
     "terms_of_service": "服務條款",
     "privacy_policy": "隱私政策",
     "refund_policy": "退款政策",
-    "footer_text": "© {year} {name}。為台灣老師打造。"
+    "footer_text": "© {year} {name}。為現代教育者而生。"
   },
   "ProtectFallback": {
     "not_enough_permission": "您沒有執行此操作的權限"

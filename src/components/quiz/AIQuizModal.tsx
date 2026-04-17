@@ -442,7 +442,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
                   <input
                     ref={fileRef}
                     type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
                     className="hidden"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {

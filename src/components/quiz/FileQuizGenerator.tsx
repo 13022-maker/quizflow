@@ -182,7 +182,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900">📂 上傳講義自動命題</h2>
-            <p className="mt-0.5 text-xs text-gray-500">支援 PDF、Word、圖片</p>
+            <p className="mt-0.5 text-xs text-gray-500">支援 PDF、Word、圖片、音檔</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
         </div>
@@ -214,7 +214,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                     ref={inputRef}
                     type="file"
                     className="hidden"
-                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif"
+                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
                         handleFile(e.target.files[0]);
@@ -223,7 +223,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                   />
                   <div className="mb-3 text-4xl">📂</div>
                   <p className="mb-1 font-semibold text-gray-700">點擊或拖曳上傳教材</p>
-                  <p className="text-xs text-gray-400">PDF · DOCX · JPG · PNG</p>
+                  <p className="text-xs text-gray-400">PDF · DOCX · JPG · PNG · MP3 · WAV</p>
                 </div>
               )
             : (

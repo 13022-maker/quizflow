@@ -1,6 +1,6 @@
 {
   "Index": {
-    "meta_title": "QuizFlow - The online quiz platform built for Taiwan teachers.",
+    "meta_title": "QuizFlow - AI-Powered Quiz Platform for Modern Educators",
     "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 10 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
   },
   "PricingPage": {
@@ -20,7 +20,7 @@
   "Hero": {
     "follow_twitter": "Follow QuizFlow on Twitter",
     "title": "The smarter way to <important>create and share quizzes</important> for your students.",
-    "description": "Build engaging quizzes in minutes, share with a single link, and get real-time results. Designed for Taiwan teachers.",
+    "description": "Build engaging quizzes in minutes, share with a single link, and get real-time results. Built for modern educators — create, grade, and analyze in one place.",
     "primary_button": "Start for Free",
     "secondary_button": "See How It Works"
   },
@@ -89,7 +89,7 @@
     "terms_of_service": "Terms Of Service",
     "privacy_policy": "Privacy Policy",
     "refund_policy": "Refund Policy",
-    "footer_text": "© {year} {name}. Built for Taiwan teachers."
+    "footer_text": "© {year} {name}. Built for modern educators."
   },
   "ProtectFallback": {
     "not_enough_permission": "You do not have the permissions to perform this action"
