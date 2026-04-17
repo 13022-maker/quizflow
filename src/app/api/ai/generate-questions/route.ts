@@ -1,8 +1,9 @@
 /**
  * 文字主題出題 API
- * 原本用 Claude Sonnet 4，改為 Gemini 2.5 Flash（免費額度，省成本）
+ * 主用 Gemini 2.5 Flash（免費），Gemini 過載時自動 fallback 到 Claude Sonnet 4
  */
 
+import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
@@ -12,24 +13,21 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
+const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
+const anthropic = new Anthropic();
 
-// 過載 / 限流自動重試
-async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
-      const status = (err as { status?: number; code?: number }).status
-        ?? (err as { code?: number }).code;
-      const retryable = status === 429 || (typeof status === 'number' && status >= 500);
-      if (!retryable || i === maxRetries - 1) {
-        throw err;
-      }
-      await new Promise(r => setTimeout(r, (i + 1) * 1500));
-    }
-  }
-  throw new Error('AI API 目前過載，請稍後再試');
+// 判斷是否為過載 / 限流錯誤
+function isOverloadError(err: unknown): boolean {
+  const status = (err as { status?: number; code?: number }).status
+    ?? (err as { code?: number }).code;
+  const msg = err instanceof Error ? err.message : '';
+  return status === 429
+    || status === 503
+    || status === 529
+    || (typeof status === 'number' && status >= 500)
+    || msg.includes('overloaded')
+    || msg.includes('UNAVAILABLE')
+    || msg.includes('high demand');
 }
 
 const DIFF_LABELS: Record<string, string> = {
@@ -109,41 +107,52 @@ ${typesPrompt}
 - 中等難度時：選項可稍長但不超過 15 字，listeningText 控制在 100 字以內
 - 困難難度時：選項可更複雜，listeningText 可到 200 字`;
 
+  // 主用 Gemini，過載時 fallback Claude
+  let raw: string;
+  let usedModel = 'gemini';
+
   try {
-    const response = await callWithRetry(() =>
-      ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-        },
-      }));
+    const response = await gemini.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: { maxOutputTokens: 8192, responseMimeType: 'application/json' },
+    });
+    raw = response.text ?? '';
+  } catch (geminiErr) {
+    if (!isOverloadError(geminiErr)) {
+      const msg = geminiErr instanceof Error ? geminiErr.message : '未知錯誤';
+      console.error('[generate-questions] Gemini 失敗（非過載）：', geminiErr);
+      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+    }
 
-    const raw = response.text ?? '';
-    const match = raw.match(/\{[\s\S]*\}/);
-    const jsonText = match ? match[0] : raw;
-
-    let result;
+    // Gemini 過載 → fallback Claude
+    console.warn('[generate-questions] Gemini 過載，fallback Claude');
+    usedModel = 'claude';
     try {
-      result = JSON.parse(jsonText);
-    } catch {
-      console.error('[generate-questions] Gemini 回傳非 JSON：', raw.slice(0, 500));
-      return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
+      const message = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      raw = (message.content[0] as { type: string; text: string }).text ?? '';
+    } catch (claudeErr) {
+      const msg = claudeErr instanceof Error ? claudeErr.message : '未知錯誤';
+      console.error('[generate-questions] Claude fallback 也失敗：', claudeErr);
+      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
     }
-
-    return NextResponse.json(result);
-  } catch (err) {
-    const status = (err as { status?: number; code?: number }).status
-      ?? (err as { code?: number }).code;
-    if (status === 429 || (typeof status === 'number' && status >= 500)) {
-      return NextResponse.json(
-        { error: 'AI 伺服器目前忙碌，請稍後再試', retryable: true },
-        { status: 503 },
-      );
-    }
-    const msg = err instanceof Error ? err.message : '未知錯誤';
-    console.error('[generate-questions] Gemini 呼叫失敗：', err);
-    return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }
+
+  // 解析 JSON
+  const match = raw.match(/\{[\s\S]*\}/);
+  const jsonText = match ? match[0] : raw;
+
+  let result;
+  try {
+    result = JSON.parse(jsonText);
+  } catch {
+    console.error(`[generate-questions] ${usedModel} 回傳非 JSON：`, raw.slice(0, 500));
+    return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
+  }
+
+  return NextResponse.json(result);
 }
