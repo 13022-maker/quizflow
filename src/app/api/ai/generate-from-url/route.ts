@@ -56,25 +56,44 @@ function detectUrlType(url: string): UrlType {
   return 'unknown';
 }
 
+// 將 youtube-transcript 錯誤分類成老師看得懂的繁中訊息
+function classifyYouTubeError(err: unknown): string {
+  const msg = err instanceof Error ? err.message.toLowerCase() : '';
+
+  // 字幕被上傳者關閉
+  if (msg.includes('disabled')) {
+    return '此影片的字幕已被上傳者關閉，無法擷取內容。請嘗試其他影片，或改用「上傳講義」模式。';
+  }
+  // 影片不存在 / 私人 / 已刪除
+  if (msg.includes('unavailable') || msg.includes('not found') || msg.includes('404')) {
+    return '此影片不存在或為私人影片，無法讀取。請確認連結正確且影片為公開。';
+  }
+  // 沒有任何字幕（自動字幕未產生）
+  if (msg.includes('no transcript') || msg.includes('could not') || msg.includes('transcript')) {
+    return '此影片沒有可用的字幕（可能尚未自動產生）。請嘗試其他影片，或改用「上傳講義」模式。';
+  }
+  // 網路逾時 / 伺服器錯誤
+  if (msg.includes('timeout') || msg.includes('econnrefused') || msg.includes('fetch') || msg.includes('network')) {
+    return '系統暫時無法讀取 YouTube，請稍後再試。';
+  }
+  // 未知錯誤
+  return 'YouTube 字幕擷取失敗，請確認連結正確後重試。';
+}
+
 // 抓 YouTube 字幕文字
 async function fetchYouTubeTranscript(videoId: string): Promise<string> {
-  // 優先抓繁中 → 簡中 → 英文 → 自動生成
+  // 優先抓繁中 → 簡中 → 自動偵測
   let transcriptItems;
   try {
     transcriptItems = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh-TW' })
       .catch(() => YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh' }))
       .catch(() => YoutubeTranscript.fetchTranscript(videoId));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : '';
-    // youtube-transcript 字幕被關閉 / 不存在時會拋 "Transcript is disabled"
-    if (msg.includes('disabled') || msg.includes('Transcript')) {
-      throw new Error('此 YouTube 影片未開放字幕，無法自動擷取內容。請嘗試其他影片，或改用「上傳講義」模式。');
-    }
-    throw new Error('YouTube 字幕擷取失敗，請確認連結正確後重試');
+    throw new Error(classifyYouTubeError(err));
   }
 
   if (!transcriptItems || transcriptItems.length === 0) {
-    throw new Error('此 YouTube 影片未開放字幕，無法自動擷取內容。請嘗試其他影片，或改用「上傳講義」模式。');
+    throw new Error('此影片沒有可用的字幕（可能尚未自動產生）。請嘗試其他影片，或改用「上傳講義」模式。');
   }
 
   return transcriptItems.map(item => item.text).join(' ');
