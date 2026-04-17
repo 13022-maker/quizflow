@@ -50,10 +50,33 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
   throw new Error('Gemini API 目前忙碌，請稍後再試');
 }
 
+// 支援的語系
+const LANG_LABELS: Record<string, string> = {
+  'zh-TW': '繁體中文',
+  'en': 'English',
+  'ja': '日本語',
+  'ko': '한국어',
+  'vi': 'Tiếng Việt',
+  'id': 'Bahasa Indonesia',
+};
+
 export async function POST(
   _req: Request,
   { params }: { params: { quizId: string } },
 ) {
+  // 從 request body 讀 lang（可選），預設繁中
+  let lang = 'zh-TW';
+  try {
+    const body = await _req.json();
+    if (body?.lang && LANG_LABELS[body.lang]) {
+      lang = body.lang;
+    }
+  } catch {
+    // body 為空或非 JSON 時用預設語系
+  }
+
+  const isDefaultLang = lang === 'zh-TW';
+
   const quizId = Number(params.quizId);
   if (Number.isNaN(quizId)) {
     return NextResponse.json({ error: 'quizId 不合法' }, { status: 400 });
@@ -74,11 +97,11 @@ export async function POST(
     .from(questionSchema)
     .where(eq(questionSchema.quizId, quizId));
 
-  // 已有 ai_hint 的先放入結果
+  // 繁中用 DB 快取，其他語系全部即時生成
   const hints: Record<number, string> = {};
   const toGenerate: typeof questions = [];
   for (const q of questions) {
-    if (q.aiHint) {
+    if (isDefaultLang && q.aiHint) {
       hints[q.id] = q.aiHint;
     } else {
       toGenerate.push(q);
@@ -91,10 +114,11 @@ export async function POST(
 
   // 構造批次 prompt：一次送多題減少 API calls
   // Gemini JSON 模式保證結構化輸出
-  const prompt = `以下是 ${toGenerate.length} 道考題。請為每一題寫一段**不超過 57 字**的解題提示，讓**國中生**能看懂。
+  const langLabel = LANG_LABELS[lang] ?? '繁體中文';
+  const prompt = `以下是 ${toGenerate.length} 道考題。請為每一題寫一段**不超過 57 字**的解題提示，讓初學者能看懂。
 提示內容要：
 1. 說明關鍵概念或解題思路，不要直接公布答案
-2. 用繁體中文，語氣親切像家教
+2. 用 **${langLabel}** 書寫，語氣親切像家教
 3. 嚴格不超過 57 字
 4. 只回傳合法 JSON
 
@@ -136,11 +160,13 @@ JSON 格式（index 對應上面編號）：
       const trimmed = item.hint.slice(0, 57);
       hints[q.id] = trimmed;
 
-      // 寫回 DB 快取（非同步不等完成，避免拖慢回應）
-      db.update(questionSchema)
-        .set({ aiHint: trimmed })
-        .where(eq(questionSchema.id, q.id))
-        .catch(err => console.error('[generate-hints] DB 寫入失敗', q.id, err));
+      // 只有繁中才寫回 DB 快取（其他語系即時生成不快取）
+      if (isDefaultLang) {
+        db.update(questionSchema)
+          .set({ aiHint: trimmed })
+          .where(eq(questionSchema.id, q.id))
+          .catch(err => console.error('[generate-hints] DB 寫入失敗', q.id, err));
+      }
     }
 
     return NextResponse.json({ hints });

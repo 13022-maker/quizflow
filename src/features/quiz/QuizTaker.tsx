@@ -311,18 +311,25 @@ function ResultScreen({
   // ── AI 助教提示（每題 ≤57 字解題提示） ──────────────────────
   // 獨立於 showAnswers：即使老師設定不顯示解答，仍顯示概念提示（57 字不洩答）
   const [hints, setHints] = useState<Record<number, string>>({});
+  const [hintsLang, setHintsLang] = useState('zh-TW');
+  const [hintsLoading, setHintsLoading] = useState(false);
+
   useEffect(() => {
-    fetch(`/api/ai/generate-hints/${quizId}`, { method: 'POST' })
+    setHintsLoading(true);
+    fetch(`/api/ai/generate-hints/${quizId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: hintsLang }),
+    })
       .then(r => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.hints) {
           setHints(data.hints);
         }
       })
-      .catch(() => {
-        // 提示載入失敗就安靜忽略，不影響成績顯示
-      });
-  }, [quizId]);
+      .catch(() => {})
+      .finally(() => setHintsLoading(false));
+  }, [quizId, hintsLang]);
 
   // 有顯示解答且有答錯時，自動呼叫 AI 分析
   useEffect(() => {
@@ -442,6 +449,27 @@ function ResultScreen({
           )}
         </div>
       )}
+
+      {/* AI 助教語系選擇 */}
+      <div className="flex items-center justify-between rounded-xl border bg-card p-4">
+        <div className="flex items-center gap-2">
+          <span className="text-lg" aria-hidden>💡</span>
+          <span className="text-sm font-medium">AI 助教解析語言</span>
+          {hintsLoading && <span className="text-xs text-muted-foreground">載入中…</span>}
+        </div>
+        <select
+          value={hintsLang}
+          onChange={e => setHintsLang(e.target.value)}
+          className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="zh-TW">繁體中文</option>
+          <option value="en">English</option>
+          <option value="ja">日本語</option>
+          <option value="ko">한국어</option>
+          <option value="vi">Tiếng Việt</option>
+          <option value="id">Bahasa Indonesia</option>
+        </select>
+      </div>
 
       {/* 逐題對照 + AI 助教提示
           正確答案跟老師 showAnswers 設定走；AI 助教提示獨立於 showAnswers 永遠顯示 */}
