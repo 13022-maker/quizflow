@@ -765,6 +765,8 @@ export function QuizEditor({
                             type: question.type,
                             body: question.body,
                             imageUrl: question.imageUrl ?? '',
+                            audioUrl: question.audioUrl ?? '',
+                            audioTranscript: question.audioTranscript ?? '',
                             options: question.options ?? undefined,
                             correctAnswers: question.correctAnswers ?? undefined,
                             points: question.points,

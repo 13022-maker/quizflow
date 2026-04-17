@@ -84,7 +84,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
 
     if (!isShortAnswer && question.correctAnswers && studentAnswer !== undefined) {
       const correct = question.correctAnswers;
-      if (question.type === 'single_choice' || question.type === 'true_false') {
+      if (question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') {
         isCorrect = correct.includes(studentAnswer as string);
       } else if (question.type === 'multiple_choice') {
         const given = Array.isArray(studentAnswer) ? [...studentAnswer].sort() : [];

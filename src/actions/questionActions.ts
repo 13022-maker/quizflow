@@ -23,8 +23,10 @@ async function verifyOwnership(quizId: number, orgId: string) {
 
 const QuestionInputSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
-  body: z.string().min(1, '請輸入題目內容'),
+  body: z.string().min(1, '請輸入題目內���'),
   imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
+  audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網��
+  audioTranscript: z.string().optional(), // 音檔逐字稿
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
@@ -62,6 +64,8 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     type: parsed.data.type,
     body: parsed.data.body,
     imageUrl: parsed.data.imageUrl || null,
+    audioUrl: parsed.data.audioUrl || null,
+    audioTranscript: parsed.data.audioTranscript || null,
     options: parsed.data.options ?? null,
     correctAnswers: parsed.data.correctAnswers ?? null,
     points: parsed.data.points,
@@ -90,6 +94,8 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       type: parsed.data.type,
       body: parsed.data.body,
       imageUrl: parsed.data.imageUrl || null,
+      audioUrl: parsed.data.audioUrl || null,
+      audioTranscript: parsed.data.audioTranscript || null,
       options: parsed.data.options ?? null,
       correctAnswers: parsed.data.correctAnswers ?? null,
       points: parsed.data.points,

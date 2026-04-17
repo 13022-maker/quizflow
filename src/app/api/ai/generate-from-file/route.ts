@@ -158,10 +158,12 @@ export async function POST(request: Request) {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
   const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
   const isPDF = ext === 'pdf';
+  const isAudio = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'aac', 'flac'].includes(ext)
+    || file.type.startsWith('audio/');
 
-  if (!isImage && !isPDF) {
+  if (!isImage && !isPDF && !isAudio) {
     return NextResponse.json(
-      { error: '目前僅支援 PDF 和圖片格式，請將 Word 文件另存為 PDF 後上傳' },
+      { error: '支援 PDF、圖片、音檔格式。Word 請另存 PDF 後上傳' },
       { status: 400 },
     );
   }
@@ -180,7 +182,26 @@ export async function POST(request: Request) {
   const diffLabel = DIFF_LABELS[difficulty] || '中等';
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
 
-  const prompt = `請根據以上文件內容出題。
+  // 音檔用聽力題專用 prompt，文件 / 圖片用一般 prompt
+  const prompt = isAudio
+    ? `請聽取以上音檔內容，根據音檔生成聽力測驗題。
+
+難度：${diffLabel}
+每種題型各出 ${count} 題，所有文字使用繁體中文。
+
+規則：
+1. 所有題目必須根據音檔的實際內容出題，不可自行捏造
+2. 只回傳合法 JSON，不要 markdown 或任何說明文字
+3. 每題都是聽力選擇題（type 一律為 "listening"）
+4. JSON 格式：
+{
+  "title": "根據音檔內容命名的聽力測驗標題",
+  "transcript": "音檔的完整逐字稿（繁體中文）",
+  "questions": [
+    { "type": "listening", "question": "根據音檔，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }
+  ]
+}`
+    : `請根據以上文件內容出題。
 
 難度：${diffLabel}
 出題類型：
@@ -218,10 +239,26 @@ ${typesPrompt}
     gif: 'image/gif',
   };
 
+  const audioMimeMap: Record<string, string> = {
+    mp3: 'audio/mpeg',
+    wav: 'audio/wav',
+    m4a: 'audio/mp4',
+    ogg: 'audio/ogg',
+    webm: 'audio/webm',
+    aac: 'audio/aac',
+    flac: 'audio/flac',
+  };
+
+  // 音檔只能走 Gemini（Claude 不支援音檔多模態）
+  const effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
+
   let mimeType: string;
   let base64: string;
 
-  if (isImage) {
+  if (isAudio) {
+    mimeType = audioMimeMap[ext] || file.type || 'audio/mpeg';
+    base64 = Buffer.from(arrayBuffer).toString('base64');
+  } else if (isImage) {
     mimeType = imageMimeMap[ext] || 'image/png';
     base64 = Buffer.from(arrayBuffer).toString('base64');
   } else {
@@ -248,7 +285,7 @@ ${typesPrompt}
   }
 
   try {
-    const raw = model === 'claude'
+    const raw = effectiveModel === 'claude'
       ? await generateWithClaude(mimeType, base64, prompt)
       : await generateWithGemini(mimeType, base64, prompt);
 
@@ -260,7 +297,7 @@ ${typesPrompt}
     try {
       result = JSON.parse(jsonText);
     } catch {
-      console.error(`[generate-from-file] ${model} 回傳非 JSON：`, raw.slice(0, 500));
+      console.error(`[generate-from-file] ${effectiveModel} 回傳非 JSON：`, raw.slice(0, 500));
       return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
     }
 

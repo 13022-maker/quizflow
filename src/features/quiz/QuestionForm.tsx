@@ -25,6 +25,8 @@ const QuestionSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
   body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().optional(), // 題目圖片網址
+  audioUrl: z.string().optional(), // 聽力題音檔網址
+  audioTranscript: z.string().optional(), // 音檔逐字稿（選填）
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
@@ -50,11 +52,13 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(QuestionSchema),
     defaultValues: defaultValues
-      ? { points: 1, correctAnswers: [], imageUrl: '', ...defaultValues }
+      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', ...defaultValues }
       : {
           type: 'single_choice',
           body: '',
           imageUrl: '',
+          audioUrl: '',
+          audioTranscript: '',
           options: [
             { id: id1, text: '' },
             { id: id2, text: '' },
@@ -115,9 +119,64 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
     }
   };
 
+  // 音檔上傳（聽力題，Vercel Blob）
+  const audioInputRef = useRef<HTMLInputElement>(null);
+  const [audioUploading, setAudioUploading] = useState(false);
+  const [audioUploadError, setAudioUploadError] = useState('');
+
+  const handleAudioSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    setAudioUploadError('');
+    if (!file.type.startsWith('audio/')) {
+      setAudioUploadError('請選擇音檔（mp3、wav、m4a 等）');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAudioUploadError('檔案超過 5 MB');
+      return;
+    }
+    setAudioUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`/api/upload/audio/${quizId}`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? '上傳失敗');
+      }
+      form.setValue('audioUrl', data.url, { shouldDirty: true });
+    } catch (err) {
+      setAudioUploadError(err instanceof Error ? err.message : '上傳失敗');
+    } finally {
+      setAudioUploading(false);
+      if (audioInputRef.current) {
+        audioInputRef.current.value = '';
+      }
+    }
+  };
+
   // 切換題型時重設選項
   useEffect(() => {
-    if (type === 'true_false') {
+    if (type === 'listening') {
+      // 聽力題等同單選 + 音檔，選項格式跟 single_choice 一樣
+      const current = form.getValues('options') ?? [];
+      const isTrueFalseShape = current[0]?.id === 'tf-true';
+      if (current.length < 2 || isTrueFalseShape) {
+        replace([
+          { id: crypto.randomUUID(), text: '' },
+          { id: crypto.randomUUID(), text: '' },
+          { id: crypto.randomUUID(), text: '' },
+          { id: crypto.randomUUID(), text: '' },
+        ]);
+      }
+      form.setValue('correctAnswers', []);
+    } else if (type === 'true_false') {
       replace(TRUE_FALSE_OPTIONS);
       form.setValue('correctAnswers', []);
     } else if (type === 'short_answer') {
@@ -153,7 +212,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
 
   // 切換正確答案
   const toggleCorrect = (optionId: string) => {
-    if (type === 'single_choice' || type === 'true_false') {
+    if (type === 'single_choice' || type === 'true_false' || type === 'listening') {
       form.setValue('correctAnswers', [optionId]);
     } else {
       const current = form.getValues('correctAnswers') ?? [];
@@ -286,7 +345,74 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         )}
       </div>
 
-      {/* 選項清單（選擇題 / 是非題 / 排序題） */}
+      {/* 聽力題：音檔上傳 + 播放預覽 + 逐字稿 */}
+      {type === 'listening' && (
+        <div className="space-y-3">
+          <div>
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className="mb-1 block text-sm font-medium">
+              音檔
+              <span className="ml-1 text-xs font-normal text-muted-foreground">（mp3 / wav / m4a，5 MB 內）</span>
+            </label>
+            <div className="flex gap-2">
+              <input
+                ref={audioInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleAudioSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => audioInputRef.current?.click()}
+                disabled={audioUploading}
+                className="shrink-0 rounded-md border border-input bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-60"
+              >
+                {audioUploading ? '上傳中…' : '🎵 上傳音檔'}
+              </button>
+              {form.watch('audioUrl') && (
+                <button
+                  type="button"
+                  onClick={() => form.setValue('audioUrl', '', { shouldDirty: true })}
+                  className="text-xs text-destructive hover:underline"
+                >
+                  移除音檔
+                </button>
+              )}
+            </div>
+            {audioUploadError && (
+              <p className="mt-1 text-xs text-destructive">{audioUploadError}</p>
+            )}
+          </div>
+
+          {/* 音檔播放預覽 */}
+          {form.watch('audioUrl') && (
+            <div className="rounded-lg border bg-muted/30 p-3">
+              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+              <audio controls className="w-full" src={form.watch('audioUrl')}>
+                你的瀏覽器不支援音訊播放
+              </audio>
+            </div>
+          )}
+
+          {/* 逐字稿（選填） */}
+          <div>
+            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+            <label className="mb-1 block text-sm font-medium">
+              逐字稿
+              <span className="ml-1 text-xs font-normal text-muted-foreground">（選填，給 AI 助教參考用）</span>
+            </label>
+            <textarea
+              {...form.register('audioTranscript')}
+              rows={3}
+              placeholder="可貼上音檔的文字內容，AI 助教會根據這段文字生成解題提示"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* 選項清單（選擇題 / 是非題 / 排序題 / 聽力題） */}
       {type !== 'short_answer' && (
         <div>
           <label className="mb-1 block text-sm font-medium">

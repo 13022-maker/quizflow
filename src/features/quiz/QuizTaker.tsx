@@ -39,7 +39,7 @@ function gradeAnswer(question: Question, answer: string | string[] | undefined):
   if (!question.correctAnswers || answer === undefined) {
     return false;
   }
-  if (question.type === 'single_choice' || question.type === 'true_false') {
+  if (question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') {
     return question.correctAnswers.includes(answer as string);
   }
   if (question.type === 'multiple_choice') {
@@ -132,8 +132,19 @@ function QuestionItem({
         </div>
       )}
 
-      {/* 單選題 / 是非題 */}
-      {(question.type === 'single_choice' || question.type === 'true_false') && (
+      {/* 聽力題音檔播放器 */}
+      {question.audioUrl && (
+        <div className="mb-4 rounded-lg border bg-muted/30 p-3">
+          <p className="mb-2 text-xs font-medium text-muted-foreground">🎧 請先聽完音檔再作答</p>
+          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+          <audio controls className="w-full" src={question.audioUrl}>
+            你的瀏覽器不支援音訊播放
+          </audio>
+        </div>
+      )}
+
+      {/* 單選題 / 是非題 / 聽力題（聽力題選項邏輯等同單選） */}
+      {(question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') && (
         <div className="space-y-2 pl-2">
           {options.map(opt => (
             <label key={opt.id} className="flex cursor-pointer items-center gap-3">
