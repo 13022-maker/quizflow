@@ -164,10 +164,10 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
   // 切換題型時重設選項
   useEffect(() => {
     if (type === 'listening') {
-      // 聽力題等同單選 + 音檔，選項格式跟 single_choice 一樣
+      // 聽力題固定 4 個選項（4 選 1）
       const current = form.getValues('options') ?? [];
       const isTrueFalseShape = current[0]?.id === 'tf-true';
-      if (current.length < 2 || isTrueFalseShape) {
+      if (current.length < 4 || isTrueFalseShape) {
         replace([
           { id: crypto.randomUUID(), text: '' },
           { id: crypto.randomUUID(), text: '' },
