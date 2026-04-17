@@ -25,6 +25,12 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
   | { allowed: true; remaining: number }
   | { allowed: false; reason: string; remaining: number }
 > {
+  // 2026 年 4 月試用期：不限制 AI 出題次數（5 月起恢復正式 quota）
+  const now = new Date();
+  if (now.getFullYear() === 2026 && now.getMonth() === 3) { // 0-based: 3 = 四月
+    return { allowed: true, remaining: 999 };
+  }
+
   // 取得方案
   const planId = await getOrgPlanId(orgId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
