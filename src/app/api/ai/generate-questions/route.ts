@@ -103,7 +103,11 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-聽力題特別注意：listeningText 必須使用口語化的對話或短文，避免書面語，模擬真實聽力情境。`;
+聽力題特別注意：
+- listeningText 必須使用口語化的對話或短文，避免書面語，模擬真實聽力情境
+- 簡單難度時：選項用最基礎的詞彙，每個選項不超過 8 個字，listeningText 控制在 50 字以內
+- 中等難度時：選項可稍長但不超過 15 字，listeningText 控制在 100 字以內
+- 困難難度時：選項可更複雜，listeningText 可到 200 字`;
 
   try {
     const message = await callWithRetry(() =>
