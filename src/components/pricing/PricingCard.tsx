@@ -31,9 +31,15 @@ export function PricingCard({ plan, billingCycle }: Props) {
   const priceId = billingCycle === 'yearly' ? plan.priceIdYearly : plan.priceIdMonthly;
   const displayPrice = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
 
+  // Paddle production 環境變數未設時，付費方案按鈕 disabled
+  const paddleReady = !!priceId;
+
   const handleClick = () => {
     if (isFree) {
       window.location.href = '/sign-up';
+      return;
+    }
+    if (!paddleReady) {
       return;
     }
     openCheckout(priceId);
@@ -113,7 +119,7 @@ export function PricingCard({ plan, billingCycle }: Props) {
       <button
         type="button"
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || (!isFree && !paddleReady)}
         className={`w-full rounded-xl py-3 text-sm font-semibold transition-colors disabled:opacity-60 ${
           plan.highlighted
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'

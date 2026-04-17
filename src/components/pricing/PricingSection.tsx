@@ -42,7 +42,7 @@ const PLANS: PricingPlan[] = [
       '匯出 Word / PDF',
     ],
     highlighted: true,
-    ctaLabel: '開始 14 天免費試用',
+    ctaLabel: '目前免費試用中',
   },
   {
     name: '學校方案',
@@ -58,7 +58,7 @@ const PLANS: PricingPlan[] = [
       '班級 / 年級統計報表',
       '專屬客服支援',
     ],
-    ctaLabel: '聯絡我們了解方案',
+    ctaLabel: '目前免費試用中',
   },
 ];
 
