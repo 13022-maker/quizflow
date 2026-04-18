@@ -78,12 +78,16 @@ export async function POST(req: Request) {
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error('[TTS] OpenAI 錯誤', response.status, err);
-      return NextResponse.json({ error: '語音生成失敗，請稍後再試' }, { status: 502 });
+      const errText = await response.text();
+      return NextResponse.json({ error: `OpenAI TTS 錯誤 (${response.status}): ${errText.slice(0, 200)}` }, { status: 502 });
     }
 
     const mp3Buffer = Buffer.from(await response.arrayBuffer());
+
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      const base64 = mp3Buffer.toString('base64');
+      return NextResponse.json({ url: `data:audio/mpeg;base64,${base64}` });
+    }
 
     const filename = `tts/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.mp3`;
     const blob = await put(filename, mp3Buffer, {
@@ -94,8 +98,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: blob.url });
   } catch (err) {
-    console.error('[TTS] 失敗', err);
     const msg = err instanceof Error ? err.message : '語音生成失敗';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: `TTS 錯誤: ${msg}` }, { status: 500 });
   }
 }
