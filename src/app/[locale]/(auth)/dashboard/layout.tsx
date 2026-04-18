@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 
+import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -47,6 +48,7 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
 
       <div className="min-h-[calc(100vh-72px)] bg-muted">
         <div className="mx-auto max-w-screen-xl px-3 pb-16 pt-6">
+          <InAppBrowserBanner />
           {props.children}
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { OrganizationSwitcher, UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { useState } from 'react';
 
 import { ActiveLink } from '@/components/ActiveLink';
 import { LocaleSwitcher } from '@/components/LocaleSwitcher';
@@ -16,6 +17,37 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { Logo } from '@/templates/Logo';
 import { getI18nPath } from '@/utils/Helpers';
+
+function CopyDashboardUrl() {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(`${window.location.origin}/dashboard`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title="複製後台網址（加入書籤）"
+      className="rounded-md p-2 transition-colors hover:bg-muted"
+    >
+      {copied
+        ? (
+            <svg className="size-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          )
+        : (
+            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.07-9.07l-.177.177a4.5 4.5 0 00-.724.447M13.19 8.688L9.879 5.376a4.5 4.5 0 00-6.364 6.364l4.5 4.5" />
+            </svg>
+          )}
+    </button>
+  );
+}
 
 export const DashboardHeader = (props: {
   menu: {
@@ -90,7 +122,10 @@ export const DashboardHeader = (props: {
             </div>
           </li>
 
-          {/* PRO: Dark mode toggle button */}
+          {/* 複製後台網址（方便老師加書籤） */}
+          <li data-fade>
+            <CopyDashboardUrl />
+          </li>
 
           <li data-fade>
             <LocaleSwitcher />
