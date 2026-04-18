@@ -124,6 +124,7 @@ export function QuizEditor({
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [importSuccess, setImportSuccess] = useState(false);
 
   // 平均配分成功提示
   const [distributeMsg, setDistributeMsg] = useState('');
@@ -311,12 +312,12 @@ export function QuizEditor({
       body: JSON.stringify({ questions: aiQuestions }),
     });
 
-    // 既有題目都還是預設 1 分時才自動平均配分，避免覆蓋老師手動調整的配分
     const allDefault = questions.length === 0 || questions.every(q => q.points === 1);
     if (allDefault) {
       await distributePoints(initialQuiz.id);
     }
     setIsSubmitting(false);
+    setImportSuccess(true);
     router.refresh();
   };
 
@@ -738,6 +739,32 @@ export function QuizEditor({
           </div>
         </div>
       </div>
+
+      {/* ── 匯入成功引導 ── */}
+      {importSuccess && questions.length > 0 && (
+        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+          <span className="mt-0.5 text-lg">✅</span>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-800">
+              {questions.length}
+              {' '}
+              題已匯入！接下來只要三步：
+            </p>
+            <ol className="mt-2 space-y-1 text-xs text-green-700">
+              <li>1. 往下滑檢查題目，有問題可以點「編輯」修改</li>
+              <li>2. 確認沒問題後，按上方的「<strong>發佈測驗</strong>」</li>
+              <li>3. 點「<strong>分享</strong>」把連結傳給學生</li>
+            </ol>
+            <button
+              type="button"
+              onClick={() => setImportSuccess(false)}
+              className="mt-2 text-xs text-green-600 hover:underline"
+            >
+              知道了，關閉提示
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── 題目清單 ────────────────────────────────────────────── */}
       <div>
