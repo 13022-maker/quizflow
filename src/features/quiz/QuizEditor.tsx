@@ -295,6 +295,9 @@ export function QuizEditor({
     });
   };
 
+  // 設定區預設收起
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   // 控制 QR Code Modal 顯示
   const [showQRModal, setShowQRModal] = useState(false);
 
@@ -604,12 +607,33 @@ export function QuizEditor({
         />
       )}
 
-      {/* ── 測驗設定 ─────────────────────────────────────────────── */}
-      <div className="space-y-5 rounded-xl border bg-card p-6">
-        {/* 標題 + 快速套用方案按鈕 */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">測驗設定</p>
-          <div className="flex gap-2">
+      {/* ── 測驗設定（可收合） ─────────────────────────────────── */}
+      <div className="rounded-xl border bg-card">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(prev => !prev)}
+          className="flex w-full items-center justify-between px-5 py-4 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">測驗設定</p>
+            <span className="text-xs text-muted-foreground">
+              {activePreset === 'exam' && '📝 考試模式'}
+              {activePreset === 'practice' && '✏️ 練習模式'}
+              {activePreset === 'review' && '🔄 複習模式'}
+              {!activePreset && '自訂'}
+              {showAnswers ? ' · 顯示解答' : ''}
+              {preventLeave ? ' · 防作弊' : ''}
+            </span>
+          </div>
+          <svg className={`size-4 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+
+        {settingsOpen && (
+          <div className="space-y-5 border-t px-5 pb-5 pt-4">
+        {/* 快速套用方案按鈕 */}
+        <div className="flex gap-2">
             {(
               [
                 {
@@ -647,7 +671,6 @@ export function QuizEditor({
               </button>
             ))}
           </div>
-        </div>
 
         {/* 第一列：兩個 toggle */}
         <div className="flex flex-wrap gap-x-6 gap-y-2">
@@ -738,6 +761,8 @@ export function QuizEditor({
             )}
           </div>
         </div>
+          </div>
+        )}
       </div>
 
       {/* ── 匯入成功引導 ── */}
