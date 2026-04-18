@@ -822,6 +822,17 @@ export function QuizEditor({
                         }}
                         onDelete={() => handleDeleteQuestion(question.id)}
                         isDeleting={deletingId === question.id}
+                        onAudioRegenerated={async (questionId, audioUrl) => {
+                          await updateQuestion(questionId, initialQuiz.id, {
+                            type: question.type,
+                            body: question.body,
+                            options: question.options ?? undefined,
+                            correctAnswers: question.correctAnswers ?? undefined,
+                            points: question.points,
+                            audioUrl,
+                          });
+                          router.refresh();
+                        }}
                       />
                     ),
               )}

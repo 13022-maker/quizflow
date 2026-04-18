@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
+import { useState } from 'react';
 
 import type { questionSchema } from '@/models/Schema';
 
@@ -16,9 +17,10 @@ type Props = {
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
+  onAudioRegenerated?: (questionId: number, audioUrl: string) => void;
 };
 
-export function QuestionCard({ question, index, onEdit, onDelete, isDeleting }: Props) {
+export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, onAudioRegenerated }: Props) {
   const {
     attributes,
     listeners,
@@ -27,6 +29,31 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting }: 
     transition,
     isDragging,
   } = useSortable({ id: question.id });
+
+  const [ttsLoading, setTtsLoading] = useState(false);
+  const [ttsError, setTtsError] = useState('');
+
+  const handleRegenerateTts = async () => {
+    setTtsLoading(true);
+    setTtsError('');
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: question.audioTranscript || question.body }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || '語音生成失敗');
+      }
+      const { url } = await res.json();
+      onAudioRegenerated?.(question.id, url);
+    } catch (err) {
+      setTtsError(err instanceof Error ? err.message : '語音生成失敗');
+    } finally {
+      setTtsLoading(false);
+    }
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -85,6 +112,34 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting }: 
             />
           </div>
         )}
+        {/* 聽力題：音檔狀態 + 重新生成按鈕 */}
+        {question.type === 'listening' && (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {question.audioUrl
+              ? (
+                  <span className="flex items-center gap-1 text-xs text-green-600">
+                    <span>🎧</span>
+                    音檔已生成
+                  </span>
+                )
+              : (
+                  <span className="flex items-center gap-1 text-xs text-amber-600">
+                    <span>⚠️</span>
+                    尚無音檔
+                  </span>
+                )}
+            <button
+              type="button"
+              onClick={handleRegenerateTts}
+              disabled={ttsLoading}
+              className="inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+            >
+              {ttsLoading ? '生成中…' : question.audioUrl ? '🔄 重新生成音檔' : '🎙️ 生成音檔'}
+            </button>
+            {ttsError && <span className="text-xs text-red-500">{ttsError}</span>}
+          </div>
+        )}
+
         {question.options && question.options.length > 0 && (
           <p className="mt-1 text-xs text-muted-foreground">
             {question.options.length}
