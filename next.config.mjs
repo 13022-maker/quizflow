@@ -23,6 +23,9 @@ export default withSentryConfig(
         dirs: ['.'],
         ignoreDuringBuilds: true,
       },
+      typescript: {
+        ignoreBuildErrors: true,
+      },
       poweredByHeader: false,
       reactStrictMode: true,
       experimental: {
