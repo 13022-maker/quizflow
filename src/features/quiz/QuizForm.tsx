@@ -43,6 +43,7 @@ const TEMPLATE_GROUPS = [
       { label: '🎯 自學挑戰', title: '自學挑戰' },
       { label: '📖 課前預習', title: '課前預習' },
       { label: '💡 知識檢測', title: '知識檢測' },
+      { label: '🔤 單字記憶', title: '單字記憶', description: '請輸入要記憶的單字清單，AI 會根據單字生成填空、選擇、配對等記憶練習題' },
     ],
   },
 ];
@@ -70,9 +71,12 @@ export function QuizForm() {
     });
   };
 
-  const handleTemplateClick = (title: string) => {
-    setSelectedTemplate(title);
-    form.setValue('title', title);
+  const handleTemplateClick = (tmpl: { title: string; description?: string }) => {
+    setSelectedTemplate(tmpl.title);
+    form.setValue('title', tmpl.title);
+    if (tmpl.description) {
+      form.setValue('description', tmpl.description);
+    }
   };
 
   return (
@@ -87,7 +91,7 @@ export function QuizForm() {
                 <button
                   key={tmpl.title}
                   type="button"
-                  onClick={() => handleTemplateClick(tmpl.title)}
+                  onClick={() => handleTemplateClick(tmpl)}
                   className={`rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm ${
                     selectedTemplate === tmpl.title
                       ? 'border-primary bg-primary/5 text-primary'

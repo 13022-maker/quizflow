@@ -22,10 +22,11 @@ type Quiz = InferSelectModel<typeof quizSchemaType>;
 export default async function DashboardIndexPage({
   searchParams,
 }: {
-  searchParams: { t?: string };
+  searchParams: Promise<{ t?: string }>;
 }) {
   const { orgId, userId } = await auth();
-  const template = searchParams.t ?? 'b';
+  const params = await searchParams;
+  const template = params.t ?? 'b';
 
   let recentQuizzes: Quiz[] = [];
   let totalQuizCount = 0;
@@ -129,6 +130,7 @@ export default async function DashboardIndexPage({
         <TemplateTab href="?t=b" label="B 教學工作台" active={template === 'b'} />
         <TemplateTab href="?t=c" label="C 清爽極簡" active={template === 'c'} />
       </div>
+
 
       {hasQuizzes
         ? (
