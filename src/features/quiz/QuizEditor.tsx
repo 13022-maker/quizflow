@@ -475,24 +475,14 @@ export function QuizEditor({
           </Button>
         )}
         {status === 'published' && (
-          <>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleStatusChange('draft')}
-              disabled={isPending}
-            >
-              取消發佈
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleStatusChange('closed')}
-              disabled={isPending}
-            >
-              關閉作答
-            </Button>
-          </>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleStatusChange('draft')}
+            disabled={isPending}
+          >
+            取消發佈
+          </Button>
         )}
         {status === 'closed' && (
           <Button
@@ -505,97 +495,53 @@ export function QuizEditor({
           </Button>
         )}
 
-        {/* 分享按鈕：含房間碼、QR Code、LINE、Google Classroom、到期設定 */}
+        {/* 主要按鈕：分享 + AI 出題 */}
         {initialQuiz.accessCode && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowQRModal(true)}
-            className="gap-1.5"
-          >
+          <Button size="sm" variant="outline" onClick={() => setShowQRModal(true)} className="gap-1.5">
             🔗 分享
           </Button>
         )}
-
-        {/* AI 出題按鈕：開啟 AIQuizModal，Pro 限定 */}
-        {isPro
-          ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowAIModal(true)}
-                disabled={isSubmitting}
-                className="gap-1.5"
-              >
-                ✨ AI 出題
-              </Button>
-            )
-          : (
-              <div className="relative">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5"
-                  onClick={() => {
-                    window.location.href = '/dashboard/billing';
-                  }}
-                >
-                  ✨ AI 出題
-                </Button>
-              </div>
-            )}
-
-        {/* 上傳講義命題按鈕（Pro 限定） */}
-        {isPro
-          ? (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setShowFileGenerator(true)}
-                disabled={isSubmitting}
-              >
-                📂 上傳講義命題
-              </Button>
-            )
-          : (
-              <Button size="sm" variant="outline" disabled title="此功能僅限 Pro 方案">
-                📂 上傳講義命題
-              </Button>
-            )}
-
-        {/* 題庫市集按鈕 */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setShowMarketplace(true)}
-          className="gap-1.5"
-        >
-          {initialQuiz.isMarketplace ? '✅ 已上架市集' : '📤 分享到市集'}
-        </Button>
-
-        {/* 匯出 Word 下拉（老師版含答案 / 學生版空白考卷） */}
-        {questions.length > 0 && (
-          <details className="relative">
-            {/* summary 當成按鈕，點擊展開 menu */}
-            <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-md border border-input bg-background px-3 text-sm font-medium shadow-sm transition-colors hover:bg-muted [&::-webkit-details-marker]:hidden">
-              📥 匯出 Word
-            </summary>
-            <div className="absolute right-0 z-20 mt-1 w-48 overflow-hidden rounded-md border bg-popover text-sm shadow-md">
-              <a
-                href={`/api/quizzes/${initialQuiz.id}/export?variant=teacher`}
-                className="block px-4 py-2 hover:bg-muted"
-              >
-                👨‍🏫 老師版（含答案）
-              </a>
-              <a
-                href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}
-                className="block border-t px-4 py-2 hover:bg-muted"
-              >
-                📝 學生版（空白考卷）
-              </a>
-            </div>
-          </details>
+        {isPro && (
+          <Button size="sm" variant="outline" onClick={() => setShowAIModal(true)} disabled={isSubmitting} className="gap-1.5">
+            ✨ AI 出題
+          </Button>
         )}
+
+        {/* 更多操作（收合） */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="outline">⋯ 更多</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            {isPro && (
+              <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
+                📂 上傳講義命題
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
+              {initialQuiz.isMarketplace ? '✅ 管理市集上架' : '📤 分享到市集'}
+            </DropdownMenuItem>
+            {questions.length > 0 && (
+              <>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export?variant=teacher`}>
+                    📥 匯出 Word（老師版）
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}>
+                    📄 匯出 Word（學生版）
+                  </a>
+                </DropdownMenuItem>
+              </>
+            )}
+            {status === 'published' && (
+              <DropdownMenuItem onClick={() => handleStatusChange('closed')} className="text-destructive">
+                🚫 關閉作答
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* 分享 Modal（房間碼 + QR Code + LINE + Google Classroom + 到期） */}
