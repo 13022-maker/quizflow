@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 import { and, count, eq, gte, sql } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
@@ -76,12 +76,36 @@ export default async function AdminStatsPage() {
     .orderBy(sql`${responseSchema.submittedAt} desc`)
     .limit(10);
 
+  // Clerk 用戶統計
+  let totalUsers = 0;
+  let todayNewUsers = 0;
+  try {
+    const clerk = await clerkClient();
+    const allUsers = await clerk.users.getCount();
+    totalUsers = allUsers;
+    const todayUsers = await clerk.users.getUserList({
+      orderBy: '-created_at',
+      limit: 100,
+    });
+    todayNewUsers = todayUsers.data.filter(
+      u => new Date(u.createdAt) >= today,
+    ).length;
+  } catch {
+    // Clerk API 失敗不影響其他數據
+  }
+
   const todayStr = today.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' });
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">管理員統計</h1>
       <p className="mb-8 text-sm text-muted-foreground">{todayStr} 資料總覽</p>
+
+      {/* 用戶統計 */}
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <StatCard label="註冊總人數" value={String(totalUsers)} accent="text-indigo-600" />
+        <StatCard label="今日新註冊" value={String(todayNewUsers)} accent="text-pink-600" />
+      </div>
 
       {/* 統計卡片 */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
