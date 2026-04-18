@@ -22,7 +22,7 @@ function calcRate(row: ResponseRow): number | null {
   return Math.round((row.score / row.totalPoints) * 100);
 }
 
-export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }) {
+export function ResultsResponseTable({ responses, quizId }: { responses: ResponseRow[]; quizId: number }) {
   const [sortKey, setSortKey] = useState<SortKey>('submittedAt');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -56,7 +56,10 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
     return <span className="ml-1">{sortAsc ? '↑' : '↓'}</span>;
   };
 
-  // 共用：把資料轉成表格列
+  // 匯出 CSV（透過 server-side API 下載，手機相容）
+  const csvDownloadUrl = `/api/quizzes/${quizId}/export-csv`;
+
+  // 共用：把資料轉成表格列（Google Sheets TSV 用）
   const getTableRows = () => {
     const header = ['姓名', 'Email', '答對題數', '答對率', '離開次數', '作答時間'];
     const rows = sorted.map(r => [
@@ -70,28 +73,10 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
     return { header, rows };
   };
 
-  // 匯出 CSV
-  const handleExportCsv = () => {
-    const { header, rows } = getTableRows();
-    const csvContent = [header, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    // 加入 BOM 讓 Excel 正確顯示中文
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `quiz-results-${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   // 一鍵開啟 Google Sheets：複製 TSV 到剪貼簿 + 開新試算表
   const [sheetsCopied, setSheetsCopied] = useState(false);
   const handleOpenGoogleSheets = async () => {
     const { header, rows } = getTableRows();
-    // TSV（Tab 分隔）Google Sheets 直接 Ctrl+V 就能正確解析成多欄
     const tsv = [header, ...rows].map(row => row.join('\t')).join('\n');
     await navigator.clipboard.writeText(tsv);
     setSheetsCopied(true);
@@ -119,13 +104,13 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
           筆作答記錄
         </p>
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleExportCsv}
+          <a
+            href={csvDownloadUrl}
+            download
             className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
           >
             ↓ 匯出 CSV
-          </button>
+          </a>
           <button
             type="button"
             onClick={handleOpenGoogleSheets}

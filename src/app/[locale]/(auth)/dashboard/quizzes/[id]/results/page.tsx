@@ -225,7 +225,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
       {/* 學生成績統計表（客戶端元件，支援排序 + CSV 匯出） */}
       <section>
         <h2 className="mb-3 text-lg font-semibold">{t('response_list')}</h2>
-        <ResultsResponseTable responses={responseRows} />
+        <ResultsResponseTable responses={responseRows} quizId={quiz.id} />
       </section>
     </div>
   );
