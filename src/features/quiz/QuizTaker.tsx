@@ -163,6 +163,14 @@ function QuestionItem({
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
               }`}
             >
+              <input
+                type="radio"
+                name={`q-${question.id}`}
+                value={opt.id}
+                checked={answer === opt.id}
+                onChange={() => handleSingleChange(opt.id)}
+                className="sr-only"
+              />
               <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
                 answer === opt.id
                   ? 'border-emerald-500 bg-emerald-500'
@@ -197,6 +205,13 @@ function QuestionItem({
                     : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
                 }`}
               >
+                <input
+                  type="checkbox"
+                  value={opt.id}
+                  checked={checked}
+                  onChange={e => handleMultiChange(opt.id, e.target.checked)}
+                  className="sr-only"
+                />
                 <span className={`flex size-5 shrink-0 items-center justify-center rounded border-2 transition-all ${
                   checked ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
                 }`}>
