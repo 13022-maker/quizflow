@@ -88,6 +88,10 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
 
+  const hasListening = types.includes('listening');
+  const maxCount = hasListening ? 5 : 20;
+  const effectiveCount = Math.min(count, maxCount);
+
   // Text mode
   const [topic, setTopic] = useState(defaultTopic ?? '');
 
@@ -198,7 +202,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ topic, types, count, difficulty }),
+          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
         });
         data = await res.json();
         if (!res.ok) {
@@ -241,7 +245,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         }
 
         fd.append('types', JSON.stringify(types));
-        fd.append('count', String(count));
+        fd.append('count', String(effectiveCount));
         fd.append('difficulty', difficulty);
         fd.append('model', model);
         setStep('AI 分析內容中…');
@@ -263,7 +267,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           body: JSON.stringify({
             url: sourceUrl.trim(),
             types,
-            count,
+            count: effectiveCount,
             difficulty,
             model,
           }),
@@ -709,15 +713,18 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 <input
                   type="range"
                   min={1}
-                  max={20}
-                  value={count}
+                  max={maxCount}
+                  value={effectiveCount}
                   onChange={e => setCount(Number(e.target.value))}
                   className="h-1.5 flex-1 accent-amber-500"
                 />
                 <span className="w-6 text-center text-lg font-bold tabular-nums text-amber-600">
-                  {count}
+                  {effectiveCount}
                 </span>
               </div>
+              {hasListening && (
+                <p className="mt-1 text-xs text-amber-600">聽力題上限 5 題</p>
+              )}
             </div>
             <div>
               {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}

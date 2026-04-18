@@ -142,7 +142,10 @@ export async function POST(request: Request) {
   const formData = await request.formData();
   const file = formData.get('file') as File | null;
   const typesRaw = formData.get('types') as string;
-  const count = Number.parseInt(formData.get('count') as string) || 5;
+  const rawCount = Number.parseInt(formData.get('count') as string) || 5;
+  const types: string[] = JSON.parse(typesRaw || '["mc"]');
+  const hasListening = types.includes('listening');
+  const count = Math.min(rawCount, hasListening ? 5 : 20);
   const difficulty = (formData.get('difficulty') as string) || 'medium';
   const startPage = Number.parseInt(formData.get('startPage') as string) || 1;
   const endPage = Number.parseInt(formData.get('endPage') as string) || 0;
@@ -178,7 +181,6 @@ export async function POST(request: Request) {
     }
   }
 
-  const types: string[] = JSON.parse(typesRaw || '["mc"]');
   const diffLabel = DIFF_LABELS[difficulty] || '中等';
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
 

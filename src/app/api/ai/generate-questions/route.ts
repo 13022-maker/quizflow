@@ -60,7 +60,9 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { topic, types = ['mc'], count = 5, difficulty = 'medium' } = body;
+  const { topic, types = ['mc'], difficulty = 'medium' } = body;
+  const hasListening = (types as string[]).includes('listening');
+  const count = Math.min(Number(body.count) || 5, hasListening ? 5 : 20);
 
   if (!topic?.trim()) {
     return NextResponse.json({ error: '請輸入主題或內容' }, { status: 400 });
