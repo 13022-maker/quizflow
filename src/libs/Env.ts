@@ -10,6 +10,7 @@ export const Env = createEnv({
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     BILLING_PLAN_ENV: z.enum(['dev', 'test', 'prod']).optional(),
     ANTHROPIC_API_KEY: z.string().optional(), // AI 出題功能（Pro 限定）
+    OPENAI_API_KEY: z.string().optional(), // TTS 語音生成（聽力題）
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -29,6 +30,7 @@ export const Env = createEnv({
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
     BILLING_PLAN_ENV: process.env.BILLING_PLAN_ENV,
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,

@@ -1,37 +1,38 @@
 /**
- * TTS（文字轉語音）API — Google Translate TTS（node-gtts）
+ * TTS（文字轉語音）API — OpenAI TTS
  *
  * POST /api/ai/tts
  * Body: { text, voice?, speed? }
- * Returns: { url: string } （Vercel Blob 上的 MP3 檔 URL）
+ * Returns: { url: string }（Vercel Blob 上的 MP3 檔 URL）
  *
- * 免費無限次數，不需 API key。
- * 語音品質為 Google Translate 等級（清晰但略機械）。
- *
- * 語音選項：zh-TW（台灣華語，預設）/ zh-CN（大陸普通話）/ en（英文）
- * 語速：slow（慢速）/ normal（正常，預設）
+ * 使用 OpenAI tts-1 模型，語音自然接近真人。
+ * 需要環境變數 OPENAI_API_KEY。
  */
-
-import { Buffer } from 'node:buffer';
 
 import { auth } from '@clerk/nextjs/server';
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
-import gtts from 'node-gtts';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-// 語音 = 語言代碼
 const VOICES: Record<string, string> = {
-  'zh-tw': 'zh-TW', // 台灣華語（預設）
-  'zh-cn': 'zh-CN', // 大陸普通話
-  'en': 'en', // 英文
-  // 相容舊 UI 送來的 Gemini 語音名稱
-  'zephyr': 'zh-TW',
-  'kore': 'zh-TW',
-  'puck': 'zh-CN',
-  'charon': 'en',
+  'zh-tw-female': 'nova',
+  'zh-tw-male': 'onyx',
+  'zh-cn-female': 'shimmer',
+  'zh-cn-male': 'echo',
+  'en-female': 'nova',
+  'en-male': 'onyx',
+  'nova': 'nova',
+  'onyx': 'onyx',
+  'shimmer': 'shimmer',
+  'echo': 'echo',
+  'alloy': 'alloy',
+  'fable': 'fable',
+  // 相容舊 UI 的語言代碼
+  'zh-tw': 'nova',
+  'zh-cn': 'shimmer',
+  'en': 'nova',
 };
 
 export async function POST(req: Request) {
@@ -41,32 +42,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '未登入' }, { status: 401 });
     }
 
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'TTS 功能尚未設定，請聯繫管理員' }, { status: 503 });
+    }
+
     const body = await req.json();
     const text: string = body.text?.trim();
-    const voiceKey: string = (body.voice ?? 'zh-tw').toLowerCase();
+    const voiceKey: string = (body.voice ?? 'zh-tw-female').toLowerCase();
     const speed: string = body.speed ?? 'normal';
 
     if (!text) {
       return NextResponse.json({ error: '請提供要轉語音的文字' }, { status: 400 });
     }
-    if (text.length > 5000) {
-      return NextResponse.json({ error: '文字超過 5000 字上限' }, { status: 400 });
+    if (text.length > 4096) {
+      return NextResponse.json({ error: '文字超過 4096 字上限' }, { status: 400 });
     }
 
-    const lang = VOICES[voiceKey] ?? 'zh-TW';
-    const tts = gtts(lang);
+    const voice = VOICES[voiceKey] ?? 'nova';
+    const ttsSpeed = speed === 'slow' ? 0.85 : 1.0;
 
-    // node-gtts 回傳 readable stream → 收集成 Buffer
-    const mp3Buffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      // slow 語速用 gtts 內建慢速模式
-      const stream = speed === 'slow' ? tts.stream(text) : tts.stream(text);
-      stream.on('data', (d: Buffer) => chunks.push(d));
-      stream.on('end', () => resolve(Buffer.concat(chunks)));
-      stream.on('error', reject);
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'tts-1',
+        input: text,
+        voice,
+        speed: ttsSpeed,
+        response_format: 'mp3',
+      }),
     });
 
-    // 上傳 MP3 到 Vercel Blob
+    if (!response.ok) {
+      const err = await response.text();
+      console.error('[TTS] OpenAI 錯誤', response.status, err);
+      return NextResponse.json({ error: '語音生成失敗，請稍後再試' }, { status: 502 });
+    }
+
+    const mp3Buffer = Buffer.from(await response.arrayBuffer());
+
     const filename = `tts/${Date.now()}-${Math.random().toString(36).slice(2, 6)}.mp3`;
     const blob = await put(filename, mp3Buffer, {
       access: 'public',

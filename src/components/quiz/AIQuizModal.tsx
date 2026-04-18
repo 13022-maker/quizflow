@@ -109,7 +109,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
 
   // 聽力題 TTS 參數
-  const [ttsVoice, setTtsVoice] = useState('zh-tw');
+  const [ttsVoice, setTtsVoice] = useState('zh-tw-female');
   const [ttsSpeed, setTtsSpeed] = useState('normal');
   const [ttsGenerating, setTtsGenerating] = useState(false);
   const [ttsProgress, setTtsProgress] = useState('');
@@ -594,9 +594,18 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                     onChange={e => setTtsVoice(e.target.value)}
                     className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-amber-400 focus:outline-none"
                   >
-                    <option value="zh-tw">台灣華語</option>
-                    <option value="zh-cn">大陸普通話</option>
-                    <option value="en">英文</option>
+                    <optgroup label="中文（台灣）">
+                      <option value="zh-tw-female">女聲（溫柔自然）</option>
+                      <option value="zh-tw-male">男聲（沉穩清晰）</option>
+                    </optgroup>
+                    <optgroup label="中文（大陸）">
+                      <option value="zh-cn-female">女聲</option>
+                      <option value="zh-cn-male">男聲</option>
+                    </optgroup>
+                    <optgroup label="English">
+                      <option value="en-female">Female</option>
+                      <option value="en-male">Male</option>
+                    </optgroup>
                   </select>
                 </div>
                 {/* 語速 */}
