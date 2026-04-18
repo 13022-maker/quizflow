@@ -102,8 +102,17 @@ export async function POST(
       if (correctAnswers.length !== options.length) {
         correctAnswers = options.map(o => o.id);
       }
+    } else if (q.type === 'tf') {
+      // 是非題：將 AI 回傳的 ○/✕ 轉換為標準選項 ID
+      options = [
+        { id: 'tf-true', text: '正確' },
+        { id: 'tf-false', text: '錯誤' },
+      ];
+      const ansStr = typeof q.answer === 'string' ? q.answer.trim() : '';
+      const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
+      correctAnswers = [isTrue ? 'tf-true' : 'tf-false'];
     } else {
-      // 是非題 / 填空 / 簡答：直接存 answer 字串
+      // 填空 / 簡答：直接存 answer 字串
       const ansStr = typeof q.answer === 'string' ? q.answer : '';
       correctAnswers = ansStr ? [ansStr] : [];
     }

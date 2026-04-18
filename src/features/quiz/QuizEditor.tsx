@@ -328,8 +328,22 @@ export function QuizEditor({
           correctAnswers: matched ? [matched.id] : undefined,
           points: 1,
         });
+      } else if (q.type === 'tf') {
+        // 是非題：將 AI 回傳的 ○/✕ 轉成標準選項 ID
+        const ansStr = q.answer.trim();
+        const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
+        await createQuestion(initialQuiz.id, {
+          type,
+          body: q.question,
+          options: [
+            { id: 'tf-true', text: '正確' },
+            { id: 'tf-false', text: '錯誤' },
+          ],
+          correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
+          points: 1,
+        });
       } else {
-        // 是非題 / 填空題 / 簡答題：直接存 answer 字串
+        // 填空題 / 簡答題：直接存 answer 字串
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
