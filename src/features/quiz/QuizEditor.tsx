@@ -301,8 +301,16 @@ export function QuizEditor({
   // 控制 QR Code Modal 顯示
   const [showQRModal, setShowQRModal] = useState(false);
 
-  // 控制 AIQuizModal 顯示（autoOpenAI 時自動打開）
-  const [showAIModal, setShowAIModal] = useState(autoOpenAI && isPro);
+  // 控制 AIQuizModal 顯示
+  const [showAIModal, setShowAIModal] = useState(false);
+
+  // autoOpenAI：首次進入時自動打開 AI Modal，並移除 URL 的 ?ai=1 避免重複觸發
+  useEffect(() => {
+    if (autoOpenAI && isPro) {
+      setShowAIModal(true);
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [autoOpenAI, isPro]);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
   const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], _title: string) => {
