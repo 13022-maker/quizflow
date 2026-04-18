@@ -139,9 +139,9 @@
     "section_description": "填寫以下資料以建立新的測驗",
     "title_label": "測驗標題",
     "title_placeholder": "例如：第三章隨堂測驗",
-    "description_label": "說明（選填）",
-    "description_placeholder": "為學生寫一段簡短說明",
-    "description_hint": "學生在作答前會看到這段說明。",
+    "description_label": "考試主題（選填）",
+    "description_placeholder": "例如：白居易著名詩詞、三角函數、台灣地形",
+    "description_hint": "學生作答前會看到此說明，AI 出題時也會依此主題生成試題。",
     "submit_button": "建立測驗",
     "cancel_button": "取消"
   },

@@ -31,7 +31,7 @@ type QuizFormValues = z.infer<typeof QuizSchema>;
 const QUICK_TEMPLATES = [
   { label: '📝 隨堂測驗', title: '隨堂測驗', desc: '' },
   { label: '📋 期中考', title: '期中考', desc: '' },
-  { label: '✏️ 課後練習', title: '課後練習', desc: '完成後可查看解答與詳解' },
+  { label: '✏️ 課後練習', title: '課後練習', desc: '' },
   { label: '🔄 複習小考', title: '複習小考', desc: '' },
 ];
 

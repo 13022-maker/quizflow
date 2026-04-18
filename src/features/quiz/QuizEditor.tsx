@@ -79,14 +79,14 @@ const STUDENT_FACING_PHRASES = [
 ];
 
 function buildDefaultTopic(title: string, description?: string | null): string {
-  if (!description) return title;
+  if (!description) return '';
   let desc = description;
   for (const phrase of STUDENT_FACING_PHRASES) {
     desc = desc.replace(phrase, '');
   }
   desc = desc.trim();
-  if (!desc) return title;
-  return `${title}：${desc}`;
+  if (!desc) return '';
+  return desc;
 }
 
 // 狀態樣式：小色點 + 文字（與 Dashboard 一致）

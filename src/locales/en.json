@@ -139,9 +139,9 @@
     "section_description": "Fill in the details below to create a new quiz",
     "title_label": "Title",
     "title_placeholder": "e.g. Chapter 3 Quiz",
-    "description_label": "Description (optional)",
-    "description_placeholder": "Add a short description for your students",
-    "description_hint": "Students will see this before they start the quiz.",
+    "description_label": "Topic (optional)",
+    "description_placeholder": "e.g. Famous poems by Bai Juyi, Trigonometry, Geography",
+    "description_hint": "Shown to students before the quiz, and used as the AI topic for question generation.",
     "submit_button": "Create Quiz",
     "cancel_button": "Cancel"
   },
