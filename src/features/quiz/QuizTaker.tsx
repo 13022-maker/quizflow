@@ -1122,55 +1122,16 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         </div>
       )}
 
-      {/* 題目清單 */}
-      {displayQuestions.map((question, index) => (
-        <div key={question.id} id={`q-${question.id}`}>
-        <QuestionItem
-          question={question}
-          index={index}
-          answer={answers[question.id]}
-          onChange={value => handleAnswer(question.id, value)}
-          tutor={
-            tutorMode
-              ? {
-                  checked: !!tutorChecks[question.id],
-                  correct: tutorChecks[question.id]
-                    ? gradeAnswer(question, answers[question.id])
-                    : null,
-                  onCheck: () => setTutorChecks(prev => ({ ...prev, [question.id]: true })),
-                  onReset: () => setTutorChecks((prev) => {
-                    const next = { ...prev };
-                    delete next[question.id];
-                    return next;
-                  }),
-                }
-              : undefined
-          }
-        />
-        <button
-          type="button"
-          onClick={() => toggleFlag(question.id)}
-          className={`mt-1.5 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
-            flagged.has(question.id)
-              ? 'bg-amber-100 text-amber-700'
-              : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-          }`}
-        >
-          {flagged.has(question.id) ? '🚩 已標記複查' : '🏳️ 標記稍後複查'}
-        </button>
-        </div>
-      ))}
-
-      {/* ── 題目導覽面板（送出按鈕上方） ── */}
-      <div className="rounded-2xl border border-white/80 bg-white/90 p-5 shadow-sm backdrop-blur-sm">
+      {/* ── 題目導覽面板 + 送出按鈕（頂部） ── */}
+      <div className="sticky top-0 z-10 -mx-4 space-y-3 border-b bg-white/95 px-4 py-4 shadow-sm backdrop-blur-sm">
         {/* 進度條 + 計時器 */}
-        <div className="mb-3 flex items-center gap-3">
+        <div className="flex items-center gap-3">
           <div className="flex-1">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>{answeredCount}/{displayQuestions.length} 已作答</span>
               <span>{progressPercent}%</span>
             </div>
-            <div className="mt-1 h-2.5 overflow-hidden rounded-full bg-gray-100">
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
@@ -1214,30 +1175,71 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         </div>
 
         {/* 圖例 */}
-        <div className="mt-2 flex gap-3 text-[10px] text-gray-400">
+        <div className="flex items-center gap-3 text-[10px] text-gray-400">
           <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-emerald-500" /> 已作答</span>
           <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-gray-200" /> 未作答</span>
           <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-amber-400" /> 標記複查</span>
         </div>
+
+        {/* 錯誤訊息 */}
+        {error && (
+          <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            {error}
+          </div>
+        )}
+
+        {/* 送出按鈕 */}
+        {!tutorMode && (
+          <Button
+            onClick={() => handleSubmit()}
+            disabled={isPending}
+            className="w-full shadow-sm"
+            size="lg"
+          >
+            {isPending ? '提交中…' : '送出作答'}
+          </Button>
+        )}
       </div>
 
-      {/* 錯誤訊息 */}
-      {error && (
-        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
-          {error}
-        </div>
-      )}
-
-      {!tutorMode && (
-        <Button
-          onClick={() => handleSubmit()}
-          disabled={isPending}
-          className="relative z-20 w-full shadow-lg"
-          size="lg"
+      {/* 題目清單 */}
+      {displayQuestions.map((question, index) => (
+        <div key={question.id} id={`q-${question.id}`}>
+        <QuestionItem
+          question={question}
+          index={index}
+          answer={answers[question.id]}
+          onChange={value => handleAnswer(question.id, value)}
+          tutor={
+            tutorMode
+              ? {
+                  checked: !!tutorChecks[question.id],
+                  correct: tutorChecks[question.id]
+                    ? gradeAnswer(question, answers[question.id])
+                    : null,
+                  onCheck: () => setTutorChecks(prev => ({ ...prev, [question.id]: true })),
+                  onReset: () => setTutorChecks((prev) => {
+                    const next = { ...prev };
+                    delete next[question.id];
+                    return next;
+                  }),
+                }
+              : undefined
+          }
+        />
+        <button
+          type="button"
+          onClick={() => toggleFlag(question.id)}
+          className={`mt-1.5 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            flagged.has(question.id)
+              ? 'bg-amber-100 text-amber-700'
+              : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+          }`}
         >
-          {isPending ? '提交中…' : '送出作答'}
-        </Button>
-      )}
+          {flagged.has(question.id) ? '🚩 已標記複查' : '🏳️ 標記稍後複查'}
+        </button>
+        </div>
+      ))}
+
     </div>
   );
 }
