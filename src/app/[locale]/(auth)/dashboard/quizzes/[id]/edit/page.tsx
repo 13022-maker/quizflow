@@ -28,8 +28,10 @@ export async function generateMetadata({
 
 export default async function EditQuizPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { ai?: string };
 }) {
   const { orgId } = await auth();
   if (!orgId) {
@@ -62,7 +64,9 @@ export default async function EditQuizPage({
   // 判斷是否為 Pro 方案（決定 AI 出題功能是否可用）
   const isPro = await isProOrAbove(orgId);
 
-  return <QuizEditor quiz={quiz} questions={questions} isPro={isPro} />;
+  const autoOpenAI = searchParams.ai === '1';
+
+  return <QuizEditor quiz={quiz} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />;
 }
 
 export const dynamic = 'force-dynamic';

@@ -93,7 +93,7 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
-  redirect(`/dashboard/quizzes/${inserted.id}/edit`);
+  redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1`);
 }
 
 export async function updateQuiz(

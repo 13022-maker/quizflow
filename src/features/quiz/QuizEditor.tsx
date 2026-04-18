@@ -100,10 +100,12 @@ export function QuizEditor({
   quiz: initialQuiz,
   questions: initialQuestions,
   isPro,
+  autoOpenAI = false,
 }: {
   quiz: Quiz;
   questions: Question[];
   isPro: boolean;
+  autoOpenAI?: boolean;
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
@@ -295,8 +297,8 @@ export function QuizEditor({
   // 控制 QR Code Modal 顯示
   const [showQRModal, setShowQRModal] = useState(false);
 
-  // 控制 AIQuizModal 顯示
-  const [showAIModal, setShowAIModal] = useState(false);
+  // 控制 AIQuizModal 顯示（autoOpenAI 時自動打開）
+  const [showAIModal, setShowAIModal] = useState(autoOpenAI && isPro);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
   const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], _title: string) => {
