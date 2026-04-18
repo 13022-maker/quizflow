@@ -72,13 +72,13 @@ export async function createQuiz(data: CreateQuizInput) {
   }
 
   const roomCode = await generateUniqueRoomCode();
-  await db.insert(quizSchema).values({
+  const [inserted] = await db.insert(quizSchema).values({
     ownerId: orgId,
     title: parsed.data.title,
     description: parsed.data.description,
     accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
     roomCode, // 6 碼大寫英數房間碼
-  });
+  }).returning({ id: quizSchema.id });
 
   // 紀錄老師當日活動（streak）；失敗不阻擋測驗建立
   if (userId) {
@@ -89,7 +89,7 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
-  redirect('/dashboard/quizzes');
+  redirect(`/dashboard/quizzes/${inserted!.id}/edit`);
 }
 
 export async function updateQuiz(
