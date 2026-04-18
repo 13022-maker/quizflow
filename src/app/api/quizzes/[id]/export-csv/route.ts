@@ -1,11 +1,11 @@
-export const runtime = 'nodejs';
-
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
 import { quizSchema, responseSchema } from '@/models/Schema';
+
+export const runtime = 'nodejs';
 
 export async function GET(
   _request: Request,

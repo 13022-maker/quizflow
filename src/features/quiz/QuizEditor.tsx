@@ -78,7 +78,7 @@ const STUDENT_FACING_PHRASES = [
   '可查看解答與詳解',
 ];
 
-function buildDefaultTopic(title: string, description?: string | null): string {
+function buildDefaultTopic(description?: string | null): string {
   if (!description) return '';
   let desc = description;
   for (const phrase of STUDENT_FACING_PHRASES) {
@@ -587,7 +587,7 @@ export function QuizEditor({
       {/* AI 出題 Modal */}
       {showAIModal && (
         <AIQuizModal
-          defaultTopic={buildDefaultTopic(initialQuiz.title, initialQuiz.description)}
+          defaultTopic={buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
         />

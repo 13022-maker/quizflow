@@ -76,9 +76,13 @@ export async function createQuiz(data: CreateQuizInput) {
     ownerId: orgId,
     title: parsed.data.title,
     description: parsed.data.description,
-    accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
-    roomCode, // 6 碼大寫英數房間碼
+    accessCode: nanoid(8),
+    roomCode,
   }).returning({ id: quizSchema.id });
+
+  if (!inserted) {
+    throw new Error('建立測驗失敗');
+  }
 
   // 紀錄老師當日活動（streak）；失敗不阻擋測驗建立
   if (userId) {
@@ -89,7 +93,7 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
-  redirect(`/dashboard/quizzes/${inserted!.id}/edit`);
+  redirect(`/dashboard/quizzes/${inserted.id}/edit`);
 }
 
 export async function updateQuiz(
