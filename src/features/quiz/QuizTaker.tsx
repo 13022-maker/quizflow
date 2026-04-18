@@ -772,8 +772,30 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   });
 
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+
+  const toggleFlag = (qId: number) => {
+    setFlagged((prev) => {
+      const next = new Set(prev);
+      if (next.has(qId)) { next.delete(qId); } else { next.add(qId); }
+      return next;
+    });
+  };
+
+  const scrollToQuestion = (qId: number) => {
+    document.getElementById(`q-${qId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const answeredCount = displayQuestions.filter((q) => {
+    if (q.type === 'short_answer') return true;
+    const ans = answers[q.id];
+    if (q.type === 'ranking') return Array.isArray(ans) && ans.length === (q.options?.length ?? 0);
+    return !!ans;
+  }).length;
+
+  const progressPercent = Math.round((answeredCount / displayQuestions.length) * 100);
 
   // 考試防作弊：離開頁面次數與警告等級
   // 防禦性預設：quiz.preventLeave 可能在舊資料中不存在
@@ -990,17 +1012,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       )}
 
       {/* 測驗標題 */}
-      <div className="rounded-xl border bg-card p-6">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">{quiz.title}</h1>
-          {timeLeft !== null && (
-            <div className={`shrink-0 rounded-full px-3 py-1 font-mono text-sm font-semibold tabular-nums ${timeLeft <= 60 ? 'bg-red-100 text-red-700' : 'bg-muted text-muted-foreground'}`}>
-              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
-              :
-              {String(timeLeft % 60).padStart(2, '0')}
-            </div>
-          )}
-        </div>
+      <div className="rounded-2xl border border-white/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">{quiz.title}</h1>
         {quiz.description && (
           <p className="mt-2 text-sm text-muted-foreground">{quiz.description}</p>
         )}
@@ -1109,10 +1122,70 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         </div>
       )}
 
+      {/* ── 題目導覽面板 ── */}
+      <div className="sticky top-0 z-10 -mx-4 border-b bg-white/95 px-4 py-3 backdrop-blur-sm">
+        {/* 進度條 + 計時器 */}
+        <div className="mb-2.5 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>{answeredCount}/{displayQuestions.length} 已作答</span>
+              <span>{progressPercent}%</span>
+            </div>
+            <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+          {timeLeft !== null && (
+            <div className={`shrink-0 rounded-lg px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${
+              timeLeft <= 60 ? 'bg-red-100 text-red-700 animate-pulse' : timeLeft <= 300 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+            }`}>
+              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
+            </div>
+          )}
+        </div>
+
+        {/* 題號導覽列 */}
+        <div className="flex flex-wrap gap-1.5">
+          {displayQuestions.map((q, i) => {
+            const isAnswered = q.type === 'short_answer' || !!answers[q.id];
+            const isFlagged = flagged.has(q.id);
+            return (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => scrollToQuestion(q.id)}
+                className={`relative flex size-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                  isFlagged
+                    ? 'bg-amber-400 text-white shadow-sm'
+                    : isAnswered
+                      ? 'bg-emerald-500 text-white shadow-sm'
+                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
+              >
+                {i + 1}
+                {isFlagged && (
+                  <span className="absolute -right-0.5 -top-0.5 text-[8px]">🚩</span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* 圖例 */}
+        <div className="mt-2 flex gap-3 text-[10px] text-gray-400">
+          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-emerald-500" /> 已作答</span>
+          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-gray-200" /> 未作答</span>
+          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-amber-400" /> 標記複查</span>
+        </div>
+      </div>
+
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
+        <div key={question.id} id={`q-${question.id}`}>
         <QuestionItem
-          key={question.id}
           question={question}
           index={index}
           answer={answers[question.id]}
@@ -1134,6 +1207,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
               : undefined
           }
         />
+        <button
+          type="button"
+          onClick={() => toggleFlag(question.id)}
+          className={`mt-1.5 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+            flagged.has(question.id)
+              ? 'bg-amber-100 text-amber-700'
+              : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+          }`}
+        >
+          {flagged.has(question.id) ? '🚩 已標記複查' : '🏳️ 標記稍後複查'}
+        </button>
+        </div>
       ))}
 
       {/* 錯誤訊息 + 提交（家教模式不顯示送出鈕） */}
