@@ -122,8 +122,37 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState('');
   const [error, setError] = useState('');
-  const [upgradeRequired, setUpgradeRequired] = useState(false); // quota 超限時顯示升級按鈕
+  const [upgradeRequired, setUpgradeRequired] = useState(false);
   const [result, setResult] = useState<GeneratedResult | null>(null);
+  const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const STEP_MESSAGES = [
+    'AI 分析主題中…',
+    '理解內容重點…',
+    '設計題目架構…',
+    '生成選項與解析…',
+    '檢查題目品質…',
+    '即將完成，請稍候…',
+  ];
+
+  function startStepTimer() {
+    let idx = 0;
+    setStep(STEP_MESSAGES[0]!);
+    stepTimerRef.current = setInterval(() => {
+      idx++;
+      if (idx < STEP_MESSAGES.length) {
+        setStep(STEP_MESSAGES[idx]!);
+      }
+    }, 4000);
+  }
+
+  function stopStepTimer() {
+    if (stepTimerRef.current) {
+      clearInterval(stepTimerRef.current);
+      stepTimerRef.current = null;
+    }
+    setStep('');
+  }
 
   // ── Helpers ──
   function toggleType(t: QuestionType) {
@@ -192,12 +221,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     setError('');
     setUpgradeRequired(false);
     setResult(null);
+    startStepTimer();
 
     try {
       let data: GeneratedResult;
 
       if (mode === 'text') {
-        setStep('AI 分析主題中…');
         const res = await fetch('/api/ai/generate-questions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -320,8 +349,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         setError(msg);
       }
     } finally {
+      stopStepTimer();
       setLoading(false);
-      setStep('');
     }
   }
 
