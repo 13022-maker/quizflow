@@ -115,10 +115,9 @@ function QuestionItem({
   };
 
   return (
-    <div className="rounded-xl border bg-card p-6">
-      <div className="mb-4 flex items-start gap-2">
-        <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
-          Q
+    <div className="rounded-2xl border border-white/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">
+      <div className="mb-4 flex items-start gap-3">
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-white shadow-sm">
           {index + 1}
         </span>
         <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
@@ -154,18 +153,28 @@ function QuestionItem({
 
       {/* 單選題 / 是非題 / 聽力題（聽力題選項邏輯等同單選） */}
       {(question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') && (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {options.map(opt => (
-            <label key={opt.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:bg-muted/50">
-              <input
-                type="radio"
-                name={`q-${question.id}`}
-                value={opt.id}
-                checked={answer === opt.id}
-                onChange={() => handleSingleChange(opt.id)}
-                className="size-5 accent-primary"
-              />
-              <span className="text-base leading-relaxed">
+            <label
+              key={opt.id}
+              className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3.5 transition-all ${
+                answer === opt.id
+                  ? 'border-emerald-400 bg-emerald-50/80 shadow-sm'
+                  : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <span className={`flex size-5 shrink-0 items-center justify-center rounded-full border-2 transition-all ${
+                answer === opt.id
+                  ? 'border-emerald-500 bg-emerald-500'
+                  : 'border-gray-300'
+              }`}>
+                {answer === opt.id && (
+                  <svg className="size-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
+                )}
+              </span>
+              <span className="text-base leading-relaxed text-gray-800">
                 {opt.text}
               </span>
             </label>
@@ -175,20 +184,32 @@ function QuestionItem({
 
       {/* 多選題 */}
       {question.type === 'multiple_choice' && (
-        <div className="space-y-3">
-          <p className="mb-1 text-sm text-muted-foreground">可選多個答案</p>
-          {options.map(opt => (
-            <label key={opt.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:bg-muted/50">
-              <input
-                type="checkbox"
-                value={opt.id}
-                checked={Array.isArray(answer) && answer.includes(opt.id)}
-                onChange={e => handleMultiChange(opt.id, e.target.checked)}
-                className="size-5 accent-primary"
-              />
-              <span className="text-base leading-relaxed">{opt.text}</span>
-            </label>
-          ))}
+        <div className="space-y-2.5">
+          <p className="mb-1 text-sm text-gray-500">可選多個答案</p>
+          {options.map((opt) => {
+            const checked = Array.isArray(answer) && answer.includes(opt.id);
+            return (
+              <label
+                key={opt.id}
+                className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 px-4 py-3.5 transition-all ${
+                  checked
+                    ? 'border-emerald-400 bg-emerald-50/80 shadow-sm'
+                    : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <span className={`flex size-5 shrink-0 items-center justify-center rounded border-2 transition-all ${
+                  checked ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
+                }`}>
+                  {checked && (
+                    <svg className="size-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                  )}
+                </span>
+                <span className="text-base leading-relaxed text-gray-800">{opt.text}</span>
+              </label>
+            );
+          })}
         </div>
       )}
 
@@ -199,7 +220,7 @@ function QuestionItem({
           onChange={e => onChange(e.target.value)}
           rows={3}
           placeholder="請輸入你的答案..."
-          className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="w-full rounded-xl border-2 border-gray-100 bg-gray-50/50 px-4 py-3 text-base leading-relaxed text-gray-800 placeholder:text-gray-400 focus:border-emerald-400 focus:bg-white focus:outline-none"
         />
       )}
 
