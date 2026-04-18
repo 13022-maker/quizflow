@@ -36,6 +36,7 @@ type GeneratedResult = {
 
 type Props = {
   quizId?: string;
+  defaultTopic?: string;
   onImport: (questions: GeneratedQuestion[], title: string) => void;
   onClose: () => void;
 };
@@ -78,7 +79,7 @@ function fmtSize(b: number) {
 }
 
 // ─── Component ────────────────────────────────────────────
-export default function AIQuizModal({ onImport, onClose }: Props) {
+export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) {
   // Mode
   const [mode, setMode] = useState<Mode>('text');
 
@@ -88,7 +89,7 @@ export default function AIQuizModal({ onImport, onClose }: Props) {
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
 
   // Text mode
-  const [topic, setTopic] = useState('');
+  const [topic, setTopic] = useState(defaultTopic ?? '');
 
   // URL mode（YouTube / Google Docs）
   const [sourceUrl, setSourceUrl] = useState('');

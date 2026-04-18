@@ -72,6 +72,23 @@ const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | '
 type Quiz = InferSelectModel<typeof quizSchema>;
 type Question = InferSelectModel<typeof questionSchema>;
 
+const STUDENT_FACING_PHRASES = [
+  '完成後可查看解答與詳解',
+  '完成後可查看解答',
+  '可查看解答與詳解',
+];
+
+function buildDefaultTopic(title: string, description?: string | null): string {
+  if (!description) return title;
+  let desc = description;
+  for (const phrase of STUDENT_FACING_PHRASES) {
+    desc = desc.replace(phrase, '');
+  }
+  desc = desc.trim();
+  if (!desc) return title;
+  return `${title}：${desc}`;
+}
+
 // 狀態樣式：小色點 + 文字（與 Dashboard 一致）
 const STATUS_MAP: Record<Quiz['status'], { label: string; dot: string }> = {
   draft: { label: '草稿', dot: 'bg-muted-foreground/60' },
@@ -570,6 +587,7 @@ export function QuizEditor({
       {/* AI 出題 Modal */}
       {showAIModal && (
         <AIQuizModal
+          defaultTopic={buildDefaultTopic(initialQuiz.title, initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
         />
