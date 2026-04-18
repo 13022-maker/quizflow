@@ -1,15 +1,15 @@
 import { auth } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
+import { count, eq, inArray } from 'drizzle-orm';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
-import { QuizTable } from '@/features/quiz/QuizTable';
+import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
 import { getOrgPlanId } from '@/libs/Plan';
-import { quizSchema } from '@/models/Schema';
+import { quizSchema, responseSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -42,6 +42,18 @@ export default async function QuizzesPage() {
   } catch (err) {
     console.error('[QuizzesPage] DB query failed:', err);
     throw err;
+  }
+
+  // 每份測驗的作答人數
+  let responseCounts = new Map<number, number>();
+  if (quizzes.length > 0) {
+    const ids = quizzes.map(q => q.id);
+    const rows = await db
+      .select({ quizId: responseSchema.quizId, total: count() })
+      .from(responseSchema)
+      .where(inArray(responseSchema.quizId, ids))
+      .groupBy(responseSchema.quizId);
+    responseCounts = new Map(rows.map(r => [r.quizId, r.total]));
   }
 
   const isFree = quizLimit < 999;
@@ -124,7 +136,7 @@ export default async function QuizzesPage() {
               )}
             />
           )
-        : <QuizTable quizzes={quizzes} />}
+        : <QuizCardList quizzes={quizzes} responseCounts={responseCounts} />}
     </>
   );
 }
