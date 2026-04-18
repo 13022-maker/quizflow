@@ -1232,7 +1232,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         <Button
           onClick={() => handleSubmit()}
           disabled={isPending}
-          className="w-full"
+          className="relative z-20 w-full shadow-lg"
           size="lg"
         >
           {isPending ? '提交中…' : '送出作答'}
