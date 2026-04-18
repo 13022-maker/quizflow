@@ -816,6 +816,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [error, setError] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 錯題重做狀態
   const [retryMode, setRetryMode] = useState(false);
@@ -893,39 +894,41 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       }
     }
     setError('');
+    setIsSubmitting(true);
 
-    startTransition(async () => {
-      try {
-        if (quiz.allowedAttempts && studentEmail) {
-          const attemptCount = await checkAttemptCount(quiz.id, studentEmail);
-          if (attemptCount >= quiz.allowedAttempts) {
-            setError('您已達到作答上限，無法再次提交。');
-            return;
-          }
-        }
-        // 將 answers key 轉為 string（Server Action 序列化需要）
-        const stringKeyAnswers: Record<string, string | string[]> = {};
-        for (const [key, value] of Object.entries(answers)) {
-          stringKeyAnswers[String(key)] = value;
-        }
-
-        const res = await submitQuizResponse({
-          quizId: quiz.id,
-          studentName: studentName || undefined,
-          studentEmail: studentEmail || undefined,
-          answers: stringKeyAnswers,
-          leaveCount: preventLeave ? leaveCountRef.current : undefined,
-        });
-        setResult(res);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
+    try {
+      if (quiz.allowedAttempts && studentEmail) {
+        const attemptCount = await checkAttemptCount(quiz.id, studentEmail);
+        if (attemptCount >= quiz.allowedAttempts) {
           setError('您已達到作答上限，無法再次提交。');
-        } else {
-          setError(`提交失敗：${msg || '未知錯誤'}，請再試一次`);
+          setIsSubmitting(false);
+          return;
         }
       }
-    });
+
+      const stringKeyAnswers: Record<string, string | string[]> = {};
+      for (const [key, value] of Object.entries(answers)) {
+        stringKeyAnswers[String(key)] = value;
+      }
+
+      const res = await submitQuizResponse({
+        quizId: quiz.id,
+        studentName: studentName || undefined,
+        studentEmail: studentEmail || undefined,
+        answers: stringKeyAnswers,
+        leaveCount: preventLeave ? leaveCountRef.current : undefined,
+      });
+      setResult(res);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
+        setError('您已達到作答上限，無法再次提交。');
+      } else {
+        setError(`提交失敗：${msg || '未知錯誤'}，請再試一次`);
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 倒數計時器
@@ -1146,10 +1149,10 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             <button
               type="button"
               onClick={() => handleSubmit()}
-              disabled={isPending}
+              disabled={isSubmitting}
               className="shrink-0 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-600 disabled:opacity-50"
             >
-              {isPending ? '提交中…' : '送出作答'}
+              {isSubmitting ? '提交中…' : '送出作答'}
             </button>
           )}
         </div>
