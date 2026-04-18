@@ -920,7 +920,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     setAnswers(prev => ({ ...prev, [questionId]: value }));
   };
 
-  const handleSubmit = (skipValidation = false) => {
+  const handleSubmit = async (skipValidation = false) => {
     if (!skipValidation) {
       const unanswered = displayQuestions.filter((q) => {
         if (q.type === 'short_answer') {
