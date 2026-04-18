@@ -22,11 +22,10 @@ type Quiz = InferSelectModel<typeof quizSchemaType>;
 export default async function DashboardIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ t?: string }>;
+  searchParams: { t?: string };
 }) {
   const { orgId, userId } = await auth();
-  const params = await searchParams;
-  const template = params.t ?? 'b';
+  const template = searchParams.t ?? 'b';
 
   let recentQuizzes: Quiz[] = [];
   let totalQuizCount = 0;
