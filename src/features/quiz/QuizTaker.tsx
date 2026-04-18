@@ -2,7 +2,6 @@
 
 import type { InferSelectModel } from 'drizzle-orm';
 import dynamic from 'next/dynamic';
-import { pinyin } from 'pinyin-pro';
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
@@ -159,14 +158,6 @@ function QuestionItem({
               />
               <span className="text-sm">
                 {opt.text}
-                {/* 聽力題選項自動加拼音，幫助初學者閱讀 */}
-                {question.type === 'listening' && (
-                  <span className="ml-1.5 text-xs text-muted-foreground">
-                    (
-                    {pinyin(opt.text.replace(/^\([A-D]\)\s?/, ''))}
-                    )
-                  </span>
-                )}
               </span>
             </label>
           ))}
