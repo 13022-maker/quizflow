@@ -87,6 +87,13 @@ export const quizSchema = pgTable('quiz', {
   scoringMode: text('scoring_mode').default('highest').notNull(), // highest / latest / first / decay
   attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
   expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
+  // 題庫市集
+  isMarketplace: boolean('is_marketplace').default(false).notNull(),
+  category: text('category'),
+  gradeLevel: text('grade_level'),
+  tags: jsonb('tags').$type<string[]>(),
+  copyCount: integer('copy_count').default(0).notNull(),
+  originalQuizId: integer('original_quiz_id'),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())

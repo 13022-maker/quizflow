@@ -30,6 +30,7 @@ import {
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
+import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
 import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -334,6 +335,7 @@ export function QuizEditor({
 
   // 控制「上傳講義命題」Modal 顯示
   const [showFileGenerator, setShowFileGenerator] = useState(false);
+  const [showMarketplace, setShowMarketplace] = useState(false);
 
   // ── 從檔案匯入題目 ──────────────────────────────────────────────────
   const handleFileImport = async (fileQuestions: FileGeneratedQuestion[], _title: string) => {
@@ -561,6 +563,16 @@ export function QuizEditor({
               </Button>
             )}
 
+        {/* 題庫市集按鈕 */}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setShowMarketplace(true)}
+          className="gap-1.5"
+        >
+          {initialQuiz.isMarketplace ? '✅ 已上架市集' : '📤 分享到市集'}
+        </Button>
+
         {/* 匯出 Word 下拉（老師版含答案 / 學生版空白考卷） */}
         {questions.length > 0 && (
           <details className="relative">
@@ -612,6 +624,18 @@ export function QuizEditor({
         <FileQuizGenerator
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
+        />
+      )}
+
+      {/* 題庫市集 Dialog */}
+      {showMarketplace && (
+        <PublishMarketplaceDialog
+          quizId={initialQuiz.id}
+          isMarketplace={initialQuiz.isMarketplace}
+          initialCategory={initialQuiz.category}
+          initialGradeLevel={initialQuiz.gradeLevel}
+          initialTags={initialQuiz.tags}
+          onClose={() => { setShowMarketplace(false); router.refresh(); }}
         />
       )}
 
