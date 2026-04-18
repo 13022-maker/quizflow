@@ -30,6 +30,15 @@ type WeakPoint = { concept: string; suggestion: string };
 // 錯題重做結果型別
 type RetryResult = { correct: number; total: number };
 
+// 補強題型別
+type RemedialQuestion = {
+  question: string;
+  options: string[];
+  answer: string;
+  explanation: string;
+  targetConcept: string;
+};
+
 // ── 家教模式：本機批改（與 server-side 邏輯一致） ───────────────
 // 簡答題回傳 null（無法自動判對錯，只能顯示參考答案）
 function gradeAnswer(question: Question, answer: string | string[] | undefined): boolean | null {
@@ -439,6 +448,11 @@ function ResultScreen({
             </ul>
           )}
         </div>
+      )}
+
+      {/* AI 補強練習 */}
+      {showAnswers && weakPoints && weakPoints.length > 0 && (
+        <RemedialPractice weakPoints={weakPoints} responseId={result.responseId} />
       )}
 
       {/* AI 助教語系選擇 */}
@@ -1103,6 +1117,174 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           {isPending ? '提交中…' : '送出作答'}
         </Button>
       )}
+    </div>
+  );
+}
+
+// ── AI 補強練習元件 ──────────────────────────────────────────
+function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[]; responseId: number }) {
+  const [questions, setQuestions] = useState<RemedialQuestion[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleGenerate = async () => {
+    setLoading(true);
+    setError('');
+    setQuestions([]);
+    setAnswers({});
+    setSubmitted(false);
+    try {
+      const res = await fetch('/api/ai/generate-remedial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weakPoints, responseId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setQuestions(data.questions ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '補強題生成失敗');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = () => setSubmitted(true);
+
+  const correctCount = questions.filter((q, i) => {
+    const studentAns = answers[i];
+    if (!studentAns) return false;
+    return studentAns === q.answer;
+  }).length;
+
+  if (questions.length === 0) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-center">
+        <p className="mb-2 text-base font-semibold text-amber-900">🎯 AI 補強練習</p>
+        <p className="mb-4 text-sm text-amber-700">根據你的弱點，AI 會出幾題簡單的練習幫你打好基礎</p>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={loading}
+          className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+        >
+          {loading
+            ? (
+                <>
+                  <span className="size-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+                  生成補強題中…
+                </>
+              )
+            : '開始補強練習'}
+        </button>
+        {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50/50 p-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-amber-900">🎯 AI 補強練習</h3>
+        {submitted && (
+          <span className={`rounded-full px-3 py-1 text-sm font-bold ${
+            correctCount === questions.length ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+          }`}>
+            {correctCount}
+            /
+            {questions.length}
+            {' '}
+            題正確
+          </span>
+        )}
+      </div>
+
+      {questions.map((q, qi) => {
+        const studentAns = answers[qi];
+        const isCorrect = submitted && studentAns === q.answer;
+        const isWrong = submitted && !!studentAns && studentAns !== q.answer;
+
+        return (
+          <div
+            key={qi}
+            className={`rounded-lg border bg-card p-5 ${
+              isCorrect ? 'border-green-300' : isWrong ? 'border-red-300' : ''
+            }`}
+          >
+            <p className="mb-1 text-xs text-amber-600">{q.targetConcept}</p>
+            <p className="mb-3 text-base font-semibold leading-relaxed">{q.question}</p>
+
+            <div className="space-y-2">
+              {q.options.map((opt) => {
+                const letter = opt.match(/^\(([A-D])\)/)?.[1] ?? '';
+                const selected = studentAns === letter;
+                const correct = submitted && letter === q.answer;
+                const wrong = submitted && selected && letter !== q.answer;
+
+                return (
+                  <label
+                    key={opt}
+                    className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-base transition-colors ${
+                      correct ? 'border-green-400 bg-green-50' : wrong ? 'border-red-400 bg-red-50' : selected ? 'border-primary bg-primary/5' : 'border-transparent hover:bg-muted/50'
+                    } ${submitted ? 'pointer-events-none' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name={`remedial-${qi}`}
+                      checked={selected}
+                      onChange={() => setAnswers(prev => ({ ...prev, [qi]: letter }))}
+                      disabled={submitted}
+                      className="size-5 accent-primary"
+                    />
+                    <span>{opt}</span>
+                    {correct && <span className="ml-auto text-green-600">✓</span>}
+                    {wrong && <span className="ml-auto text-red-500">✗</span>}
+                  </label>
+                );
+              })}
+            </div>
+
+            {submitted && (
+              <div className="mt-3 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
+                <strong>解析：</strong>
+                {q.explanation}
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {!submitted
+        ? (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={Object.keys(answers).length < questions.length}
+              className="w-full rounded-lg bg-amber-500 py-3 text-sm font-bold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            >
+              {Object.keys(answers).length < questions.length
+                ? `還有 ${questions.length - Object.keys(answers).length} 題未作答`
+                : '送出補強練習'}
+            </button>
+          )
+        : (
+            <div className="text-center">
+              <p className="mb-3 text-sm text-muted-foreground">
+                {correctCount === questions.length
+                  ? '全部答對！你已經掌握這些概念了 🎉'
+                  : '繼續加油！可以再練習一次'}
+              </p>
+              <button
+                type="button"
+                onClick={handleGenerate}
+                className="rounded-lg border border-amber-300 px-5 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100"
+              >
+                再練一組新題
+              </button>
+            </div>
+          )}
     </div>
   );
 }
