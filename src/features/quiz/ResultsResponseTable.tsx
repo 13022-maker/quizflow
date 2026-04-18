@@ -22,7 +22,7 @@ function calcRate(row: ResponseRow): number | null {
   return Math.round((row.score / row.totalPoints) * 100);
 }
 
-export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }) {
+export function ResultsResponseTable({ responses, quizId }: { responses: ResponseRow[]; quizId: number }) {
   const [sortKey, setSortKey] = useState<SortKey>('submittedAt');
   const [sortAsc, setSortAsc] = useState(false);
 
@@ -56,31 +56,8 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
     return <span className="ml-1">{sortAsc ? '↑' : '↓'}</span>;
   };
 
-  // 匯出 CSV
-  const handleExportCsv = () => {
-    const header = ['姓名', 'Email', '答對題數', '答對率', '離開次數', '作答時間'];
-    const rows = sorted.map(r => [
-      r.studentName ?? '',
-      r.studentEmail ?? '',
-      r.score !== null && r.totalPoints !== null ? `${r.score}/${r.totalPoints}` : '—',
-      calcRate(r) !== null ? `${calcRate(r)}%` : '—',
-      String(r.leaveCount),
-      new Date(r.submittedAt).toLocaleString('zh-TW'),
-    ]);
-
-    const csvContent = [header, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-
-    // 加入 BOM 讓 Excel 正確顯示中文
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `quiz-results-${Date.now()}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  // 匯出 CSV（透過 server-side API 下載，手機相容）
+  const csvDownloadUrl = `/api/quizzes/${quizId}/export-csv`;
 
   if (responses.length === 0) {
     return (
@@ -101,13 +78,13 @@ export function ResultsResponseTable({ responses }: { responses: ResponseRow[] }
           {' '}
           筆作答記錄
         </p>
-        <button
-          type="button"
-          onClick={handleExportCsv}
+        <a
+          href={csvDownloadUrl}
+          download
           className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
         >
           ↓ 匯出 CSV
-        </button>
+        </a>
       </div>
 
       {/* 表格 */}
