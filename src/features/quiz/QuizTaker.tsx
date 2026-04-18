@@ -745,47 +745,45 @@ function RetryScreen({
         </Button>
       </div>
 
-      {/* 浮動導覽按鈕（右下角） */}
-      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-2">
-        {currentIndex > 0 && (
-          <button
-            type="button"
-            onClick={() => {
-              const prevQ = wrongQuestions[currentIndex - 1];
-              if (prevQ) {
-                setCurrentIndex(currentIndex - 1);
-                document.getElementById(`retry-${prevQ.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }}
-            className="flex size-12 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:shadow-xl"
-          >
-            <svg className="size-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-            </svg>
-          </button>
-        )}
-        {currentIndex < wrongQuestions.length - 1 && (
-          <button
-            type="button"
-            onClick={() => {
-              const nextQ = wrongQuestions[currentIndex + 1];
-              if (nextQ) {
-                setCurrentIndex(currentIndex + 1);
-                document.getElementById(`retry-${nextQ.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              }
-            }}
-            className="flex size-12 items-center justify-center rounded-full bg-emerald-500 shadow-lg transition-all hover:bg-emerald-600 hover:shadow-xl"
-          >
-            <svg className="size-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-            </svg>
-          </button>
-        )}
-        <span className="text-center text-[10px] font-bold text-gray-400">
-          {currentIndex + 1}
-          /
-          {wrongQuestions.length}
-        </span>
+      {/* 浮動導覽按鈕（右側中間） */}
+      <div className="fixed right-3 top-1/2 z-50 flex -translate-y-1/2 flex-col gap-3">
+        <button
+          type="button"
+          disabled={currentIndex <= 0}
+          onClick={() => {
+            const prev = currentIndex - 1;
+            if (prev >= 0) {
+              setCurrentIndex(prev);
+              document.getElementById(`retry-${wrongQuestions[prev]!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }}
+          className="flex size-11 items-center justify-center rounded-full bg-white shadow-xl ring-1 ring-gray-200 transition-all hover:bg-gray-50 disabled:opacity-30"
+        >
+          <svg className="size-5 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+          </svg>
+        </button>
+
+        <div className="rounded-full bg-emerald-500 px-1.5 py-1 text-center text-[10px] font-bold text-white shadow-lg">
+          {currentIndex + 1}/{wrongQuestions.length}
+        </div>
+
+        <button
+          type="button"
+          disabled={currentIndex >= wrongQuestions.length - 1}
+          onClick={() => {
+            const next = currentIndex + 1;
+            if (next < wrongQuestions.length) {
+              setCurrentIndex(next);
+              document.getElementById(`retry-${wrongQuestions[next]!.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }}
+          className="flex size-11 items-center justify-center rounded-full bg-emerald-500 shadow-xl transition-all hover:bg-emerald-600 disabled:opacity-30"
+        >
+          <svg className="size-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+          </svg>
+        </button>
       </div>
     </div>
   );
