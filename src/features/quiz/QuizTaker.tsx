@@ -612,6 +612,7 @@ function RetryScreen({
   const [retryAnswers, setRetryAnswers] = useState<Record<number, string | string[]>>({});
   const [retryResult, setRetryResult] = useState<RetryResult | null>(null);
   const [error, setError] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   const handleRetrySubmit = () => {
     // 檢查是否全部作答
@@ -712,19 +713,23 @@ function RetryScreen({
 
       {/* 題目 */}
       {wrongQuestions.map((question, index) => (
-        <QuestionItem
-          key={question.id}
-          question={question}
-          index={index}
-          answer={retryAnswers[question.id]}
-          onChange={value => setRetryAnswers(prev => ({ ...prev, [question.id]: value }))}
-        />
+        <div key={question.id} id={`retry-${question.id}`}>
+          <QuestionItem
+            question={question}
+            index={index}
+            answer={retryAnswers[question.id]}
+            onChange={(value) => {
+              setRetryAnswers(prev => ({ ...prev, [question.id]: value }));
+              setCurrentIndex(index);
+            }}
+          />
+        </div>
       ))}
 
       {error && (
-        <p className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+        <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
           {error}
-        </p>
+        </div>
       )}
 
       <div className="flex gap-3">
@@ -738,6 +743,49 @@ function RetryScreen({
         <Button onClick={handleRetrySubmit} className="flex-1">
           送出重做
         </Button>
+      </div>
+
+      {/* 浮動導覽按鈕（右下角） */}
+      <div className="fixed bottom-24 right-4 z-30 flex flex-col gap-2">
+        {currentIndex > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              const prevQ = wrongQuestions[currentIndex - 1];
+              if (prevQ) {
+                setCurrentIndex(currentIndex - 1);
+                document.getElementById(`retry-${prevQ.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            className="flex size-12 items-center justify-center rounded-full bg-white/90 shadow-lg backdrop-blur-sm transition-all hover:bg-white hover:shadow-xl"
+          >
+            <svg className="size-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
+            </svg>
+          </button>
+        )}
+        {currentIndex < wrongQuestions.length - 1 && (
+          <button
+            type="button"
+            onClick={() => {
+              const nextQ = wrongQuestions[currentIndex + 1];
+              if (nextQ) {
+                setCurrentIndex(currentIndex + 1);
+                document.getElementById(`retry-${nextQ.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            className="flex size-12 items-center justify-center rounded-full bg-emerald-500 shadow-lg transition-all hover:bg-emerald-600 hover:shadow-xl"
+          >
+            <svg className="size-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+            </svg>
+          </button>
+        )}
+        <span className="text-center text-[10px] font-bold text-gray-400">
+          {currentIndex + 1}
+          /
+          {wrongQuestions.length}
+        </span>
       </div>
     </div>
   );
