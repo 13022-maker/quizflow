@@ -128,17 +128,28 @@ export function useQuizColumns(): ColumnDef<Quiz>[] {
     {
       accessorKey: 'status',
       header: t('status_header'),
-      cell: ({ row }) => <StatusBadge status={row.original.status} />,
+      cell: ({ row }) => (
+        <div className="whitespace-nowrap">
+          <StatusBadge status={row.original.status} />
+        </div>
+      ),
     },
     {
       accessorKey: 'createdAt',
       header: t('created_at_header'),
-      cell: ({ row }) =>
-        row.original.createdAt.toLocaleDateString('zh-TW'),
+      cell: ({ row }) => (
+        <span className="whitespace-nowrap">
+          {row.original.createdAt.toLocaleDateString('zh-TW')}
+        </span>
+      ),
     },
     {
       id: 'actions',
-      cell: ({ row }) => <ActionsCell quiz={row.original} />,
+      cell: ({ row }) => (
+        <div className="whitespace-nowrap text-right">
+          <ActionsCell quiz={row.original} />
+        </div>
+      ),
     },
   ];
 }
