@@ -1123,32 +1123,39 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       )}
 
       {/* ── 題目導覽面板 + 送出按鈕（頂部） ── */}
-      <div className="sticky top-0 z-10 -mx-4 space-y-3 border-b bg-white/95 px-4 py-4 shadow-sm backdrop-blur-sm">
-        {/* 進度條 + 計時器 */}
-        <div className="flex items-center gap-3">
+      <div className="sticky top-0 z-10 -mx-4 border-b bg-white/95 px-4 py-2.5 shadow-sm backdrop-blur-sm">
+        {/* 進度 + 計時器 + 送出按鈕 */}
+        <div className="mb-2 flex items-center gap-2">
           <div className="flex-1">
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{answeredCount}/{displayQuestions.length} 已作答</span>
-              <span>{progressPercent}%</span>
-            </div>
-            <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
               <div
                 className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500 transition-all duration-300"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
+          <span className="shrink-0 text-xs tabular-nums text-gray-500">{answeredCount}/{displayQuestions.length}</span>
           {timeLeft !== null && (
-            <div className={`shrink-0 rounded-lg px-3 py-1.5 font-mono text-sm font-bold tabular-nums ${
-              timeLeft <= 60 ? 'bg-red-100 text-red-700 animate-pulse' : timeLeft <= 300 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+            <span className={`shrink-0 rounded px-2 py-0.5 font-mono text-xs font-bold tabular-nums ${
+              timeLeft <= 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-500'
             }`}>
               {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
-            </div>
+            </span>
+          )}
+          {!tutorMode && (
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={isPending}
+              className="shrink-0 rounded-lg bg-emerald-500 px-4 py-1.5 text-xs font-bold text-white shadow-sm transition-colors hover:bg-emerald-600 disabled:opacity-50"
+            >
+              {isPending ? '提交中…' : '送出作答'}
+            </button>
           )}
         </div>
 
         {/* 題號導覽列 */}
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1">
           {displayQuestions.map((q, i) => {
             const isAnswered = q.type === 'short_answer' || !!answers[q.id];
             const isFlagged = flagged.has(q.id);
@@ -1157,47 +1164,28 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
                 key={q.id}
                 type="button"
                 onClick={() => scrollToQuestion(q.id)}
-                className={`relative flex size-8 items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                className={`relative flex size-6 items-center justify-center rounded text-[10px] font-bold transition-all ${
                   isFlagged
-                    ? 'bg-amber-400 text-white shadow-sm'
+                    ? 'bg-amber-400 text-white'
                     : isAnswered
-                      ? 'bg-emerald-500 text-white shadow-sm'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      ? 'bg-emerald-500 text-white'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                 }`}
               >
                 {i + 1}
                 {isFlagged && (
-                  <span className="absolute -right-0.5 -top-0.5 text-[8px]">🚩</span>
+                  <span className="absolute -right-0.5 -top-0.5 text-[7px]">🚩</span>
                 )}
               </button>
             );
           })}
         </div>
 
-        {/* 圖例 */}
-        <div className="flex items-center gap-3 text-[10px] text-gray-400">
-          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-emerald-500" /> 已作答</span>
-          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-gray-200" /> 未作答</span>
-          <span className="flex items-center gap-1"><span className="size-2.5 rounded bg-amber-400" /> 標記複查</span>
-        </div>
-
         {/* 錯誤訊息 */}
         {error && (
-          <div className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+          <div className="mt-1.5 rounded border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700">
             {error}
           </div>
-        )}
-
-        {/* 送出按鈕 */}
-        {!tutorMode && (
-          <Button
-            onClick={() => handleSubmit()}
-            disabled={isPending}
-            className="w-full shadow-sm"
-            size="lg"
-          >
-            {isPending ? '提交中…' : '送出作答'}
-          </Button>
         )}
       </div>
 
