@@ -107,12 +107,12 @@ function QuestionItem({
 
   return (
     <div className="rounded-xl border bg-card p-6">
-      <div className="mb-3 flex items-start gap-2">
-        <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground">
+      <div className="mb-4 flex items-start gap-2">
+        <span className="shrink-0 rounded-full bg-primary px-2.5 py-1 text-sm font-bold text-primary-foreground">
           Q
           {index + 1}
         </span>
-        <p className="font-medium leading-snug">{question.body}</p>
+        <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
       </div>
 
       {/* 題目圖片 */}
@@ -145,18 +145,18 @@ function QuestionItem({
 
       {/* 單選題 / 是非題 / 聽力題（聽力題選項邏輯等同單選） */}
       {(question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') && (
-        <div className="space-y-2 pl-2">
+        <div className="space-y-3">
           {options.map(opt => (
-            <label key={opt.id} className="flex cursor-pointer items-center gap-3">
+            <label key={opt.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:bg-muted/50">
               <input
                 type="radio"
                 name={`q-${question.id}`}
                 value={opt.id}
                 checked={answer === opt.id}
                 onChange={() => handleSingleChange(opt.id)}
-                className="size-4 accent-primary"
+                className="size-5 accent-primary"
               />
-              <span className="text-sm">
+              <span className="text-base leading-relaxed">
                 {opt.text}
               </span>
             </label>
@@ -166,18 +166,18 @@ function QuestionItem({
 
       {/* 多選題 */}
       {question.type === 'multiple_choice' && (
-        <div className="space-y-2 pl-2">
-          <p className="mb-2 text-xs text-muted-foreground">可選多個答案</p>
+        <div className="space-y-3">
+          <p className="mb-1 text-sm text-muted-foreground">可選多個答案</p>
           {options.map(opt => (
-            <label key={opt.id} className="flex cursor-pointer items-center gap-3">
+            <label key={opt.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:bg-muted/50">
               <input
                 type="checkbox"
                 value={opt.id}
                 checked={Array.isArray(answer) && answer.includes(opt.id)}
                 onChange={e => handleMultiChange(opt.id, e.target.checked)}
-                className="size-4 accent-primary"
+                className="size-5 accent-primary"
               />
-              <span className="text-sm">{opt.text}</span>
+              <span className="text-base leading-relaxed">{opt.text}</span>
             </label>
           ))}
         </div>
@@ -190,7 +190,7 @@ function QuestionItem({
           onChange={e => onChange(e.target.value)}
           rows={3}
           placeholder="請輸入你的答案..."
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="w-full rounded-lg border border-input bg-background px-4 py-3 text-base leading-relaxed placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
       )}
 
