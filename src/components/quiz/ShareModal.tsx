@@ -91,11 +91,10 @@ export default function ShareModal({
     });
   };
 
-  // LINE 分享
+  // LINE 分享（直接開 LINE App）
   const handleShareLine = () => {
-    const text = `加入測驗「${quizTitle}」${roomCode ? `，房間碼：${roomCode}` : ''}，點擊加入：${shareUrl}`;
-    const url = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'width=500,height=600');
+    const text = `加入測驗「${quizTitle}」${roomCode ? `\n房間碼：${roomCode}` : ''}\n點擊加入：${shareUrl}`;
+    window.location.href = `https://line.me/R/share?text=${encodeURIComponent(text)}`;
   };
 
   // Google Classroom 分享
