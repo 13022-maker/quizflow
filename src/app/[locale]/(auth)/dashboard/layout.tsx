@@ -34,6 +34,10 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
                 label: t('quizzes'),
               },
               {
+                href: '/dashboard/vocab',
+                label: '單字卡',
+              },
+              {
                 href: '/dashboard/organization-profile/organization-members',
                 label: t('members'),
               },

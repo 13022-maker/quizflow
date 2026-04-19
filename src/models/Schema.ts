@@ -284,6 +284,34 @@ export const subscriptionSchema = pgTable('subscription', {
 
 // ---------- todo (原有範例，保留供參考) ----------
 
+// ---------- vocabulary_set ----------
+
+export const vocabSetSchema = pgTable('vocabulary_set', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  title: text('title').notNull(),
+  accessCode: text('access_code').unique(),
+  status: text('status').default('draft').notNull(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// ---------- vocabulary_card ----------
+
+export const vocabCardSchema = pgTable('vocabulary_card', {
+  id: serial('id').primaryKey(),
+  setId: integer('set_id').notNull().references(() => vocabSetSchema.id, { onDelete: 'cascade' }),
+  front: text('front').notNull(),
+  back: text('back').notNull(),
+  phonetic: text('phonetic'),
+  example: text('example'),
+  position: integer('position').notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 export const todoSchema = pgTable('todo', {
   id: serial('id').primaryKey(),
   ownerId: text('owner_id').notNull(),

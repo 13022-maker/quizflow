@@ -9,7 +9,6 @@
  * 需要環境變數 OPENAI_API_KEY。
  */
 
-import { auth } from '@clerk/nextjs/server';
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
@@ -37,11 +36,6 @@ const VOICES: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: '未登入' }, { status: 401 });
-    }
-
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: 'TTS 功能尚未設定，請聯繫管理員' }, { status: 503 });

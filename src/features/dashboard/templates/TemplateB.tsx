@@ -27,7 +27,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
       </div>
 
       {/* ── 快速行動卡片 ── */}
-      <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-3">
+      <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* 建立新測驗 */}
         <Link
           href="/dashboard/quizzes/new"
@@ -87,6 +87,25 @@ export function TemplateB({ data }: { data: DashboardData }) {
             </p>
           </div>
           <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+
+        {/* AI 單字卡 */}
+        <Link
+          href="/dashboard/vocab/new"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:border-amber-200 hover:shadow-md hover:-translate-y-0.5"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
+            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-bold text-foreground">AI 單字卡</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">輸入單字，AI 生成卡片與發音練習</p>
+          </div>
+          <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </Link>
