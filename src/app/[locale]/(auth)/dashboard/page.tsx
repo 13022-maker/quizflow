@@ -1,5 +1,4 @@
 import { auth } from '@clerk/nextjs/server';
-import type { InferSelectModel } from 'drizzle-orm';
 import { and, count, desc, eq, inArray, isNotNull } from 'drizzle-orm';
 import Link from 'next/link';
 
@@ -10,17 +9,22 @@ import { TemplateB } from '@/features/dashboard/templates/TemplateB';
 import type { DashboardData } from '@/features/dashboard/templates/types';
 import { TrialBanner } from '@/features/dashboard/TrialBanner';
 import { db } from '@/libs/DB';
-import type { quizSchema as quizSchemaType } from '@/models/Schema';
 import { quizSchema, responseSchema } from '@/models/Schema';
 
 export const dynamic = 'force-dynamic';
 
-type Quiz = InferSelectModel<typeof quizSchemaType>;
+type DashboardQuiz = {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  createdAt: Date;
+};
 
 export default async function DashboardIndexPage() {
   const { orgId, userId } = await auth();
 
-  let recentQuizzes: Quiz[] = [];
+  let recentQuizzes: DashboardQuiz[] = [];
   let totalQuizCount = 0;
   let publishedCount = 0;
   let totalResponses = 0;
@@ -29,7 +33,13 @@ export default async function DashboardIndexPage() {
 
   if (orgId) {
     recentQuizzes = await db
-      .select()
+      .select({
+        id: quizSchema.id,
+        title: quizSchema.title,
+        description: quizSchema.description,
+        status: quizSchema.status,
+        createdAt: quizSchema.createdAt,
+      })
       .from(quizSchema)
       .where(eq(quizSchema.ownerId, orgId))
       .orderBy(desc(quizSchema.createdAt))
@@ -106,7 +116,7 @@ export default async function DashboardIndexPage() {
       <CheckoutSuccessBanner />
 
       {/* Pro 試用倒數 / 到期提示 */}
-      {userId && (
+      {userId && orgId && (
         <div className="mx-4 mb-4">
           <TrialBanner clerkUserId={userId} orgId={orgId} />
         </div>
