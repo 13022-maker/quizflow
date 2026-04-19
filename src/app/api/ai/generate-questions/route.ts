@@ -1,9 +1,8 @@
 /**
  * 文字主題出題 API
- * 主用 Gemini 2.5 Flash（免費），Gemini 過載時自動 fallback 到 Claude Sonnet 4
+ * 主用 Gemini 2.5 Flash（免費），Gemini 過載時自動 fallback 到 OpenAI GPT-4o
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
@@ -14,7 +13,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-const anthropic = new Anthropic();
 
 // 判斷是否為過載 / 限流錯誤
 function isOverloadError(err: unknown): boolean {
@@ -127,19 +125,33 @@ ${typesPrompt}
       return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
     }
 
-    // Gemini 過載 → fallback Claude
-    console.warn('[generate-questions] Gemini 過載，fallback Claude');
-    usedModel = 'claude';
+    // Gemini 過載 → fallback OpenAI
+    console.warn('[generate-questions] Gemini 過載，fallback OpenAI');
+    usedModel = 'openai';
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return NextResponse.json({ error: 'AI 備援服務未設定（缺少 OPENAI_API_KEY）' }, { status: 503 });
+    }
     try {
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 8192,
+          response_format: { type: 'json_object' },
+        }),
       });
-      raw = (message.content[0] as { type: string; text: string }).text ?? '';
-    } catch (claudeErr) {
-      const msg = claudeErr instanceof Error ? claudeErr.message : '未知錯誤';
-      console.error('[generate-questions] Claude fallback 也失敗：', claudeErr);
+      if (!openaiRes.ok) {
+        const errBody = await openaiRes.text();
+        throw new Error(`OpenAI ${openaiRes.status}: ${errBody.slice(0, 200)}`);
+      }
+      const openaiData = await openaiRes.json();
+      raw = openaiData.choices?.[0]?.message?.content ?? '';
+    } catch (openaiErr) {
+      const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';
+      console.error('[generate-questions] OpenAI fallback 也失敗：', openaiErr);
       return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
     }
   }
