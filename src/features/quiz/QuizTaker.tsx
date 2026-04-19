@@ -1444,7 +1444,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
-        <div key={question.id} id={`q-${question.id}`} style={{ scrollMarginTop: '120px' }}>
+        <div key={question.id} id={`q-${question.id}`} style={{ scrollMarginTop: '80px' }}>
         <QuestionItem
           question={question}
           index={index}
