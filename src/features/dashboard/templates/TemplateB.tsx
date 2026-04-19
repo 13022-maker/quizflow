@@ -16,7 +16,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
   return (
     <div className="pb-8">
       {/* Hero Banner */}
-      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 px-6 py-8 text-white shadow-lg sm:px-10 sm:py-10">
+      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 px-6 py-8 text-white shadow-lg sm:px-10 sm:py-10">
         <p className="text-sm font-medium text-white/80">{greeting}</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">歡迎使用 QuizFlow</h1>
         <p className="mt-2 max-w-lg text-sm text-white/80">

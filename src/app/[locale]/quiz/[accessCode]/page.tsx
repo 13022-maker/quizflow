@@ -82,7 +82,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/80 via-white to-violet-50/50 pb-24 pt-10 md:py-16 md:pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-emerald-50/30 pb-24 pt-10 md:py-16 md:pb-24">
       <div className="mx-auto max-w-2xl px-4">
         <QuizTaker quiz={quiz} questions={questions} />
       </div>

@@ -43,7 +43,7 @@ export default async function VocabPublicPage({
 
   if (cards.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 p-4">
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50/60 to-violet-50/40 p-4">
         <div className="rounded-2xl bg-white p-8 text-center shadow-lg">
           <p className="text-4xl">📭</p>
           <p className="mt-3 font-medium">此單字卡集尚無內容</p>
@@ -53,7 +53,7 @@ export default async function VocabPublicPage({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50/60 to-violet-50/40">
       <VocabPractice title={vocabSet.title} cards={cards} />
     </div>
   );
