@@ -27,6 +27,9 @@ const isPublicApiRoute = createRouteMatcher([
   // 錯題單字卡：學生作答後建立
   '/api/ai/generate-flashcards',
   '/:locale/api/ai/generate-flashcards',
+  // 儲存單字卡集：學生作答後儲存
+  '/api/vocab/save',
+  '/:locale/api/vocab/save',
 ]);
 
 const isProtectedRoute = createRouteMatcher([

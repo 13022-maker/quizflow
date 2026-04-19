@@ -354,6 +354,7 @@ function VocabSpeaker({ text }: { text: string }) {
 
 function ResultScreen({
   quizId,
+  quizTitle,
   result,
   questions,
   answers,
@@ -361,6 +362,7 @@ function ResultScreen({
   onRetry,
 }: {
   quizId: number;
+  quizTitle: string;
   result: SubmitResult;
   questions: Question[];
   answers: Record<number, string | string[]>;
@@ -383,6 +385,8 @@ function ResultScreen({
   const [vocabCards, setVocabCards] = useState<Array<{ front: string; back: string; phonetic: string; example: string }> | null>(null);
   const [vocabFlipIndex, setVocabFlipIndex] = useState(0);
   const [vocabFlipped, setVocabFlipped] = useState(false);
+  const [vocabSaving, setVocabSaving] = useState(false);
+  const [vocabSavedCode, setVocabSavedCode] = useState<string | null>(null);
 
   const wrongQuestions = result.details
     .filter(d => d.isCorrect === false)
@@ -409,6 +413,27 @@ function ResultScreen({
       }
     } catch { /* 靜默 */ }
     setVocabLoading(false);
+  };
+
+  const handleSaveVocab = async () => {
+    if (!vocabCards || vocabCards.length === 0) return;
+    setVocabSaving(true);
+    try {
+      const res = await fetch('/api/vocab/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quizId,
+          title: `${quizTitle} - 錯題複習`,
+          cards: vocabCards,
+        }),
+      });
+      if (res.ok) {
+        const { accessCode } = await res.json();
+        setVocabSavedCode(accessCode);
+      }
+    } catch { /* */ }
+    setVocabSaving(false);
   };
 
   // ── AI 弱點分析狀態 ───────────────────────────────────────────
@@ -661,6 +686,31 @@ function ResultScreen({
               下一張 →
             </button>
           </div>
+          {/* 儲存到單字卡集 */}
+          {vocabSavedCode
+            ? (
+                <div className="mt-3 rounded-lg bg-green-50 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-green-700">已儲存！隨時可回來複習</p>
+                  <a
+                    href={`/vocab/${vocabSavedCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-sm text-green-600 underline"
+                  >
+                    開啟單字卡練習 →
+                  </a>
+                </div>
+              )
+            : (
+                <button
+                  type="button"
+                  onClick={handleSaveVocab}
+                  disabled={vocabSaving}
+                  className="mt-3 w-full rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {vocabSaving ? '儲存中…' : '💾 儲存到單字卡集'}
+                </button>
+              )}
         </div>
       )}
 
@@ -1224,6 +1274,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     return (
       <ResultScreen
         quizId={quiz.id}
+        quizTitle={quiz.title}
         result={result}
         questions={displayQuestions}
         answers={answers}
