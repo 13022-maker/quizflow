@@ -20,7 +20,24 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
 
   // 依 accessCode 查詢測驗（只顯示已發佈的）
   const [quiz] = await db
-    .select()
+    .select({
+      id: quizSchema.id,
+      ownerId: quizSchema.ownerId,
+      title: quizSchema.title,
+      description: quizSchema.description,
+      accessCode: quizSchema.accessCode,
+      roomCode: quizSchema.roomCode,
+      status: quizSchema.status,
+      showAnswers: quizSchema.showAnswers,
+      randomizeQuestions: quizSchema.randomizeQuestions,
+      randomizeOptions: quizSchema.randomizeOptions,
+      preventLeave: quizSchema.preventLeave,
+      timeLimitSeconds: quizSchema.timeLimitSeconds,
+      allowedAttempts: quizSchema.allowedAttempts,
+      expiresAt: quizSchema.expiresAt,
+      createdAt: quizSchema.createdAt,
+      updatedAt: quizSchema.updatedAt,
+    })
     .from(quizSchema)
     .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
