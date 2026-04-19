@@ -131,10 +131,16 @@ export function TemplateB({ data }: { data: DashboardData }) {
                       </span>
                     </div>
 
-                    {/* Title */}
-                    <h3 className="mb-3 truncate text-base font-semibold group-hover:text-primary">
+                    {/* Title + Description */}
+                    <h3 className="truncate text-base font-semibold group-hover:text-primary">
                       {quiz.title}
                     </h3>
+                    {quiz.description && (
+                      <p className="mt-1 mb-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                        {quiz.description}
+                      </p>
+                    )}
+                    {!quiz.description && <div className="mb-3" />}
 
                     {/* Metrics */}
                     <div className="mb-4 flex items-center gap-4 text-sm text-muted-foreground">

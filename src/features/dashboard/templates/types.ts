@@ -1,6 +1,7 @@
 export interface EnrichedQuiz {
   id: number;
   title: string;
+  description?: string | null;
   status: string;
   createdAt: Date;
   responseCount: number;

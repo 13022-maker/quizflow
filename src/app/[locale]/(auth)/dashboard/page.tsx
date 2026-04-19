@@ -90,6 +90,7 @@ export default async function DashboardIndexPage() {
     recentQuizzes: recentQuizzes.map(q => ({
       id: q.id,
       title: q.title,
+      description: q.description,
       status: q.status,
       createdAt: q.createdAt,
       responseCount: responseCountMap.get(q.id) ?? 0,
