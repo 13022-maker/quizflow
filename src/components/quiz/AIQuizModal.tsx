@@ -576,27 +576,25 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
                         <span className="shrink-0 text-gray-600">從第</span>
                         <input
-                          type="number"
-                          min={1}
-                          max={pdfPageCount}
+                          type="text"
+                          inputMode="numeric"
                           value={startPage}
-                          onChange={(e) => {
-                            const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
+                          onChange={e => setStartPage(Number(e.target.value) || 1)}
+                          onBlur={() => {
+                            const v = Math.max(1, Math.min(startPage, pdfPageCount));
                             setStartPage(v);
-                            if (endPage < v) {
-                              setEndPage(v);
-                            }
+                            if (endPage < v) setEndPage(v);
                           }}
                           className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
                         />
                         <span className="shrink-0 text-gray-600">頁到第</span>
                         <input
-                          type="number"
-                          min={startPage}
-                          max={pdfPageCount}
+                          type="text"
+                          inputMode="numeric"
                           value={endPage}
-                          onChange={(e) => {
-                            const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
+                          onChange={e => setEndPage(Number(e.target.value) || 1)}
+                          onBlur={() => {
+                            const v = Math.max(startPage, Math.min(endPage, pdfPageCount));
                             setEndPage(v);
                           }}
                           className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
