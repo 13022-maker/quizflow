@@ -25,6 +25,12 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
   | { allowed: true; remaining: number }
   | { allowed: false; reason: string; remaining: number }
 > {
+  // VIP 白名單不限制
+  const { isVipUser } = await import('@/libs/vip');
+  if (await isVipUser()) {
+    return { allowed: true, remaining: 999 };
+  }
+
   // 2026 年 4 月試用期：不限制 AI 出題次數（5 月起恢復正式 quota）
   const now = new Date();
   if (now.getFullYear() === 2026 && now.getMonth() === 3) { // 0-based: 3 = 四月

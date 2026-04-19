@@ -22,6 +22,10 @@ export const PLAN_ID = {
   ENTERPRISE: 'enterprise',
 } as const;
 
+export const VIP_EMAILS = new Set([
+  'prpispace@gmail.com',
+]);
+
 export const PricingPlanList: Record<string, PricingPlan> = {
   [PLAN_ID.FREE]: {
     id: PLAN_ID.FREE,
