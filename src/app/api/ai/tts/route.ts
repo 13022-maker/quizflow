@@ -42,11 +42,14 @@ function isHakkaVoice(voice: string): boolean {
 
 async function generateGoogleTTS(text: string, lang: string): Promise<Buffer> {
   const encodedText = encodeURIComponent(text);
-  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodedText}`;
+  // Google Translate TTS 需要用 gtx client，語言碼用 ISO 格式
+  const ttsLang = lang === 'hak' ? 'zh-TW' : lang;
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${ttsLang}&client=gtx&q=${encodedText}`;
 
   const res = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Referer': 'https://translate.google.com/',
     },
   });
 
@@ -98,17 +101,25 @@ export async function POST(req: Request) {
     let mp3Buffer: Buffer;
 
     if (isHakkaVoice(voiceKey)) {
-      // 客語走 Google Translate TTS
-      // Google TTS 有長度限制，長文字拆段處理
-      if (text.length <= 200) {
-        mp3Buffer = await generateGoogleTTS(text, 'hak');
-      } else {
-        const chunks = splitText(text, 200);
-        const buffers = [];
-        for (const chunk of chunks) {
-          buffers.push(await generateGoogleTTS(chunk, 'hak'));
+      // 客語：先嘗試 Google Translate TTS，失敗則 fallback OpenAI
+      try {
+        if (text.length <= 200) {
+          mp3Buffer = await generateGoogleTTS(text, 'hak');
+        } else {
+          const chunks = splitText(text, 200);
+          const buffers = [];
+          for (const chunk of chunks) {
+            buffers.push(await generateGoogleTTS(chunk, 'hak'));
+          }
+          mp3Buffer = Buffer.concat(buffers);
         }
-        mp3Buffer = Buffer.concat(buffers);
+      } catch {
+        // Google TTS 不支援客語時，用 OpenAI 國語語音作為替代
+        const fallbackKey = process.env.OPENAI_API_KEY;
+        if (!fallbackKey) {
+          return NextResponse.json({ error: '客語 TTS 暫不可用，請手動上傳音檔' }, { status: 503 });
+        }
+        mp3Buffer = await generateOpenAITTS(text, 'nova', 0.9, fallbackKey);
       }
     } else {
       // 其他語言走 OpenAI TTS
