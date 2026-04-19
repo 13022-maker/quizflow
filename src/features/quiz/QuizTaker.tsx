@@ -153,11 +153,11 @@ function QuestionItem({
 
       {/* 單選題 / 是非題 / 聽力題（聽力題選項邏輯等同單選） */}
       {(question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') && (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           {options.map(opt => (
             <label
               key={opt.id}
-              className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-2 transition-all ${
+              className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-1.5 transition-all ${
                 answer === opt.id
                   ? 'border-emerald-400 bg-emerald-50/80 shadow-sm'
                   : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
@@ -183,7 +183,7 @@ function QuestionItem({
                   </svg>
                 )}
               </span>
-              <span className="text-base leading-relaxed text-gray-800">
+              <span className="text-base leading-snug text-gray-800">
                 {opt.text}
               </span>
             </label>
@@ -193,14 +193,14 @@ function QuestionItem({
 
       {/* 多選題 */}
       {question.type === 'multiple_choice' && (
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <p className="mb-1 text-sm text-gray-500">可選多個答案</p>
           {options.map((opt) => {
             const checked = Array.isArray(answer) && answer.includes(opt.id);
             return (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-2 transition-all ${
+                className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-3 py-1.5 transition-all ${
                   checked
                     ? 'border-emerald-400 bg-emerald-50/80 shadow-sm'
                     : 'border-gray-100 bg-gray-50/50 hover:border-gray-200 hover:bg-gray-50'
@@ -223,7 +223,7 @@ function QuestionItem({
                     </svg>
                   )}
                 </span>
-                <span className="text-base leading-relaxed text-gray-800">{opt.text}</span>
+                <span className="text-base leading-snug text-gray-800">{opt.text}</span>
               </label>
             );
           })}
