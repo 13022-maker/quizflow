@@ -33,7 +33,7 @@ export default async function DashboardIndexPage() {
       .from(quizSchema)
       .where(eq(quizSchema.ownerId, orgId))
       .orderBy(desc(quizSchema.createdAt))
-      .limit(6);
+      .limit(18);
 
     const [countRow] = await db
       .select({ total: count() })
