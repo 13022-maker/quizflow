@@ -21,6 +21,37 @@ const TRUE_FALSE_OPTIONS = [
   { id: 'tf-false', text: '錯誤' },
 ];
 
+// 把 Google Drive 分享網址自動轉成可直接載入的圖片連結
+// 偵測 share.google 短網址（無法直接顯示）並提示用戶改貼直接圖片連結
+function normalizeImageUrl(raw: string): { url: string; warning?: string } {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return { url: '' };
+  }
+
+  // Google Drive：/file/d/FILE_ID/... → thumbnail API（可直接 <img> 載入）
+  const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if (driveMatch) {
+    return { url: `https://drive.google.com/thumbnail?id=${driveMatch[1]}&sz=w1600` };
+  }
+
+  // Google Drive：?open=... 或 /open?id=FILE_ID → thumbnail
+  const openMatch = trimmed.match(/drive\.google\.com\/open\?[^#]*id=([\w-]+)/);
+  if (openMatch) {
+    return { url: `https://drive.google.com/thumbnail?id=${openMatch[1]}&sz=w1600` };
+  }
+
+  // share.google 短網址指向的是一個網頁（Google 相簿 / Drive 分享頁），<img> 無法抓取
+  if (/^https?:\/\/share\.google\//i.test(trimmed)) {
+    return {
+      url: trimmed,
+      warning: 'Google 分享短網址無法直接顯示圖片。請在圖片上右鍵「複製圖片網址」（lh3.googleusercontent.com 開頭），或貼 Google Drive 分享連結（會自動轉換）',
+    };
+  }
+
+  return { url: trimmed };
+}
+
 const QuestionSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
   body: z.string().min(1, '請輸入題目內容'),
@@ -293,7 +324,14 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         </label>
         <div className="flex flex-wrap gap-2">
           <input
-            {...form.register('imageUrl')}
+            {...form.register('imageUrl', {
+              onBlur: (e) => {
+                const { url } = normalizeImageUrl(e.target.value);
+                if (url && url !== e.target.value) {
+                  form.setValue('imageUrl', url, { shouldDirty: true });
+                }
+              },
+            })}
             placeholder="https://example.com/image.jpg"
             className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
@@ -327,6 +365,18 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         {uploadError && (
           <p className="mt-1 text-xs text-destructive">{uploadError}</p>
         )}
+        {(() => {
+          const { warning } = normalizeImageUrl(form.watch('imageUrl') ?? '');
+          return warning
+            ? (
+                <p className="mt-1 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                  ⚠️
+                  {' '}
+                  {warning}
+                </p>
+              )
+            : null;
+        })()}
         {/* 圖片預覽 */}
         {form.watch('imageUrl') && (
           <div className="mt-2 flex items-center justify-center overflow-hidden rounded-lg bg-[#f5f5f5]">
