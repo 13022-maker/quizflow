@@ -17,13 +17,19 @@ export function TemplateB({ data }: { data: DashboardData }) {
     <div className="pb-8">
       {/* Hero Banner */}
       <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 px-6 py-8 text-white shadow-lg sm:px-10 sm:py-10">
-        <p className="text-sm font-medium text-white/80">{greeting}</p>
+        <p className="text-sm font-medium text-white/70">{greeting}</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">歡迎使用 QuizFlow</h1>
         <p className="mt-2 max-w-lg text-sm text-white/80">
           {data.publishedCount > 0
             ? `您有 ${data.publishedCount} 份測驗進行中，共 ${data.totalResponses} 位學生已作答。`
             : '開始建立您的第一份測驗，幾分鐘內即可分享給學生。'}
         </p>
+        {/* 標語 */}
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">少紙化、效率佳</span>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">考完成績馬上到</span>
+          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">智慧學習更有效</span>
+        </div>
       </div>
 
       {/* ── 快速行動卡片 ── */}
