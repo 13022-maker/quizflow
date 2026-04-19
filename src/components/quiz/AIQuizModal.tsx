@@ -320,22 +320,25 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
       }
 
       // 聽力題自動呼叫 TTS 生成音檔
-      const listeningQs = data.questions?.filter((q: GeneratedQuestion) => q.type === 'listening' && q.listeningText) ?? [];
+      const listeningQs = data.questions?.filter((q: GeneratedQuestion) => q.type === 'listening') ?? [];
       if (listeningQs.length > 0) {
         setTtsGenerating(true);
         let done = 0;
         setTtsProgress(`音檔生成中 (0/${listeningQs.length})...`);
         await Promise.all(
           listeningQs.map(async (q: GeneratedQuestion) => {
+            const ttsText = q.listeningText || q.question;
+            if (!ttsText) { done++; return; }
             try {
               const res = await fetch('/api/ai/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: q.listeningText, voice: ttsVoice, speed: ttsSpeed }),
+                body: JSON.stringify({ text: ttsText, voice: ttsVoice, speed: ttsSpeed }),
               });
               if (res.ok) {
                 const ttsData = await res.json();
                 q.audioUrl = ttsData.url;
+                if (!q.listeningText) q.listeningText = ttsText;
               }
             } catch {
               // TTS 失敗不阻擋匯入，老師可事後手動上傳音檔
