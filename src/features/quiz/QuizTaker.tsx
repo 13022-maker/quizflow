@@ -416,6 +416,65 @@ function ResultScreen({
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
 
+  // ── 下載學習報告 ──────────────────────────────────────────────
+  const handleDownloadReport = () => {
+    const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+
+    const questionsHtml = questions.map((q, i) => {
+      const detail = result.details.find(d => d.questionId === q.id);
+      const opts = q.type === 'true_false' && (!q.options || q.options.length === 0) ? tfDefaults : (q.options ?? []);
+      const studentAns = answers[q.id];
+      const sep = q.type === 'ranking' ? ' → ' : '、';
+      const studentText = Array.isArray(studentAns)
+        ? studentAns.map(id => opts.find(o => o.id === id)?.text ?? id).join(sep)
+        : opts.find(o => o.id === String(studentAns))?.text ?? studentAns ?? '未作答';
+      const correctText = showAnswers && q.correctAnswers
+        ? q.correctAnswers.map(id => opts.find(o => o.id === id)?.text ?? id).join(sep)
+        : '';
+      const icon = detail?.isCorrect ? '✅' : detail?.isCorrect === false ? '❌' : '⏳';
+      const hint = hints[q.id] ?? '';
+
+      return `<div style="margin-bottom:16px;padding:12px;border:1px solid ${detail?.isCorrect === false ? '#fca5a5' : '#d1d5db'};border-radius:8px;${detail?.isCorrect === false ? 'background:#fef2f2' : ''}">
+        <p style="font-weight:600;margin:0">${icon} Q${i + 1}. ${q.body}</p>
+        <p style="margin:4px 0 0;color:#666">你的答案：${studentText}</p>
+        ${correctText && detail?.isCorrect === false ? `<p style="margin:4px 0 0;color:#15803d">正確答案：${correctText}</p>` : ''}
+        ${hint ? `<div style="margin-top:8px;padding:8px;background:#fef3c7;border-radius:6px;font-size:13px"><b>💡 AI 助教：</b>${hint}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    const weakHtml = weakPoints && weakPoints.length > 0
+      ? `<h2 style="margin-top:24px">需要加強的概念</h2>${weakPoints.map(wp => `<div style="margin-bottom:8px;padding:10px;background:#f0fdf4;border-radius:6px"><b>${wp.concept}</b><br/><span style="color:#666">${wp.suggestion}</span></div>`).join('')}`
+      : '';
+
+    const vocabHtml = vocabCards && vocabCards.length > 0
+      ? `<h2 style="margin-top:24px">錯題單字卡</h2><table style="width:100%;border-collapse:collapse;font-size:14px">${vocabCards.map(c => `<tr><td style="border:1px solid #ddd;padding:8px;font-weight:600">${c.front}</td><td style="border:1px solid #ddd;padding:8px">${c.back}</td><td style="border:1px solid #ddd;padding:8px;color:#888;font-size:12px">${c.example || ''}</td></tr>`).join('')}</table>`
+      : '';
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>學習報告</title>
+      <style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#333}h1{text-align:center;color:#1e40af}h2{color:#374151;border-bottom:2px solid #e5e7eb;padding-bottom:6px}.score{text-align:center;font-size:48px;font-weight:700;color:${percentage >= 60 ? '#16a34a' : '#dc2626'}}.meta{text-align:center;color:#888;font-size:14px;margin-bottom:24px}@media print{body{padding:10px}}</style></head><body>
+      <h1>📝 學習報告</h1>
+      <p class="meta">${new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <div style="text-align:center;margin-bottom:24px">
+        <p class="score">${result.score} / ${result.totalPoints}</p>
+        <p style="font-size:20px;color:#888">${percentage}%</p>
+      </div>
+      <h2>逐題對照</h2>
+      ${questionsHtml}
+      ${weakHtml}
+      ${vocabHtml}
+      <p style="text-align:center;margin-top:32px;color:#aaa;font-size:12px">由 QuizFlow 生成</p>
+      </body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (w) {
+      w.onload = () => {
+        setTimeout(() => { w.print(); }, 500);
+      };
+    }
+  };
+
   // ── AI 助教提示（每題 ≤57 字解題提示） ──────────────────────
   // 獨立於 showAnswers：即使老師設定不顯示解答，仍顯示概念提示（57 字不洩答）
   const [hints, setHints] = useState<Record<number, string>>({});
@@ -538,6 +597,13 @@ function ResultScreen({
               {vocabLoading ? '生成中…' : '🔤 建立錯題單字卡'}
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => handleDownloadReport()}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            📄 下載學習報告
+          </button>
         </div>
       </div>
 
