@@ -115,7 +115,7 @@ export default async function DashboardIndexPage() {
 
       {/* 連勝卡片 */}
       <div className="mx-4 mb-4">
-        <StreakCard />
+        <StreakCard totalResponses={totalResponses} />
       </div>
 
       {hasQuizzes
