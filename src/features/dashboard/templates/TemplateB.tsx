@@ -231,7 +231,8 @@ function StatBlock({ value, label }: { value: string; label: string }) {
 }
 
 function getGreeting(): string {
-  const hour = new Date().getHours();
+  const utcNow = new Date();
+  const hour = (utcNow.getUTCHours() + 8) % 24;
   if (hour < 12) return '早安！';
   if (hour < 18) return '午安！';
   return '晚安！';
