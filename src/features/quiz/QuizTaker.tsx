@@ -1035,7 +1035,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   };
 
   const scrollToQuestion = (qId: number) => {
-    document.getElementById(`q-${qId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById(`q-${qId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const answeredCount = displayQuestions.filter((q) => {
@@ -1444,7 +1444,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
-        <div key={question.id} id={`q-${question.id}`}>
+        <div key={question.id} id={`q-${question.id}`} style={{ scrollMarginTop: '120px' }}>
         <QuestionItem
           question={question}
           index={index}
