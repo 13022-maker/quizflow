@@ -43,7 +43,6 @@ const TEMPLATE_GROUPS = [
       { label: '🎯 自學挑戰', title: '自學挑戰' },
       { label: '📖 課前預習', title: '課前預習' },
       { label: '💡 知識檢測', title: '知識檢測' },
-      { label: '🔤 單字記憶', title: '單字記憶', description: '請輸入要記憶的單字清單，AI 會根據單字生成填空、選擇、配對等記憶練習題' },
     ],
   },
 ];

@@ -32,6 +32,7 @@ import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
 import ShareModal from '@/components/quiz/ShareModal';
+import VocabCardModal from '@/components/quiz/VocabCardModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -341,6 +342,7 @@ export function QuizEditor({
 
   // 控制「上傳講義命題」Modal 顯示
   const [showFileGenerator, setShowFileGenerator] = useState(false);
+  const [showVocabModal, setShowVocabModal] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
 
   // ── 從檔案匯入題目 ──────────────────────────────────────────────────
@@ -520,9 +522,14 @@ export function QuizEditor({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             {isPro && (
-              <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
-                📂 上傳講義命題
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
+                  📂 上傳講義命題
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowVocabModal(true)}>
+                  🔤 AI 單字卡
+                </DropdownMenuItem>
+              </>
             )}
             <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
               {initialQuiz.isMarketplace ? '✅ 管理市集上架' : '📤 分享到市集'}
@@ -576,6 +583,14 @@ export function QuizEditor({
         <FileQuizGenerator
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
+        />
+      )}
+
+      {/* AI 單字卡 Modal */}
+      {showVocabModal && (
+        <VocabCardModal
+          onImport={handleAIImport}
+          onClose={() => setShowVocabModal(false)}
         />
       )}
 
