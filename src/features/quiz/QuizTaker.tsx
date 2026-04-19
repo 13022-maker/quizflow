@@ -475,10 +475,13 @@ function ResultScreen({
       ? `<h2 style="margin-top:24px">錯題單字卡</h2><table style="width:100%;border-collapse:collapse;font-size:14px">${vocabCards.map(c => `<tr><td style="border:1px solid #ddd;padding:8px;font-weight:600">${c.front}</td><td style="border:1px solid #ddd;padding:8px">${c.back}</td><td style="border:1px solid #ddd;padding:8px;color:#888;font-size:12px">${c.example || ''}</td></tr>`).join('')}</table>`
       : '';
 
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>學習報告</title>
-      <style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#333}h1{text-align:center;color:#1e40af}h2{color:#374151;border-bottom:2px solid #e5e7eb;padding-bottom:6px}.score{text-align:center;font-size:48px;font-weight:700;color:${percentage >= 60 ? '#16a34a' : '#dc2626'}}.meta{text-align:center;color:#888;font-size:14px;margin-bottom:24px}@media print{body{padding:10px}}</style></head><body>
+    const dateStr = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${quizTitle} - 學習報告</title>
+      <style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#333}h1{text-align:center;color:#1e40af;font-size:22px}h2{color:#374151;border-bottom:2px solid #e5e7eb;padding-bottom:6px}.score{text-align:center;font-size:48px;font-weight:700;color:${percentage >= 60 ? '#16a34a' : '#dc2626'}}.meta{text-align:center;color:#888;font-size:14px;margin-bottom:8px}.subtitle{text-align:center;color:#555;font-size:16px;margin-bottom:24px;font-weight:600}@media print{body{padding:10px}}</style></head><body>
       <h1>📝 學習報告</h1>
-      <p class="meta">${new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <p class="subtitle">${quizTitle}</p>
+      <p class="meta">${dateStr}</p>
       <div style="text-align:center;margin-bottom:24px">
         <p class="score">${result.score} / ${result.totalPoints}</p>
         <p style="font-size:20px;color:#888">${percentage}%</p>
