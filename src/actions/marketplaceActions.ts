@@ -81,7 +81,14 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
   if (!orgId) throw new Error('請先登入再複製');
 
   const [source] = await db
-    .select()
+    .select({
+      id: quizSchema.id,
+      title: quizSchema.title,
+      description: quizSchema.description,
+      category: quizSchema.category,
+      gradeLevel: quizSchema.gradeLevel,
+      tags: quizSchema.tags,
+    })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, sourceQuizId), eq(quizSchema.isMarketplace, true)))
     .limit(1);

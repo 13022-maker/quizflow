@@ -38,7 +38,26 @@ export async function GET(
 
   // 驗證所有權
   const [quiz] = await db
-    .select()
+    .select({
+      id: quizSchema.id,
+      ownerId: quizSchema.ownerId,
+      title: quizSchema.title,
+      description: quizSchema.description,
+      accessCode: quizSchema.accessCode,
+      status: quizSchema.status,
+      shuffleQuestions: quizSchema.shuffleQuestions,
+      shuffleOptions: quizSchema.shuffleOptions,
+      allowedAttempts: quizSchema.allowedAttempts,
+      showAnswers: quizSchema.showAnswers,
+      timeLimitSeconds: quizSchema.timeLimitSeconds,
+      preventLeave: quizSchema.preventLeave,
+      roomCode: quizSchema.roomCode,
+      scoringMode: quizSchema.scoringMode,
+      attemptDecayRate: quizSchema.attemptDecayRate,
+      expiresAt: quizSchema.expiresAt,
+      updatedAt: quizSchema.updatedAt,
+      createdAt: quizSchema.createdAt,
+    })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
@@ -56,7 +75,7 @@ export async function GET(
     return NextResponse.json({ error: '此測驗還沒有題目' }, { status: 400 });
   }
 
-  const buffer = await generateQuizDocx(quiz, questions, variant);
+  const buffer = await generateQuizDocx(quiz as any, questions, variant);
 
   // 檔名安全化（Windows 不允許 \ / : * ? " < > |）
   const safeTitle = quiz.title.replace(/[\\/:*?"<>|]/g, '_');
