@@ -233,13 +233,16 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           credentials: 'include',
           body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
         });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) setUpgradeRequired(true);
+            if (errData.error) errMsg = errData.error;
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       } else if (mode === 'file') {
         setStep('讀取檔案…');
         const fd = new FormData();
@@ -279,13 +282,16 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('model', model);
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) setUpgradeRequired(true);
+            if (errData.error) errMsg = errData.error;
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       } else {
         // URL 模式（YouTube / Google Docs）
         setStep('抓取連結內容中…');
@@ -301,13 +307,16 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             model,
           }),
         });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) setUpgradeRequired(true);
+            if (errData.error) errMsg = errData.error;
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       }
 
       // 聽力題自動呼叫 TTS 生成音檔
