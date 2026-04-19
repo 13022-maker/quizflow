@@ -150,9 +150,41 @@ ${typesPrompt}
       const openaiData = await openaiRes.json();
       raw = openaiData.choices?.[0]?.message?.content ?? '';
     } catch (openaiErr) {
-      const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';
-      console.error('[generate-questions] OpenAI fallback 也失敗：', openaiErr);
-      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      console.error('[generate-questions] OpenAI fallback 失敗，嘗試 Claude：', openaiErr);
+
+      // OpenAI 也失敗 → 第三備援 Claude
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      if (!anthropicKey) {
+        const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';
+        return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      }
+
+      usedModel = 'claude';
+      try {
+        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4096,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+        if (!claudeRes.ok) {
+          const errBody = await claudeRes.text();
+          throw new Error(`Claude ${claudeRes.status}: ${errBody.slice(0, 200)}`);
+        }
+        const claudeData = await claudeRes.json();
+        raw = claudeData.content?.[0]?.text ?? '';
+      } catch (claudeErr) {
+        const msg = claudeErr instanceof Error ? claudeErr.message : '未知錯誤';
+        console.error('[generate-questions] Claude 第三備援也失敗：', claudeErr);
+        return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      }
     }
   }
 
