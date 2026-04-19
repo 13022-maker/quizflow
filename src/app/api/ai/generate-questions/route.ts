@@ -196,5 +196,18 @@ ${typesPrompt}
     return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
   }
 
+  // 後處理：確保聽力題 type 正確（有些模型會回傳 mc 而非 listening）
+  if (hasListening && result.questions) {
+    const requestedTypes = new Set(types as string[]);
+    for (const q of result.questions) {
+      if (q.listeningText && q.type !== 'listening') {
+        q.type = 'listening';
+      }
+      if (requestedTypes.size === 1 && requestedTypes.has('listening') && q.type === 'mc') {
+        q.type = 'listening';
+      }
+    }
+  }
+
   return NextResponse.json(result);
 }
