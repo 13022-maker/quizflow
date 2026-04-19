@@ -32,6 +32,7 @@ import AIQuizModal from '@/components/quiz/AIQuizModal';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
 import ShareModal from '@/components/quiz/ShareModal';
+import VocabAIModal from '@/components/quiz/VocabAIModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -86,13 +87,17 @@ const STUDENT_FACING_PHRASES = [
 ];
 
 function buildDefaultTopic(description?: string | null): string {
-  if (!description) return '';
+  if (!description) {
+    return '';
+  }
   let desc = description;
   for (const phrase of STUDENT_FACING_PHRASES) {
     desc = desc.replace(phrase, '');
   }
   desc = desc.trim();
-  if (!desc) return '';
+  if (!desc) {
+    return '';
+  }
   return desc;
 }
 
@@ -562,8 +567,15 @@ export function QuizEditor({
         />
       )}
 
-      {/* AI 出題 Modal */}
-      {showAIModal && (
+      {/* AI 出題 Modal（vocab 模式用專屬單字生成器） */}
+      {showAIModal && initialQuiz.quizMode === 'vocab' && (
+        <VocabAIModal
+          defaultTopic={buildDefaultTopic(initialQuiz.description)}
+          onImport={handleAIImport}
+          onClose={() => setShowAIModal(false)}
+        />
+      )}
+      {showAIModal && initialQuiz.quizMode !== 'vocab' && (
         <AIQuizModal
           defaultTopic={buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
@@ -587,7 +599,10 @@ export function QuizEditor({
           initialCategory={initialQuiz.category}
           initialGradeLevel={initialQuiz.gradeLevel}
           initialTags={initialQuiz.tags}
-          onClose={() => { setShowMarketplace(false); router.refresh(); }}
+          onClose={() => {
+            setShowMarketplace(false);
+            router.refresh();
+          }}
         />
       )}
 
@@ -616,135 +631,135 @@ export function QuizEditor({
 
         {settingsOpen && (
           <div className="space-y-5 border-t px-5 pb-5 pt-4">
-        {/* 快速套用方案按鈕 */}
-        <div className="flex gap-2">
-            {(
-              [
-                {
-                  key: 'exam' as const,
-                  label: '📝 考試',
-                  active: 'border-gray-900 bg-gray-900 text-white',
-                  hover: 'hover:border-gray-400',
-                },
-                {
-                  key: 'practice' as const,
-                  label: '✏️ 練習',
-                  active: 'border-amber-400 bg-amber-400 text-white',
-                  hover: 'hover:border-amber-300',
-                },
-                {
-                  key: 'review' as const,
-                  label: '🔄 複習',
-                  active: 'border-blue-500 bg-blue-500 text-white',
-                  hover: 'hover:border-blue-300',
-                },
-              ]
-            ).map(p => (
-              <button
-                key={p.key}
-                type="button"
-                onClick={() => applyPreset(p.key)}
-                disabled={isPending}
-                className={`flex items-center gap-1.5 rounded-lg border-2 px-5 py-2.5 text-sm font-semibold transition-all duration-150 ${
-                  activePreset === p.key
-                    ? p.active
-                    : `border bg-card text-muted-foreground ${p.hover}`
-                }`}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
+            {/* 快速套用方案按鈕 */}
+            <div className="flex gap-2">
+              {(
+                [
+                  {
+                    key: 'exam' as const,
+                    label: '📝 考試',
+                    active: 'border-gray-900 bg-gray-900 text-white',
+                    hover: 'hover:border-gray-400',
+                  },
+                  {
+                    key: 'practice' as const,
+                    label: '✏️ 練習',
+                    active: 'border-amber-400 bg-amber-400 text-white',
+                    hover: 'hover:border-amber-300',
+                  },
+                  {
+                    key: 'review' as const,
+                    label: '🔄 複習',
+                    active: 'border-blue-500 bg-blue-500 text-white',
+                    hover: 'hover:border-blue-300',
+                  },
+                ]
+              ).map(p => (
+                <button
+                  key={p.key}
+                  type="button"
+                  onClick={() => applyPreset(p.key)}
+                  disabled={isPending}
+                  className={`flex items-center gap-1.5 rounded-lg border-2 px-5 py-2.5 text-sm font-semibold transition-all duration-150 ${
+                    activePreset === p.key
+                      ? p.active
+                      : `border bg-card text-muted-foreground ${p.hover}`
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
 
-        {/* 第一列：兩個 toggle */}
-        <div className="flex flex-wrap gap-x-6 gap-y-2">
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Switch
-              checked={shuffleQuestions}
-              onCheckedChange={val => handleToggleShuffle('shuffleQuestions', val)}
-              disabled={isPending}
-            />
-            題目隨機排序
-          </label>
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Switch
-              checked={shuffleOptions}
-              onCheckedChange={val => handleToggleShuffle('shuffleOptions', val)}
-              disabled={isPending}
-            />
-            選項隨機排序
-          </label>
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Switch
-              checked={showAnswers}
-              onCheckedChange={handleShowAnswersChange}
-              disabled={isPending}
-            />
-            交卷後顯示解答
-          </label>
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <Switch
-              checked={preventLeave}
-              onCheckedChange={handlePreventLeaveChange}
-              disabled={isPending}
-            />
-            防止學生中途離開（考試防作弊）
-          </label>
-        </div>
-
-        {/* 第二列：兩個 select */}
-        <div className="flex flex-wrap gap-4">
-          {/* 作答次數 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="shrink-0 text-muted-foreground">作答次數上限</span>
-            <select
-              value={allowedAttempts}
-              onChange={e => handleAllowedAttemptsChange(e.target.value)}
-              disabled={isPending}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="unlimited">無限制</option>
-              <option value="1">只能作答 1 次</option>
-              <option value="3">只能作答 3 次</option>
-            </select>
-          </div>
-
-          {/* 限時作答 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="shrink-0 text-muted-foreground">限時作答</span>
-            <select
-              value={timeLimit}
-              onChange={e => handleTimeLimitChange(e.target.value)}
-              disabled={isPending}
-              className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
-            >
-              <option value="unlimited">無限制</option>
-              <option value="600">10 分鐘</option>
-              <option value="1200">20 分鐘</option>
-              <option value="1800">30 分鐘</option>
-              <option value="3600">60 分鐘</option>
-              <option value="custom">自訂</option>
-            </select>
-            {timeLimit === 'custom' && (
-              <div className="flex items-center gap-1">
-                <input
-                  type="number"
-                  min={1}
-                  value={customTime}
-                  onChange={e => setCustomTime(e.target.value)}
-                  onBlur={handleCustomTimeBlur}
-                  placeholder="分鐘"
-                  className="w-16 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            {/* 第一列：兩個 toggle */}
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Switch
+                  checked={shuffleQuestions}
+                  onCheckedChange={val => handleToggleShuffle('shuffleQuestions', val)}
+                  disabled={isPending}
                 />
-                <span className="text-muted-foreground">分鐘</span>
+                題目隨機排序
+              </label>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Switch
+                  checked={shuffleOptions}
+                  onCheckedChange={val => handleToggleShuffle('shuffleOptions', val)}
+                  disabled={isPending}
+                />
+                選項隨機排序
+              </label>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Switch
+                  checked={showAnswers}
+                  onCheckedChange={handleShowAnswersChange}
+                  disabled={isPending}
+                />
+                交卷後顯示解答
+              </label>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Switch
+                  checked={preventLeave}
+                  onCheckedChange={handlePreventLeaveChange}
+                  disabled={isPending}
+                />
+                防止學生中途離開（考試防作弊）
+              </label>
+            </div>
+
+            {/* 第二列：兩個 select */}
+            <div className="flex flex-wrap gap-4">
+              {/* 作答次數 */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="shrink-0 text-muted-foreground">作答次數上限</span>
+                <select
+                  value={allowedAttempts}
+                  onChange={e => handleAllowedAttemptsChange(e.target.value)}
+                  disabled={isPending}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="unlimited">無限制</option>
+                  <option value="1">只能作答 1 次</option>
+                  <option value="3">只能作答 3 次</option>
+                </select>
               </div>
-            )}
-          </div>
-        </div>
+
+              {/* 限時作答 */}
+              <div className="flex items-center gap-2 text-sm">
+                <span className="shrink-0 text-muted-foreground">限時作答</span>
+                <select
+                  value={timeLimit}
+                  onChange={e => handleTimeLimitChange(e.target.value)}
+                  disabled={isPending}
+                  className="rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="unlimited">無限制</option>
+                  <option value="600">10 分鐘</option>
+                  <option value="1200">20 分鐘</option>
+                  <option value="1800">30 分鐘</option>
+                  <option value="3600">60 分鐘</option>
+                  <option value="custom">自訂</option>
+                </select>
+                {timeLimit === 'custom' && (
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      value={customTime}
+                      onChange={e => setCustomTime(e.target.value)}
+                      onBlur={handleCustomTimeBlur}
+                      placeholder="分鐘"
+                      className="w-16 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                    <span className="text-muted-foreground">分鐘</span>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -761,8 +776,16 @@ export function QuizEditor({
             </p>
             <ol className="mt-2 space-y-1 text-xs text-green-700">
               <li>1. 往下滑檢查題目，有問題可以點「編輯」修改</li>
-              <li>2. 確認沒問題後，按上方的「<strong>發佈測驗</strong>」</li>
-              <li>3. 點「<strong>分享</strong>」把連結傳給學生</li>
+              <li>
+                2. 確認沒問題後，按上方的「
+                <strong>發佈測驗</strong>
+                」
+              </li>
+              <li>
+                3. 點「
+                <strong>分享</strong>
+                」把連結傳給學生
+              </li>
             </ol>
             <button
               type="button"

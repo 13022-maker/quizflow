@@ -2,7 +2,7 @@
 
 import type { InferSelectModel } from 'drizzle-orm';
 import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
@@ -175,7 +175,8 @@ function QuestionItem({
                 answer === opt.id
                   ? 'border-emerald-500 bg-emerald-500'
                   : 'border-gray-300'
-              }`}>
+              }`}
+              >
                 {answer === opt.id && (
                   <svg className="size-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -214,7 +215,8 @@ function QuestionItem({
                 />
                 <span className={`flex size-5 shrink-0 items-center justify-center rounded border-2 transition-all ${
                   checked ? 'border-emerald-500 bg-emerald-500' : 'border-gray-300'
-                }`}>
+                }`}
+                >
                   {checked && (
                     <svg className="size-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -765,7 +767,9 @@ function RetryScreen({
         </button>
 
         <div className="rounded-full bg-emerald-500 px-1.5 py-1 text-center text-[10px] font-bold text-white shadow-lg">
-          {currentIndex + 1}/{wrongQuestions.length}
+          {currentIndex + 1}
+          /
+          {wrongQuestions.length}
         </div>
 
         <button
@@ -825,7 +829,11 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const toggleFlag = (qId: number) => {
     setFlagged((prev) => {
       const next = new Set(prev);
-      if (next.has(qId)) { next.delete(qId); } else { next.add(qId); }
+      if (next.has(qId)) {
+        next.delete(qId);
+      } else {
+        next.add(qId);
+      }
       return next;
     });
   };
@@ -835,9 +843,13 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   };
 
   const answeredCount = displayQuestions.filter((q) => {
-    if (q.type === 'short_answer') return true;
+    if (q.type === 'short_answer') {
+      return true;
+    }
     const ans = answers[q.id];
-    if (q.type === 'ranking') return Array.isArray(ans) && ans.length === (q.options?.length ?? 0);
+    if (q.type === 'ranking') {
+      return Array.isArray(ans) && ans.length === (q.options?.length ?? 0);
+    }
     return !!ans;
   }).length;
 
@@ -861,7 +873,6 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [error, setError] = useState('');
-  const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // 錯題重做狀態
@@ -1183,12 +1194,19 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
               />
             </div>
           </div>
-          <span className="shrink-0 text-xs tabular-nums text-gray-500">{answeredCount}/{displayQuestions.length}</span>
+          <span className="shrink-0 text-xs tabular-nums text-gray-500">
+            {answeredCount}
+            /
+            {displayQuestions.length}
+          </span>
           {timeLeft !== null && (
             <span className={`shrink-0 rounded px-2 py-0.5 font-mono text-xs font-bold tabular-nums ${
-              timeLeft <= 60 ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-500'
-            }`}>
-              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}:{String(timeLeft % 60).padStart(2, '0')}
+              timeLeft <= 60 ? 'animate-pulse bg-red-100 text-red-600' : 'text-gray-500'
+            }`}
+            >
+              {String(Math.floor(timeLeft / 60)).padStart(2, '0')}
+              :
+              {String(timeLeft % 60).padStart(2, '0')}
             </span>
           )}
           {!tutorMode && (
@@ -1241,39 +1259,39 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
         <div key={question.id} id={`q-${question.id}`}>
-        <QuestionItem
-          question={question}
-          index={index}
-          answer={answers[question.id]}
-          onChange={value => handleAnswer(question.id, value)}
-          tutor={
-            tutorMode
-              ? {
-                  checked: !!tutorChecks[question.id],
-                  correct: tutorChecks[question.id]
-                    ? gradeAnswer(question, answers[question.id])
-                    : null,
-                  onCheck: () => setTutorChecks(prev => ({ ...prev, [question.id]: true })),
-                  onReset: () => setTutorChecks((prev) => {
-                    const next = { ...prev };
-                    delete next[question.id];
-                    return next;
-                  }),
-                }
-              : undefined
-          }
-        />
-        <button
-          type="button"
-          onClick={() => toggleFlag(question.id)}
-          className={`mt-1.5 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
-            flagged.has(question.id)
-              ? 'bg-amber-100 text-amber-700'
-              : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
-          }`}
-        >
-          {flagged.has(question.id) ? '🚩 已標記複查' : '🏳️ 標記稍後複查'}
-        </button>
+          <QuestionItem
+            question={question}
+            index={index}
+            answer={answers[question.id]}
+            onChange={value => handleAnswer(question.id, value)}
+            tutor={
+              tutorMode
+                ? {
+                    checked: !!tutorChecks[question.id],
+                    correct: tutorChecks[question.id]
+                      ? gradeAnswer(question, answers[question.id])
+                      : null,
+                    onCheck: () => setTutorChecks(prev => ({ ...prev, [question.id]: true })),
+                    onReset: () => setTutorChecks((prev) => {
+                      const next = { ...prev };
+                      delete next[question.id];
+                      return next;
+                    }),
+                  }
+                : undefined
+            }
+          />
+          <button
+            type="button"
+            onClick={() => toggleFlag(question.id)}
+            className={`mt-1.5 flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs transition-colors ${
+              flagged.has(question.id)
+                ? 'bg-amber-100 text-amber-700'
+                : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'
+            }`}
+          >
+            {flagged.has(question.id) ? '🚩 已標記複查' : '🏳️ 標記稍後複查'}
+          </button>
         </div>
       ))}
 
@@ -1302,7 +1320,9 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
         body: JSON.stringify({ weakPoints, responseId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) {
+        throw new Error(data.error);
+      }
       setQuestions(data.questions ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : '補強題生成失敗');
@@ -1315,7 +1335,9 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
 
   const correctCount = questions.filter((q, i) => {
     const studentAns = answers[i];
-    if (!studentAns) return false;
+    if (!studentAns) {
+      return false;
+    }
     return studentAns === q.answer;
   }).length;
 
@@ -1351,7 +1373,8 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
         {submitted && (
           <span className={`rounded-full px-3 py-1 text-sm font-bold ${
             correctCount === questions.length ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-          }`}>
+          }`}
+          >
             {correctCount}
             /
             {questions.length}

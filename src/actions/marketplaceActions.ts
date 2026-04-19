@@ -18,10 +18,14 @@ const PublishSchema = z.object({
 
 export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('未登入');
+  if (!orgId) {
+    throw new Error('未登入');
+  }
 
   const parsed = PublishSchema.safeParse(data);
-  if (!parsed.success) return { error: '請填寫完整資訊' };
+  if (!parsed.success) {
+    return { error: '請填寫完整資訊' };
+  }
 
   const [quiz] = await db
     .select({ id: quizSchema.id, status: quizSchema.status, ownerId: quizSchema.ownerId })
@@ -29,15 +33,21 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
     .where(and(eq(quizSchema.id, parsed.data.quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
 
-  if (!quiz) return { error: '找不到測驗或無權限' };
-  if (quiz.status !== 'published') return { error: '請先發佈測驗再分享到市集' };
+  if (!quiz) {
+    return { error: '找不到測驗或無權限' };
+  }
+  if (quiz.status !== 'published') {
+    return { error: '請先發佈測驗再分享到市集' };
+  }
 
   const [qCount] = await db
     .select({ total: count() })
     .from(questionSchema)
     .where(eq(questionSchema.quizId, parsed.data.quizId));
 
-  if (!qCount?.total) return { error: '測驗沒有題目，無法分享' };
+  if (!qCount?.total) {
+    return { error: '測驗沒有題目，無法分享' };
+  }
 
   await db
     .update(quizSchema)
@@ -56,7 +66,9 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
 
 export async function unpublishFromMarketplace(quizId: number) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('未登入');
+  if (!orgId) {
+    throw new Error('未登入');
+  }
 
   await db
     .update(quizSchema)
@@ -78,7 +90,9 @@ function generateRoomCode(): string {
 
 export async function copyQuizFromMarketplace(sourceQuizId: number) {
   const { orgId } = await auth();
-  if (!orgId) throw new Error('請先登入再複製');
+  if (!orgId) {
+    throw new Error('請先登入再複製');
+  }
 
   const [source] = await db
     .select()
@@ -86,7 +100,9 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
     .where(and(eq(quizSchema.id, sourceQuizId), eq(quizSchema.isMarketplace, true)))
     .limit(1);
 
-  if (!source) return { error: '找不到此市集測驗' };
+  if (!source) {
+    return { error: '找不到此市集測驗' };
+  }
 
   const questions = await db
     .select()
@@ -108,9 +124,11 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
       tags: source.tags,
       originalQuizId: sourceQuizId,
     })
-    .returning({ id: quizSchema.id });
+    .returning();
 
-  if (!newQuiz) return { error: '複製失敗' };
+  if (!newQuiz) {
+    return { error: '複製失敗' };
+  }
 
   if (questions.length > 0) {
     await db.insert(questionSchema).values(

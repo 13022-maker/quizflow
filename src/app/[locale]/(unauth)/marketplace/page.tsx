@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, ilike, or } from 'drizzle-orm';
+import { and, count, desc, eq, ilike, or } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { MarketplaceCard } from '@/features/marketplace/MarketplaceCard';
@@ -21,8 +21,12 @@ export default async function MarketplacePage({
   const { category, grade, q } = searchParams;
 
   const conditions = [eq(quizSchema.isMarketplace, true)];
-  if (category) conditions.push(eq(quizSchema.category, category));
-  if (grade) conditions.push(eq(quizSchema.gradeLevel, grade));
+  if (category) {
+    conditions.push(eq(quizSchema.category, category));
+  }
+  if (grade) {
+    conditions.push(eq(quizSchema.gradeLevel, grade));
+  }
   if (q) {
     conditions.push(
       or(

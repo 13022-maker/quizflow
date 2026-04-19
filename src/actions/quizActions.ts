@@ -80,7 +80,7 @@ export async function createQuiz(data: CreateQuizInput) {
     accessCode: nanoid(8),
     roomCode,
     quizMode: parsed.data.quizMode ?? 'standard',
-  }).returning({ id: quizSchema.id });
+  }).returning();
 
   if (!inserted) {
     throw new Error('建立測驗失敗');
