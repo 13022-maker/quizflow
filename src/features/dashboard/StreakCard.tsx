@@ -69,15 +69,18 @@ export function StreakCard() {
             </p>
           </div>
         </div>
-        {data.freezesLeft > 0 && (
-          <div className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-600">
-            <span aria-hidden="true">❄️</span>
-            <span>
-              補簽 ×
-              {data.freezesLeft}
-            </span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {data.freezesLeft > 0 && (
+            <div className="flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs text-blue-600">
+              <span aria-hidden="true">❄️</span>
+              <span>
+                補簽 ×
+                {data.freezesLeft}
+              </span>
+            </div>
+          )}
+          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary">考完成績馬上到</span>
+        </div>
       </div>
 
       {/* 本週七格 */}
