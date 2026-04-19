@@ -10,7 +10,13 @@ type Card = {
   example: string | null;
 };
 
-function SpeakerButton({ text, size = 'md' }: { text: string; size?: 'sm' | 'md' }) {
+const VOICE_OPTIONS = [
+  { value: 'zh-tw-female', label: '國語' },
+  { value: 'en-female', label: 'English' },
+  { value: 'hak', label: '客語' },
+];
+
+function SpeakerButton({ text, voice, size = 'md' }: { text: string; voice: string; size?: 'sm' | 'md' }) {
   const [loading, setLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -23,7 +29,7 @@ function SpeakerButton({ text, size = 'md' }: { text: string; size?: 'sm' | 'md'
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, voice: 'en-female', speed: 'normal' }),
+        body: JSON.stringify({ text, voice, speed: 'normal' }),
       });
       if (!res.ok) throw new Error();
       const { url } = await res.json();
@@ -54,6 +60,7 @@ export function VocabPractice({ title, cards }: { title: string; cards: Card[] }
   const [flipped, setFlipped] = useState(false);
   const [knownIds, setKnownIds] = useState<Set<number>>(new Set());
   const [finished, setFinished] = useState(false);
+  const [voice, setVoice] = useState('zh-tw-female');
 
   const card = cards[currentIndex]!;
 
@@ -99,9 +106,26 @@ export function VocabPractice({ title, cards }: { title: string; cards: Card[] }
 
   return (
     <div className="flex min-h-screen flex-col p-4 pt-6">
-      {/* 標題 + 進度 */}
+      {/* 標題 + 語言 + 進度 */}
       <div className="mx-auto mb-4 w-full max-w-sm">
         <h1 className="mb-2 text-center text-lg font-bold text-gray-800">{title}</h1>
+        {/* 發音語言選擇 */}
+        <div className="mb-3 flex justify-center gap-1">
+          {VOICE_OPTIONS.map(v => (
+            <button
+              key={v.value}
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setVoice(v.value); }}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+                voice === v.value
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white/70 text-gray-500 hover:bg-white'
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
         <div className="mb-1 flex justify-between text-xs text-gray-400">
           <span>{currentIndex + 1} / {cards.length}</span>
           <span>記住 {knownIds.size} 張</span>
@@ -141,7 +165,7 @@ export function VocabPractice({ title, cards }: { title: string; cards: Card[] }
                 <p className="mt-2 text-base text-gray-400">{card.phonetic}</p>
               )}
               <div className="mt-4">
-                <SpeakerButton text={card.front} />
+                <SpeakerButton text={card.front} voice={voice} />
               </div>
               <p className="mt-4 text-xs text-gray-300">點擊翻牌看答案</p>
             </div>
@@ -158,7 +182,7 @@ export function VocabPractice({ title, cards }: { title: string; cards: Card[] }
                 </p>
               )}
               <div className="mt-4">
-                <SpeakerButton text={card.front} />
+                <SpeakerButton text={card.front} voice={voice} />
               </div>
             </div>
           </div>

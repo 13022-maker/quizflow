@@ -1,12 +1,13 @@
 /**
- * TTS（文字轉語音）API — OpenAI TTS
+ * TTS（文字轉語音）API
  *
  * POST /api/ai/tts
  * Body: { text, voice?, speed? }
- * Returns: { url: string }（Vercel Blob 上的 MP3 檔 URL）
+ * Returns: { url: string }
  *
- * 使用 OpenAI tts-1 模型，語音自然接近真人。
- * 需要環境變數 OPENAI_API_KEY。
+ * 語音引擎：
+ * - 客語（hak）：Google Translate TTS
+ * - 其他語言：OpenAI tts-1
  */
 
 import { put } from '@vercel/blob';
@@ -15,7 +16,7 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const VOICES: Record<string, string> = {
+const OPENAI_VOICES: Record<string, string> = {
   'zh-tw-female': 'nova',
   'zh-tw-male': 'onyx',
   'zh-cn-female': 'shimmer',
@@ -28,19 +29,60 @@ const VOICES: Record<string, string> = {
   'echo': 'echo',
   'alloy': 'alloy',
   'fable': 'fable',
-  // 相容舊 UI 的語言代碼
   'zh-tw': 'nova',
   'zh-cn': 'shimmer',
   'en': 'nova',
 };
 
+const HAKKA_VOICES = new Set(['hak', 'hak-tw', 'hakka']);
+
+function isHakkaVoice(voice: string): boolean {
+  return HAKKA_VOICES.has(voice.toLowerCase());
+}
+
+async function generateGoogleTTS(text: string, lang: string): Promise<Buffer> {
+  const encodedText = encodeURIComponent(text);
+  const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${lang}&client=tw-ob&q=${encodedText}`;
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error(`Google TTS 回應 ${res.status}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
+async function generateOpenAITTS(text: string, voice: string, speed: number, apiKey: string): Promise<Buffer> {
+  const res = await fetch('https://api.openai.com/v1/audio/speech', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'tts-1',
+      input: text,
+      voice,
+      speed,
+      response_format: 'mp3',
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`OpenAI TTS 錯誤 (${res.status}): ${errText.slice(0, 200)}`);
+  }
+
+  return Buffer.from(await res.arrayBuffer());
+}
+
 export async function POST(req: Request) {
   try {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'TTS 功能尚未設定，請聯繫管理員' }, { status: 503 });
-    }
-
     const body = await req.json();
     const text: string = body.text?.trim();
     const voiceKey: string = (body.voice ?? 'zh-tw-female').toLowerCase();
@@ -53,30 +95,31 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '文字超過 4096 字上限' }, { status: 400 });
     }
 
-    const voice = VOICES[voiceKey] ?? 'nova';
-    const ttsSpeed = speed === 'slow' ? 0.85 : 1.0;
+    let mp3Buffer: Buffer;
 
-    const response = await fetch('https://api.openai.com/v1/audio/speech', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'tts-1',
-        input: text,
-        voice,
-        speed: ttsSpeed,
-        response_format: 'mp3',
-      }),
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      return NextResponse.json({ error: `OpenAI TTS 錯誤 (${response.status}): ${errText.slice(0, 200)}` }, { status: 502 });
+    if (isHakkaVoice(voiceKey)) {
+      // 客語走 Google Translate TTS
+      // Google TTS 有長度限制，長文字拆段處理
+      if (text.length <= 200) {
+        mp3Buffer = await generateGoogleTTS(text, 'hak');
+      } else {
+        const chunks = splitText(text, 200);
+        const buffers = [];
+        for (const chunk of chunks) {
+          buffers.push(await generateGoogleTTS(chunk, 'hak'));
+        }
+        mp3Buffer = Buffer.concat(buffers);
+      }
+    } else {
+      // 其他語言走 OpenAI TTS
+      const apiKey = process.env.OPENAI_API_KEY;
+      if (!apiKey) {
+        return NextResponse.json({ error: 'TTS 功能尚未設定，請聯繫管理員' }, { status: 503 });
+      }
+      const voice = OPENAI_VOICES[voiceKey] ?? 'nova';
+      const ttsSpeed = speed === 'slow' ? 0.85 : 1.0;
+      mp3Buffer = await generateOpenAITTS(text, voice, ttsSpeed, apiKey);
     }
-
-    const mp3Buffer = Buffer.from(await response.arrayBuffer());
 
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       const base64 = mp3Buffer.toString('base64');
@@ -95,4 +138,20 @@ export async function POST(req: Request) {
     const msg = err instanceof Error ? err.message : '語音生成失敗';
     return NextResponse.json({ error: `TTS 錯誤: ${msg}` }, { status: 500 });
   }
+}
+
+function splitText(text: string, maxLen: number): string[] {
+  const chunks: string[] = [];
+  const sentences = text.split(/(?<=[。！？\n])/);
+  let current = '';
+  for (const s of sentences) {
+    if ((current + s).length > maxLen && current) {
+      chunks.push(current.trim());
+      current = s;
+    } else {
+      current += s;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length > 0 ? chunks : [text.slice(0, maxLen)];
 }

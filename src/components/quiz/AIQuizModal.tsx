@@ -648,6 +648,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       <option value="en-female">Female</option>
                       <option value="en-male">Male</option>
                     </optgroup>
+                    <optgroup label="客語">
+                      <option value="hak">客語（四縣腔）</option>
+                    </optgroup>
                   </select>
                 </div>
                 {/* 語速 */}
