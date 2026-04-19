@@ -152,7 +152,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
                             href={`/quiz/${quiz.accessCode}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute bottom-2 right-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
+                            className="absolute bottom-2 right-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700 opacity-100 shadow-sm transition-opacity hover:bg-white md:opacity-0 md:group-hover:opacity-100"
                             title="在新分頁開啟學生作答頁"
                           >
                             <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

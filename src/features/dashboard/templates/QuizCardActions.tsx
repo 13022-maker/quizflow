@@ -45,11 +45,12 @@ export function QuizCardActions({ accessCode, title }: Props) {
   };
 
   return (
-    <div className="absolute right-3 top-3 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+    <div className="absolute right-3 top-3 flex gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
       <button
         type="button"
         onClick={handleShare}
         title="分享"
+        aria-label="分享連結"
         className="flex size-7 items-center justify-center rounded-full border bg-white text-gray-600 shadow-sm hover:bg-primary hover:text-white"
       >
         <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -60,6 +61,7 @@ export function QuizCardActions({ accessCode, title }: Props) {
         type="button"
         onClick={handleCopy}
         title={copied ? '已複製！' : '複製連結'}
+        aria-label={copied ? '已複製連結' : '複製連結'}
         className={`flex size-7 items-center justify-center rounded-full border bg-white shadow-sm transition-colors ${
           copied ? 'border-emerald-400 text-emerald-600' : 'text-gray-600 hover:bg-primary hover:text-white'
         }`}
