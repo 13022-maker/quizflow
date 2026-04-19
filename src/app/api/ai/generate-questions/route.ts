@@ -119,13 +119,9 @@ ${typesPrompt}
     });
     raw = response.text ?? '';
   } catch (geminiErr) {
-    if (!isOverloadError(geminiErr)) {
-      const msg = geminiErr instanceof Error ? geminiErr.message : '未知錯誤';
-      console.error('[generate-questions] Gemini 失敗（非過載）：', geminiErr);
-      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
-    }
+    console.warn('[generate-questions] Gemini 失敗，fallback OpenAI：', geminiErr instanceof Error ? geminiErr.message : geminiErr);
 
-    // Gemini 過載 → fallback OpenAI
+    // Gemini 失敗 → fallback OpenAI
     console.warn('[generate-questions] Gemini 過載，fallback OpenAI');
     usedModel = 'openai';
     const openaiKey = process.env.OPENAI_API_KEY;
