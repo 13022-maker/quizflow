@@ -1,32 +1,11 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import { createQuiz } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/buttonVariants';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-
-const QuizSchema = z.object({
-  title: z.string().min(1, '請輸入測驗標題').max(200),
-  description: z.string().max(500).optional(),
-});
-
-type QuizFormValues = z.infer<typeof QuizSchema>;
 
 const TEMPLATE_GROUPS = [
   {
@@ -48,39 +27,55 @@ const TEMPLATE_GROUPS = [
 ];
 
 export function QuizForm() {
-  const t = useTranslations('AddQuiz');
   const [isPending, startTransition] = useTransition();
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [pendingTemplate, setPendingTemplate] = useState<string | null>(null);
+  const [showCustom, setShowCustom] = useState(false);
+  const [customTitle, setCustomTitle] = useState('');
+  const [error, setError] = useState('');
 
-  const form = useForm<QuizFormValues>({
-    resolver: zodResolver(QuizSchema),
-    defaultValues: { title: '', description: '' },
-  });
-
-  const onSubmit = (data: QuizFormValues) => {
+  const handleTemplateClick = (title: string) => {
+    setPendingTemplate(title);
+    setError('');
     startTransition(async () => {
-      const result = await createQuiz(data);
+      const result = await createQuiz({ title });
+      if (result?.error) {
+        setPendingTemplate(null);
+        if (result.error === 'QUOTA_EXCEEDED') {
+          window.location.href = '/dashboard/billing';
+          return;
+        }
+        setError(result.error);
+      }
+    });
+  };
+
+  const handleCustomSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customTitle.trim()) {
+      setError('請輸入測驗標題');
+      return;
+    }
+    setError('');
+    startTransition(async () => {
+      const result = await createQuiz({ title: customTitle.trim() });
       if (result?.error) {
         if (result.error === 'QUOTA_EXCEEDED') {
           window.location.href = '/dashboard/billing';
           return;
         }
-        form.setError('title', { message: result.error });
+        setError(result.error);
       }
     });
   };
 
-  const handleTemplateClick = (tmpl: { title: string; description?: string }) => {
-    setSelectedTemplate(tmpl.title);
-    form.setValue('title', tmpl.title);
-    if (tmpl.description) {
-      form.setValue('description', tmpl.description);
-    }
-  };
-
   return (
     <div className="space-y-6">
-      {/* 快速範本 */}
+      {/* 引導文字 */}
+      <p className="text-sm text-muted-foreground">
+        選一個快速開始，標題和設定之後都能改
+      </p>
+
+      {/* 快速範本 — 一鍵建立 */}
       <div className="space-y-4">
         {TEMPLATE_GROUPS.map(group => (
           <div key={group.label}>
@@ -90,14 +85,15 @@ export function QuizForm() {
                 <button
                   key={tmpl.title}
                   type="button"
-                  onClick={() => handleTemplateClick(tmpl)}
-                  className={`rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm ${
-                    selectedTemplate === tmpl.title
-                      ? 'border-primary bg-primary/5 text-primary'
+                  disabled={isPending}
+                  onClick={() => handleTemplateClick(tmpl.title)}
+                  className={`rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-50 ${
+                    pendingTemplate === tmpl.title
+                      ? 'border-primary bg-primary/10 text-primary'
                       : 'border-transparent bg-muted/60 text-foreground hover:border-muted-foreground/20'
                   }`}
                 >
-                  {tmpl.label}
+                  {pendingTemplate === tmpl.title ? '建立中…' : tmpl.label}
                 </button>
               ))}
             </div>
@@ -105,68 +101,55 @@ export function QuizForm() {
         ))}
       </div>
 
-      {/* 分隔線 */}
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">或自行輸入</span>
-        <div className="h-px flex-1 bg-border" />
-      </div>
+      {error && (
+        <p className="text-sm text-destructive">{error}</p>
+      )}
 
-      {/* 表單 */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
-          <FormField
-            control={form.control}
-            name="title"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('title_label')}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t('title_placeholder')} {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t('description_label')}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t('description_placeholder')} {...field} />
-                </FormControl>
-                <FormDescription>{t('description_hint')}</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" disabled={isPending} size="lg">
-              {isPending ? '建立中…' : t('submit_button')}
-            </Button>
-            <Link
-              href="/dashboard/quizzes"
-              className={buttonVariants({ variant: 'outline' })}
+      {/* 自行輸入（預設收起） */}
+      {!showCustom
+        ? (
+            <button
+              type="button"
+              onClick={() => setShowCustom(true)}
+              className="w-full rounded-lg border border-dashed border-muted-foreground/30 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
             >
-              {t('cancel_button')}
-            </Link>
-          </div>
+              ✏️ 自行輸入標題
+            </button>
+          )
+        : (
+            <form onSubmit={handleCustomSubmit} className="space-y-3 rounded-xl border bg-card p-4">
+              <input
+                type="text"
+                value={customTitle}
+                onChange={e => setCustomTitle(e.target.value)}
+                placeholder="輸入測驗標題，例如：第三章隨堂測驗"
+                autoFocus
+                className="w-full rounded-lg border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              <div className="flex gap-2">
+                <Button type="submit" disabled={isPending} size="sm">
+                  {isPending ? '建立中…' : '建立測驗'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => { setShowCustom(false); setCustomTitle(''); }}
+                  className="text-sm text-muted-foreground hover:text-foreground"
+                >
+                  取消
+                </button>
+              </div>
+            </form>
+          )}
 
-          {/* 下一步提示 */}
-          <div className="flex items-start gap-2.5 rounded-lg bg-blue-50 px-4 py-3">
-            <svg className="mt-0.5 size-4 shrink-0 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <p className="text-xs leading-relaxed text-blue-700">
-              建立後會進入出題頁面，你可以<strong>手動出題</strong>或使用 <strong>AI 智慧出題</strong>。不只考試，也適合學生自學、課前預習。標題和設定隨時都能修改。
-            </p>
-          </div>
-        </form>
-      </Form>
+      {/* 提示 */}
+      <div className="flex items-start gap-2.5 rounded-lg bg-primary/5 px-4 py-3">
+        <svg className="mt-0.5 size-4 shrink-0 text-primary/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          點選後直接進入出題頁面，可用 <strong>AI 智慧出題</strong>或手動出題。不只考試，也適合學生自學練習。
+        </p>
+      </div>
     </div>
   );
 }
