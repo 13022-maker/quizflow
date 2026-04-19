@@ -3,11 +3,15 @@ import Link from 'next/link';
 import type { DashboardData } from './types';
 import { relativeDate, STATUS_LABEL } from './types';
 
-const STATUS_DOT: Record<string, string> = {
-  draft: 'bg-gray-400',
-  published: 'bg-emerald-500',
-  closed: 'bg-red-400',
+// 狀態對應的 banner 漸層（已發佈：活力綠青；草稿：沉穩藍紫；已關閉：粉橘警示）
+const STATUS_GRADIENT: Record<string, string> = {
+  draft: 'from-slate-400 via-slate-500 to-slate-600',
+  published: 'from-emerald-400 via-teal-500 to-cyan-600',
+  closed: 'from-rose-400 via-pink-500 to-rose-600',
 };
+
+// 單字模式用專屬暖色（琥珀系），讓一眼能辨識
+const VOCAB_GRADIENT = 'from-amber-400 via-orange-500 to-rose-500';
 
 export function TemplateB({ data }: { data: DashboardData }) {
   const greeting = getGreeting();
@@ -16,7 +20,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
   return (
     <div className="pb-8">
       {/* Hero Banner */}
-      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 px-6 py-8 text-white shadow-lg sm:px-10 sm:py-10">
+      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 px-6 py-8 text-white shadow-lg sm:p-10">
         <p className="text-sm font-medium text-white/80">{greeting}</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">歡迎使用 QuizFlow</h1>
         <p className="mt-2 max-w-lg text-sm text-white/80">
@@ -31,7 +35,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
         {/* 建立新測驗 */}
         <Link
           href="/dashboard/quizzes/new"
-          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:border-blue-200 hover:shadow-md hover:-translate-y-0.5"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
         >
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
             <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -50,7 +54,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
         {/* AI 智慧出題 */}
         <Link
           href="/dashboard/quizzes/new"
-          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:border-violet-200 hover:shadow-md hover:-translate-y-0.5"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
         >
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 transition-colors group-hover:bg-violet-600 group-hover:text-white">
             <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -71,7 +75,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
           href={latestWithResults
             ? `/dashboard/quizzes/${latestWithResults.id}/results`
             : '/dashboard/quizzes'}
-          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:border-emerald-200 hover:shadow-md hover:-translate-y-0.5"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-emerald-200 hover:shadow-md"
         >
           <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600 transition-colors group-hover:bg-emerald-600 group-hover:text-white">
             <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
@@ -113,66 +117,96 @@ export function TemplateB({ data }: { data: DashboardData }) {
         {data.recentQuizzes.length > 0
           ? (
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {data.recentQuizzes.map(quiz => (
-                  <div
-                    key={quiz.id}
-                    className="group rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5"
-                  >
-                    {/* Status + Date */}
-                    <div className="mb-3 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`size-2 rounded-full ${STATUS_DOT[quiz.status] ?? 'bg-gray-400'}`} />
-                        <span className="text-xs font-medium text-muted-foreground">
-                          {STATUS_LABEL[quiz.status] ?? quiz.status}
+                {data.recentQuizzes.map((quiz) => {
+                  const gradient = quiz.quizMode === 'vocab'
+                    ? VOCAB_GRADIENT
+                    : (STATUS_GRADIENT[quiz.status] ?? STATUS_GRADIENT.draft);
+                  const isPublished = quiz.status === 'published';
+
+                  return (
+                    <div
+                      key={quiz.id}
+                      className="group relative flex flex-col overflow-hidden rounded-2xl border border-black/5 bg-card shadow-sm transition-all hover:-translate-y-1 hover:shadow-xl"
+                    >
+                      {/* 漸層 banner */}
+                      <div className={`relative h-20 bg-gradient-to-br ${gradient}`}>
+                        {/* 裝飾圖形：左下角大圓 + 右上角小圓，純視覺點綴 */}
+                        <span className="pointer-events-none absolute -bottom-6 -left-4 size-20 rounded-full bg-white/15" />
+                        <span className="pointer-events-none absolute -right-3 -top-3 size-12 rounded-full bg-white/10" />
+
+                        {/* 狀態膠囊（左上） */}
+                        <div className="absolute left-3 top-3 flex items-center gap-1.5 rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm">
+                          <span className="size-1.5 rounded-full bg-white shadow-sm" />
+                          {quiz.quizMode === 'vocab' ? '🔤 單字' : (STATUS_LABEL[quiz.status] ?? quiz.status)}
+                        </div>
+
+                        {/* 日期（右上） */}
+                        <span className="absolute right-3 top-3 text-[11px] font-medium text-white/90">
+                          {relativeDate(quiz.createdAt)}
                         </span>
+
+                        {/* Hover 出現：開啟預覽連結 */}
+                        {isPublished && (
+                          <Link
+                            href={`/quiz/${quiz.accessCode}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute bottom-2 right-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-gray-700 opacity-0 shadow-sm transition-opacity hover:bg-white group-hover:opacity-100"
+                            title="在新分頁開啟學生作答頁"
+                          >
+                            <svg className="size-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                            開啟
+                          </Link>
+                        )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {relativeDate(quiz.createdAt)}
-                      </span>
+
+                      {/* 資訊區 */}
+                      <div className="flex flex-1 flex-col p-4">
+                        <h3 className="mb-2 line-clamp-2 text-[15px] font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
+                          {quiz.title}
+                        </h3>
+
+                        <div className="mb-4 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
+                          </svg>
+                          <span className="font-medium">{quiz.responseCount}</span>
+                          <span>人作答</span>
+                        </div>
+
+                        {/* 動作按鈕：推到底 */}
+                        <div className="mt-auto flex gap-2">
+                          <Link
+                            href={`/dashboard/quizzes/${quiz.id}/edit`}
+                            className="flex-1 rounded-lg border bg-white px-3 py-1.5 text-center text-xs font-semibold text-gray-700 transition-colors hover:border-gray-300 hover:bg-gray-50"
+                          >
+                            編輯
+                          </Link>
+                          <Link
+                            href={`/dashboard/quizzes/${quiz.id}/results`}
+                            className="flex-1 rounded-lg bg-primary px-3 py-1.5 text-center text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+                          >
+                            成績
+                          </Link>
+                        </div>
+                      </div>
                     </div>
+                  );
+                })}
 
-                    {/* Title */}
-                    <h3 className="mb-3 truncate text-base font-semibold group-hover:text-primary">
-                      {quiz.title}
-                    </h3>
-
-                    {/* Metrics */}
-                    <div className="mb-4 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
-                        </svg>
-                        {quiz.responseCount} 人
-                      </span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/dashboard/quizzes/${quiz.id}/edit`}
-                        className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
-                      >
-                        編輯
-                      </Link>
-                      <Link
-                        href={`/dashboard/quizzes/${quiz.id}/results`}
-                        className="flex-1 rounded-lg bg-primary/10 px-3 py-2 text-center text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-                      >
-                        成績
-                      </Link>
-                    </div>
-                  </div>
-                ))}
-
-                {/* New Quiz Card */}
+                {/* 新增測驗卡：保持 dashed 風格但高度對齊 */}
                 <Link
                   href="/dashboard/quizzes/new"
-                  className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-muted-foreground/20 p-5 text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  className="group flex min-h-[188px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 p-5 text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
                 >
-                  <svg className="mb-2 size-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span className="text-sm font-medium">建立新測驗</span>
+                  <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
+                    <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <span className="text-sm font-semibold">建立新測驗</span>
                 </Link>
               </div>
             )
@@ -207,7 +241,11 @@ function StatBlock({ value, label }: { value: string; label: string }) {
 
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return '早安！';
-  if (hour < 18) return '午安！';
+  if (hour < 12) {
+    return '早安！';
+  }
+  if (hour < 18) {
+    return '午安！';
+  }
   return '晚安！';
 }

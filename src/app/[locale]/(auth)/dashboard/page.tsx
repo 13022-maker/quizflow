@@ -93,6 +93,8 @@ export default async function DashboardIndexPage() {
       status: q.status,
       createdAt: q.createdAt,
       responseCount: responseCountMap.get(q.id) ?? 0,
+      accessCode: q.accessCode ?? '',
+      quizMode: q.quizMode,
     })),
     totalQuizCount,
     publishedCount,
