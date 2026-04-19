@@ -6,9 +6,7 @@ import Link from 'next/link';
 import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
 import { StreakCard } from '@/features/dashboard/StreakCard';
-import { TemplateA } from '@/features/dashboard/templates/TemplateA';
 import { TemplateB } from '@/features/dashboard/templates/TemplateB';
-import { TemplateC } from '@/features/dashboard/templates/TemplateC';
 import type { DashboardData } from '@/features/dashboard/templates/types';
 import { TrialBanner } from '@/features/dashboard/TrialBanner';
 import { db } from '@/libs/DB';
@@ -19,14 +17,8 @@ export const dynamic = 'force-dynamic';
 
 type Quiz = InferSelectModel<typeof quizSchemaType>;
 
-export default async function DashboardIndexPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ t?: string }>;
-}) {
+export default async function DashboardIndexPage() {
   const { orgId, userId } = await auth();
-  const params = await searchParams;
-  const template = params.t ?? 'b';
 
   let recentQuizzes: Quiz[] = [];
   let totalQuizCount = 0;
@@ -124,22 +116,8 @@ export default async function DashboardIndexPage({
         <StreakCard />
       </div>
 
-      {/* Template Switcher */}
-      <div className="mx-4 mb-4 flex items-center gap-1 rounded-lg bg-muted/50 p-1">
-        <TemplateTab href="?t=a" label="A 指揮中心" active={template === 'a'} />
-        <TemplateTab href="?t=b" label="B 教學工作台" active={template === 'b'} />
-        <TemplateTab href="?t=c" label="C 清爽極簡" active={template === 'c'} />
-      </div>
-
-
       {hasQuizzes
-        ? (
-            <>
-              {template === 'a' && <TemplateA data={dashboardData} />}
-              {template === 'b' && <TemplateB data={dashboardData} />}
-              {template === 'c' && <TemplateC data={dashboardData} />}
-            </>
-          )
+        ? <TemplateB data={dashboardData} />
         : (
             <div className="px-4 pb-8">
               <div className="mb-6 flex justify-end">
@@ -154,20 +132,5 @@ export default async function DashboardIndexPage({
             </div>
           )}
     </>
-  );
-}
-
-function TemplateTab({ href, label, active }: { href: string; label: string; active: boolean }) {
-  return (
-    <Link
-      href={href}
-      className={`flex-1 rounded-md px-3 py-2 text-center text-sm font-medium transition-all ${
-        active
-          ? 'bg-card text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground'
-      }`}
-    >
-      {label}
-    </Link>
   );
 }
