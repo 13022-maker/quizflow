@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { QuizCardActions } from './QuizCardActions';
 import type { DashboardData } from './types';
 import { relativeDate, STATUS_LABEL } from './types';
 
@@ -163,8 +164,13 @@ export function TemplateB({ data }: { data: DashboardData }) {
                       </div>
 
                       {/* 資訊區 */}
-                      <div className="flex flex-1 flex-col p-4">
-                        <h3 className="mb-2 line-clamp-2 text-[15px] font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
+                      <div className="relative flex flex-1 flex-col p-4">
+                        {/* Hover 浮現的快捷：分享 + 複製連結（已發佈才顯示） */}
+                        {isPublished && (
+                          <QuizCardActions accessCode={quiz.accessCode} title={quiz.title} />
+                        )}
+
+                        <h3 className="mb-2 line-clamp-2 pr-16 text-[15px] font-bold leading-snug text-foreground transition-colors group-hover:text-primary">
                           {quiz.title}
                         </h3>
 
