@@ -225,10 +225,15 @@ ${typesPrompt}
     { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
     { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
     { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
-    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" }
+    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" },
+    { "type": "listening", "question": "根據內容，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明", "listeningText": "根據文件內容改寫成口語化的朗讀文字，作為學生聽力素材" }
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型。`;
+每種題型各出 ${count} 題，只出勾選的題型。
+聽力題特別注意：
+- type 必須為 "listening"
+- 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
+- listeningText 控制在 50-200 字`;
 
   // 讀取原始檔案位元組 + 準備 mime / base64
   const arrayBuffer = await file.arrayBuffer();
