@@ -24,6 +24,9 @@ const isPublicApiRoute = createRouteMatcher([
   // TTS 發音：學生單字卡練習需要
   '/api/ai/tts',
   '/:locale/api/ai/tts',
+  // 錯題單字卡：學生作答後建立
+  '/api/ai/generate-flashcards',
+  '/:locale/api/ai/generate-flashcards',
 ]);
 
 const isProtectedRoute = createRouteMatcher([

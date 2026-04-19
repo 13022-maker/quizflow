@@ -2,7 +2,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 import Anthropic from '@anthropic-ai/sdk';
-import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
@@ -47,11 +46,6 @@ const SYSTEM_PROMPT = `你是一位專業的語言教學專家。根據使用者
 - 如果是中文單字，音標用注音符號`;
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: '請先登入' }, { status: 401 });
-  }
-
   const body = await request.json();
   const { words } = body as { words: string };
 

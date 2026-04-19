@@ -339,6 +339,39 @@ function ResultScreen({
     d => d.isCorrect === false && questions.find(q => q.id === d.questionId)?.type !== 'short_answer',
   ).length;
 
+  // 錯題單字卡
+  const [vocabLoading, setVocabLoading] = useState(false);
+  const [vocabCards, setVocabCards] = useState<Array<{ front: string; back: string; phonetic: string; example: string }> | null>(null);
+  const [vocabFlipIndex, setVocabFlipIndex] = useState(0);
+  const [vocabFlipped, setVocabFlipped] = useState(false);
+
+  const wrongQuestions = result.details
+    .filter(d => d.isCorrect === false)
+    .map(d => questions.find(q => q.id === d.questionId))
+    .filter(Boolean) as Question[];
+
+  const handleBuildVocab = async () => {
+    if (wrongQuestions.length === 0) return;
+    setVocabLoading(true);
+    try {
+      const wordsText = wrongQuestions
+        .map(q => q.body)
+        .join('\n');
+      const res = await fetch('/api/ai/generate-flashcards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: `從以下錯題中提取關鍵詞彙，每個關鍵概念生成一張卡片：\n${wordsText}` }),
+      });
+      if (res.ok) {
+        const { cards } = await res.json();
+        setVocabCards(cards);
+        setVocabFlipIndex(0);
+        setVocabFlipped(false);
+      }
+    } catch { /* 靜默 */ }
+    setVocabLoading(false);
+  };
+
   // ── AI 弱點分析狀態 ───────────────────────────────────────────
   const [weakPoints, setWeakPoints] = useState<WeakPoint[] | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -445,20 +478,85 @@ function ResultScreen({
           </p>
         )}
 
-        {/* 錯題重做按鈕 */}
-        {retryableWrongCount > 0 && (
-          <button
-            type="button"
-            onClick={onRetry}
-            className="mt-4 rounded-lg border border-primary px-5 py-2 text-sm font-medium text-primary hover:bg-primary/10"
-          >
-            重做錯題（
-            {retryableWrongCount}
-            {' '}
-            題）
-          </button>
-        )}
+        {/* 錯題重做 + 單字卡按鈕 */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {retryableWrongCount > 0 && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-lg border border-primary px-5 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+            >
+              重做錯題（{retryableWrongCount} 題）
+            </button>
+          )}
+          {wrongQuestions.length > 0 && !vocabCards && (
+            <button
+              type="button"
+              onClick={handleBuildVocab}
+              disabled={vocabLoading}
+              className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+            >
+              {vocabLoading ? '生成中…' : '🔤 建立錯題單字卡'}
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* 錯題單字卡翻牌練習 */}
+      {vocabCards && vocabCards.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-semibold text-amber-800">錯題單字卡</h3>
+            <span className="text-xs text-amber-600">{vocabFlipIndex + 1} / {vocabCards.length}</span>
+          </div>
+          <div
+            className="cursor-pointer"
+            style={{ perspective: '800px' }}
+            onClick={() => setVocabFlipped(prev => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setVocabFlipped(prev => !prev)}
+          >
+            <div
+              className="relative transition-transform duration-500"
+              style={{ transformStyle: 'preserve-3d', transform: vocabFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+            >
+              <div className="rounded-xl border bg-white p-6 text-center shadow-sm" style={{ backfaceVisibility: 'hidden' }}>
+                <p className="text-xl font-bold">{vocabCards[vocabFlipIndex]?.front}</p>
+                {vocabCards[vocabFlipIndex]?.phonetic && (
+                  <p className="mt-1 text-sm text-gray-400">{vocabCards[vocabFlipIndex]?.phonetic}</p>
+                )}
+                <p className="mt-2 text-xs text-gray-300">點擊翻牌</p>
+              </div>
+              <div
+                className="absolute inset-0 rounded-xl border bg-white p-6 text-center shadow-sm"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                <p className="text-lg font-bold text-green-700">{vocabCards[vocabFlipIndex]?.back}</p>
+                {vocabCards[vocabFlipIndex]?.example && (
+                  <p className="mt-2 text-sm italic text-gray-500">{vocabCards[vocabFlipIndex]?.example}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex justify-center gap-3">
+            <button
+              disabled={vocabFlipIndex === 0}
+              onClick={() => { setVocabFlipIndex(prev => prev - 1); setVocabFlipped(false); }}
+              className="rounded px-3 py-1 text-sm text-amber-700 hover:bg-amber-100 disabled:opacity-30"
+            >
+              ← 上一張
+            </button>
+            <button
+              disabled={vocabFlipIndex === vocabCards.length - 1}
+              onClick={() => { setVocabFlipIndex(prev => prev + 1); setVocabFlipped(false); }}
+              className="rounded px-3 py-1 text-sm text-amber-700 hover:bg-amber-100 disabled:opacity-30"
+            >
+              下一張 →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* AI 弱點分析區塊（有答錯且有解答時顯示） */}
       {showAnswers && (
