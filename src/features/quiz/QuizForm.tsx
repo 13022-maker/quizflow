@@ -28,7 +28,14 @@ const QuizSchema = z.object({
 
 type QuizFormValues = z.infer<typeof QuizSchema>;
 
-const TEMPLATE_GROUPS = [
+type TemplateItem = {
+  label: string;
+  title: string;
+  description?: string;
+  quizMode?: 'standard' | 'vocab';
+};
+
+const TEMPLATE_GROUPS: { label: string; items: TemplateItem[] }[] = [
   {
     label: '考試測驗',
     items: [
@@ -43,7 +50,12 @@ const TEMPLATE_GROUPS = [
       { label: '🎯 自學挑戰', title: '自學挑戰' },
       { label: '📖 課前預習', title: '課前預習' },
       { label: '💡 知識檢測', title: '知識檢測' },
-      { label: '🔤 單字記憶', title: '單字記憶', description: '請輸入要記憶的單字清單，AI 會根據單字生成填空、選擇、配對等記憶練習題' },
+      {
+        label: '🔤 單字記憶',
+        title: '單字記憶',
+        description: '以下為單字記憶練習，看中文提示打出英文，答錯的單字會重新出現直到全部過關。',
+        quizMode: 'vocab',
+      },
     ],
   },
 ];
@@ -52,6 +64,7 @@ export function QuizForm() {
   const t = useTranslations('AddQuiz');
   const [isPending, startTransition] = useTransition();
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [quizMode, setQuizMode] = useState<'standard' | 'vocab'>('standard');
 
   const form = useForm<QuizFormValues>({
     resolver: zodResolver(QuizSchema),
@@ -60,7 +73,7 @@ export function QuizForm() {
 
   const onSubmit = (data: QuizFormValues) => {
     startTransition(async () => {
-      const result = await createQuiz(data);
+      const result = await createQuiz({ ...data, quizMode });
       if (result?.error) {
         if (result.error === 'QUOTA_EXCEEDED') {
           window.location.href = '/dashboard/billing';
@@ -71,8 +84,9 @@ export function QuizForm() {
     });
   };
 
-  const handleTemplateClick = (tmpl: { title: string; description?: string }) => {
+  const handleTemplateClick = (tmpl: TemplateItem) => {
     setSelectedTemplate(tmpl.title);
+    setQuizMode(tmpl.quizMode ?? 'standard');
     form.setValue('title', tmpl.title);
     if (tmpl.description) {
       form.setValue('description', tmpl.description);

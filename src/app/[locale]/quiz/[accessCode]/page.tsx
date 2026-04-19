@@ -2,6 +2,7 @@ import { asc, eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
 import { QuizTaker } from '@/features/quiz/QuizTaker';
+import { VocabTaker } from '@/features/quiz/VocabTaker';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -59,6 +60,16 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       <div className="flex min-h-screen items-center justify-center">
         <div className="rounded-xl border bg-card p-10 text-center shadow-sm">
           <p className="text-lg font-semibold">{t('no_questions')}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (quiz.quizMode === 'vocab') {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-amber-50/80 via-white to-orange-50/50 pb-24 pt-10 md:py-16 md:pb-24">
+        <div className="mx-auto max-w-2xl px-4">
+          <VocabTaker quiz={quiz} questions={questions} />
         </div>
       </div>
     );

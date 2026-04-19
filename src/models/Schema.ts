@@ -87,6 +87,7 @@ export const quizSchema = pgTable('quiz', {
   scoringMode: text('scoring_mode').default('highest').notNull(), // highest / latest / first / decay
   attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
   expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
+  quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
   // 題庫市集
   isMarketplace: boolean('is_marketplace').default(false).notNull(),
   category: text('category'),

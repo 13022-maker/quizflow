@@ -43,6 +43,7 @@ async function generateUniqueRoomCode(): Promise<string> {
 const CreateQuizSchema = z.object({
   title: z.string().min(1, '請輸入測驗標題').max(200),
   description: z.string().max(500).optional(),
+  quizMode: z.enum(['standard', 'vocab']).optional(),
 });
 
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
@@ -78,6 +79,7 @@ export async function createQuiz(data: CreateQuizInput) {
     description: parsed.data.description,
     accessCode: nanoid(8),
     roomCode,
+    quizMode: parsed.data.quizMode ?? 'standard',
   }).returning({ id: quizSchema.id });
 
   if (!inserted) {
