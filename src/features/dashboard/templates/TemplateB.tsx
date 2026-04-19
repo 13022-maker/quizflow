@@ -25,10 +25,9 @@ export function TemplateB({ data }: { data: DashboardData }) {
             : '開始建立您的第一份測驗，幾分鐘內即可分享給學生。'}
         </p>
         {/* 標語 */}
-        <div className="mt-5 flex flex-wrap gap-2">
+        <div className="mt-4 flex gap-2">
           <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">少紙化、效率佳</span>
           <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">考完成績馬上到</span>
-          <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm">智慧學習更有效</span>
         </div>
       </div>
 
