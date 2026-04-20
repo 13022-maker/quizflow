@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import type { InferSelectModel } from 'drizzle-orm';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
 import {
@@ -44,6 +44,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
+import { InlineQuestionCard } from './InlineQuestionCard';
 import { QuestionCard } from './QuestionCard';
 import type { QuestionFormValues } from './QuestionForm';
 import { QuestionForm } from './QuestionForm';
@@ -314,6 +315,20 @@ export function QuizEditor({
   // 控制 QR Code Modal 顯示
   const [showQRModal, setShowQRModal] = useState(false);
 
+  // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
+  // 不自動彈 ShareModal，避免打斷老師審題
+  const searchParams = useSearchParams();
+  const [showJustCreatedBanner, setShowJustCreatedBanner] = useState(
+    searchParams.get('just_created') === '1',
+  );
+  const dismissJustCreatedBanner = () => {
+    setShowJustCreatedBanner(false);
+    // 清掉 URL 參數，避免重新整理時又出現
+    const url = new URL(window.location.href);
+    url.searchParams.delete('just_created');
+    window.history.replaceState(null, '', url.toString());
+  };
+
   // 控制 AIQuizModal 顯示
   const [showAIModal, setShowAIModal] = useState(false);
 
@@ -472,6 +487,39 @@ export function QuizEditor({
 
   return (
     <div className="mx-auto max-w-3xl space-y-8">
+      {/* ── 新建測驗引導 banner：審完題後點按鈕分享 ─────────────── */}
+      {showJustCreatedBanner && (
+        <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
+          <span className="text-xl">✅</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">
+              測驗已建立，建議先匯入或新增題目並審題
+            </p>
+            <p className="text-xs text-amber-700">
+              審完題目後，按右側按鈕立即分享給學生 →
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowQRModal(true);
+              dismissJustCreatedBanner();
+            }}
+            className="shrink-0 bg-amber-500 text-white hover:bg-amber-600"
+          >
+            🔗 立即分享
+          </Button>
+          <button
+            type="button"
+            onClick={dismissJustCreatedBanner}
+            className="shrink-0 text-xs text-amber-700 hover:text-amber-900"
+            aria-label="關閉提示"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* ── 頂部操作列 ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3">
         <Link
@@ -913,30 +961,44 @@ export function QuizEditor({
                         />
                       </div>
                     )
-                  : (
-                      <QuestionCard
-                        key={question.id}
-                        question={question}
-                        index={index}
-                        onEdit={() => {
-                          setAddingNew(false);
-                          setEditingId(question.id);
-                        }}
-                        onDelete={() => handleDeleteQuestion(question.id)}
-                        isDeleting={deletingId === question.id}
-                        onAudioRegenerated={async (questionId, audioUrl) => {
-                          await updateQuestion(questionId, initialQuiz.id, {
-                            type: question.type,
-                            body: question.body,
-                            options: question.options ?? undefined,
-                            correctAnswers: question.correctAnswers ?? undefined,
-                            points: question.points,
-                            audioUrl,
-                          });
-                          router.refresh();
-                        }}
-                      />
-                    ),
+                  : question.type === 'single_choice' || question.type === 'multiple_choice'
+                    ? (
+                        // 選擇題用 inline 編輯卡片（題目 + 選項 + 正解勾選皆可直接改）
+                        <InlineQuestionCard
+                          key={question.id}
+                          question={question}
+                          index={index}
+                          quizId={initialQuiz.id}
+                          onDelete={() => handleDeleteQuestion(question.id)}
+                          isDeleting={deletingId === question.id}
+                          isPro={isPro}
+                        />
+                      )
+                    : (
+                        // 非選擇題（tf / fill / short / rank / listening）維持原摘要卡 + Modal 編輯，保留音訊重生成
+                        <QuestionCard
+                          key={question.id}
+                          question={question}
+                          index={index}
+                          onEdit={() => {
+                            setAddingNew(false);
+                            setEditingId(question.id);
+                          }}
+                          onDelete={() => handleDeleteQuestion(question.id)}
+                          isDeleting={deletingId === question.id}
+                          onAudioRegenerated={async (questionId, audioUrl) => {
+                            await updateQuestion(questionId, initialQuiz.id, {
+                              type: question.type,
+                              body: question.body,
+                              options: question.options ?? undefined,
+                              correctAnswers: question.correctAnswers ?? undefined,
+                              points: question.points,
+                              audioUrl,
+                            });
+                            router.refresh();
+                          }}
+                        />
+                      ),
               )}
             </div>
           </SortableContext>

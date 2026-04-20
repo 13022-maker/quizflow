@@ -79,14 +79,18 @@ export async function createQuiz(data: CreateQuizInput) {
   }
 
   const roomCode = await generateUniqueRoomCode();
-  const [inserted] = await db.insert(quizSchema).values({
-    ownerId: orgId,
-    title: parsed.data.title,
-    description: parsed.data.description,
-    accessCode: nanoid(8),
-    roomCode,
-    quizMode: parsed.data.quizMode ?? 'standard',
-  }).returning();
+  // 回傳新建測驗完整列以取得 id，用於 redirect 直接進入編輯頁
+  const [inserted] = await db
+    .insert(quizSchema)
+    .values({
+      ownerId: orgId,
+      title: parsed.data.title,
+      description: parsed.data.description,
+      accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
+      roomCode, // 6 碼大寫英數房間碼
+      quizMode: parsed.data.quizMode ?? 'standard',
+    })
+    .returning();
 
   if (!inserted) {
     throw new Error('建立測驗失敗');
@@ -101,7 +105,8 @@ export async function createQuiz(data: CreateQuizInput) {
     }
   }
 
-  redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1`);
+  // 建完直接進編輯頁；ai=1 觸發 AI 出題對話框、just_created=1 顯示審題引導 banner
+  redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1&just_created=1`);
 }
 
 export async function updateQuiz(

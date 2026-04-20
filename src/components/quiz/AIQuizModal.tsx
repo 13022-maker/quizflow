@@ -156,7 +156,16 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   // ── Helpers ──
   function toggleType(t: QuestionType) {
-    setTypes(prev => prev.includes(t) ? prev.filter(x => x !== t) : [...prev, t]);
+    setTypes((prev) => {
+      if (prev.includes(t)) {
+        return prev.filter(x => x !== t);
+      }
+      // 聽力題與其他題型互斥：選聽力就清其他，選其他就清聽力
+      if (t === 'listening') {
+        return ['listening'];
+      }
+      return [...prev.filter(x => x !== 'listening'), t];
+    });
   }
 
   // Vercel Serverless request body 上限約 4.5MB
@@ -736,14 +745,22 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             <div className="grid grid-cols-2 gap-2">
               {QUESTION_TYPES.map((t) => {
                 const checked = types.includes(t.value);
+                // 聽力題選中時，其他題型按鈕 disabled；其他題型選中時，聽力題按鈕 disabled
+                const isListeningSelected = types.includes('listening');
+                const hasNonListening = types.some(x => x !== 'listening');
+                const disabled = (t.value === 'listening' && hasNonListening)
+                  || (t.value !== 'listening' && isListeningSelected);
                 return (
                   <button
                     key={t.value}
                     onClick={() => toggleType(t.value)}
+                    disabled={disabled}
                     className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all ${
                       checked
                         ? 'border-amber-400 bg-amber-50'
-                        : 'border-gray-200 hover:border-amber-300'
+                        : disabled
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-40'
+                          : 'border-gray-200 hover:border-amber-300'
                     }`}
                   >
                     <div className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors ${
