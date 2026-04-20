@@ -165,22 +165,6 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
 
   return (
     <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-gradient-to-b from-amber-50 via-orange-50/70 to-yellow-100/80 p-5 shadow-sm">
-      <style>
-        {`
-          @keyframes streakcard-run {
-            0%   { transform: translateX(0)    skewX(0) scaleY(1); }
-            25%  { transform: translateX(-2px) skewX(-4deg) scaleY(0.97); }
-            50%  { transform: translateX(2px)  skewX(0) scaleY(1); }
-            75%  { transform: translateX(-1px) skewX(-4deg) scaleY(0.97); }
-            100% { transform: translateX(0)    skewX(0) scaleY(1); }
-          }
-          @keyframes streakcard-dust {
-            0%, 100% { opacity: 0.2; transform: translateX(0) scaleX(1); }
-            50%      { opacity: 0.7; transform: translateX(-10px) scaleX(1.4); }
-          }
-        `}
-      </style>
-
       {/* 沙漠沙丘背景 */}
       <svg
         className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full opacity-60"
@@ -199,25 +183,8 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
         aria-hidden="true"
       />
 
-      {/* 標題：左側奔跑馬圖 + 考完成績馬上到 */}
-      <div className="relative mb-3 flex items-center justify-center gap-2">
-        <span
-          aria-hidden="true"
-          className="inline-block text-base opacity-60"
-          style={{ animation: 'streakcard-dust 0.5s ease-in-out infinite' }}
-        >
-          💨
-        </span>
-        <span
-          aria-hidden="true"
-          className="relative inline-block text-2xl drop-shadow-[0_2px_3px_rgba(180,80,30,0.35)]"
-          style={{
-            animation: 'streakcard-run 0.35s ease-in-out infinite',
-            transformOrigin: 'center bottom',
-          }}
-        >
-          🐎
-        </span>
+      {/* 標題 */}
+      <div className="relative mb-3 flex items-center justify-center">
         <span className="text-sm font-bold tracking-wide text-amber-900 drop-shadow-sm">
           考完成績馬上到…
         </span>
