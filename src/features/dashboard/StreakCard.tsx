@@ -165,6 +165,32 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
 
   return (
     <div className="overflow-hidden rounded-xl border bg-gradient-to-b from-sky-50 via-white to-emerald-50/60 p-5">
+      <style>
+        {`
+          @keyframes streakcard-gallop {
+            0%   { transform: translateX(-3px) translateY(0) rotate(-4deg); }
+            25%  { transform: translateX(0)    translateY(-4px) rotate(2deg); }
+            50%  { transform: translateX(3px)  translateY(0) rotate(4deg); }
+            75%  { transform: translateX(0)    translateY(-4px) rotate(-2deg); }
+            100% { transform: translateX(-3px) translateY(0) rotate(-4deg); }
+          }
+        `}
+      </style>
+
+      {/* 標題：考完成績馬上到 + 奔跑的馬 */}
+      <div className="mb-3 flex items-center justify-center gap-1.5">
+        <span className="text-sm font-semibold tracking-wide text-foreground">
+          考完成績馬上到…
+        </span>
+        <span
+          aria-hidden="true"
+          className="inline-block text-lg"
+          style={{ animation: 'streakcard-gallop 0.45s ease-in-out infinite' }}
+        >
+          🐎
+        </span>
+      </div>
+
       {/* 頭部：連勝 + 森林規模 */}
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
