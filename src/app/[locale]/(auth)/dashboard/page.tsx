@@ -4,6 +4,7 @@ import Link from 'next/link';
 
 import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
+import { AiQuotaBanner } from '@/features/dashboard/AiQuotaBanner';
 import { StreakCard } from '@/features/dashboard/StreakCard';
 import { TemplateB } from '@/features/dashboard/templates/TemplateB';
 import type { DashboardData } from '@/features/dashboard/templates/types';
@@ -125,6 +126,13 @@ export default async function DashboardIndexPage() {
       {userId && orgId && (
         <div className="mx-4 mb-4">
           <TrialBanner clerkUserId={userId} orgId={orgId} />
+        </div>
+      )}
+
+      {/* 免費版 AI 額度警示 */}
+      {orgId && (
+        <div className="mx-4 mb-4">
+          <AiQuotaBanner orgId={orgId} />
         </div>
       )}
 
