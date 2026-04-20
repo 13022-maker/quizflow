@@ -1,0 +1,79 @@
+name: Auto-rebase claude/* branches
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 每日 UTC 02:00（台北 10:00）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  rebase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Rebase each claude/* branch on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -u
+          git fetch origin --prune
+
+          BRANCHES=$(git branch -r | grep -E 'origin/claude/' | sed 's|  origin/||' | tr -d ' ')
+          if [ -z "$BRANCHES" ]; then
+            echo "沒有 claude/* 分支，結束"
+            exit 0
+          fi
+
+          echo "$BRANCHES" | while read -r branch; do
+            [ -z "$branch" ] && continue
+            echo "=== Rebase $branch onto main ==="
+            git checkout -B "$branch" "origin/$branch"
+
+            if git rebase origin/main; then
+              echo "rebase 成功，force-push-with-lease"
+              if ! git push --force-with-lease origin "$branch"; then
+                echo "push 失敗，跳過"
+              fi
+            else
+              echo "rebase 衝突，abort + 開 issue"
+              git rebase --abort || true
+
+              ISSUE_TITLE="auto-rebase 衝突：$branch"
+              ISSUE_BODY=$(cat <<EOF
+            分支 \`$branch\` 今天自動 rebase 到 \`main\` 時發生衝突，需要手動處理。
+
+            請執行：
+            \`\`\`
+            git fetch origin
+            git checkout $branch
+            git rebase origin/main
+            # 解衝突後
+            git push --force-with-lease origin $branch
+            \`\`\`
+
+            觸發時間：$(date -u '+%Y-%m-%d %H:%M:%S UTC')
+          EOF
+          )
+
+              # 同名 issue 已存在就不重開
+              EXISTING=$(gh issue list --search "$ISSUE_TITLE in:title" --state open --json number --jq '.[0].number' || echo '')
+              if [ -z "$EXISTING" ]; then
+                gh issue create --title "$ISSUE_TITLE" --body "$ISSUE_BODY" --label "auto-rebase-conflict" || true
+              else
+                echo "issue #$EXISTING 已存在，略過建立"
+              fi
+            fi
+          done
