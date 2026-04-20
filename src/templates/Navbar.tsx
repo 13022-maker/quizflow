@@ -35,6 +35,12 @@ export const Navbar = () => {
         <li>
           <Link href="/pricing">{t('pricing')}</Link>
         </li>
+        <li>
+          <Link href="/blog">{t('blog')}</Link>
+        </li>
+        <li>
+          <Link href="/templates">範本</Link>
+        </li>
       </CenteredMenu>
     </Section>
   );
