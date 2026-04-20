@@ -6,7 +6,6 @@
  * 資料來源：GET /api/streak + totalResponses（由父層 props 傳入）
  */
 
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 type StreakData = {
@@ -211,20 +210,13 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
         </span>
         <span
           aria-hidden="true"
-          className="relative inline-block"
+          className="relative inline-block text-2xl drop-shadow-[0_2px_3px_rgba(180,80,30,0.35)]"
           style={{
             animation: 'streakcard-run 0.35s ease-in-out infinite',
             transformOrigin: 'center bottom',
           }}
         >
-          <Image
-            src="/assets/images/horse-running.png"
-            alt=""
-            width={48}
-            height={48}
-            priority
-            className="size-10 object-contain drop-shadow-[0_2px_3px_rgba(180,80,30,0.35)]"
-          />
+          🐎
         </span>
         <span className="text-sm font-bold tracking-wide text-amber-900 drop-shadow-sm">
           考完成績馬上到…
