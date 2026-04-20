@@ -77,19 +77,43 @@ export default async function AdminStatsPage() {
     .limit(10);
 
   // Clerk 用戶統計
+  type RecentUser = {
+    id: string;
+    name: string;
+    email: string;
+    initial: string;
+    createdAt: number;
+  };
   let totalUsers = 0;
   let todayNewUsers = 0;
+  let recentRegisteredUsers: RecentUser[] = [];
   try {
     const clerk = await clerkClient();
-    const allUsers = await clerk.users.getCount();
-    totalUsers = allUsers;
-    const todayUsers = await clerk.users.getUserList({
+    totalUsers = await clerk.users.getCount();
+    const usersResp = await clerk.users.getUserList({
       orderBy: '-created_at',
       limit: 100,
     });
-    todayNewUsers = todayUsers.data.filter(
+    todayNewUsers = usersResp.data.filter(
       u => new Date(u.createdAt) >= today,
     ).length;
+    // 整理前 20 位新註冊用戶的明細
+    recentRegisteredUsers = usersResp.data.slice(0, 20).map((u) => {
+      const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
+        || u.username
+        || u.primaryEmailAddress?.emailAddress?.split('@')[0]
+        || '匿名';
+      const email = u.primaryEmailAddress?.emailAddress
+        || u.emailAddresses?.[0]?.emailAddress
+        || '—';
+      return {
+        id: u.id,
+        name,
+        email,
+        initial: (name.charAt(0) || '?').toUpperCase(),
+        createdAt: u.createdAt,
+      };
+    });
   } catch {
     // Clerk API 失敗不影響其他數據
   }
@@ -159,6 +183,61 @@ export default async function AdminStatsPage() {
               </div>
             )
           : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">目前尚無作答記錄</p>}
+      </section>
+
+      {/* 最近註冊用戶明細（取最近 20 位） */}
+      <section className="mt-8">
+        <h2 className="mb-3 text-lg font-semibold">最近註冊用戶</h2>
+        {recentRegisteredUsers.length > 0
+          ? (
+              <div className="overflow-hidden rounded-xl border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50">
+                    <tr>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">用戶</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Email</th>
+                      <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">註冊時間</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y">
+                    {recentRegisteredUsers.map((u) => {
+                      const createdDate = new Date(u.createdAt);
+                      const isToday = createdDate >= today;
+                      return (
+                        <tr key={u.id} className="hover:bg-muted/20">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              {/* 用首字字母當頭像，避免圖片載入成本 */}
+                              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-pink-400 text-xs font-semibold text-white">
+                                {u.initial}
+                              </div>
+                              <span className="truncate">{u.name}</span>
+                              {isToday && (
+                                <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-xs font-medium text-pink-700">
+                                  今日
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
+                            {u.email}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
+                            {createdDate.toLocaleString('zh-TW', {
+                              month: 'numeric',
+                              day: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )
+          : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">目前尚無註冊用戶</p>}
       </section>
     </div>
   );
