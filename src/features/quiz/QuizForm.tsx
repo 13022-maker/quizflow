@@ -6,32 +6,37 @@ import { createQuiz } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
 
 type TemplateItem = {
-  label: string;
+  icon: string;
   title: string;
+  subtitle: string;
   description?: string;
   quizMode?: 'standard' | 'vocab';
+  iconBg: string; // icon 圓形底色（Tailwind class）
 };
 
+// 範本分組：考試測驗（偏正式、冷色系）、自學練習（偏輕鬆、暖色系）
 const TEMPLATE_GROUPS: { label: string; items: TemplateItem[] }[] = [
   {
     label: '考試測驗',
     items: [
-      { label: '📝 隨堂測驗', title: '隨堂測驗' },
-      { label: '📋 期中考', title: '期中考' },
-      { label: '🔄 複習小考', title: '複習小考' },
+      { icon: '📝', title: '隨堂測驗', subtitle: '課中快速檢測，5–10 題剛好', iconBg: 'bg-blue-100' },
+      { icon: '📋', title: '期中考', subtitle: '完整章節評量，含各題型', iconBg: 'bg-indigo-100' },
+      { icon: '🔄', title: '複習小考', subtitle: '段考前鞏固記憶', iconBg: 'bg-sky-100' },
     ],
   },
   {
     label: '自學練習',
     items: [
-      { label: '🎯 自學挑戰', title: '自學挑戰' },
-      { label: '📖 課前預習', title: '課前預習' },
-      { label: '💡 知識檢測', title: '知識檢測' },
+      { icon: '🎯', title: '自學挑戰', subtitle: '學生課後自主練習', iconBg: 'bg-amber-100' },
+      { icon: '📖', title: '課前預習', subtitle: '先熟悉新單元重點', iconBg: 'bg-emerald-100' },
+      { icon: '💡', title: '知識檢測', subtitle: '檢測自我理解程度', iconBg: 'bg-yellow-100' },
       {
-        label: '🔤 單字記憶',
+        icon: '🔤',
         title: '單字記憶',
+        subtitle: '中英單字反覆過關',
         description: '以下為單字記憶練習，看中文提示打出英文，答錯的單字會重新出現直到全部過關。',
         quizMode: 'vocab',
+        iconBg: 'bg-rose-100',
       },
     ],
   },
@@ -84,33 +89,54 @@ export function QuizForm() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* 引導文字 */}
       <p className="text-sm text-muted-foreground">
-        選一個快速開始，標題和設定之後都能改
+        選一個快速開始，標題與設定之後都能再調整
       </p>
 
-      {/* 快速範本 — 一鍵建立 */}
-      <div className="space-y-4">
+      {/* 快速範本 — 一鍵建立（卡片網格） */}
+      <div className="space-y-6">
         {TEMPLATE_GROUPS.map(group => (
           <div key={group.label}>
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{group.label}</p>
-            <div className="flex flex-wrap gap-2">
-              {group.items.map(tmpl => (
-                <button
-                  key={tmpl.title}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => handleTemplateClick(tmpl)}
-                  className={`rounded-lg border-2 px-4 py-2.5 text-sm font-medium transition-all hover:-translate-y-0.5 hover:shadow-sm disabled:opacity-50 ${
-                    pendingTemplate === tmpl.title
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-transparent bg-muted/60 text-foreground hover:border-muted-foreground/20'
-                  }`}
-                >
-                  {pendingTemplate === tmpl.title ? '建立中…' : tmpl.label}
-                </button>
-              ))}
+            {/* 分組標題 + 分隔線 */}
+            <div className="mb-3 flex items-center gap-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </h3>
+              <div className="h-px flex-1 bg-border" />
+            </div>
+
+            {/* 卡片網格：手機 1 欄、平板 2 欄、桌面 3 欄 */}
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {group.items.map((tmpl) => {
+                const isLoading = pendingTemplate === tmpl.title;
+                return (
+                  <button
+                    key={tmpl.title}
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleTemplateClick(tmpl)}
+                    className={`group relative flex items-start gap-3 rounded-xl border bg-card p-3.5 text-left transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md disabled:pointer-events-none disabled:opacity-60 ${
+                      isLoading ? 'border-primary bg-primary/5' : 'border-border'
+                    }`}
+                  >
+                    {/* icon 圓形底色 */}
+                    <div className={`flex size-10 shrink-0 items-center justify-center rounded-lg text-lg ${tmpl.iconBg}`}>
+                      {tmpl.icon}
+                    </div>
+                    {/* 標題 + 副標 */}
+                    <div className="min-w-0 flex-1 pt-0.5">
+                      <div className="text-sm font-semibold text-foreground">
+                        {isLoading ? '建立中…' : tmpl.title}
+                      </div>
+                      <div className="mt-0.5 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+                        {tmpl.subtitle}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -120,15 +146,16 @@ export function QuizForm() {
         <p className="text-sm text-destructive">{error}</p>
       )}
 
-      {/* 自行輸入（預設收起） */}
+      {/* 自行輸入（預設收起，虛線大卡） */}
       {!showCustom
         ? (
             <button
               type="button"
               onClick={() => setShowCustom(true)}
-              className="w-full rounded-lg border border-dashed border-muted-foreground/30 py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              className="group flex w-full items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border py-5 text-sm font-medium text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/5 hover:text-primary"
             >
-              ✏️ 自行輸入標題
+              <span className="text-base">✏️</span>
+              自行輸入測驗標題
             </button>
           )
         : (
