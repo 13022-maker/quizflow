@@ -52,10 +52,13 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
   throw new Error('AI API 目前過載，請稍後再試');
 }
 
+// 一份多模態素材：mimeType + base64
+type Media = { mimeType: string; base64: string };
+
 // 呼叫 Gemini 2.5 Flash（省錢快速、多模態品質佳）
+// 支援多份 media（例如多張照片一次出題）
 async function generateWithGemini(
-  mimeType: string,
-  base64: string,
+  media: Media[],
   prompt: string,
 ): Promise<string> {
   if (!genAI) {
@@ -68,7 +71,7 @@ async function generateWithGemini(
         {
           role: 'user',
           parts: [
-            { inlineData: { mimeType, data: base64 } },
+            ...media.map(m => ({ inlineData: { mimeType: m.mimeType, data: m.base64 } })),
             { text: prompt },
           ],
         },
@@ -83,35 +86,33 @@ async function generateWithGemini(
 }
 
 // 呼叫 Claude Sonnet 4（品質優、適合複雜題目）
+// 支援多份 media（多張圖片）；PDF / document 仍維持單份
 async function generateWithClaude(
-  mimeType: string,
-  base64: string,
+  media: Media[],
   prompt: string,
 ): Promise<string> {
   if (!anthropic) {
     throw new Error('ANTHROPIC_API_KEY_MISSING');
   }
-  // Claude 多模態格式 — image / document 分開
-  const isImage = mimeType.startsWith('image/');
-  const content: Anthropic.MessageParam['content'] = isImage
-    ? [
-        {
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
-            data: base64,
+  // Claude 多模態格式 — image / document 分開；支援多份 media
+  const content: Anthropic.MessageParam['content'] = [
+    ...media.map((m): Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam =>
+      m.mimeType.startsWith('image/')
+        ? {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: m.mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+              data: m.base64,
+            },
+          }
+        : {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: m.base64 },
           },
-        },
-        { type: 'text', text: prompt },
-      ]
-    : [
-        {
-          type: 'document',
-          source: { type: 'base64', media_type: 'application/pdf', data: base64 },
-        },
-        { type: 'text', text: prompt },
-      ];
+    ),
+    { type: 'text', text: prompt },
+  ];
 
   const message = await callWithRetry(() =>
     anthropic.messages.create({
@@ -153,7 +154,8 @@ export async function POST(request: Request) {
   }
 
   const formData = await request.formData();
-  const file = formData.get('file') as File | null;
+  // 支援單檔（PDF / 音檔）與多檔（多張圖片）
+  const uploaded = formData.getAll('file').filter((v): v is File => v instanceof File);
   const typesRaw = formData.get('types') as string;
   const rawCount = Number.parseInt(formData.get('count') as string) || 5;
   const types: string[] = JSON.parse(typesRaw || '["mc"]');
@@ -167,19 +169,34 @@ export async function POST(request: Request) {
   const modelRaw = (formData.get('model') as string) || DEFAULT_MODEL;
   const model: ModelChoice = modelRaw === 'claude' ? 'claude' : 'gemini';
 
-  if (!file) {
+  if (uploaded.length === 0) {
     return NextResponse.json({ error: '請上傳檔案' }, { status: 400 });
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
-  const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext);
-  const isPDF = ext === 'pdf';
-  const isAudio = ['mp3', 'wav', 'm4a', 'ogg', 'webm', 'aac', 'flac'].includes(ext)
-    || file.type.startsWith('audio/');
+  const IMAGE_EXT_SET = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif']);
+  const AUDIO_EXT_SET = new Set(['mp3', 'wav', 'm4a', 'ogg', 'webm', 'aac', 'flac']);
+
+  const getExt = (f: File) => f.name.split('.').pop()?.toLowerCase() ?? '';
+  const isAudioFile = (f: File) =>
+    AUDIO_EXT_SET.has(getExt(f)) || f.type.startsWith('audio/');
+
+  const firstFile = uploaded[0]!;
+  const firstExt = getExt(firstFile);
+  const isImage = IMAGE_EXT_SET.has(firstExt);
+  const isPDF = firstExt === 'pdf';
+  const isAudio = isAudioFile(firstFile);
 
   if (!isImage && !isPDF && !isAudio) {
     return NextResponse.json(
       { error: '支援 PDF、圖片、音檔格式。Word 請另存 PDF 後上傳' },
+      { status: 400 },
+    );
+  }
+
+  // 多檔只允許全部都是圖片；PDF / 音檔僅處理第一個
+  if (uploaded.length > 1 && !uploaded.every(f => IMAGE_EXT_SET.has(getExt(f)))) {
+    return NextResponse.json(
+      { error: '多檔上傳僅支援圖片格式（PDF / 音檔請單檔上傳）' },
       { status: 400 },
     );
   }
@@ -250,9 +267,6 @@ ${typesPrompt}
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`;
 
-  // 讀取原始檔案位元組 + 準備 mime / base64
-  const arrayBuffer = await file.arrayBuffer();
-
   const imageMimeMap: Record<string, string> = {
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -299,17 +313,27 @@ ${typesPrompt}
     );
   }
 
-  let mimeType: string;
-  let base64: string;
+  const media: { mimeType: string; base64: string }[] = [];
 
   if (isAudio) {
-    mimeType = audioMimeMap[ext] || file.type || 'audio/mpeg';
-    base64 = Buffer.from(arrayBuffer).toString('base64');
+    const arrayBuffer = await firstFile.arrayBuffer();
+    media.push({
+      mimeType: audioMimeMap[firstExt] || firstFile.type || 'audio/mpeg',
+      base64: Buffer.from(arrayBuffer).toString('base64'),
+    });
   } else if (isImage) {
-    mimeType = imageMimeMap[ext] || 'image/png';
-    base64 = Buffer.from(arrayBuffer).toString('base64');
+    // 多張圖片一起送
+    for (const f of uploaded) {
+      const e = getExt(f);
+      const buf = await f.arrayBuffer();
+      media.push({
+        mimeType: imageMimeMap[e] || 'image/png',
+        base64: Buffer.from(buf).toString('base64'),
+      });
+    }
   } else {
     // PDF：若有傳頁數範圍用 pdf-lib 裁切後再傳
+    const arrayBuffer = await firstFile.arrayBuffer();
     let pdfBytes: Uint8Array;
     if (endPage > 0) {
       const srcDoc = await PDFDocument.load(arrayBuffer);
@@ -327,14 +351,16 @@ ${typesPrompt}
     } else {
       pdfBytes = new Uint8Array(arrayBuffer);
     }
-    mimeType = 'application/pdf';
-    base64 = Buffer.from(pdfBytes).toString('base64');
+    media.push({
+      mimeType: 'application/pdf',
+      base64: Buffer.from(pdfBytes).toString('base64'),
+    });
   }
 
   try {
     const raw = effectiveModel === 'claude'
-      ? await generateWithClaude(mimeType, base64, prompt)
-      : await generateWithGemini(mimeType, base64, prompt);
+      ? await generateWithClaude(media, prompt)
+      : await generateWithGemini(media, prompt);
 
     // Gemini JSON mode 通常直接回乾淨 JSON；Claude 有時包多餘文字，regex 提取保險
     const match = raw.match(/\{[\s\S]*\}/);
