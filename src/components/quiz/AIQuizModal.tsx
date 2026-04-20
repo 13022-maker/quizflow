@@ -57,6 +57,25 @@ const DIFFICULTIES: { value: Difficulty; label: string }[] = [
   { value: 'hard', label: '進階' },
 ];
 
+// 常見情境範本：一鍵填入主題 + 題型設定，破解使用者面對空白畫布的遲疑
+type Template = {
+  emoji: string;
+  label: string;
+  topic: string;
+  types: QuestionType[];
+  count: number;
+  difficulty: Difficulty;
+};
+
+const TEMPLATES: Template[] = [
+  { emoji: '📐', label: '國中數學', topic: '國中數學 — 一元一次方程式的解法與應用', types: ['mc', 'fill'], count: 10, difficulty: 'medium' },
+  { emoji: '🌏', label: '社會地理', topic: '國中社會 — 台灣的地形與氣候特色', types: ['mc', 'tf'], count: 10, difficulty: 'medium' },
+  { emoji: '📖', label: '國文閱讀', topic: '高中國文 — 古文閱讀測驗（出處、字義、文意理解）', types: ['mc', 'short'], count: 8, difficulty: 'medium' },
+  { emoji: '🧪', label: '自然科學', topic: '國中自然 — 光合作用的過程與影響因素', types: ['mc', 'fill'], count: 10, difficulty: 'easy' },
+  { emoji: '🇬🇧', label: '英文文法', topic: '高中英文 — 現在完成式與過去式的比較與應用', types: ['mc', 'fill'], count: 12, difficulty: 'medium' },
+  { emoji: '📜', label: '歷史', topic: '國中歷史 — 清領時期的台灣社會與經濟發展', types: ['mc', 'tf'], count: 10, difficulty: 'medium' },
+];
+
 const FILE_EMOJIS: Record<string, string> = {
   pdf: '📕',
   doc: '📘',
@@ -155,6 +174,15 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   }
 
   // ── Helpers ──
+  function applyTemplate(tpl: Template) {
+    setTopic(tpl.topic);
+    setTypes(tpl.types);
+    setCount(tpl.count);
+    setDifficulty(tpl.difficulty);
+    setError('');
+    setResult(null);
+  }
+
   function toggleType(t: QuestionType) {
     setTypes((prev) => {
       if (prev.includes(t)) {
@@ -400,6 +428,18 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         ? !!file
         : sourceUrl.trim().length > 0);
 
+  // 按鈕 disabled 時告訴使用者還缺什麼，避免誤以為是 bug
+  // eslint-disable-next-line style/multiline-ternary
+  const disabledReason = !types.length
+    ? '請至少選擇一種題型'
+    : mode === 'text' && !topic.trim()
+      ? '請輸入主題，或點上方範例快速開始'
+      : mode === 'file' && !file
+        ? '請上傳一份教材檔案'
+        : mode === 'url' && !sourceUrl.trim()
+          ? '請貼入 YouTube 或 Google Docs 連結'
+          : '';
+
   // ─── Render ────────────────────────────────────────────
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
@@ -502,18 +542,39 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
           {/* ── TEXT MODE ── */}
           {mode === 'text' && (
-            <div>
-              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
-                主題或課文內容
-              </label>
-              <textarea
-                value={topic}
-                onChange={e => setTopic(e.target.value)}
-                placeholder="輸入考試主題，例如：「台灣的地形與氣候」&#10;或直接貼上課文內容讓 AI 根據內容出題…"
-                rows={5}
-                className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
-              />
+            <div className="space-y-3">
+              {/* 快速範本：一鍵填入主題 + 題型，破解空白畫布焦慮 */}
+              <div>
+                <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">
+                  ✨ 快速範例（點選即可套用）
+                </p>
+                <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  {TEMPLATES.map(tpl => (
+                    <button
+                      key={tpl.label}
+                      type="button"
+                      onClick={() => applyTemplate(tpl)}
+                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                    >
+                      <span className="text-sm">{tpl.emoji}</span>
+                      {tpl.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                  主題或課文內容
+                </label>
+                <textarea
+                  value={topic}
+                  onChange={e => setTopic(e.target.value)}
+                  placeholder="輸入考試主題，例如：「台灣的地形與氣候」&#10;或直接貼上課文內容讓 AI 根據內容出題…"
+                  rows={5}
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm text-gray-800 placeholder:text-gray-300 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-amber-400"
+                />
+              </div>
             </div>
           )}
 
@@ -869,6 +930,13 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
         {/* ── Footer CTA ── */}
         <div className="shrink-0 border-t border-gray-100 px-5 pb-5 pt-2">
+          {!result && disabledReason && !loading && (
+            <p className="mb-2 text-center text-xs text-gray-500">
+              ⬆️
+              {' '}
+              {disabledReason}
+            </p>
+          )}
           {!result
             ? (
                 <button
