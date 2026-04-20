@@ -98,6 +98,7 @@ export function InlineQuestionCard({
       return;
     }
     // 先跟老師確認，避免誤點（無法復原）
+    // eslint-disable-next-line no-alert
     if (!window.confirm('重新生成會取代目前題目與選項，確定要重生嗎？')) {
       return;
     }
