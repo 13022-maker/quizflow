@@ -164,43 +164,72 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
     : 100;
 
   return (
-    <div className="overflow-hidden rounded-xl border bg-gradient-to-b from-sky-50 via-white to-emerald-50/60 p-5">
+    <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-gradient-to-b from-amber-50 via-orange-50/70 to-yellow-100/80 p-5 shadow-sm">
       <style>
         {`
           @keyframes streakcard-gallop {
-            0%   { transform: translateX(-3px) translateY(0) rotate(-4deg); }
-            25%  { transform: translateX(0)    translateY(-4px) rotate(2deg); }
-            50%  { transform: translateX(3px)  translateY(0) rotate(4deg); }
-            75%  { transform: translateX(0)    translateY(-4px) rotate(-2deg); }
-            100% { transform: translateX(-3px) translateY(0) rotate(-4deg); }
+            0%   { transform: translateX(-3px) translateY(0) rotate(-6deg); }
+            25%  { transform: translateX(0)    translateY(-5px) rotate(3deg); }
+            50%  { transform: translateX(3px)  translateY(0) rotate(6deg); }
+            75%  { transform: translateX(0)    translateY(-5px) rotate(-3deg); }
+            100% { transform: translateX(-3px) translateY(0) rotate(-6deg); }
+          }
+          @keyframes streakcard-dust {
+            0%, 100% { opacity: 0.3; transform: translateX(0); }
+            50%      { opacity: 0.6; transform: translateX(-6px); }
           }
         `}
       </style>
 
+      {/* 沙漠沙丘背景 */}
+      <svg
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-24 w-full opacity-60"
+        viewBox="0 0 400 100"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <path d="M0 70 Q100 40 200 60 T400 55 L400 100 L0 100 Z" fill="#f5deb3" opacity="0.5" />
+        <path d="M0 85 Q120 65 240 78 T400 75 L400 100 L0 100 Z" fill="#e6c98a" opacity="0.6" />
+      </svg>
+
+      {/* 太陽光暈（右上角） */}
+      <div
+        className="pointer-events-none absolute -right-8 -top-8 size-40 rounded-full opacity-50"
+        style={{ background: 'radial-gradient(circle, rgba(253,186,116,0.55) 0%, rgba(253,186,116,0) 70%)' }}
+        aria-hidden="true"
+      />
+
       {/* 標題：考完成績馬上到 + 奔跑的馬 */}
-      <div className="mb-3 flex items-center justify-center gap-1.5">
-        <span className="text-sm font-semibold tracking-wide text-foreground">
+      <div className="relative mb-3 flex items-center justify-center gap-2">
+        <span
+          aria-hidden="true"
+          className="inline-block text-xs opacity-50"
+          style={{ animation: 'streakcard-dust 0.6s ease-in-out infinite' }}
+        >
+          💨
+        </span>
+        <span className="text-sm font-bold tracking-wide text-amber-900 drop-shadow-sm">
           考完成績馬上到…
         </span>
         <span
           aria-hidden="true"
-          className="inline-block text-lg"
-          style={{ animation: 'streakcard-gallop 0.45s ease-in-out infinite' }}
+          className="inline-block text-xl"
+          style={{ animation: 'streakcard-gallop 0.4s ease-in-out infinite' }}
         >
           🐎
         </span>
       </div>
 
       {/* 頭部：連勝 + 森林規模 */}
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="relative mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
           <span className="text-2xl" aria-hidden="true">🔥</span>
           <div>
-            <p className="text-2xl font-semibold leading-none">
+            <p className="text-2xl font-bold leading-none text-amber-950">
               {data.currentStreak}
-              <span className="ml-1 text-sm font-normal text-muted-foreground">天連勝</span>
+              <span className="ml-1 text-sm font-normal text-amber-900/70">天連勝</span>
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-xs text-amber-900/60">
               最長紀錄：
               {data.longestStreak}
               {' '}
@@ -210,15 +239,15 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
         </div>
 
         <div className="text-right">
-          <p className="text-xs font-medium text-emerald-700">
-            🌳
+          <p className="text-xs font-semibold text-emerald-800">
+            🌴
             {' '}
             {stageLabel(maxStage)}
           </p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-[11px] text-amber-900/70">
             學生已答題
             {' '}
-            <span className="font-semibold text-foreground">{totalResponses}</span>
+            <span className="font-semibold text-amber-950">{totalResponses}</span>
             {' '}
             次
           </p>
@@ -234,29 +263,28 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
         </div>
       </div>
 
-      {/* 本週七格：每格一塊土地，有活動才長樹 */}
+      {/* 本週七格：沙地中的綠洲 */}
       <div className="relative flex gap-1.5">
         {DAYS.map((day, i) => {
           const isActive = data.weeklyActivity[i];
           const isToday = i === todayIndex;
           const isFuture = i > todayIndex;
-          // 未活動的過去日 stage = 0（空地）；活動日 stage = maxStage
           const stage: 0 | 1 | 2 | 3 | 4 | 5 = isActive ? maxStage : 0;
 
           return (
             <div key={day} className="flex flex-1 flex-col items-center gap-1">
               <div
-                className={`relative aspect-[4/5] w-full overflow-hidden rounded-lg bg-gradient-to-b transition-all ${
+                className={`relative aspect-[4/5] w-full overflow-hidden rounded-lg border bg-gradient-to-b transition-all ${
                   isFuture
-                    ? 'from-slate-50 to-slate-100 opacity-40'
+                    ? 'border-amber-100 from-amber-50/40 to-yellow-100/40 opacity-50'
                     : isActive
-                      ? 'from-sky-100 to-emerald-50 shadow-inner'
-                      : 'from-amber-50 to-stone-100'
-                } ${isToday && isActive ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                      ? 'border-emerald-200 from-sky-100 via-emerald-50 to-amber-100 shadow-inner'
+                      : 'border-amber-200/70 from-amber-100 to-yellow-200/70'
+                } ${isToday && isActive ? 'ring-2 ring-orange-500 ring-offset-2 ring-offset-amber-50' : ''}`}
               >
                 <Tree stage={stage} glow={isToday && isActive} />
               </div>
-              <span className={`text-[10px] ${isToday ? 'font-bold text-orange-500' : 'text-muted-foreground'}`}>
+              <span className={`text-[10px] ${isToday ? 'font-bold text-orange-600' : 'text-amber-900/70'}`}>
                 {day}
               </span>
             </div>
@@ -266,26 +294,26 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
 
       {/* 進度條：距離下一個森林階段 */}
       {maxStage < 5 && (
-        <div className="mt-4">
-          <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="relative mt-4">
+          <div className="mb-1 flex items-center justify-between text-[11px] text-amber-900/70">
             <span>
               本週
               {' '}
-              <span className="font-semibold text-emerald-600">{activeCount}</span>
+              <span className="font-semibold text-emerald-700">{activeCount}</span>
               {' '}
               天有栽種
             </span>
             <span>
               再
               {' '}
-              <span className="font-semibold text-foreground">{Math.max(0, (nextThreshold ?? 0) - totalResponses)}</span>
+              <span className="font-semibold text-amber-900">{Math.max(0, (nextThreshold ?? 0) - totalResponses)}</span>
               {' '}
               次答題升級
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-emerald-100">
+          <div className="h-1.5 overflow-hidden rounded-full bg-amber-200/60">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-500 transition-all"
+              className="h-full rounded-full bg-gradient-to-r from-orange-400 via-amber-500 to-emerald-500 transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -293,8 +321,8 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
       )}
 
       {maxStage === 5 && (
-        <p className="mt-4 text-center text-xs font-medium text-emerald-700">
-          🌲 您的班級已成為一片森林！學生累積
+        <p className="relative mt-4 text-center text-xs font-medium text-emerald-800">
+          🌲 您的班級已成為一片綠洲！學生累積
           {' '}
           {totalResponses}
           {' '}
