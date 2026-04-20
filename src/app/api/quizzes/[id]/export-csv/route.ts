@@ -1,5 +1,3 @@
-export const runtime = 'nodejs';
-
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -7,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/libs/DB';
 import { quizSchema, responseSchema } from '@/models/Schema';
 
+export const runtime = 'nodejs';
 
 export async function GET(
   _request: Request,
@@ -58,7 +57,7 @@ export async function GET(
     .join('\n');
 
   const bom = '\uFEFF';
-  const safeTitle = quiz.title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, '_');
+  const safeTitle = quiz.title.replace(/[^a-z0-9\u4E00-\u9FFF]/gi, '_');
   const filename = `${safeTitle}_成績.csv`;
 
   return new Response(bom + csvContent, {

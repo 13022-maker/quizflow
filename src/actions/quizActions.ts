@@ -59,16 +59,22 @@ export async function createQuiz(data: CreateQuizInput) {
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
   }
 
+  // VIP 白名單不限制
+  const { isVipUser } = await import('@/libs/vip');
+  if (await isVipUser()) {
+    // VIP 直接跳過 quota 檢查
+  } else {
   // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
-  const planId = await getOrgPlanId(orgId);
-  const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
-  if (quizLimit < 999) {
-    const [row] = await db
-      .select({ total: count() })
-      .from(quizSchema)
-      .where(eq(quizSchema.ownerId, orgId));
-    if ((row?.total ?? 0) >= quizLimit) {
-      return { error: 'QUOTA_EXCEEDED' };
+    const planId = await getOrgPlanId(orgId);
+    const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
+    if (quizLimit < 999) {
+      const [row] = await db
+        .select({ total: count() })
+        .from(quizSchema)
+        .where(eq(quizSchema.ownerId, orgId));
+      if ((row?.total ?? 0) >= quizLimit) {
+        return { error: 'QUOTA_EXCEEDED' };
+      }
     }
   }
 

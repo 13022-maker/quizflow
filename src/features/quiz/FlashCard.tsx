@@ -1,7 +1,7 @@
 'use client';
 
 import type { InferSelectModel } from 'drizzle-orm';
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import type { questionSchema } from '@/models/Schema';
@@ -13,6 +13,66 @@ const TF_DEFAULTS = [
   { id: 'tf-true', text: '正確' },
   { id: 'tf-false', text: '錯誤' },
 ];
+
+function SpeakerButton({ text }: { text: string }) {
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleSpeak = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (loading) {
+      return;
+    }
+
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'zh-tw-female', speed: 'normal' }),
+      });
+      if (!res.ok) {
+        throw new Error('TTS 失敗');
+      }
+      const { url } = await res.json();
+      const audio = new Audio(url);
+      audioRef.current = audio;
+      audio.play();
+    } catch {
+      // 靜默失敗
+    } finally {
+      setLoading(false);
+    }
+  }, [text, loading]);
+
+  return (
+    <button
+      type="button"
+      onClick={handleSpeak}
+      className="inline-flex items-center gap-1 rounded-lg bg-blue-50 px-3 py-1.5 text-sm text-blue-600 transition-colors hover:bg-blue-100"
+      title="朗讀發音"
+    >
+      {loading
+        ? (
+            <svg className="size-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          )
+        : (
+            <svg className="size-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" />
+            </svg>
+          )}
+      發音
+    </button>
+  );
+}
 
 /**
  * 快閃卡複習模式
@@ -173,6 +233,11 @@ export function FlashCard({
               {question.body}
             </p>
 
+            {/* 發音按鈕 */}
+            <div className="mt-3">
+              <SpeakerButton text={question.body} />
+            </div>
+
             {/* 選項提示（選擇題時） */}
             {question.options && question.options.length > 0 && (
               <div className="mt-4 space-y-1">
@@ -202,7 +267,10 @@ export function FlashCard({
             <p className="text-lg font-bold text-green-700">
               {getAnswerText(question)}
             </p>
-            <p className="mt-4 text-sm text-muted-foreground">
+            <div className="mt-3">
+              <SpeakerButton text={getAnswerText(question)} />
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
               點擊翻回正面
             </p>
           </div>

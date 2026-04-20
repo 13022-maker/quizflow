@@ -313,10 +313,60 @@ function QuestionItem({
   );
 }
 
+// ── 錯題單字卡發音按鈕 ──────────────────────────────────────────
+function VocabSpeaker({ text }: { text: string }) {
+  const [loading, setLoading] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const handleSpeak = async () => {
+    if (loading || !text) {
+      return;
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: 'zh-tw-female', speed: 'normal' }),
+      });
+      if (res.ok) {
+        const { url } = await res.json();
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.play();
+      }
+    } catch { /* */ }
+    setLoading(false);
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleSpeak}
+      className="flex items-center justify-center rounded-full bg-amber-100 p-2.5 text-amber-600 transition-colors hover:bg-amber-200"
+      title="發音"
+    >
+      {loading
+        ? (
+            <svg className="size-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+          )
+        : <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z" /></svg>}
+    </button>
+  );
+}
+
 // ── 成績畫面（含 AI 弱點分析 + 錯題重做按鈕） ──────────────────
 
 function ResultScreen({
   quizId,
+  quizTitle,
   result,
   questions,
   answers,
@@ -324,6 +374,7 @@ function ResultScreen({
   onRetry,
 }: {
   quizId: number;
+  quizTitle: string;
   result: SubmitResult;
   questions: Question[];
   answers: Record<number, string | string[]>;
@@ -341,10 +392,135 @@ function ResultScreen({
     d => d.isCorrect === false && questions.find(q => q.id === d.questionId)?.type !== 'short_answer',
   ).length;
 
+  // 錯題單字卡
+  const [vocabLoading, setVocabLoading] = useState(false);
+  const [vocabCards, setVocabCards] = useState<Array<{ front: string; back: string; phonetic: string; example: string }> | null>(null);
+  const [vocabFlipIndex, setVocabFlipIndex] = useState(0);
+  const [vocabFlipped, setVocabFlipped] = useState(false);
+  const [vocabSaving, setVocabSaving] = useState(false);
+  const [vocabSavedCode, setVocabSavedCode] = useState<string | null>(null);
+
+  const wrongQuestions = result.details
+    .filter(d => d.isCorrect === false)
+    .map(d => questions.find(q => q.id === d.questionId))
+    .filter(Boolean) as Question[];
+
+  const handleBuildVocab = async () => {
+    if (wrongQuestions.length === 0) {
+      return;
+    }
+    setVocabLoading(true);
+    try {
+      const wordsText = wrongQuestions
+        .map(q => q.body)
+        .join('\n');
+      const res = await fetch('/api/ai/generate-flashcards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ words: `從以下錯題中提取關鍵詞彙，每個關鍵概念生成一張卡片：\n${wordsText}` }),
+      });
+      if (res.ok) {
+        const { cards } = await res.json();
+        setVocabCards(cards);
+        setVocabFlipIndex(0);
+        setVocabFlipped(false);
+      }
+    } catch { /* 靜默 */ }
+    setVocabLoading(false);
+  };
+
+  const handleSaveVocab = async () => {
+    if (!vocabCards || vocabCards.length === 0) {
+      return;
+    }
+    setVocabSaving(true);
+    try {
+      const res = await fetch('/api/vocab/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quizId,
+          title: `${quizTitle} - 錯題複習`,
+          cards: vocabCards,
+        }),
+      });
+      if (res.ok) {
+        const { accessCode } = await res.json();
+        setVocabSavedCode(accessCode);
+      }
+    } catch { /* */ }
+    setVocabSaving(false);
+  };
+
   // ── AI 弱點分析狀態 ───────────────────────────────────────────
   const [weakPoints, setWeakPoints] = useState<WeakPoint[] | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState('');
+
+  // ── 下載學習報告 ──────────────────────────────────────────────
+  const handleDownloadReport = () => {
+    const tfDefaults = [{ id: 'tf-true', text: '正確' }, { id: 'tf-false', text: '錯誤' }];
+
+    const questionsHtml = questions.map((q, i) => {
+      const detail = result.details.find(d => d.questionId === q.id);
+      const opts = q.type === 'true_false' && (!q.options || q.options.length === 0) ? tfDefaults : (q.options ?? []);
+      const studentAns = answers[q.id];
+      const sep = q.type === 'ranking' ? ' → ' : '、';
+      const studentText = Array.isArray(studentAns)
+        ? studentAns.map(id => opts.find(o => o.id === id)?.text ?? id).join(sep)
+        : opts.find(o => o.id === String(studentAns))?.text ?? studentAns ?? '未作答';
+      const correctText = showAnswers && q.correctAnswers
+        ? q.correctAnswers.map(id => opts.find(o => o.id === id)?.text ?? id).join(sep)
+        : '';
+      const icon = detail?.isCorrect ? '✅' : detail?.isCorrect === false ? '❌' : '⏳';
+      // eslint-disable-next-line ts/no-use-before-define
+      const hint = hints[q.id] ?? '';
+
+      return `<div style="margin-bottom:16px;padding:12px;border:1px solid ${detail?.isCorrect === false ? '#fca5a5' : '#d1d5db'};border-radius:8px;${detail?.isCorrect === false ? 'background:#fef2f2' : ''}">
+        <p style="font-weight:600;margin:0">${icon} Q${i + 1}. ${q.body}</p>
+        <p style="margin:4px 0 0;color:#666">你的答案：${studentText}</p>
+        ${correctText && detail?.isCorrect === false ? `<p style="margin:4px 0 0;color:#15803d">正確答案：${correctText}</p>` : ''}
+        ${hint ? `<div style="margin-top:8px;padding:8px;background:#fef3c7;border-radius:6px;font-size:13px"><b>💡 AI 助教：</b>${hint}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    const weakHtml = weakPoints && weakPoints.length > 0
+      ? `<h2 style="margin-top:24px">需要加強的概念</h2>${weakPoints.map(wp => `<div style="margin-bottom:8px;padding:10px;background:#f0fdf4;border-radius:6px"><b>${wp.concept}</b><br/><span style="color:#666">${wp.suggestion}</span></div>`).join('')}`
+      : '';
+
+    const vocabHtml = vocabCards && vocabCards.length > 0
+      ? `<h2 style="margin-top:24px">錯題單字卡</h2><table style="width:100%;border-collapse:collapse;font-size:14px">${vocabCards.map(c => `<tr><td style="border:1px solid #ddd;padding:8px;font-weight:600">${c.front}</td><td style="border:1px solid #ddd;padding:8px">${c.back}</td><td style="border:1px solid #ddd;padding:8px;color:#888;font-size:12px">${c.example || ''}</td></tr>`).join('')}</table>`
+      : '';
+
+    const dateStr = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${quizTitle} - 學習報告</title>
+      <style>body{font-family:-apple-system,sans-serif;max-width:700px;margin:0 auto;padding:20px;color:#333}h1{text-align:center;color:#1e40af;font-size:22px}h2{color:#374151;border-bottom:2px solid #e5e7eb;padding-bottom:6px}.score{text-align:center;font-size:48px;font-weight:700;color:${percentage >= 60 ? '#16a34a' : '#dc2626'}}.meta{text-align:center;color:#888;font-size:14px;margin-bottom:8px}.subtitle{text-align:center;color:#555;font-size:16px;margin-bottom:24px;font-weight:600}@media print{body{padding:10px}}</style></head><body>
+      <h1>📝 學習報告</h1>
+      <p class="subtitle">${quizTitle}</p>
+      <p class="meta">${dateStr}</p>
+      <div style="text-align:center;margin-bottom:24px">
+        <p class="score">${result.score} / ${result.totalPoints}</p>
+        <p style="font-size:20px;color:#888">${percentage}%</p>
+      </div>
+      <h2>逐題對照</h2>
+      ${questionsHtml}
+      ${weakHtml}
+      ${vocabHtml}
+      <p style="text-align:center;margin-top:32px;color:#aaa;font-size:12px">由 QuizFlow 生成</p>
+      </body></html>`;
+
+    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, '_blank');
+    if (w) {
+      w.onload = () => {
+        setTimeout(() => {
+          w.print();
+        }, 500);
+      };
+    }
+  };
 
   // ── AI 助教提示（每題 ≤57 字解題提示） ──────────────────────
   // 獨立於 showAnswers：即使老師設定不顯示解答，仍顯示概念提示（57 字不洩答）
@@ -447,20 +623,135 @@ function ResultScreen({
           </p>
         )}
 
-        {/* 錯題重做按鈕 */}
-        {retryableWrongCount > 0 && (
+        {/* 錯題重做 + 單字卡按鈕 */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {retryableWrongCount > 0 && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="rounded-lg border border-primary px-5 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+            >
+              重做錯題（
+              {retryableWrongCount}
+              {' '}
+              題）
+            </button>
+          )}
+          {wrongQuestions.length > 0 && !vocabCards && (
+            <button
+              type="button"
+              onClick={handleBuildVocab}
+              disabled={vocabLoading}
+              className="rounded-lg bg-amber-500 px-5 py-2 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+            >
+              {vocabLoading ? '生成中…' : '🔤 建立錯題單字卡'}
+            </button>
+          )}
           <button
             type="button"
-            onClick={onRetry}
-            className="mt-4 rounded-lg border border-primary px-5 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+            onClick={() => handleDownloadReport()}
+            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
-            重做錯題（
-            {retryableWrongCount}
-            {' '}
-            題）
+            📄 下載學習報告
           </button>
-        )}
+        </div>
       </div>
+
+      {/* 錯題單字卡翻牌練習 */}
+      {vocabCards && vocabCards.length > 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="font-semibold text-amber-800">錯題單字卡</h3>
+            <span className="text-xs text-amber-600">
+              {vocabFlipIndex + 1}
+              {' '}
+              /
+              {' '}
+              {vocabCards.length}
+            </span>
+          </div>
+          <div
+            className="cursor-pointer"
+            style={{ perspective: '800px' }}
+            onClick={() => setVocabFlipped(prev => !prev)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && setVocabFlipped(prev => !prev)}
+          >
+            <div
+              className="relative transition-transform duration-500"
+              style={{ transformStyle: 'preserve-3d', transform: vocabFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+            >
+              <div className="rounded-xl border bg-white p-6 text-center shadow-sm" style={{ backfaceVisibility: 'hidden' }}>
+                <p className="text-xl font-bold">{vocabCards[vocabFlipIndex]?.front}</p>
+                {vocabCards[vocabFlipIndex]?.phonetic && (
+                  <p className="mt-1 text-sm text-gray-400">{vocabCards[vocabFlipIndex]?.phonetic}</p>
+                )}
+                <p className="mt-2 text-xs text-gray-300">點擊翻牌</p>
+              </div>
+              <div
+                className="absolute inset-0 rounded-xl border bg-white p-6 text-center shadow-sm"
+                style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
+              >
+                <p className="text-lg font-bold text-green-700">{vocabCards[vocabFlipIndex]?.back}</p>
+                {vocabCards[vocabFlipIndex]?.example && (
+                  <p className="mt-2 text-sm italic text-gray-500">{vocabCards[vocabFlipIndex]?.example}</p>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              disabled={vocabFlipIndex === 0}
+              onClick={() => {
+                setVocabFlipIndex(prev => prev - 1);
+                setVocabFlipped(false);
+              }}
+              className="rounded px-3 py-1 text-sm text-amber-700 hover:bg-amber-100 disabled:opacity-30"
+            >
+              ← 上一張
+            </button>
+            <VocabSpeaker text={vocabCards[vocabFlipIndex]?.front ?? ''} />
+            <button
+              type="button"
+              disabled={vocabFlipIndex === vocabCards.length - 1}
+              onClick={() => {
+                setVocabFlipIndex(prev => prev + 1);
+                setVocabFlipped(false);
+              }}
+              className="rounded px-3 py-1 text-sm text-amber-700 hover:bg-amber-100 disabled:opacity-30"
+            >
+              下一張 →
+            </button>
+          </div>
+          {/* 儲存到單字卡集 */}
+          {vocabSavedCode
+            ? (
+                <div className="mt-3 rounded-lg bg-green-50 px-4 py-3 text-center">
+                  <p className="text-sm font-medium text-green-700">已儲存！隨時可回來複習</p>
+                  <a
+                    href={`/vocab/${vocabSavedCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-block text-sm text-green-600 underline"
+                  >
+                    開啟單字卡練習 →
+                  </a>
+                </div>
+              )
+            : (
+                <button
+                  type="button"
+                  onClick={handleSaveVocab}
+                  disabled={vocabSaving}
+                  className="mt-3 w-full rounded-lg border border-amber-300 bg-amber-50 py-2.5 text-sm font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {vocabSaving ? '儲存中…' : '💾 儲存到單字卡集'}
+                </button>
+              )}
+        </div>
+      )}
 
       {/* AI 弱點分析區塊（有答錯且有解答時顯示） */}
       {showAnswers && (
@@ -839,7 +1130,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   };
 
   const scrollToQuestion = (qId: number) => {
-    document.getElementById(`q-${qId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.getElementById(`q-${qId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const answeredCount = displayQuestions.filter((q) => {
@@ -1031,6 +1322,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     return (
       <ResultScreen
         quizId={quiz.id}
+        quizTitle={quiz.title}
         result={result}
         questions={displayQuestions}
         answers={answers}
@@ -1258,7 +1550,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
       {/* 題目清單 */}
       {displayQuestions.map((question, index) => (
-        <div key={question.id} id={`q-${question.id}`}>
+        <div key={question.id} id={`q-${question.id}`} style={{ scrollMarginTop: '80px' }}>
           <QuestionItem
             question={question}
             index={index}

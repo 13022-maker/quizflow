@@ -5,7 +5,9 @@ import { useEffect, useState } from 'react';
 const DISMISS_KEY = 'quizflow-inapp-dismissed';
 
 function isInAppBrowser(): boolean {
-  if (typeof navigator === 'undefined') return false;
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
   const ua = navigator.userAgent || '';
   return /Line\//i.test(ua)
     || /FBAN|FBAV/i.test(ua)
@@ -23,10 +25,12 @@ export function InAppBrowserBanner() {
     }
   }, []);
 
-  if (!show) return null;
+  if (!show) {
+    return null;
+  }
 
   const handleCopy = async () => {
-    await navigator.clipboard.writeText(window.location.origin + '/dashboard');
+    await navigator.clipboard.writeText(`${window.location.origin}/dashboard`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

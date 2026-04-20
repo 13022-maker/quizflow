@@ -21,7 +21,33 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
 
   // 依 accessCode 查詢測驗（只顯示已發佈的）
   const [quiz] = await db
-    .select()
+    .select({
+      id: quizSchema.id,
+      ownerId: quizSchema.ownerId,
+      title: quizSchema.title,
+      description: quizSchema.description,
+      accessCode: quizSchema.accessCode,
+      roomCode: quizSchema.roomCode,
+      status: quizSchema.status,
+      showAnswers: quizSchema.showAnswers,
+      shuffleQuestions: quizSchema.shuffleQuestions,
+      shuffleOptions: quizSchema.shuffleOptions,
+      preventLeave: quizSchema.preventLeave,
+      timeLimitSeconds: quizSchema.timeLimitSeconds,
+      allowedAttempts: quizSchema.allowedAttempts,
+      expiresAt: quizSchema.expiresAt,
+      scoringMode: quizSchema.scoringMode,
+      attemptDecayRate: quizSchema.attemptDecayRate,
+      quizMode: quizSchema.quizMode,
+      isMarketplace: quizSchema.isMarketplace,
+      category: quizSchema.category,
+      gradeLevel: quizSchema.gradeLevel,
+      tags: quizSchema.tags,
+      copyCount: quizSchema.copyCount,
+      originalQuizId: quizSchema.originalQuizId,
+      createdAt: quizSchema.createdAt,
+      updatedAt: quizSchema.updatedAt,
+    })
     .from(quizSchema)
     .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
@@ -76,7 +102,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50/80 via-white to-violet-50/50 pb-24 pt-10 md:py-16 md:pb-24">
+    <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-emerald-50/30 pb-24 pt-10 md:py-16 md:pb-24">
       <div className="mx-auto max-w-2xl px-4">
         <QuizTaker quiz={quiz} questions={questions} />
       </div>

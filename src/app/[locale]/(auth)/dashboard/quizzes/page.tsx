@@ -32,9 +32,29 @@ export default async function QuizzesPage() {
   try {
     if (orgId) {
       // 並行查詢：測驗清單、方案資訊
+      // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
       [planId, quizzes] = await Promise.all([
         getOrgPlanId(orgId),
-        db.select().from(quizSchema).where(eq(quizSchema.ownerId, orgId)).orderBy(quizSchema.createdAt),
+        db.select({
+          id: quizSchema.id,
+          ownerId: quizSchema.ownerId,
+          title: quizSchema.title,
+          description: quizSchema.description,
+          accessCode: quizSchema.accessCode,
+          status: quizSchema.status,
+          shuffleQuestions: quizSchema.shuffleQuestions,
+          shuffleOptions: quizSchema.shuffleOptions,
+          allowedAttempts: quizSchema.allowedAttempts,
+          showAnswers: quizSchema.showAnswers,
+          timeLimitSeconds: quizSchema.timeLimitSeconds,
+          preventLeave: quizSchema.preventLeave,
+          roomCode: quizSchema.roomCode,
+          scoringMode: quizSchema.scoringMode,
+          attemptDecayRate: quizSchema.attemptDecayRate,
+          expiresAt: quizSchema.expiresAt,
+          updatedAt: quizSchema.updatedAt,
+          createdAt: quizSchema.createdAt,
+        }).from(quizSchema).where(eq(quizSchema.ownerId, orgId)).orderBy(quizSchema.createdAt) as any,
       ]);
       quizLimit = PricingPlanList[planId]?.features.website ?? 10;
       quizCount = quizzes.length;

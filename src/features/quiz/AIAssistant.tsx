@@ -71,7 +71,7 @@ export function AIAssistant({ quizId, questions, onExit }: Props) {
         >
           ← 返回作答
         </button>
-        <span className="text-xs text-muted-foreground tabular-nums">
+        <span className="text-xs tabular-nums text-muted-foreground">
           {index + 1}
           {' '}
           /

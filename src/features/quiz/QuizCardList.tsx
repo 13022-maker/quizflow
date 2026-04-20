@@ -90,11 +90,15 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
             <svg className="size-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0" />
             </svg>
-            {responseCount} 人作答
+            {responseCount}
+            {' '}
+            人作答
           </span>
           {quiz.roomCode && (
             <span className="flex items-center gap-1 font-mono text-xs">
-              房間碼 {quiz.roomCode}
+              房間碼
+              {' '}
+              {quiz.roomCode}
             </span>
           )}
         </div>
@@ -137,7 +141,11 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
         {/* 刪除確認 */}
         {showDelete && (
           <div className="mt-3 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-            <p className="flex-1 text-sm text-red-700">確定要刪除「{quiz.title}」？此操作無法復原。</p>
+            <p className="flex-1 text-sm text-red-700">
+              確定要刪除「
+              {quiz.title}
+              」？此操作無法復原。
+            </p>
             <button
               type="button"
               onClick={handleDelete}

@@ -34,7 +34,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
   }
 
   const [quiz] = await db
-    .select()
+    .select({ id: quizSchema.id, title: quizSchema.title })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);

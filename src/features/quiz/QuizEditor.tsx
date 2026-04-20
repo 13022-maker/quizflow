@@ -33,6 +33,7 @@ import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
 import ShareModal from '@/components/quiz/ShareModal';
 import VocabAIModal from '@/components/quiz/VocabAIModal';
+import VocabCardModal from '@/components/quiz/VocabCardModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -346,7 +347,34 @@ export function QuizEditor({
 
   // 控制「上傳講義命題」Modal 顯示
   const [showFileGenerator, setShowFileGenerator] = useState(false);
+  const [showVocabModal, setShowVocabModal] = useState(false);
   const [showMarketplace, setShowMarketplace] = useState(false);
+
+  // ── VocabCardModal onImport：直接以 { body, correctAnswers } 形狀建立題目 ──
+  const handleVocabImport = async (
+    vocabQuestions: Array<{
+      type: string;
+      body: string;
+      options: Array<{ id: string; text: string }>;
+      correctAnswers: string[];
+      points: number;
+    }>,
+  ) => {
+    setIsSubmitting(true);
+    setShowVocabModal(false);
+
+    for (const q of vocabQuestions) {
+      await createQuestion(initialQuiz.id, {
+        type: 'short_answer',
+        body: q.body,
+        correctAnswers: q.correctAnswers,
+        points: q.points,
+      });
+    }
+
+    setIsSubmitting(false);
+    router.refresh();
+  };
 
   // ── 從檔案匯入題目 ──────────────────────────────────────────────────
   const handleFileImport = async (fileQuestions: FileGeneratedQuestion[], _title: string) => {
@@ -525,9 +553,14 @@ export function QuizEditor({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             {isPro && (
-              <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
-                📂 上傳講義命題
-              </DropdownMenuItem>
+              <>
+                <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
+                  📂 上傳講義命題
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowVocabModal(true)}>
+                  🔤 AI 單字卡
+                </DropdownMenuItem>
+              </>
             )}
             <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
               {initialQuiz.isMarketplace ? '✅ 管理市集上架' : '📤 分享到市集'}
@@ -588,6 +621,14 @@ export function QuizEditor({
         <FileQuizGenerator
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
+        />
+      )}
+
+      {/* AI 單字卡 Modal */}
+      {showVocabModal && (
+        <VocabCardModal
+          onImport={handleVocabImport}
+          onClose={() => setShowVocabModal(false)}
         />
       )}
 

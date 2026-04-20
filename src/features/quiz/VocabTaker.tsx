@@ -95,7 +95,7 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
     if (!typed) {
       return;
     }
-    setTotalAttempts((n) => n + 1);
+    setTotalAttempts(n => n + 1);
 
     const isCorrect = typed.toLowerCase() === current.answer.toLowerCase();
     if (isCorrect) {
@@ -115,7 +115,7 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
       goNext();
     } else {
       // 錯誤：顯示正解，並將該單字移到佇列尾端重練
-      setTotalMistakes((n) => n + 1);
+      setTotalMistakes(n => n + 1);
       setJustFailed({ expected: current.answer });
       setQueue((q) => {
         if (q.length <= 1) {
@@ -167,12 +167,17 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
           </div>
           <div className="rounded-lg bg-blue-50 p-4">
             <p className="text-xs text-muted-foreground">正確率</p>
-            <p className="text-2xl font-bold text-blue-700">{accuracy}%</p>
+            <p className="text-2xl font-bold text-blue-700">
+              {accuracy}
+              %
+            </p>
           </div>
           <div className="rounded-lg bg-amber-50 p-4">
             <p className="text-xs text-muted-foreground">耗時</p>
             <p className="text-2xl font-bold text-amber-700">
-              {minutes}:{seconds.toString().padStart(2, '0')}
+              {minutes}
+              :
+              {seconds.toString().padStart(2, '0')}
             </p>
           </div>
         </div>
@@ -206,8 +211,16 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span className="font-medium">{quiz.title}</span>
           <span>
-            已過關 {mastered.size} / {totalWords}
-            {' '}· 佇列剩 {queue.length}
+            已過關
+            {' '}
+            {mastered.size}
+            {' '}
+            /
+            {' '}
+            {totalWords}
+            {' '}
+            · 佇列剩
+            {queue.length}
           </span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-muted">
@@ -228,7 +241,11 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
         </p>
         {current!.mistakes > 0 && (
           <p className="mt-3 text-center text-xs text-amber-600">
-            ⚠️ 這個單字錯過 {current!.mistakes} 次，加油！
+            ⚠️ 這個單字錯過
+            {' '}
+            {current!.mistakes}
+            {' '}
+            次，加油！
           </p>
         )}
       </div>
@@ -270,7 +287,7 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
           ref={inputRef}
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={!!justFailed}
           autoComplete="off"
@@ -287,9 +304,19 @@ export function VocabTaker({ quiz, questions }: { quiz: Quiz; questions: Questio
 
       {/* 即時統計 */}
       <div className="flex items-center justify-center gap-6 text-xs text-muted-foreground">
-        <span>嘗試 {totalAttempts}</span>
-        <span>錯誤 {totalMistakes}</span>
-        <span>正確率 {accuracy}%</span>
+        <span>
+          嘗試
+          {totalAttempts}
+        </span>
+        <span>
+          錯誤
+          {totalMistakes}
+        </span>
+        <span>
+          正確率
+          {accuracy}
+          %
+        </span>
       </div>
     </div>
   );

@@ -10,18 +10,20 @@ export function TemplateB({ data }: { data: DashboardData }) {
   return (
     <div className="pb-8">
       {/* Hero Banner */}
-      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 px-6 py-8 text-white shadow-lg sm:p-10">
-        <p className="text-sm font-medium text-white/80">{greeting}</p>
+      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 px-6 py-8 text-white shadow-lg sm:p-10">
+        <p className="text-sm font-medium text-white/70">{greeting}</p>
         <h1 className="mt-1 text-2xl font-bold sm:text-3xl">歡迎使用 QuizFlow</h1>
         <p className="mt-2 max-w-lg text-sm text-white/80">
           {data.publishedCount > 0
             ? `您有 ${data.publishedCount} 份測驗進行中，共 ${data.totalResponses} 位學生已作答。`
             : '開始建立您的第一份測驗，幾分鐘內即可分享給學生。'}
         </p>
+        {/* 標語 */}
+        <p className="mt-4 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm" style={{ width: 'fit-content' }}>少紙化、效率佳</p>
       </div>
 
       {/* ── 快速行動卡片 ── */}
-      <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-3">
+      <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {/* 建立新測驗 */}
         <Link
           href="/dashboard/quizzes/new"
@@ -84,6 +86,25 @@ export function TemplateB({ data }: { data: DashboardData }) {
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </Link>
+
+        {/* AI 單字卡 */}
+        <Link
+          href="/dashboard/vocab/new"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-amber-200 hover:shadow-md"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 transition-colors group-hover:bg-amber-600 group-hover:text-white">
+            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-bold text-foreground">AI 單字卡</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">輸入單字，AI 生成卡片與發音練習</p>
+          </div>
+          <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
       </div>
 
       {/* Horizontal Stats Strip */}
@@ -109,7 +130,8 @@ function StatBlock({ value, label }: { value: string; label: string }) {
 }
 
 function getGreeting(): string {
-  const hour = new Date().getHours();
+  const utcNow = new Date();
+  const hour = (utcNow.getUTCHours() + 8) % 24;
   if (hour < 12) {
     return '早安！';
   }

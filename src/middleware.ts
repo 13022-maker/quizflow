@@ -21,6 +21,15 @@ const isPublicApiRoute = createRouteMatcher([
   // AI 助教：學生作答前查看 AI 提示，匿名作答所以不需登入
   '/api/ai/generate-hints/(.*)',
   '/:locale/api/ai/generate-hints/(.*)',
+  // TTS 發音：學生單字卡練習需要
+  '/api/ai/tts',
+  '/:locale/api/ai/tts',
+  // 錯題單字卡：學生作答後建立
+  '/api/ai/generate-flashcards',
+  '/:locale/api/ai/generate-flashcards',
+  // 儲存單字卡集：學生作答後儲存
+  '/api/vocab/save',
+  '/:locale/api/vocab/save',
 ]);
 
 const isProtectedRoute = createRouteMatcher([

@@ -44,8 +44,34 @@ export default async function EditQuizPage({
   }
 
   // 取得測驗（驗證所有權）
+  // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
   const [quiz] = await db
-    .select()
+    .select({
+      id: quizSchema.id,
+      ownerId: quizSchema.ownerId,
+      title: quizSchema.title,
+      description: quizSchema.description,
+      accessCode: quizSchema.accessCode,
+      status: quizSchema.status,
+      shuffleQuestions: quizSchema.shuffleQuestions,
+      shuffleOptions: quizSchema.shuffleOptions,
+      allowedAttempts: quizSchema.allowedAttempts,
+      showAnswers: quizSchema.showAnswers,
+      timeLimitSeconds: quizSchema.timeLimitSeconds,
+      preventLeave: quizSchema.preventLeave,
+      roomCode: quizSchema.roomCode,
+      scoringMode: quizSchema.scoringMode,
+      attemptDecayRate: quizSchema.attemptDecayRate,
+      expiresAt: quizSchema.expiresAt,
+      isMarketplace: quizSchema.isMarketplace,
+      category: quizSchema.category,
+      gradeLevel: quizSchema.gradeLevel,
+      tags: quizSchema.tags,
+      copyCount: quizSchema.copyCount,
+      originalQuizId: quizSchema.originalQuizId,
+      updatedAt: quizSchema.updatedAt,
+      createdAt: quizSchema.createdAt,
+    })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
@@ -66,7 +92,7 @@ export default async function EditQuizPage({
 
   const autoOpenAI = searchParams.ai === '1';
 
-  return <QuizEditor quiz={quiz} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />;
+  return <QuizEditor quiz={quiz as any} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />;
 }
 
 export const dynamic = 'force-dynamic';

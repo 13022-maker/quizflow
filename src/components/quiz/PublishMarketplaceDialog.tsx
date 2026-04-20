@@ -83,37 +83,43 @@ export function PublishMarketplaceDialog({
                 </p>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">科目 *</label>
-                  <select
-                    value={category}
-                    onChange={e => setCategory(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">請選擇</option>
-                    {MARKETPLACE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                  <label className="mb-1 block text-sm font-medium">
+                    科目 *
+                    <select
+                      value={category}
+                      onChange={e => setCategory(e.target.value)}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">請選擇</option>
+                      {MARKETPLACE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">適用年級 *</label>
-                  <select
-                    value={gradeLevel}
-                    onChange={e => setGradeLevel(e.target.value)}
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  >
-                    <option value="">請選擇</option>
-                    {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
-                  </select>
+                  <label className="mb-1 block text-sm font-medium">
+                    適用年級 *
+                    <select
+                      value={gradeLevel}
+                      onChange={e => setGradeLevel(e.target.value)}
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      <option value="">請選擇</option>
+                      {GRADE_LEVELS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  </label>
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">標籤（選填，逗號分隔）</label>
-                  <input
-                    value={tagsInput}
-                    onChange={e => setTagsInput(e.target.value)}
-                    placeholder="例如：期中考、三角函數、第三章"
-                    className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
+                  <label className="mb-1 block text-sm font-medium">
+                    標籤（選填，逗號分隔）
+                    <input
+                      value={tagsInput}
+                      onChange={e => setTagsInput(e.target.value)}
+                      placeholder="例如：期中考、三角函數、第三章"
+                      className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </label>
                 </div>
 
                 {error && <p className="text-sm text-red-600">{error}</p>}

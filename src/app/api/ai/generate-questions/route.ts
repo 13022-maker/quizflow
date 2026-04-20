@@ -1,9 +1,8 @@
 /**
  * 文字主題出題 API
- * 主用 Gemini 2.5 Flash（免費），Gemini 過載時自動 fallback 到 Claude Sonnet 4
+ * 主用 Gemini 2.5 Flash（免費），Gemini 過載時自動 fallback 到 OpenAI GPT-4o
  */
 
-import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
@@ -14,21 +13,6 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-const anthropic = new Anthropic();
-
-// 判斷是否為過載 / 限流錯誤
-function isOverloadError(err: unknown): boolean {
-  const status = (err as { status?: number; code?: number }).status
-    ?? (err as { code?: number }).code;
-  const msg = err instanceof Error ? err.message : '';
-  return status === 429
-    || status === 503
-    || status === 529
-    || (typeof status === 'number' && status >= 500)
-    || msg.includes('overloaded')
-    || msg.includes('UNAVAILABLE')
-    || msg.includes('high demand');
-}
 
 const DIFF_LABELS: Record<string, string> = {
   easy: '簡單（基礎記憶型）',
@@ -121,26 +105,68 @@ ${typesPrompt}
     });
     raw = response.text ?? '';
   } catch (geminiErr) {
-    if (!isOverloadError(geminiErr)) {
-      const msg = geminiErr instanceof Error ? geminiErr.message : '未知錯誤';
-      console.error('[generate-questions] Gemini 失敗（非過載）：', geminiErr);
-      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
-    }
+    console.warn('[generate-questions] Gemini 失敗，fallback OpenAI：', geminiErr instanceof Error ? geminiErr.message : geminiErr);
 
-    // Gemini 過載 → fallback Claude
-    console.warn('[generate-questions] Gemini 過載，fallback Claude');
-    usedModel = 'claude';
+    // Gemini 失敗 → fallback OpenAI
+    console.warn('[generate-questions] Gemini 過載，fallback OpenAI');
+    usedModel = 'openai';
+    const openaiKey = process.env.OPENAI_API_KEY;
+    if (!openaiKey) {
+      return NextResponse.json({ error: 'AI 備援服務未設定（缺少 OPENAI_API_KEY）' }, { status: 503 });
+    }
     try {
-      const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
+      const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 8192,
+          response_format: { type: 'json_object' },
+        }),
       });
-      raw = (message.content[0] as { type: string; text: string }).text ?? '';
-    } catch (claudeErr) {
-      const msg = claudeErr instanceof Error ? claudeErr.message : '未知錯誤';
-      console.error('[generate-questions] Claude fallback 也失敗：', claudeErr);
-      return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      if (!openaiRes.ok) {
+        const errBody = await openaiRes.text();
+        throw new Error(`OpenAI ${openaiRes.status}: ${errBody.slice(0, 200)}`);
+      }
+      const openaiData = await openaiRes.json();
+      raw = openaiData.choices?.[0]?.message?.content ?? '';
+    } catch (openaiErr) {
+      console.error('[generate-questions] OpenAI fallback 失敗，嘗試 Claude：', openaiErr);
+
+      // OpenAI 也失敗 → 第三備援 Claude
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
+      if (!anthropicKey) {
+        const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';
+        return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      }
+
+      usedModel = 'claude';
+      try {
+        const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 4096,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+        if (!claudeRes.ok) {
+          const errBody = await claudeRes.text();
+          throw new Error(`Claude ${claudeRes.status}: ${errBody.slice(0, 200)}`);
+        }
+        const claudeData = await claudeRes.json();
+        raw = claudeData.content?.[0]?.text ?? '';
+      } catch (claudeErr) {
+        const msg = claudeErr instanceof Error ? claudeErr.message : '未知錯誤';
+        console.error('[generate-questions] Claude 第三備援也失敗：', claudeErr);
+        return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+      }
     }
   }
 
@@ -154,6 +180,19 @@ ${typesPrompt}
   } catch {
     console.error(`[generate-questions] ${usedModel} 回傳非 JSON：`, raw.slice(0, 500));
     return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
+  }
+
+  // 後處理：確保聽力題 type 正確（有些模型會回傳 mc 而非 listening）
+  if (hasListening && result.questions) {
+    const requestedTypes = new Set(types as string[]);
+    for (const q of result.questions) {
+      if (q.listeningText && q.type !== 'listening') {
+        q.type = 'listening';
+      }
+      if (requestedTypes.size === 1 && requestedTypes.has('listening') && q.type === 'mc') {
+        q.type = 'listening';
+      }
+    }
   }
 
   return NextResponse.json(result);

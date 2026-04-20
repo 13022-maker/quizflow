@@ -233,13 +233,20 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           credentials: 'include',
           body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
         });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) {
+              setUpgradeRequired(true);
+            }
+            if (errData.error) {
+              errMsg = errData.error;
+            }
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       } else if (mode === 'file') {
         setStep('讀取檔案…');
         const fd = new FormData();
@@ -279,13 +286,20 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('model', model);
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) {
+              setUpgradeRequired(true);
+            }
+            if (errData.error) {
+              errMsg = errData.error;
+            }
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       } else {
         // URL 模式（YouTube / Google Docs）
         setStep('抓取連結內容中…');
@@ -301,32 +315,47 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             model,
           }),
         });
-        data = await res.json();
         if (!res.ok) {
-          if ((data as { upgradeRequired?: boolean }).upgradeRequired) {
-            setUpgradeRequired(true);
-          }
-          throw new Error((data as { error?: string }).error || '命題失敗');
+          let errMsg = '命題失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) {
+              setUpgradeRequired(true);
+            }
+            if (errData.error) {
+              errMsg = errData.error;
+            }
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
         }
+        data = await res.json();
       }
 
       // 聽力題自動呼叫 TTS 生成音檔
-      const listeningQs = data.questions?.filter((q: GeneratedQuestion) => q.type === 'listening' && q.listeningText) ?? [];
+      const listeningQs = data.questions?.filter((q: GeneratedQuestion) => q.type === 'listening') ?? [];
       if (listeningQs.length > 0) {
         setTtsGenerating(true);
         let done = 0;
         setTtsProgress(`音檔生成中 (0/${listeningQs.length})...`);
         await Promise.all(
           listeningQs.map(async (q: GeneratedQuestion) => {
+            const ttsText = q.listeningText || q.question;
+            if (!ttsText) {
+              done++;
+              return;
+            }
             try {
               const res = await fetch('/api/ai/tts', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: q.listeningText, voice: ttsVoice, speed: ttsSpeed }),
+                body: JSON.stringify({ text: ttsText, voice: ttsVoice, speed: ttsSpeed }),
               });
               if (res.ok) {
                 const ttsData = await res.json();
                 q.audioUrl = ttsData.url;
+                if (!q.listeningText) {
+                  q.listeningText = ttsText;
+                }
               }
             } catch {
               // TTS 失敗不阻擋匯入，老師可事後手動上傳音檔
@@ -567,12 +596,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
                         <span className="shrink-0 text-gray-600">從第</span>
                         <input
-                          type="number"
-                          min={1}
-                          max={pdfPageCount}
+                          type="text"
+                          inputMode="numeric"
                           value={startPage}
-                          onChange={(e) => {
-                            const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
+                          onChange={e => setStartPage(Number(e.target.value) || 1)}
+                          onBlur={() => {
+                            const v = Math.max(1, Math.min(startPage, pdfPageCount));
                             setStartPage(v);
                             if (endPage < v) {
                               setEndPage(v);
@@ -582,12 +611,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                         />
                         <span className="shrink-0 text-gray-600">頁到第</span>
                         <input
-                          type="number"
-                          min={startPage}
-                          max={pdfPageCount}
+                          type="text"
+                          inputMode="numeric"
                           value={endPage}
-                          onChange={(e) => {
-                            const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
+                          onChange={e => setEndPage(Number(e.target.value) || 1)}
+                          onBlur={() => {
+                            const v = Math.max(startPage, Math.min(endPage, pdfPageCount));
                             setEndPage(v);
                           }}
                           className="w-16 rounded-lg border border-gray-300 px-2 py-1.5 text-center text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
@@ -638,6 +667,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                     <optgroup label="English">
                       <option value="en-female">Female</option>
                       <option value="en-male">Male</option>
+                    </optgroup>
+                    <optgroup label="客語">
+                      <option value="hak">客語（四縣腔）</option>
                     </optgroup>
                   </select>
                 </div>

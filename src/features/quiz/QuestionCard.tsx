@@ -32,6 +32,7 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
 
   const [ttsLoading, setTtsLoading] = useState(false);
   const [ttsError, setTtsError] = useState('');
+  const [ttsVoice, setTtsVoice] = useState('zh-tw-female');
 
   const handleRegenerateTts = async () => {
     setTtsLoading(true);
@@ -40,7 +41,7 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: question.audioTranscript || question.body }),
+        body: JSON.stringify({ text: question.audioTranscript || question.body, voice: ttsVoice }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -128,6 +129,16 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
                     尚無音檔
                   </span>
                 )}
+            <select
+              value={ttsVoice}
+              onChange={e => setTtsVoice(e.target.value)}
+              className="rounded-md border px-1.5 py-1 text-xs text-muted-foreground"
+            >
+              <option value="zh-tw-female">國語女聲</option>
+              <option value="zh-tw-male">國語男聲</option>
+              <option value="hak">客語</option>
+              <option value="en-female">English</option>
+            </select>
             <button
               type="button"
               onClick={handleRegenerateTts}

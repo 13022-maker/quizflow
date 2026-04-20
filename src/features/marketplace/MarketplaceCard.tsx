@@ -28,7 +28,8 @@ export function MarketplaceCard({ quiz, questionCount }: Props) {
     startTransition(async () => {
       const res = await copyQuizFromMarketplace(quiz.id);
       if (res?.error) {
-        alert(res.error);
+        // eslint-disable-next-line no-alert
+        window.alert(res.error);
         return;
       }
       if (res?.newQuizId) {
@@ -80,9 +81,17 @@ export function MarketplaceCard({ quiz, questionCount }: Props) {
 
       {/* 數據 */}
       <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
-        <span>{questionCount} 題</span>
+        <span>
+          {questionCount}
+          {' '}
+          題
+        </span>
         <span>·</span>
-        <span>{quiz.copyCount} 人使用</span>
+        <span>
+          {quiz.copyCount}
+          {' '}
+          人使用
+        </span>
       </div>
 
       {/* 複製按鈕 */}

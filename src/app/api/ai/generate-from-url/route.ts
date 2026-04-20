@@ -261,6 +261,20 @@ ${typesPrompt}
       return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
     }
 
+    // 後處理：確保聽力題 type 正確
+    const hasListening = types.includes('listening');
+    if (hasListening && result.questions) {
+      const requestedTypes = new Set(types);
+      for (const q of result.questions) {
+        if (q.listeningText && q.type !== 'listening') {
+          q.type = 'listening';
+        }
+        if (requestedTypes.has('listening') && q.type === 'mc' && !requestedTypes.has('mc')) {
+          q.type = 'listening';
+        }
+      }
+    }
+
     return NextResponse.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : '未知錯誤';

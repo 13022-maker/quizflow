@@ -99,7 +99,11 @@ export default async function AdminStatsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">管理員統計</h1>
-      <p className="mb-8 text-sm text-muted-foreground">{todayStr} 資料總覽</p>
+      <p className="mb-8 text-sm text-muted-foreground">
+        {todayStr}
+        {' '}
+        資料總覽
+      </p>
 
       {/* 用戶統計 */}
       <div className="mb-4 grid grid-cols-2 gap-4">

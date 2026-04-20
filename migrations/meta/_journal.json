@@ -118,7 +118,14 @@
       "idx": 16,
       "version": "7",
       "when": 1776739200000,
-      "tag": "0016_quiz_mode",
+      "tag": "0016_vocabulary_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1776825600000,
+      "tag": "0017_quiz_mode",
       "breakpoints": true
     }
   ]

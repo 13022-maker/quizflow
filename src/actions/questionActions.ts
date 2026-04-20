@@ -11,7 +11,7 @@ import { questionSchema, quizSchema } from '@/models/Schema';
 // 驗證測驗所有權
 async function verifyOwnership(quizId: number, orgId: string) {
   const [quiz] = await db
-    .select()
+    .select({ id: quizSchema.id, ownerId: quizSchema.ownerId })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
     .limit(1);
