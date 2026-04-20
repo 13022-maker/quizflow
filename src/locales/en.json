@@ -135,8 +135,8 @@
   },
   "AddQuiz": {
     "title_bar": "New Quiz",
-    "section_title": "Quiz Details",
-    "section_description": "Fill in the details below to create a new quiz",
+    "section_title": "New Quiz",
+    "section_description": "Takes 30 seconds — title and settings can be changed later",
     "title_label": "Title",
     "title_placeholder": "e.g. Chapter 3 Quiz",
     "description_label": "Topic (optional)",

@@ -135,8 +135,8 @@
   },
   "AddQuiz": {
     "title_bar": "建立測驗",
-    "section_title": "測驗基本資料",
-    "section_description": "填寫以下資料以建立新的測驗",
+    "section_title": "建立新測驗",
+    "section_description": "30 秒建立，標題與設定隨時可改",
     "title_label": "測驗標題",
     "title_placeholder": "例如：第三章隨堂測驗",
     "description_label": "考試主題（選填）",
