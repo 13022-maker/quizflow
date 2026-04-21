@@ -58,29 +58,29 @@ export default async function VocabListPage() {
                 });
                 const hasCards = set.lastCardAt !== null;
                 return (
-                <div key={set.id} className="rounded-xl border bg-card p-5 shadow-sm">
-                  <h3 className="mb-2 text-base font-semibold">{set.title}</h3>
-                  <p className="mb-4 text-xs text-muted-foreground">
-                    {hasCards ? '最近加入：' : '建立於：'}
-                    {lastAtLabel}
-                  </p>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/vocab/${set.accessCode}`}
-                      className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
-                    >
-                      預覽
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
-                      onClick={undefined}
-                    >
-                      複製連結
-                    </button>
-                    <DeleteVocabButton id={set.id} />
+                  <div key={set.id} className="rounded-xl border bg-card p-5 shadow-sm">
+                    <h3 className="mb-2 text-base font-semibold">{set.title}</h3>
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      {hasCards ? '最近加入：' : '建立於：'}
+                      {lastAtLabel}
+                    </p>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/vocab/${set.accessCode}`}
+                        className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
+                      >
+                        預覽
+                      </Link>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
+                        onClick={undefined}
+                      >
+                        複製連結
+                      </button>
+                      <DeleteVocabButton id={set.id} />
+                    </div>
                   </div>
-                </div>
                 );
               })}
             </div>
