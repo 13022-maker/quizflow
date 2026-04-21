@@ -7,7 +7,7 @@ import type { LivePlayerState } from '@/services/live/types';
 
 export type SubmitResult
   = | { ok: true; isCorrect: boolean; score: number }
-    | { ok: false; error: string };
+  | { ok: false; error: string };
 
 export function useLivePlayerGame(
   gameId: number,
