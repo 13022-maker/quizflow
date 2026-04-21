@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 import { blogPosts } from '@/data/blog';
+import { quizTemplates } from '@/data/templates';
 import { getBaseUrl } from '@/utils/Helpers';
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -27,6 +28,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: `${base}/templates`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${base}/marketplace`,
       lastModified: now,
       changeFrequency: 'weekly',
@@ -41,5 +48,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...blogRoutes];
+  const templateRoutes: MetadataRoute.Sitemap = quizTemplates.map(t => ({
+    url: `${base}/templates/${t.slug}`,
+    lastModified: now,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  return [...staticRoutes, ...blogRoutes, ...templateRoutes];
 }
