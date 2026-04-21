@@ -1097,10 +1097,13 @@ function shuffle<T>(arr: T[]): T[] {
 // ── 主元件 ────────────────────────────────────────────────────────
 
 export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question[] }) {
-  // 隨機排序只在掛載時執行一次
-  const [displayQuestions] = useState<Question[]>(() => {
+  // 初始用原始順序，避免 SSR/CSR 隨機結果不一致造成 hydration 錯誤；
+  // 真正的隨機排序在 useEffect 掛載後才跑（只發生在 client 端）
+  const [displayQuestions, setDisplayQuestions] = useState<Question[]>(questions);
+
+  useEffect(() => {
     const ordered = quiz.shuffleQuestions ? shuffle(questions) : questions;
-    return ordered.map((q) => {
+    const processed = ordered.map((q) => {
       // 排序題：永遠強制打亂選項，否則學生「不拖也對」
       if (q.type === 'ranking' && q.options) {
         return { ...q, options: shuffle(q.options) };
@@ -1110,7 +1113,10 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       }
       return q;
     });
-  });
+    setDisplayQuestions(processed);
+    // 只在掛載時跑一次（quiz/questions 視為初始固定資料）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
