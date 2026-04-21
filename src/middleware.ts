@@ -37,6 +37,9 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // Live Mode Ably token 發行：endpoint 內自己驗 host(Clerk) / player(token) 身分
+  '/api/live/ably-auth',
+  '/:locale/api/live/ably-auth',
 ]);
 
 const isProtectedRoute = createRouteMatcher([
