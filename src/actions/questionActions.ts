@@ -137,6 +137,54 @@ export async function reorderQuestions(quizId: number, orderedIds: number[]) {
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 }
 
+// 更新簡答題的批改評分量表（rubric）
+const RubricInputSchema = z.object({
+  criteria: z
+    .array(
+      z.object({
+        name: z.string().min(1, '面向名稱不可為空').max(30),
+        maxScore: z.coerce.number().min(1).max(100),
+        description: z.string().min(1, '面向描述不可為空').max(500),
+      }),
+    )
+    .min(1, '至少要有一個評分面向')
+    .max(8),
+  instructions: z.string().max(1000).optional(),
+});
+
+export type RubricInput = z.infer<typeof RubricInputSchema>;
+
+export async function updateQuestionRubric(
+  id: number,
+  quizId: number,
+  rubric: RubricInput | null,
+) {
+  const { orgId } = await auth();
+  if (!orgId) {
+    throw new Error('Unauthorized');
+  }
+  await verifyOwnership(quizId, orgId);
+
+  if (rubric !== null) {
+    const parsed = RubricInputSchema.safeParse(rubric);
+    if (!parsed.success) {
+      return { error: parsed.error.errors[0]?.message ?? '評分量表格式錯誤' };
+    }
+    await db
+      .update(questionSchema)
+      .set({ rubric: parsed.data })
+      .where(eq(questionSchema.id, id));
+  } else {
+    await db
+      .update(questionSchema)
+      .set({ rubric: null })
+      .where(eq(questionSchema.id, id));
+  }
+
+  revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
+  return undefined;
+}
+
 // 平均分配總分 100 分到所有題目
 export async function distributePoints(quizId: number) {
   const { orgId } = await auth();

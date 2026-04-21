@@ -32,6 +32,7 @@ export type BreakdownRow = {
   total: number;
   correct: number;
   rate: number | null;
+  gradedCount?: number; // 申論題已批改份數
 };
 
 // 每題的選項分佈：{ [questionId]: { [optionId]: count } }
@@ -88,7 +89,7 @@ export function QuestionBreakdownTable({ rows, optionStats, labels }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y">
-          {rows.map(({ question, total, correct, rate }, i) => {
+          {rows.map(({ question, total, correct, rate, gradedCount }, i) => {
             const canExpand = EXPANDABLE_TYPES.has(question.type);
             const isOpen = expanded.has(question.id);
 
@@ -100,6 +101,7 @@ export function QuestionBreakdownTable({ rows, optionStats, labels }: Props) {
                 total={total}
                 correct={correct}
                 rate={rate}
+                gradedCount={gradedCount}
                 canExpand={canExpand}
                 isOpen={isOpen}
                 onToggle={() => toggle(question.id)}
@@ -121,6 +123,7 @@ function RowGroup({
   total,
   correct,
   rate,
+  gradedCount,
   canExpand,
   isOpen,
   onToggle,
@@ -132,6 +135,7 @@ function RowGroup({
   total: number;
   correct: number;
   rate: number | null;
+  gradedCount?: number;
   canExpand: boolean;
   isOpen: boolean;
   onToggle: () => void;
@@ -165,12 +169,30 @@ function RowGroup({
           )}
         </td>
         <td className="px-4 py-3 text-center">
-          {question.type === 'short_answer' ? '—' : `${correct} / ${total}`}
+          {question.type === 'short_answer'
+            ? total > 0
+              ? `${gradedCount ?? 0} / ${total}`
+              : '—'
+            : `${correct} / ${total}`}
         </td>
         <td className="px-4 py-3 text-center">
-          {rate !== null && question.type !== 'short_answer'
-            ? <RateBar rate={rate} />
-            : '—'}
+          {question.type === 'short_answer'
+            ? total > 0
+              ? (
+                  <span
+                    className={`text-xs font-medium ${
+                      (gradedCount ?? 0) === total
+                        ? 'text-green-600'
+                        : 'text-amber-600'
+                    }`}
+                  >
+                    {(gradedCount ?? 0) === total ? '已批改' : '待批改'}
+                  </span>
+                )
+              : '—'
+            : rate !== null
+              ? <RateBar rate={rate} />
+              : '—'}
         </td>
         <td className="px-2 py-3 text-right">
           {canExpand
