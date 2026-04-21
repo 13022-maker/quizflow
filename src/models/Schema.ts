@@ -122,6 +122,11 @@ export const questionSchema = pgTable('question', {
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
   aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取
+  // 申論題批改評分量表（僅 short_answer 使用，null = 沿用系統預設 4 面向）
+  rubric: jsonb('rubric').$type<{
+    criteria: { name: string; maxScore: number; description: string }[];
+    instructions?: string;
+  }>(),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
@@ -158,6 +163,18 @@ export const answerSchema = pgTable('answer', {
     .references(() => questionSchema.id, { onDelete: 'cascade' }),
   answer: jsonb('answer').$type<string | string[]>().notNull(), // 字串或選項 id 陣列
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
+  // 申論題批改結果（僅 short_answer 使用）
+  points: integer('points'), // 批改後實得分（計入 response.score）
+  aiGrading: jsonb('ai_grading').$type<{
+    criteriaScores: { name: string; score: number; maxScore: number; feedback: string }[];
+    overallFeedback: string;
+    sentenceFeedback: { sentence: string; comment: string }[];
+    totalScore: number;
+    maxScore: number;
+  }>(),
+  teacherFeedback: text('teacher_feedback'), // 老師覆核/微調的評語
+  gradedAt: timestamp('graded_at', { mode: 'date' }),
+  gradedBy: text('graded_by'), // 'ai' | 'teacher' | 'ai+teacher'
 });
 
 // ---------- quiz_attempts ----------
@@ -236,16 +253,30 @@ export const userTrialSchema = pgTable('user_trial', {
 // ---------- ai_usage ----------
 // 記錄每個 org 每月的 AI 出題次數（用於 Free Plan quota 限制）
 
-export const aiUsageSchema = pgTable('ai_usage', {
-  id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(), // Clerk org ID
-  yearMonth: text('year_month').notNull(), // 格式：'2026-04'
-  count: integer('count').default(0).notNull(), // 當月已使用次數
-  updatedAt: timestamp('updated_at', { mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-});
+export const aiUsageSchema = pgTable(
+  'ai_usage',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: text('owner_id').notNull(), // Clerk org ID
+    yearMonth: text('year_month').notNull(), // 格式：'2026-04'
+    // AI 功能別（現有列預設填 'question_generation'，essay_grading 為作文批改獨立 quota）
+    feature: text('feature').default('question_generation').notNull(),
+    count: integer('count').default(0).notNull(), // 當月已使用次數
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => {
+    return {
+      ownerYearMonthFeatureIdx: uniqueIndex('ai_usage_owner_ym_feature_idx').on(
+        table.ownerId,
+        table.yearMonth,
+        table.feature,
+      ),
+    };
+  },
+);
 
 // ---------- paddle_customers ----------
 // Clerk 用戶與 Paddle 客戶的對映關係

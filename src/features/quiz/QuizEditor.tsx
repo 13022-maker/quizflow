@@ -1066,6 +1066,7 @@ export function QuizEditor({
                           key={question.id}
                           question={question}
                           index={index}
+                          quizId={initialQuiz.id}
                           onEdit={() => {
                             setAddingNew(false);
                             setEditingId(question.id);

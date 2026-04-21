@@ -1,6 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+
+import { gradeEssayAnswerAction } from '@/actions/essayGradingActions';
+import { getResponseDetail } from '@/actions/responseActions';
+
+import { ResponseDetailDialog } from './ResponseDetailDialog';
 
 // 表格用的序列化型別（Date 已轉成字串）
 export type ResponseRow = {
@@ -11,6 +17,9 @@ export type ResponseRow = {
   totalPoints: number | null;
   leaveCount: number;
   submittedAt: string; // ISO string
+  // 申論題批改狀態
+  hasEssay: boolean;
+  hasUngradedEssay: boolean;
 };
 
 type SortKey = 'submittedAt' | 'rate';
@@ -23,8 +32,12 @@ function calcRate(row: ResponseRow): number | null {
 }
 
 export function ResultsResponseTable({ responses, quizId }: { responses: ResponseRow[]; quizId: number }) {
+  const router = useRouter();
   const [sortKey, setSortKey] = useState<SortKey>('submittedAt');
   const [sortAsc, setSortAsc] = useState(false);
+  const [selectedResponseId, setSelectedResponseId] = useState<number | null>(null);
+  const [batchProgress, setBatchProgress] = useState<{ current: number; total: number } | null>(null);
+  const [batchMsg, setBatchMsg] = useState<string>('');
 
   // 排序邏輯
   const sorted = [...responses].sort((a, b) => {
@@ -38,6 +51,8 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
     const tb = new Date(b.submittedAt).getTime();
     return sortAsc ? ta - tb : tb - ta;
   });
+
+  const ungradedCount = responses.filter(r => r.hasUngradedEssay).length;
 
   // 切換排序欄位
   const toggleSort = (key: SortKey) => {
@@ -84,6 +99,68 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
     window.open('https://docs.google.com/spreadsheets/create', '_blank');
   };
 
+  // 一鍵批改全班：client 端逐一呼叫 gradeEssayAnswerAction
+  // 每份 5-6 秒，30 人約 3 分鐘；關閉瀏覽器會中斷
+  const handleGradeAll = async () => {
+    const ungraded = responses.filter(r => r.hasUngradedEssay);
+    if (ungraded.length === 0) {
+      return;
+    }
+
+    setBatchMsg('');
+    setBatchProgress({ current: 0, total: ungraded.length });
+
+    let done = 0;
+    let failed = 0;
+    let stopped = false;
+
+    for (const response of ungraded) {
+      if (stopped) {
+        break;
+      }
+      setBatchProgress({ current: done, total: ungraded.length });
+
+      // 取得該 response 的所有 answer，挑出未批改的簡答題
+      const detail = await getResponseDetail(response.id);
+      if (!detail) {
+        failed += 1;
+        continue;
+      }
+      const pending = detail.items.filter(
+        it => it.questionType === 'short_answer' && !it.gradedAt,
+      );
+
+      for (const item of pending) {
+        const res = await gradeEssayAnswerAction(item.answerId);
+        if (res.status === 'quota_exceeded') {
+          setBatchMsg(res.reason);
+          stopped = true;
+          break;
+        }
+        if (res.status === 'pro_required') {
+          setBatchMsg('升級 Pro 方案即可使用 AI 批改');
+          stopped = true;
+          break;
+        }
+        if (res.status === 'failed') {
+          failed += 1;
+        }
+      }
+      done += 1;
+      setBatchProgress({ current: done, total: ungraded.length });
+    }
+
+    setBatchProgress(null);
+    if (!batchMsg) {
+      setBatchMsg(
+        failed > 0
+          ? `批改完成 ${done - failed} 份，另 ${failed} 份失敗`
+          : `已批改 ${done} 份`,
+      );
+    }
+    router.refresh();
+  };
+
   if (responses.length === 0) {
     return (
       <p className="rounded-lg border border-dashed px-6 py-10 text-center text-sm text-muted-foreground">
@@ -95,15 +172,34 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
   return (
     <div>
       {/* 工具列 */}
-      <div className="mb-3 flex items-center justify-between">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
           共
           {' '}
           {responses.length}
           {' '}
           筆作答記錄
+          {ungradedCount > 0 && (
+            <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-xs text-amber-700">
+              {ungradedCount}
+              {' '}
+              份待批改
+            </span>
+          )}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {ungradedCount > 0 && (
+            <button
+              type="button"
+              onClick={handleGradeAll}
+              disabled={batchProgress !== null}
+              className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-60"
+            >
+              {batchProgress
+                ? `🤖 批改中 ${batchProgress.current} / ${batchProgress.total}`
+                : `✨ 一鍵批改全班（${ungradedCount}）`}
+            </button>
+          )}
           <a
             href={csvDownloadUrl}
             download
@@ -120,6 +216,12 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
           </button>
         </div>
       </div>
+
+      {batchMsg && (
+        <div className="mb-3 rounded-md bg-muted/50 px-3 py-2 text-sm">
+          {batchMsg}
+        </div>
+      )}
 
       {/* 表格 */}
       <div className="overflow-hidden rounded-lg border">
@@ -149,10 +251,27 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
             {sorted.map((r) => {
               const rate = calcRate(r);
               return (
-                <tr key={r.id} className="hover:bg-muted/30">
+                <tr
+                  key={r.id}
+                  onClick={() => setSelectedResponseId(r.id)}
+                  className="cursor-pointer hover:bg-muted/30"
+                >
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       {r.studentName ?? <span className="text-muted-foreground">—</span>}
+                      {r.hasEssay && (
+                        r.hasUngradedEssay
+                          ? (
+                              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                🕒 待批改
+                              </span>
+                            )
+                          : (
+                              <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">
+                                ✨ AI 已批改
+                              </span>
+                            )
+                      )}
                       {r.leaveCount > 0 && (
                         <span
                           className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-red-50 px-2 py-0.5 text-xs font-medium text-red-700"
@@ -190,6 +309,16 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
           </tbody>
         </table>
       </div>
+
+      {selectedResponseId !== null && (
+        <ResponseDetailDialog
+          responseId={selectedResponseId}
+          onClose={() => {
+            setSelectedResponseId(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
