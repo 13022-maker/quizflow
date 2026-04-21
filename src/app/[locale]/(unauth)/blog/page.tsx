@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
-import { blogPosts, BLOG_CATEGORIES, type BlogCategory } from '@/data/blog';
+import { BLOG_CATEGORIES, type BlogCategory, blogPosts } from '@/data/blog';
 import { PostCard } from '@/features/blog/PostCard';
 import { Footer } from '@/templates/Footer';
 import { Navbar } from '@/templates/Navbar';

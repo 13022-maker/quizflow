@@ -21,7 +21,10 @@ export function TemplateCard({ template }: { template: QuizTemplate }) {
         <span className={`rounded-full px-2 py-0.5 font-medium ${color}`}>
           {template.subject}
         </span>
-        <span className="text-muted-foreground">· {template.gradeLevel}</span>
+        <span className="text-muted-foreground">
+          ·
+          {template.gradeLevel}
+        </span>
       </div>
       <h2 className="mt-3 text-base font-bold tracking-tight text-foreground group-hover:text-primary">
         {template.title}

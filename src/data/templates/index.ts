@@ -33,7 +33,9 @@ export function getTemplatesBySubject(subject: TemplateSubject): QuizTemplate[] 
 
 export function getRelatedTemplates(slug: string, limit = 3): QuizTemplate[] {
   const current = getTemplateBySlug(slug);
-  if (!current) return [];
+  if (!current) {
+    return [];
+  }
   const candidates = quizTemplates.filter(t => t.slug !== slug);
   const sameSubject = candidates.filter(t => t.subject === current.subject);
   const others = candidates.filter(t => t.subject !== current.subject);

@@ -6,8 +6,8 @@ import { quizDesignPosts } from './posts/quiz-design';
 import { toolsComparePosts } from './posts/tools-compare';
 import type { BlogPost } from './types';
 
-export { BLOG_CATEGORIES } from './types';
 export type { BlogBlock, BlogCategory, BlogPost } from './types';
+export { BLOG_CATEGORIES } from './types';
 
 export const blogPosts: BlogPost[] = [
   ...aiTeachingPosts,
@@ -28,7 +28,9 @@ export function getPostsByCategory(category: string): BlogPost[] {
 
 export function getRelatedPosts(slug: string, limit = 3): BlogPost[] {
   const current = getPostBySlug(slug);
-  if (!current) return [];
+  if (!current) {
+    return [];
+  }
   const candidates = blogPosts.filter(p => p.slug !== slug);
   const sameCategory = candidates.filter(p => p.category === current.category);
   const others = candidates.filter(p => p.category !== current.category);

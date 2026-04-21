@@ -217,8 +217,8 @@ export default async function AdminStatsPage({
   // ===== 套用篩選條件 =====
   const filterFrom = parseDate(searchParams.from);
   const filterTo = parseDate(searchParams.to);
-  const filterMinQuizzes = parseInt(searchParams.minQuizzes ?? '', 10);
-  const filterMinResponses = parseInt(searchParams.minResponses ?? '', 10);
+  const filterMinQuizzes = Number.parseInt(searchParams.minQuizzes ?? '', 10);
+  const filterMinResponses = Number.parseInt(searchParams.minResponses ?? '', 10);
 
   const filteredUsers = allRegisteredUsers.filter((u) => {
     const created = new Date(u.createdAt);
@@ -311,140 +311,140 @@ export default async function AdminStatsPage({
 
       {/* 註冊用戶（可篩選）— 試用期間僅在總人數 < 100 時顯示 */}
       {totalUsers < 100 && (
-      <section className="mt-8">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold">註冊用戶</h2>
-          <span className="text-xs text-muted-foreground">
-            顯示
-            {' '}
-            {filteredUsers.length}
-            {' '}
-            /
-            {' '}
-            {allRegisteredUsers.length}
-            {' '}
-            位
-          </span>
-        </div>
-
-        {/* 篩選表單 */}
-        <form method="get" className="mb-4 rounded-xl border bg-card p-4">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-muted-foreground">註冊日期（起）</span>
-              <input
-                type="date"
-                name="from"
-                defaultValue={searchParams.from ?? ''}
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-muted-foreground">註冊日期（迄）</span>
-              <input
-                type="date"
-                name="to"
-                defaultValue={searchParams.to ?? ''}
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-muted-foreground">最少考卷數</span>
-              <input
-                type="number"
-                name="minQuizzes"
-                min={0}
-                defaultValue={searchParams.minQuizzes ?? ''}
-                placeholder="不限"
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs">
-              <span className="text-muted-foreground">最少學生作答次數</span>
-              <input
-                type="number"
-                name="minResponses"
-                min={0}
-                defaultValue={searchParams.minResponses ?? ''}
-                placeholder="不限"
-                className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-              />
-            </label>
+        <section className="mt-8">
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">註冊用戶</h2>
+            <span className="text-xs text-muted-foreground">
+              顯示
+              {' '}
+              {filteredUsers.length}
+              {' '}
+              /
+              {' '}
+              {allRegisteredUsers.length}
+              {' '}
+              位
+            </span>
           </div>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="submit"
-              className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
-            >
-              套用篩選
-            </button>
-            <a
-              href="?"
-              className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium hover:bg-muted"
-            >
-              清除
-            </a>
-          </div>
-        </form>
 
-        {clerkError
-          ? (
-              <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">無法讀取用戶資料</p>
-            )
-          : filteredUsers.length > 0
+          {/* 篩選表單 */}
+          <form method="get" className="mb-4 rounded-xl border bg-card p-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">註冊日期（起）</span>
+                <input
+                  type="date"
+                  name="from"
+                  defaultValue={searchParams.from ?? ''}
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">註冊日期（迄）</span>
+                <input
+                  type="date"
+                  name="to"
+                  defaultValue={searchParams.to ?? ''}
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">最少考卷數</span>
+                <input
+                  type="number"
+                  name="minQuizzes"
+                  min={0}
+                  defaultValue={searchParams.minQuizzes ?? ''}
+                  placeholder="不限"
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-xs">
+                <span className="text-muted-foreground">最少學生作答次數</span>
+                <input
+                  type="number"
+                  name="minResponses"
+                  min={0}
+                  defaultValue={searchParams.minResponses ?? ''}
+                  placeholder="不限"
+                  className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+                />
+              </label>
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                type="submit"
+                className="h-9 rounded-md bg-indigo-600 px-4 text-sm font-medium text-white hover:bg-indigo-700"
+              >
+                套用篩選
+              </button>
+              <a
+                href="?"
+                className="inline-flex h-9 items-center rounded-md border px-4 text-sm font-medium hover:bg-muted"
+              >
+                清除
+              </a>
+            </div>
+          </form>
+
+          {clerkError
             ? (
-                <div className="overflow-x-auto rounded-xl border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">用戶</th>
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Email</th>
-                        <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">考卷數</th>
-                        <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">作答次數</th>
-                        <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">註冊時間</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y">
-                      {filteredUsers.map((u) => {
-                        const createdDate = new Date(u.createdAt);
-                        const isToday = createdDate >= today;
-                        return (
-                          <tr key={u.id} className="hover:bg-muted/20">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-pink-400 text-xs font-semibold text-white">
-                                  {u.initial}
-                                </div>
-                                <span className="truncate">{u.name}</span>
-                                {isToday && (
-                                  <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-xs font-medium text-pink-700">
-                                    今日
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
-                              {u.email}
-                            </td>
-                            <td className="px-4 py-3 text-center font-medium">{u.quizCount}</td>
-                            <td className="px-4 py-3 text-center font-medium">{u.responseCount}</td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
-                              {createdDate.toLocaleString('zh-TW', {
-                                month: 'numeric',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">無法讀取用戶資料</p>
               )
-            : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">沒有符合條件的用戶</p>}
-      </section>
+            : filteredUsers.length > 0
+              ? (
+                  <div className="overflow-x-auto rounded-xl border">
+                    <table className="w-full text-sm">
+                      <thead className="bg-muted/50">
+                        <tr>
+                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">用戶</th>
+                          <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Email</th>
+                          <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">考卷數</th>
+                          <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">作答次數</th>
+                          <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">註冊時間</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {filteredUsers.map((u) => {
+                          const createdDate = new Date(u.createdAt);
+                          const isToday = createdDate >= today;
+                          return (
+                            <tr key={u.id} className="hover:bg-muted/20">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-pink-400 text-xs font-semibold text-white">
+                                    {u.initial}
+                                  </div>
+                                  <span className="truncate">{u.name}</span>
+                                  {isToday && (
+                                    <span className="shrink-0 rounded bg-pink-100 px-1.5 py-0.5 text-xs font-medium text-pink-700">
+                                      今日
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="max-w-[220px] truncate px-4 py-3 text-muted-foreground">
+                                {u.email}
+                              </td>
+                              <td className="px-4 py-3 text-center font-medium">{u.quizCount}</td>
+                              <td className="px-4 py-3 text-center font-medium">{u.responseCount}</td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-muted-foreground">
+                                {createdDate.toLocaleString('zh-TW', {
+                                  month: 'numeric',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">沒有符合條件的用戶</p>}
+        </section>
       )}
     </div>
   );

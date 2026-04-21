@@ -461,8 +461,6 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     }
   }
 
-  const firstFile = files[0];
-  const ext = firstFile?.name.split('.').pop()?.toLowerCase() ?? '';
   const totalFileSize = files.reduce((sum, f) => sum + f.size, 0);
   const allImages = files.length > 0 && files.every(isImageFile);
   const canGenerate = types.length > 0
@@ -473,7 +471,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         : sourceUrl.trim().length > 0);
 
   // 按鈕 disabled 時告訴使用者還缺什麼，避免誤以為是 bug
-  // eslint-disable-next-line style/multiline-ternary
+
   const disabledReason = !types.length
     ? '請至少選擇一種題型'
     : mode === 'text' && !topic.trim()

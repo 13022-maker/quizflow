@@ -73,7 +73,7 @@ export const englishTemplates: QuizTemplate[] = [
       {
         type: 'single_choice',
         question: 'They ___ like vegetables.',
-        options: ["don't", "doesn't", 'no', 'not'],
+        options: ['don\'t', 'doesn\'t', 'no', 'not'],
         answer: 0,
         explanation: '複數主詞用 don\'t。',
         difficulty: 2,
@@ -197,7 +197,7 @@ export const englishTemplates: QuizTemplate[] = [
       },
       {
         type: 'single_choice',
-        question: "I can't ___ with her rudeness anymore.",
+        question: 'I can\'t ___ with her rudeness anymore.',
         options: ['put up', 'put off', 'put on', 'put down'],
         answer: 0,
         explanation: 'put up with = 忍受。',
@@ -226,7 +226,7 @@ export const englishTemplates: QuizTemplate[] = [
       {
         type: 'single_choice',
         question: '要客氣地請求對方回覆，最合適的表達為？',
-        options: ['Reply now!', "I'd appreciate it if you could reply by Friday.", 'You must reply.', 'Do it.'],
+        options: ['Reply now!', 'I\'d appreciate it if you could reply by Friday.', 'You must reply.', 'Do it.'],
         answer: 1,
         explanation: 'I\'d appreciate it if + S + V 是禮貌請求句型。',
         difficulty: 3,

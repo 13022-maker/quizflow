@@ -1,9 +1,14 @@
 import { auth } from '@clerk/nextjs/server';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
+
+// 依 CLAUDE.md 規範：所有 API Route 最頂端加 runtime = 'nodejs'
+// 避免被誤判為 Edge runtime（drizzle pg driver 與 Clerk auth 需要 Node API）
+export const runtime = 'nodejs';
 
 // AIQuizModal 回傳的題目格式
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
@@ -42,15 +47,26 @@ export async function POST(
     return NextResponse.json({ error: '無效的測驗 ID' }, { status: 400 });
   }
 
-  // 驗證測驗所有權
+  // 驗證測驗所有權：先撈 quiz 本身，再比 ownerId。
+  // 分開檢查是因為 preview 環境實際遇到「page SSR 查得到、API 卻 404」的詭異情況，
+  // 用這個切法能讓 Vercel function log 明確區分「測驗不存在」與「ownership 不符」。
   const [quiz] = await db
-    .select({ id: quizSchema.id })
+    .select({ id: quizSchema.id, ownerId: quizSchema.ownerId })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(eq(quizSchema.id, quizId))
     .limit(1);
 
   if (!quiz) {
-    return NextResponse.json({ error: '找不到測驗或無權限' }, { status: 404 });
+    console.warn('[api/quizzes/questions POST] quiz not found', { quizId, orgId });
+    return NextResponse.json({ error: '找不到測驗' }, { status: 404 });
+  }
+  if (quiz.ownerId !== orgId) {
+    console.warn('[api/quizzes/questions POST] ownership mismatch', {
+      quizId,
+      sessionOrgId: orgId,
+      quizOwnerId: quiz.ownerId,
+    });
+    return NextResponse.json({ error: '無權限操作此測驗' }, { status: 403 });
   }
 
   const body = await request.json();
@@ -134,6 +150,10 @@ export async function POST(
 
   // 一次批次插入，減少 DB round-trip
   await db.insert(questionSchema).values(rows);
+
+  // 必須 revalidate，否則編輯頁 server component 即使 router.refresh()
+  // 也可能拿到快取中的舊題目列表，前端顯示「題目 (0)」
+  revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 
   return NextResponse.json({ count: rows.length });
 }
