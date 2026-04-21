@@ -10,6 +10,7 @@ import {
   questionSchema,
   quizSchema,
 } from '@/models/Schema';
+import { publishTick } from '@/services/live/ablyServer';
 import { isLiveSupportedType } from '@/services/live/scoring';
 
 // 生成 6 碼大寫英數 game pin（與 quizActions 同邏輯）
@@ -145,6 +146,7 @@ export async function startGame(gameId: number) {
     })
     .where(eq(liveGameSchema.id, game.id));
 
+  await publishTick(game.id);
   return { ok: true as const };
 }
 
@@ -166,6 +168,7 @@ export async function showResult(gameId: number) {
     .set({ status: 'showing_result' })
     .where(eq(liveGameSchema.id, game.id));
 
+  await publishTick(game.id);
   return { ok: true as const };
 }
 
@@ -194,6 +197,7 @@ export async function nextQuestion(gameId: number) {
       .update(liveGameSchema)
       .set({ status: 'finished', endedAt: new Date() })
       .where(eq(liveGameSchema.id, game.id));
+    await publishTick(game.id);
     return { ok: true as const, finished: true };
   }
 
@@ -206,6 +210,7 @@ export async function nextQuestion(gameId: number) {
     })
     .where(eq(liveGameSchema.id, game.id));
 
+  await publishTick(game.id);
   return { ok: true as const, finished: false };
 }
 
@@ -224,5 +229,6 @@ export async function endGame(gameId: number) {
     .set({ status: 'finished', endedAt: new Date() })
     .where(eq(liveGameSchema.id, game.id));
 
+  await publishTick(game.id);
   return { ok: true as const };
 }
