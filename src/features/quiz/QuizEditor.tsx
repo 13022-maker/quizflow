@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
+import { createLiveGame } from '@/actions/liveActions';
 import {
   createQuestion,
   deleteQuestion,
@@ -142,6 +143,9 @@ export function QuizEditor({
 
   // 平均配分成功提示
   const [distributeMsg, setDistributeMsg] = useState('');
+
+  // Live Mode 錯誤訊息
+  const [liveError, setLiveError] = useState<string | null>(null);
 
   // 標題 inline 編輯
   const [title, setTitle] = useState(initialQuiz.title);
@@ -605,6 +609,36 @@ export function QuizEditor({
             🔗 分享
           </Button>
         )}
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setLiveError(null);
+            startTransition(async () => {
+              // try/catch 防止 Server Action throw（例如 DB migration 未跑、
+              // live_game 表不存在）導致整頁白屏「Application error」。
+              try {
+                const res = await createLiveGame({ quizId: initialQuiz.id });
+                if ('error' in res) {
+                  setLiveError(res.error ?? '建立失敗');
+                  return;
+                }
+                router.push(`/dashboard/live/host/${res.gameId}`);
+              } catch (err) {
+                setLiveError(
+                  err instanceof Error
+                    ? `Live Mode 建立失敗：${err.message}`
+                    : 'Live Mode 建立失敗，請稍後再試',
+                );
+              }
+            });
+          }}
+          disabled={isPending || status !== 'published'}
+          title={status !== 'published' ? '請先發佈測驗' : '開啟 Live Mode 直播'}
+          className="gap-1.5"
+        >
+          🎮 Live Mode
+        </Button>
         {isPro && (
           <Button size="sm" variant="outline" onClick={() => setShowAIModal(true)} disabled={isSubmitting} className="gap-1.5">
             ✨ AI 出題
@@ -652,6 +686,12 @@ export function QuizEditor({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {liveError && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+          {liveError}
+        </div>
+      )}
 
       {/* 分享 Modal（房間碼 + QR Code + LINE + Google Classroom + 到期） */}
       {showQRModal && initialQuiz.accessCode && (

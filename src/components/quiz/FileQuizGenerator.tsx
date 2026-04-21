@@ -142,7 +142,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
         const copiedPages = await newDoc.copyPages(srcDoc, indices);
         copiedPages.forEach(page => newDoc.addPage(page));
         const trimmedBytes = await newDoc.save();
-        const trimmedFile = new File([trimmedBytes], file.name, { type: 'application/pdf' });
+        const trimmedFile = new File([trimmedBytes as BlobPart], file.name, { type: 'application/pdf' });
         fd.append('file', trimmedFile);
         // 裁切過的檔案已只含選中頁面，不需再傳 startPage/endPage
       } else {

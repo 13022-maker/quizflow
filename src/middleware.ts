@@ -30,6 +30,13 @@ const isPublicApiRoute = createRouteMatcher([
   // 儲存單字卡集：學生作答後儲存
   '/api/vocab/save',
   '/:locale/api/vocab/save',
+  // Live Mode：學生加入、輪詢狀態、提交答案（皆以 playerToken 驗證）
+  '/api/live/join',
+  '/:locale/api/live/join',
+  '/api/live/(.*)/player-state',
+  '/:locale/api/live/(.*)/player-state',
+  '/api/live/(.*)/answer',
+  '/:locale/api/live/(.*)/answer',
 ]);
 
 const isProtectedRoute = createRouteMatcher([
