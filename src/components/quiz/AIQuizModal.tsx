@@ -478,7 +478,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     ? '請至少選擇一種題型'
     : mode === 'text' && !topic.trim()
       ? '請輸入主題，或點上方範例快速開始'
-      : mode === 'file' && !file
+      : mode === 'file' && files.length === 0
         ? '請上傳一份教材檔案'
         : mode === 'url' && !sourceUrl.trim()
           ? '請貼入 YouTube 或 Google Docs 連結'
