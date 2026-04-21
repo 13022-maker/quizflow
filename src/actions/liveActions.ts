@@ -54,64 +54,73 @@ const CreateLiveGameSchema = z.object({
 export type CreateLiveGameInput = z.infer<typeof CreateLiveGameSchema>;
 
 export async function createLiveGame(input: CreateLiveGameInput) {
-  const { orgId, userId } = await auth();
-  if (!orgId || !userId) {
-    return { error: 'Unauthorized' as const };
+  try {
+    const { orgId, userId } = await auth();
+    if (!orgId || !userId) {
+      return { error: 'Unauthorized' as const };
+    }
+
+    const parsed = CreateLiveGameSchema.safeParse(input);
+    if (!parsed.success) {
+      return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
+    }
+
+    const [quiz] = await db
+      .select({
+        id: quizSchema.id,
+        title: quizSchema.title,
+        ownerId: quizSchema.ownerId,
+        status: quizSchema.status,
+      })
+      .from(quizSchema)
+      .where(eq(quizSchema.id, parsed.data.quizId))
+      .limit(1);
+
+    if (!quiz || quiz.ownerId !== orgId) {
+      return { error: '找不到測驗或沒有權限' };
+    }
+    if (quiz.status !== 'published') {
+      return { error: '請先發佈測驗才能開始 Live Mode' };
+    }
+
+    // 確認至少有一題支援題型
+    const questions = await db
+      .select({ type: questionSchema.type })
+      .from(questionSchema)
+      .where(eq(questionSchema.quizId, quiz.id))
+      .orderBy(asc(questionSchema.position));
+    const hasSupported = questions.some(q => isLiveSupportedType(q.type));
+    if (!hasSupported) {
+      return { error: '此測驗沒有可用於 Live Mode 的題目（僅支援單選、多選、是非題）' };
+    }
+
+    const gamePin = await generateUniquePin();
+
+    const [inserted] = await db
+      .insert(liveGameSchema)
+      .values({
+        quizId: quiz.id,
+        hostOrgId: orgId,
+        hostUserId: userId,
+        title: quiz.title,
+        gamePin,
+        questionDuration: parsed.data.questionDuration ?? 20,
+      })
+      .returning();
+
+    if (!inserted) {
+      return { error: '建立 Live 遊戲失敗' };
+    }
+
+    return { ok: true as const, gameId: inserted.id, gamePin: inserted.gamePin };
+  } catch (err) {
+    // DB 層 exception（例如 live_game 表不存在：migration 未跑）
+    // 包起來避免 client 收到 unhandled rejection 觸發「Application error」白屏。
+    // 第一句訊息給使用者看，後面附原 message 供除錯。
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error('[createLiveGame] unexpected error:', err);
+    return { error: `Live Mode 建立失敗：${detail}` };
   }
-
-  const parsed = CreateLiveGameSchema.safeParse(input);
-  if (!parsed.success) {
-    return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
-  }
-
-  const [quiz] = await db
-    .select({
-      id: quizSchema.id,
-      title: quizSchema.title,
-      ownerId: quizSchema.ownerId,
-      status: quizSchema.status,
-    })
-    .from(quizSchema)
-    .where(eq(quizSchema.id, parsed.data.quizId))
-    .limit(1);
-
-  if (!quiz || quiz.ownerId !== orgId) {
-    return { error: '找不到測驗或沒有權限' };
-  }
-  if (quiz.status !== 'published') {
-    return { error: '請先發佈測驗才能開始 Live Mode' };
-  }
-
-  // 確認至少有一題支援題型
-  const questions = await db
-    .select({ type: questionSchema.type })
-    .from(questionSchema)
-    .where(eq(questionSchema.quizId, quiz.id))
-    .orderBy(asc(questionSchema.position));
-  const hasSupported = questions.some(q => isLiveSupportedType(q.type));
-  if (!hasSupported) {
-    return { error: '此測驗沒有可用於 Live Mode 的題目（僅支援單選、多選、是非題）' };
-  }
-
-  const gamePin = await generateUniquePin();
-
-  const [inserted] = await db
-    .insert(liveGameSchema)
-    .values({
-      quizId: quiz.id,
-      hostOrgId: orgId,
-      hostUserId: userId,
-      title: quiz.title,
-      gamePin,
-      questionDuration: parsed.data.questionDuration ?? 20,
-    })
-    .returning();
-
-  if (!inserted) {
-    return { error: '建立 Live 遊戲失敗' };
-  }
-
-  return { ok: true as const, gameId: inserted.id, gamePin: inserted.gamePin };
 }
 
 export async function startGame(gameId: number) {

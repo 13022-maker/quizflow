@@ -615,12 +615,22 @@ export function QuizEditor({
           onClick={() => {
             setLiveError(null);
             startTransition(async () => {
-              const res = await createLiveGame({ quizId: initialQuiz.id });
-              if ('error' in res) {
-                setLiveError(res.error ?? '建立失敗');
-                return;
+              // try/catch 防止 Server Action throw（例如 DB migration 未跑、
+              // live_game 表不存在）導致整頁白屏「Application error」。
+              try {
+                const res = await createLiveGame({ quizId: initialQuiz.id });
+                if ('error' in res) {
+                  setLiveError(res.error ?? '建立失敗');
+                  return;
+                }
+                router.push(`/dashboard/live/host/${res.gameId}`);
+              } catch (err) {
+                setLiveError(
+                  err instanceof Error
+                    ? `Live Mode 建立失敗：${err.message}`
+                    : 'Live Mode 建立失敗，請稍後再試',
+                );
               }
-              router.push(`/dashboard/live/host/${res.gameId}`);
             });
           }}
           disabled={isPending || status !== 'published'}
