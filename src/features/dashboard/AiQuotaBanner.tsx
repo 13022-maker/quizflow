@@ -17,7 +17,9 @@ type Props = {
 };
 
 export async function AiQuotaBanner({ orgId }: Props) {
-  if (!orgId) return null;
+  if (!orgId) {
+    return null;
+  }
 
   const planId = await getOrgPlanId(orgId);
   // 付費方案不顯示
@@ -26,10 +28,14 @@ export async function AiQuotaBanner({ orgId }: Props) {
   }
 
   const usage = await getAiUsageRemaining(orgId);
-  if (usage.quota >= 999) return null;
+  if (usage.quota >= 999) {
+    return null;
+  }
 
   const pct = usage.quota > 0 ? (usage.used / usage.quota) * 100 : 0;
-  if (pct < 60) return null;
+  if (pct < 60) {
+    return null;
+  }
 
   const level: 'info' | 'warn' | 'danger'
     = pct >= 95 ? 'danger' : pct >= 80 ? 'warn' : 'info';

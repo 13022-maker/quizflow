@@ -210,7 +210,7 @@ export function InlineQuestionCard({
         {/* 選項清單：每行 [checkbox/radio] + [inline text input] */}
         <div className="mt-2 space-y-1.5">
           {options.map(opt => (
-            // eslint-disable-next-line jsx-a11y/label-has-associated-control
+
             <label
               key={opt.id}
               className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-muted/40"

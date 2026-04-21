@@ -23,7 +23,9 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = getTemplateBySlug(params.slug);
-  if (!t) return {};
+  if (!t) {
+    return {};
+  }
   return {
     title: `${t.title} — QuizFlow 免費測驗範本`,
     description: t.description,
@@ -57,7 +59,9 @@ export default function TemplateDetailPage({ params }: Props) {
   unstable_setRequestLocale(params.locale);
 
   const t = getTemplateBySlug(params.slug);
-  if (!t) notFound();
+  if (!t) {
+    notFound();
+  }
 
   const related = getRelatedTemplates(t.slug, 3);
 
@@ -95,11 +99,23 @@ export default function TemplateDetailPage({ params }: Props) {
             <span className="rounded-full bg-primary/10 px-2 py-0.5 font-medium text-primary">
               {t.subject}
             </span>
-            <span>· {t.gradeLevel}</span>
+            <span>
+              ·
+              {t.gradeLevel}
+            </span>
             <span>·</span>
-            <span>{t.questions.length} 題</span>
+            <span>
+              {t.questions.length}
+              {' '}
+              題
+            </span>
             <span>·</span>
-            <span>約 {t.estimatedMinutes} 分鐘</span>
+            <span>
+              約
+              {t.estimatedMinutes}
+              {' '}
+              分鐘
+            </span>
           </div>
           <h1 className="mt-4 text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
             {t.title}
@@ -129,11 +145,17 @@ export default function TemplateDetailPage({ params }: Props) {
             <div key={i} className="rounded-2xl border bg-card p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <p className="flex-1 text-base font-medium">
-                  <span className="mr-2 text-muted-foreground">Q{i + 1}.</span>
+                  <span className="mr-2 text-muted-foreground">
+                    Q
+                    {i + 1}
+                    .
+                  </span>
                   {q.question}
                 </p>
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                  難度 {q.difficulty}
+                  難度
+                  {' '}
+                  {q.difficulty}
                 </span>
               </div>
 
@@ -142,7 +164,8 @@ export default function TemplateDetailPage({ params }: Props) {
                   {q.options.map((opt, j) => (
                     <li key={j} className="flex gap-2">
                       <span className="text-muted-foreground">
-                        {String.fromCharCode(65 + j)}.
+                        {String.fromCharCode(65 + j)}
+                        .
                       </span>
                       <span>{opt}</span>
                     </li>
@@ -192,7 +215,6 @@ export default function TemplateDetailPage({ params }: Props) {
 
       <Footer />
 
-      {/* eslint-disable-next-line react/no-danger */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

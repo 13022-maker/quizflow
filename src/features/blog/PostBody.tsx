@@ -12,7 +12,7 @@ function renderInline(text: string) {
   const pattern = /(\*\*[^*]+\*\*|\[[^\]]+\]\([^)]+\))/g;
   const parts = text.split(pattern).filter(Boolean);
   return parts.map((part, i) => {
-    if (/^\*\*(.+)\*\*$/.test(part)) {
+    if (/^\*\*.+\*\*$/.test(part)) {
       return <strong key={i}>{part.replace(/^\*\*|\*\*$/g, '')}</strong>;
     }
     const linkMatch = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
@@ -29,7 +29,7 @@ function renderInline(text: string) {
 
 export function PostBody({ blocks }: { blocks: BlogBlock[] }) {
   return (
-    <div className="prose prose-neutral max-w-none dark:prose-invert">
+    <div className="prose prose-neutral dark:prose-invert max-w-none">
       {blocks.map((block, i) => {
         switch (block.type) {
           case 'h2':

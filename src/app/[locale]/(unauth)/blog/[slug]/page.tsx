@@ -4,8 +4,8 @@ import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
 import {
-  blogPosts,
   BLOG_CATEGORIES,
+  blogPosts,
   getPostBySlug,
   getRelatedPosts,
 } from '@/data/blog';
@@ -25,7 +25,9 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = getPostBySlug(params.slug);
-  if (!post) return {};
+  if (!post) {
+    return {};
+  }
   const url = `${getBaseUrl()}/blog/${post.slug}`;
   return {
     title: `${post.title} — QuizFlow 部落格`,
@@ -54,7 +56,9 @@ export default function BlogPostPage({ params }: Props) {
   unstable_setRequestLocale(params.locale);
 
   const post = getPostBySlug(params.slug);
-  if (!post) notFound();
+  if (!post) {
+    notFound();
+  }
 
   const related = getRelatedPosts(post.slug, 3);
   const url = `${getBaseUrl()}/blog/${post.slug}`;
@@ -148,7 +152,6 @@ export default function BlogPostPage({ params }: Props) {
 
       <Footer />
 
-      {/* eslint-disable-next-line react/no-danger */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
