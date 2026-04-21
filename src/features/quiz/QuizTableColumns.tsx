@@ -3,9 +3,11 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferSelectModel } from 'drizzle-orm';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
+import { createLiveGame } from '@/actions/liveActions';
 import { deleteQuiz } from '@/actions/quizActions';
 import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
@@ -36,9 +38,23 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
 
 function ActionsCell({ quiz }: { quiz: Quiz }) {
   const t = useTranslations('QuizTableColumns');
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
+  const [liveError, setLiveError] = useState<string | null>(null);
+
+  const handleStartLive = () => {
+    setLiveError(null);
+    startTransition(async () => {
+      const res = await createLiveGame({ quizId: quiz.id });
+      if ('error' in res) {
+        setLiveError(res.error ?? '建立失敗');
+        return;
+      }
+      router.push(`/dashboard/live/host/${res.gameId}`);
+    });
+  };
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -84,6 +100,13 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
               {t('qr_code')}
             </DropdownMenuItem>
           )}
+          {quiz.status === 'published' && (
+            <DropdownMenuItem onClick={handleStartLive} disabled={isPending}>
+              🎮
+              {' '}
+              {t('start_live')}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             className="text-destructive focus:text-destructive"
             onClick={handleDelete}
@@ -93,6 +116,10 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {liveError && (
+        <p className="mt-1 text-right text-xs text-destructive">{liveError}</p>
+      )}
 
       {/* 分享 Modal */}
       {showQR && quiz.accessCode && (

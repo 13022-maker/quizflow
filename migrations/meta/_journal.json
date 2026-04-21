@@ -127,6 +127,13 @@
       "when": 1776825600000,
       "tag": "0017_quiz_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1776767602318,
+      "tag": "20260421_live_mode",
+      "breakpoints": true
     }
   ]
 }

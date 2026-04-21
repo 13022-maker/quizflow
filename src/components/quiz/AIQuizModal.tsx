@@ -342,7 +342,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           const copiedPages = await newDoc.copyPages(srcDoc, indices);
           copiedPages.forEach(page => newDoc.addPage(page));
           const trimmedBytes = await newDoc.save();
-          const trimmedFile = new File([trimmedBytes], firstFile.name, { type: 'application/pdf' });
+          const trimmedFile = new File([trimmedBytes as BlobPart], firstFile.name, { type: 'application/pdf' });
           fd.append('file', trimmedFile);
         } else if (allImagesNow) {
           // 多張圖片：全部 append 到同一個 'file' 欄位，server 用 getAll('file') 取出

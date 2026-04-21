@@ -313,6 +313,89 @@ export const vocabCardSchema = pgTable('vocabulary_card', {
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
+// ---------- Live Mode（直播競賽模式） ----------
+// 老師即時帶學生作答（Kahoot 風格）：gamePin 加入 → 同步推題 → 計分排行
+
+export const liveGameStatusEnum = pgEnum('live_game_status', [
+  'waiting', // 等待玩家加入
+  'playing', // 題目進行中
+  'showing_result', // 顯示單題結果
+  'finished', // 全部結束
+]);
+
+export const liveGameSchema = pgTable('live_game', {
+  id: serial('id').primaryKey(),
+  quizId: integer('quiz_id')
+    .notNull()
+    .references(() => quizSchema.id, { onDelete: 'cascade' }),
+  hostOrgId: text('host_org_id').notNull(), // Clerk orgId，多租戶隔離
+  hostUserId: text('host_user_id').notNull(), // Clerk userId
+  title: text('title').notNull(),
+  gamePin: text('game_pin').notNull().unique(), // 6 碼大寫英數
+  status: liveGameStatusEnum('status').default('waiting').notNull(),
+  currentQuestionIndex: integer('current_question_index').default(-1).notNull(), // -1 = 尚未開始
+  questionStartedAt: timestamp('question_started_at', { mode: 'date' }),
+  questionDuration: integer('question_duration').default(20).notNull(), // 秒
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  endedAt: timestamp('ended_at', { mode: 'date' }),
+});
+
+export const livePlayerSchema = pgTable(
+  'live_player',
+  {
+    id: serial('id').primaryKey(),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => liveGameSchema.id, { onDelete: 'cascade' }),
+    nickname: text('nickname').notNull(),
+    playerToken: text('player_token').notNull(), // server 產生，學生存 localStorage 作身分憑證
+    score: integer('score').default(0).notNull(),
+    correctCount: integer('correct_count').default(0).notNull(),
+    joinedAt: timestamp('joined_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // 同場不可重複暱稱
+      gameNicknameIdx: uniqueIndex('live_player_game_nickname_idx').on(
+        table.gameId,
+        table.nickname,
+      ),
+      // playerToken 唯一
+      playerTokenIdx: uniqueIndex('live_player_token_idx').on(table.playerToken),
+    };
+  },
+);
+
+export const liveAnswerSchema = pgTable(
+  'live_answer',
+  {
+    id: serial('id').primaryKey(),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => liveGameSchema.id, { onDelete: 'cascade' }),
+    playerId: integer('player_id')
+      .notNull()
+      .references(() => livePlayerSchema.id, { onDelete: 'cascade' }),
+    questionId: integer('question_id')
+      .notNull()
+      .references(() => questionSchema.id, { onDelete: 'cascade' }),
+    selectedOptionId: jsonb('selected_option_id').$type<string | string[]>(), // 單選 string / 複選 string[]
+    isCorrect: boolean('is_correct').default(false).notNull(),
+    responseTimeMs: integer('response_time_ms').default(0).notNull(),
+    score: integer('score').default(0).notNull(),
+    answeredAt: timestamp('answered_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // 同一玩家同題不可重複作答
+      playerQuestionIdx: uniqueIndex('live_answer_player_question_idx').on(
+        table.playerId,
+        table.questionId,
+      ),
+    };
+  },
+);
+
 export const todoSchema = pgTable('todo', {
   id: serial('id').primaryKey(),
   ownerId: text('owner_id').notNull(),
