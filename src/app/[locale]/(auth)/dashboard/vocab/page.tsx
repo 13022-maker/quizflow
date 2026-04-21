@@ -1,9 +1,9 @@
 import { auth } from '@clerk/nextjs/server';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { db } from '@/libs/DB';
-import { vocabSetSchema } from '@/models/Schema';
+import { vocabCardSchema, vocabSetSchema } from '@/models/Schema';
 
 import { DeleteVocabButton } from './DeleteButton';
 
@@ -15,15 +15,19 @@ export default async function VocabListPage() {
     return null;
   }
 
+  // 左連接卡片表，取每個卡集中最後一張卡的建立時間（lastCardAt）
   const sets = await db
     .select({
       id: vocabSetSchema.id,
       title: vocabSetSchema.title,
       accessCode: vocabSetSchema.accessCode,
       createdAt: vocabSetSchema.createdAt,
+      lastCardAt: sql<Date | null>`MAX(${vocabCardSchema.createdAt})`,
     })
     .from(vocabSetSchema)
+    .leftJoin(vocabCardSchema, eq(vocabCardSchema.setId, vocabSetSchema.id))
     .where(eq(vocabSetSchema.ownerId, orgId))
+    .groupBy(vocabSetSchema.id)
     .orderBy(desc(vocabSetSchema.createdAt));
 
   return (
@@ -41,30 +45,44 @@ export default async function VocabListPage() {
       {sets.length > 0
         ? (
             <div className="grid gap-4 sm:grid-cols-2">
-              {sets.map(set => (
-                <div key={set.id} className="rounded-xl border bg-card p-5 shadow-sm">
-                  <h3 className="mb-2 text-base font-semibold">{set.title}</h3>
-                  <p className="mb-4 text-xs text-muted-foreground">
-                    {set.createdAt.toLocaleDateString('zh-TW')}
-                  </p>
-                  <div className="flex gap-2">
-                    <Link
-                      href={`/vocab/${set.accessCode}`}
-                      className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
-                    >
-                      預覽
-                    </Link>
-                    <button
-                      type="button"
-                      className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
-                      onClick={undefined}
-                    >
-                      複製連結
-                    </button>
-                    <DeleteVocabButton id={set.id} />
+              {sets.map((set) => {
+                // 最後一張卡加入的時間；若卡集無卡片，退回 set 建立時間
+                const rawLastAt = set.lastCardAt ?? set.createdAt;
+                const lastAt = rawLastAt instanceof Date ? rawLastAt : new Date(rawLastAt);
+                const lastAtLabel = lastAt.toLocaleString('zh-TW', {
+                  year: 'numeric',
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                const hasCards = set.lastCardAt !== null;
+                return (
+                  <div key={set.id} className="rounded-xl border bg-card p-5 shadow-sm">
+                    <h3 className="mb-2 text-base font-semibold">{set.title}</h3>
+                    <p className="mb-4 text-xs text-muted-foreground">
+                      {hasCards ? '最近加入：' : '建立於：'}
+                      {lastAtLabel}
+                    </p>
+                    <div className="flex gap-2">
+                      <Link
+                        href={`/vocab/${set.accessCode}`}
+                        className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
+                      >
+                        預覽
+                      </Link>
+                      <button
+                        type="button"
+                        className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
+                        onClick={undefined}
+                      >
+                        複製連結
+                      </button>
+                      <DeleteVocabButton id={set.id} />
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )
         : (
