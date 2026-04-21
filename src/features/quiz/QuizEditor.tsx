@@ -317,10 +317,17 @@ export function QuizEditor({
 
   // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
   // 不自動彈 ShareModal，避免打斷老師審題
+  //
+  // hydration 注意：App Router 中 useSearchParams() 在 SSR 期間拿不到 URL query，
+  // 必須延到 mount 之後才讀，否則 server 初始 HTML（banner 不顯示）會跟
+  // client hydration（banner 顯示）不匹配，觸發 React #418 hydration error。
   const searchParams = useSearchParams();
-  const [showJustCreatedBanner, setShowJustCreatedBanner] = useState(
-    searchParams.get('just_created') === '1',
-  );
+  const [showJustCreatedBanner, setShowJustCreatedBanner] = useState(false);
+  useEffect(() => {
+    if (searchParams.get('just_created') === '1') {
+      setShowJustCreatedBanner(true);
+    }
+  }, [searchParams]);
   const dismissJustCreatedBanner = () => {
     setShowJustCreatedBanner(false);
     // 清掉 URL 參數，避免重新整理時又出現
