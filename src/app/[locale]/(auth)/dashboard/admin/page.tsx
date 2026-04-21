@@ -107,9 +107,10 @@ export default async function AdminStatsPage({
     const clerk = await clerkClient();
     totalUsers = await clerk.users.getCount();
 
-    // 分頁抓取所有 Clerk 用戶（上限 1000 避免 API 過載）
+    // 試用期間：總人數 >= 100 後不再顯示用戶明細，只取最新 100 筆用於「今日新註冊」統計
+    const SHOW_USER_DETAILS = totalUsers < 100;
     const PAGE_SIZE = 100;
-    const MAX_USERS = 1000;
+    const MAX_USERS = SHOW_USER_DETAILS ? 1000 : 100;
     const allUsersRaw: Awaited<ReturnType<typeof clerk.users.getUserList>>['data'] = [];
     for (let offset = 0; offset < MAX_USERS; offset += PAGE_SIZE) {
       const resp = await clerk.users.getUserList({
@@ -125,87 +126,90 @@ export default async function AdminStatsPage({
 
     todayNewUsers = allUsersRaw.filter(u => new Date(u.createdAt) >= today).length;
 
-    // 批次抓取每位用戶的 organization memberships（決定其 ownerIds）
-    // ownerId = orgId（建立測驗時使用），所以要把用戶所屬的每個 org 都納入
-    const membershipResults = await Promise.all(
-      allUsersRaw.map(async (u) => {
-        try {
-          const m = await clerk.users.getOrganizationMembershipList({ userId: u.id });
-          return { userId: u.id, orgIds: m.data.map(x => x.organization.id) };
-        } catch {
-          return { userId: u.id, orgIds: [] as string[] };
+    // 總人數 >= 100 時跳過明細聚合（節省 Clerk API + DB 查詢），明細區塊不會顯示
+    if (SHOW_USER_DETAILS) {
+      // 批次抓取每位用戶的 organization memberships（決定其 ownerIds）
+      // ownerId = orgId（建立測驗時使用），所以要把用戶所屬的每個 org 都納入
+      const membershipResults = await Promise.all(
+        allUsersRaw.map(async (u) => {
+          try {
+            const m = await clerk.users.getOrganizationMembershipList({ userId: u.id });
+            return { userId: u.id, orgIds: m.data.map(x => x.organization.id) };
+          } catch {
+            return { userId: u.id, orgIds: [] as string[] };
+          }
+        }),
+      );
+
+      // 收集所有需要查詢的 ownerId（含用戶自己的 userId，作為相容 fallback）
+      const allOwnerIds = new Set<string>();
+      for (const { userId, orgIds } of membershipResults) {
+        allOwnerIds.add(userId);
+        for (const id of orgIds) {
+          allOwnerIds.add(id);
         }
-      }),
-    );
-
-    // 收集所有需要查詢的 ownerId（含用戶自己的 userId，作為相容 fallback）
-    const allOwnerIds = new Set<string>();
-    for (const { userId, orgIds } of membershipResults) {
-      allOwnerIds.add(userId);
-      for (const id of orgIds) {
-        allOwnerIds.add(id);
       }
+
+      // 以單一 SQL 聚合每個 ownerId 的測驗數與作答數
+      const ownerIdsArr = Array.from(allOwnerIds);
+      const quizCountMap = new Map<string, number>();
+      const responseCountMap = new Map<string, number>();
+
+      if (ownerIdsArr.length > 0) {
+        const quizCounts = await db
+          .select({ ownerId: quizSchema.ownerId, total: count() })
+          .from(quizSchema)
+          .where(inArray(quizSchema.ownerId, ownerIdsArr))
+          .groupBy(quizSchema.ownerId);
+
+        for (const row of quizCounts) {
+          quizCountMap.set(row.ownerId, Number(row.total));
+        }
+
+        const responseCounts = await db
+          .select({ ownerId: quizSchema.ownerId, total: count() })
+          .from(responseSchema)
+          .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
+          .where(inArray(quizSchema.ownerId, ownerIdsArr))
+          .groupBy(quizSchema.ownerId);
+
+        for (const row of responseCounts) {
+          responseCountMap.set(row.ownerId, Number(row.total));
+        }
+      }
+
+      // 建立 userId → ownerIds 快表
+      const userOwnerIds = new Map<string, string[]>();
+      for (const { userId, orgIds } of membershipResults) {
+        userOwnerIds.set(userId, [userId, ...orgIds]);
+      }
+
+      allRegisteredUsers = allUsersRaw.map((u) => {
+        const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
+          || u.username
+          || u.primaryEmailAddress?.emailAddress?.split('@')[0]
+          || '匿名';
+        const email = u.primaryEmailAddress?.emailAddress
+          || u.emailAddresses?.[0]?.emailAddress
+          || '—';
+        const ownerIds = userOwnerIds.get(u.id) ?? [u.id];
+        let quizCount = 0;
+        let responseCount = 0;
+        for (const id of ownerIds) {
+          quizCount += quizCountMap.get(id) ?? 0;
+          responseCount += responseCountMap.get(id) ?? 0;
+        }
+        return {
+          id: u.id,
+          name,
+          email,
+          initial: (name.charAt(0) || '?').toUpperCase(),
+          createdAt: u.createdAt,
+          quizCount,
+          responseCount,
+        };
+      });
     }
-
-    // 以單一 SQL 聚合每個 ownerId 的測驗數與作答數
-    const ownerIdsArr = Array.from(allOwnerIds);
-    const quizCountMap = new Map<string, number>();
-    const responseCountMap = new Map<string, number>();
-
-    if (ownerIdsArr.length > 0) {
-      const quizCounts = await db
-        .select({ ownerId: quizSchema.ownerId, total: count() })
-        .from(quizSchema)
-        .where(inArray(quizSchema.ownerId, ownerIdsArr))
-        .groupBy(quizSchema.ownerId);
-
-      for (const row of quizCounts) {
-        quizCountMap.set(row.ownerId, Number(row.total));
-      }
-
-      const responseCounts = await db
-        .select({ ownerId: quizSchema.ownerId, total: count() })
-        .from(responseSchema)
-        .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-        .where(inArray(quizSchema.ownerId, ownerIdsArr))
-        .groupBy(quizSchema.ownerId);
-
-      for (const row of responseCounts) {
-        responseCountMap.set(row.ownerId, Number(row.total));
-      }
-    }
-
-    // 建立 userId → ownerIds 快表
-    const userOwnerIds = new Map<string, string[]>();
-    for (const { userId, orgIds } of membershipResults) {
-      userOwnerIds.set(userId, [userId, ...orgIds]);
-    }
-
-    allRegisteredUsers = allUsersRaw.map((u) => {
-      const name = [u.firstName, u.lastName].filter(Boolean).join(' ')
-        || u.username
-        || u.primaryEmailAddress?.emailAddress?.split('@')[0]
-        || '匿名';
-      const email = u.primaryEmailAddress?.emailAddress
-        || u.emailAddresses?.[0]?.emailAddress
-        || '—';
-      const ownerIds = userOwnerIds.get(u.id) ?? [u.id];
-      let quizCount = 0;
-      let responseCount = 0;
-      for (const id of ownerIds) {
-        quizCount += quizCountMap.get(id) ?? 0;
-        responseCount += responseCountMap.get(id) ?? 0;
-      }
-      return {
-        id: u.id,
-        name,
-        email,
-        initial: (name.charAt(0) || '?').toUpperCase(),
-        createdAt: u.createdAt,
-        quizCount,
-        responseCount,
-      };
-    });
   } catch {
     clerkError = true;
   }
@@ -305,7 +309,8 @@ export default async function AdminStatsPage({
           : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">目前尚無作答記錄</p>}
       </section>
 
-      {/* 註冊用戶（可篩選） */}
+      {/* 註冊用戶（可篩選）— 試用期間僅在總人數 < 100 時顯示 */}
+      {totalUsers < 100 && (
       <section className="mt-8">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold">註冊用戶</h2>
@@ -440,6 +445,7 @@ export default async function AdminStatsPage({
               )
             : <p className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">沒有符合條件的用戶</p>}
       </section>
+      )}
     </div>
   );
 }
