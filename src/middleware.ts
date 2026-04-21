@@ -37,7 +37,11 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
-  // Live Mode Ably token 發行：endpoint 內自己驗 host(Clerk) / player(token) 身分
+]);
+
+// 需要 Clerk context（route 內會呼叫 auth()）但不強制登入的 API，
+// 例：Ably token 端點 — host 角色讀 orgId，player 角色用 playerToken 驗，兩種都不該被 auth.protect 擋
+const isOptionalAuthRoute = createRouteMatcher([
   '/api/live/ably-auth',
   '/:locale/api/live/ably-auth',
 ]);
@@ -66,7 +70,8 @@ export default function middleware(
     || isProtectedRoute(request)
   ) {
     return clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
+      // optional-auth route：要 Clerk context 讓 route 內的 auth() 能讀 session，但不強制登入
+      if (isProtectedRoute(req) && !isOptionalAuthRoute(req)) {
         const locale
           = req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
 
