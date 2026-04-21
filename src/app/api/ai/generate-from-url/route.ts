@@ -20,8 +20,13 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-const anthropic = new Anthropic();
+const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+const hasAnthropicKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+
+const genAI = hasGeminiKey
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+  : null;
+const anthropic = hasAnthropicKey ? new Anthropic() : null;
 
 // YouTube video ID 擷取（支援多種 URL 格式）
 function extractYouTubeId(url: string): string | null {
@@ -229,12 +234,31 @@ ${typesPrompt}
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;
 
+  // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
+  let effectiveModel = model;
+  if (effectiveModel !== 'claude' && !hasGeminiKey) {
+    if (!hasAnthropicKey) {
+      return NextResponse.json(
+        { error: 'AI 命題服務尚未啟用：伺服器缺少 GEMINI_API_KEY 與 ANTHROPIC_API_KEY，請聯繫管理員。' },
+        { status: 503 },
+      );
+    }
+    console.warn('[generate-from-url] GEMINI_API_KEY 未設定，自動改用 Claude');
+    effectiveModel = 'claude';
+  }
+  if (effectiveModel === 'claude' && !hasAnthropicKey) {
+    return NextResponse.json(
+      { error: '伺服器尚未設定 ANTHROPIC_API_KEY，無法使用 Claude 命題。請改選 Gemini 或聯繫管理員。' },
+      { status: 503 },
+    );
+  }
+
   try {
     let raw: string;
 
-    if (model === 'claude') {
+    if (effectiveModel === 'claude') {
       const message = await callWithRetry(() =>
-        anthropic.messages.create({
+        anthropic!.messages.create({
           model: 'claude-sonnet-4-20250514',
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
@@ -242,7 +266,7 @@ ${typesPrompt}
       raw = (message.content[0] as { type: string; text: string }).text ?? '';
     } else {
       const response = await callWithRetry(() =>
-        genAI.models.generateContent({
+        genAI!.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           config: { maxOutputTokens: 8192, responseMimeType: 'application/json' },
@@ -277,8 +301,23 @@ ${typesPrompt}
 
     return NextResponse.json(result);
   } catch (err) {
+    const status = (err as { status?: number; code?: number }).status
+      ?? (err as { code?: number }).code;
     const msg = err instanceof Error ? err.message : '未知錯誤';
-    console.error(`[generate-from-url] ${model} 呼叫失敗：`, err);
+
+    const permissionDenied
+      = status === 403
+      || msg.includes('PERMISSION_DENIED')
+      || msg.includes('unregistered callers')
+      || msg.includes('API key not valid');
+    if (permissionDenied) {
+      return NextResponse.json(
+        { error: 'AI 金鑰驗證失敗：伺服器的 GEMINI_API_KEY 無效或未授權此 API，請聯繫管理員檢查設定。' },
+        { status: 503 },
+      );
+    }
+
+    console.error(`[generate-from-url] ${effectiveModel} 呼叫失敗：`, err);
     return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }
 }

@@ -18,9 +18,16 @@ const DEFAULT_MODEL: ModelChoice = 'gemini';
 const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
 const CLAUDE_MODEL_NAME = 'claude-sonnet-4-20250514';
 
+// 判斷伺服器端是否已配置對應 API 金鑰
+const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
+const hasAnthropicKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+
 // 兩個 SDK 實例在 module 層級建立，避免每次請求重建
-const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
-const anthropic = new Anthropic();
+// GEMINI_API_KEY 未設定時不建立 Gemini 實例，避免 SDK 帶空 key 呼叫 Google API 出現 403
+const genAI = hasGeminiKey
+  ? new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! })
+  : null;
+const anthropic = hasAnthropicKey ? new Anthropic() : null;
 
 // 過載 / 限流自動重試，最多 3 次遞增 backoff
 async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
@@ -51,6 +58,9 @@ async function generateWithGemini(
   base64: string,
   prompt: string,
 ): Promise<string> {
+  if (!genAI) {
+    throw new Error('GEMINI_API_KEY_MISSING');
+  }
   const response = await callWithRetry(() =>
     genAI.models.generateContent({
       model: GEMINI_MODEL_NAME,
@@ -78,6 +88,9 @@ async function generateWithClaude(
   base64: string,
   prompt: string,
 ): Promise<string> {
+  if (!anthropic) {
+    throw new Error('ANTHROPIC_API_KEY_MISSING');
+  }
   // Claude 多模態格式 — image / document 分開
   const isImage = mimeType.startsWith('image/');
   const content: Anthropic.MessageParam['content'] = isImage
@@ -259,7 +272,32 @@ ${typesPrompt}
   };
 
   // 音檔只能走 Gemini（Claude 不支援音檔多模態）
-  const effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
+  let effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
+
+  // 伺服器端金鑰檢查：Gemini 沒設且非音檔 → 自動改用 Claude
+  if (effectiveModel === 'gemini' && !hasGeminiKey) {
+    if (isAudio) {
+      return NextResponse.json(
+        { error: '伺服器尚未設定 GEMINI_API_KEY，無法處理音檔 / 聽力題。請改上傳 PDF 或圖片，或聯繫管理員設定金鑰。' },
+        { status: 503 },
+      );
+    }
+    if (!hasAnthropicKey) {
+      return NextResponse.json(
+        { error: 'AI 命題服務尚未啟用：伺服器缺少 GEMINI_API_KEY 與 ANTHROPIC_API_KEY，請聯繫管理員。' },
+        { status: 503 },
+      );
+    }
+    console.warn('[generate-from-file] GEMINI_API_KEY 未設定，自動改用 Claude');
+    effectiveModel = 'claude';
+  }
+
+  if (effectiveModel === 'claude' && !hasAnthropicKey) {
+    return NextResponse.json(
+      { error: '伺服器尚未設定 ANTHROPIC_API_KEY，無法使用 Claude 命題。請改選 Gemini 或聯繫管理員。' },
+      { status: 503 },
+    );
+  }
 
   let mimeType: string;
   let base64: string;
@@ -338,8 +376,37 @@ ${typesPrompt}
         { status: 503 },
       );
     }
+
     const msg = err instanceof Error ? err.message : '未知錯誤';
-    console.error(`[generate-from-file] ${model} 呼叫失敗：`, err);
+
+    // 金鑰未設定（generateWithGemini / generateWithClaude 丟出）
+    if (msg === 'GEMINI_API_KEY_MISSING') {
+      return NextResponse.json(
+        { error: '伺服器尚未設定 GEMINI_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' },
+        { status: 503 },
+      );
+    }
+    if (msg === 'ANTHROPIC_API_KEY_MISSING') {
+      return NextResponse.json(
+        { error: '伺服器尚未設定 ANTHROPIC_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' },
+        { status: 503 },
+      );
+    }
+
+    // Google API 未授權（金鑰無效 / 被撤銷 / 帳單未啟用）
+    const permissionDenied
+      = status === 403
+      || msg.includes('PERMISSION_DENIED')
+      || msg.includes('unregistered callers')
+      || msg.includes('API key not valid');
+    if (permissionDenied) {
+      return NextResponse.json(
+        { error: 'AI 金鑰驗證失敗：伺服器的 GEMINI_API_KEY 無效或未授權此 API，請聯繫管理員檢查設定。' },
+        { status: 503 },
+      );
+    }
+
+    console.error(`[generate-from-file] ${effectiveModel} 呼叫失敗：`, err);
     return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
   }
 }
