@@ -118,7 +118,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [sourceUrl, setSourceUrl] = useState('');
 
   // File mode
-  const [file, setFile] = useState<File | null>(null);
+  // 支援多檔上傳（多張照片）；PDF / 音檔仍維持單檔（覆寫）
+  const [files, setFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -199,40 +200,72 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   // Vercel Serverless request body 上限約 4.5MB
   const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
 
-  async function handleFile(f: File) {
+  const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+  function isImageFile(f: File) {
+    const e = f.name.split('.').pop()?.toLowerCase() ?? '';
+    return IMAGE_EXTS.includes(e);
+  }
+
+  // 將新選取 / 拖入的檔案加入 state
+  // - 若挑到 PDF 或音檔：以「單檔模式」覆寫整個清單（PDF 需選頁數、音檔單獨處理）
+  // - 若全是圖片：累加到現有清單，支援多張照片一起出題
+  async function handleFiles(incoming: File[]) {
     setResult(null);
     setError('');
-    setPdfPageCount(null);
-    setFile(f);
 
-    // 大檔案顯示黃色警告，但不阻擋 — 讓用戶選頁數後前端裁切再上傳
-    if (f.size > MAX_UPLOAD_SIZE) {
-      const sizeMB = (f.size / 1024 / 1024).toFixed(1);
-      setError(`檔案較大（${sizeMB}MB），請選擇較少頁數，系統會自動裁切後上傳`);
-    }
-
-    // PDF 才讀取頁數
-    const isPdf = f.name.split('.').pop()?.toLowerCase() === 'pdf';
-    if (!isPdf) {
+    if (incoming.length === 0) {
       return;
     }
 
-    setPageLoading(true);
-    try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-      const arrayBuffer = await f.arrayBuffer();
-      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
-      const total = pdf.numPages;
-      setPdfPageCount(total);
-      setStartPage(1);
-      setEndPage(Math.min(10, total));
-    } catch {
-      // 讀取失敗就不顯示範圍選擇器，讓後端直接處理
+    const nonImage = incoming.find(f => !isImageFile(f));
+
+    if (nonImage) {
+      // 單檔模式：PDF / 音檔
       setPdfPageCount(null);
-    } finally {
-      setPageLoading(false);
+      setFiles([nonImage]);
+
+      if (nonImage.size > MAX_UPLOAD_SIZE) {
+        const sizeMB = (nonImage.size / 1024 / 1024).toFixed(1);
+        setError(`檔案較大（${sizeMB}MB），請選擇較少頁數，系統會自動裁切後上傳`);
+      }
+
+      const isPdf = nonImage.name.split('.').pop()?.toLowerCase() === 'pdf';
+      if (!isPdf) {
+        return;
+      }
+
+      setPageLoading(true);
+      try {
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const arrayBuffer = await nonImage.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+        const total = pdf.numPages;
+        setPdfPageCount(total);
+        setStartPage(1);
+        setEndPage(Math.min(10, total));
+      } catch {
+        setPdfPageCount(null);
+      } finally {
+        setPageLoading(false);
+      }
+      return;
     }
+
+    // 全為圖片：累加到現有圖片清單（若目前已有 PDF/音檔則改為覆寫為新圖片清單）
+    setPdfPageCount(null);
+    setFiles((prev) => {
+      const prevAllImages = prev.every(isImageFile);
+      const merged = prevAllImages ? [...prev, ...incoming] : [...incoming];
+
+      const total = merged.reduce((sum, f) => sum + f.size, 0);
+      if (total > MAX_UPLOAD_SIZE) {
+        const sizeMB = (total / 1024 / 1024).toFixed(1);
+        setError(`檔案較大（共 ${sizeMB}MB），可能超過上傳上限，請減少張數或壓縮圖片`);
+      }
+      return merged;
+    });
   }
 
   // ── Generate ──
@@ -245,7 +278,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
       setError('請輸入主題或課文內容');
       return;
     }
-    if (mode === 'file' && !file) {
+    if (mode === 'file' && files.length === 0) {
       setError('請上傳一份教材檔案');
       return;
     }
@@ -288,12 +321,16 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         setStep('讀取檔案…');
         const fd = new FormData();
 
-        // 大 PDF 且有選頁數範圍：前端先裁切成小 PDF 再上傳，避免超過 Vercel 4.5MB 限制
-        const isPdf = file!.name.split('.').pop()?.toLowerCase() === 'pdf';
-        if (isPdf && pdfPageCount !== null && file!.size > MAX_UPLOAD_SIZE) {
+        const firstFile = files[0]!;
+        const firstExt = firstFile.name.split('.').pop()?.toLowerCase() ?? '';
+        const isPdf = firstExt === 'pdf';
+        const allImagesNow = files.every(isImageFile);
+
+        if (isPdf && pdfPageCount !== null && firstFile.size > MAX_UPLOAD_SIZE) {
+          // 大 PDF 前端先裁切，避免超過 Vercel 4.5MB 限制
           setStep('裁切 PDF 中…');
           const { PDFDocument } = await import('pdf-lib');
-          const srcBytes = await file!.arrayBuffer();
+          const srcBytes = await firstFile.arrayBuffer();
           const srcDoc = await PDFDocument.load(srcBytes);
           const newDoc = await PDFDocument.create();
           const safeStart = Math.max(1, startPage);
@@ -305,13 +342,17 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           const copiedPages = await newDoc.copyPages(srcDoc, indices);
           copiedPages.forEach(page => newDoc.addPage(page));
           const trimmedBytes = await newDoc.save();
-          const trimmedFile = new File([trimmedBytes], file!.name, { type: 'application/pdf' });
+          const trimmedFile = new File([trimmedBytes], firstFile.name, { type: 'application/pdf' });
           fd.append('file', trimmedFile);
-          // 裁切後的 PDF 已經只包含選中頁面，不需要再傳 startPage/endPage
+        } else if (allImagesNow) {
+          // 多張圖片：全部 append 到同一個 'file' 欄位，server 用 getAll('file') 取出
+          for (const f of files) {
+            fd.append('file', f);
+          }
         } else {
-          fd.append('file', file!);
-          // 未裁切的檔案：傳頁數範圍讓 server 端裁切（小檔案走原本邏輯）
-          if (pdfPageCount !== null) {
+          // PDF（不需裁切）或音檔：單檔上傳
+          fd.append('file', firstFile);
+          if (isPdf && pdfPageCount !== null) {
             fd.append('startPage', String(startPage));
             fd.append('endPage', String(endPage));
           }
@@ -420,12 +461,15 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     }
   }
 
-  const ext = file?.name.split('.').pop()?.toLowerCase() ?? '';
+  const firstFile = files[0];
+  const ext = firstFile?.name.split('.').pop()?.toLowerCase() ?? '';
+  const totalFileSize = files.reduce((sum, f) => sum + f.size, 0);
+  const allImages = files.length > 0 && files.every(isImageFile);
   const canGenerate = types.length > 0
     && (mode === 'text'
       ? topic.trim().length > 0
       : mode === 'file'
-        ? !!file
+        ? files.length > 0
         : sourceUrl.trim().length > 0);
 
   // 按鈕 disabled 時告訴使用者還缺什麼，避免誤以為是 bug
@@ -585,8 +629,24 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
                 上傳教材檔案
               </label>
+              {/* 隱藏的 file input：可多選圖片，PDF / 音檔則為單檔 */}
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
+                className="hidden"
+                onChange={(e) => {
+                  const list = Array.from(e.target.files ?? []);
+                  if (list.length > 0) {
+                    handleFiles(list);
+                  }
+                  // reset 讓重複選同一張也能觸發
+                  e.target.value = '';
+                }}
+              />
               {/* eslint-disable-next-line style/multiline-ternary */}
-              {!file ? (
+              {files.length === 0 ? (
                 // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
                 <div
                   onClick={() => fileRef.current?.click()}
@@ -598,9 +658,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   onDrop={(e) => {
                     e.preventDefault();
                     setDragOver(false);
-                    const f = e.dataTransfer.files[0];
-                    if (f) {
-                      handleFile(f);
+                    const list = Array.from(e.dataTransfer.files);
+                    if (list.length > 0) {
+                      handleFiles(list);
                     }
                   }}
                   className={`cursor-pointer rounded-xl border-2 border-dashed p-8 text-center transition-all ${
@@ -609,41 +669,64 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       : 'border-gray-200 hover:border-amber-300 hover:bg-amber-50/50'
                   }`}
                 >
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files?.[0]) {
-                        handleFile(e.target.files[0]);
-                      }
-                    }}
-                  />
                   <div className="mb-2 text-4xl">📂</div>
-                  <p className="mb-1 text-sm font-semibold text-gray-700">點擊或拖曳上傳</p>
-                  <p className="text-xs text-gray-400">PDF（1MB 以下）· JPG · PNG</p>
+                  <p className="mb-1 text-sm font-semibold text-gray-700">點擊或拖曳上傳（圖片可多選）</p>
+                  <p className="text-xs text-gray-400">PDF · JPG · PNG · 音檔</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* 檔案資訊列 */}
-                  <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-                    <span className="text-2xl">{FILE_EMOJIS[ext] ?? '📄'}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-800">{file.name}</p>
-                      <p className="font-mono text-xs text-gray-500">{fmtSize(file.size)}</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setFile(null);
-                        setResult(null);
-                        setPdfPageCount(null);
-                      }}
-                      className="flex size-6 items-center justify-center text-xl text-gray-400 transition-colors hover:text-red-500"
-                    >
-                      ×
-                    </button>
+                  {/* 檔案清單 */}
+                  <div className="space-y-2">
+                    {files.map((f, idx) => {
+                      const fExt = f.name.split('.').pop()?.toLowerCase() ?? '';
+                      return (
+                        <div
+                          key={`${f.name}-${f.size}-${idx}`}
+                          className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3"
+                        >
+                          <span className="text-2xl">{FILE_EMOJIS[fExt] ?? '📄'}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-semibold text-gray-800">{f.name}</p>
+                            <p className="font-mono text-xs text-gray-500">{fmtSize(f.size)}</p>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setFiles(prev => prev.filter((_, i) => i !== idx));
+                              setResult(null);
+                              if (fExt === 'pdf') {
+                                setPdfPageCount(null);
+                              }
+                            }}
+                            className="flex size-6 items-center justify-center text-xl text-gray-400 transition-colors hover:text-red-500"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  {/* 多張圖片時顯示總大小 + 加圖按鈕 */}
+                  {allImages && (
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>
+                        共
+                        {' '}
+                        {files.length}
+                        {' '}
+                        張，總計
+                        {' '}
+                        {fmtSize(totalFileSize)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => fileRef.current?.click()}
+                        className="rounded-full border border-amber-300 bg-white px-3 py-1 font-semibold text-amber-700 transition-colors hover:bg-amber-50"
+                      >
+                        + 再加幾張
+                      </button>
+                    </div>
+                  )}
 
                   {/* PDF 頁數範圍選擇器 */}
                   {pageLoading && (
@@ -764,7 +847,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           )}
 
           {/* ── AI 模型選擇（檔案模式 + 連結模式顯示） ── */}
-          {((mode === 'file' && file) || (mode === 'url' && sourceUrl.trim())) && (
+          {((mode === 'file' && files.length > 0) || (mode === 'url' && sourceUrl.trim())) && (
             <div>
               {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
