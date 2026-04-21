@@ -345,11 +345,21 @@ export function QuizEditor({
     setIsSubmitting(true);
     setShowAIModal(false);
 
-    await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
+    const res = await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ questions: aiQuestions }),
     });
+
+    // 之前沒檢查 res.ok，API 回 401/400/500 時還是照樣顯示「匯入成功」，
+    // 導致用戶看到題目 (0) 卻不知道為什麼
+    if (!res.ok) {
+      setIsSubmitting(false);
+      const msg = await res.text().catch(() => '');
+      // eslint-disable-next-line no-alert
+      alert(`匯入失敗（${res.status}）${msg ? `：${msg}` : ''}`);
+      return;
+    }
 
     const allDefault = questions.length === 0 || questions.every(q => q.points === 1);
     if (allDefault) {

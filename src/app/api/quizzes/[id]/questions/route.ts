@@ -1,5 +1,6 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
@@ -134,6 +135,10 @@ export async function POST(
 
   // 一次批次插入，減少 DB round-trip
   await db.insert(questionSchema).values(rows);
+
+  // 必須 revalidate，否則編輯頁 server component 即使 router.refresh()
+  // 也可能拿到快取中的舊題目列表，前端顯示「題目 (0)」
+  revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 
   return NextResponse.json({ count: rows.length });
 }
