@@ -38,6 +38,10 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
                 label: '單字卡',
               },
               {
+                href: '/marketplace',
+                label: '市集',
+              },
+              {
                 href: '/dashboard/organization-profile/organization-members',
                 label: t('members'),
               },
