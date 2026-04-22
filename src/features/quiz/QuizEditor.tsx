@@ -72,6 +72,14 @@ type AIGeneratedQuestion = {
   audioUrl?: string; // 聽力題 TTS 音檔 URL
 };
 
+// 匯入中的 pending 題目（灰階 preview 用，API 未完成前暫代）
+type PendingQuestion = {
+  tempId: string; // client 端唯一 key
+  body: string;
+  hasOptions: boolean;
+  options: Array<{ id: string; text: string }>; // 空陣列代表非選擇題
+};
+
 // 題型對應：FileQuizGenerator → DB enum
 const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer'> = {
   mc: 'single_choice',
@@ -125,6 +133,9 @@ export function QuizEditor({
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
 
+  // 匯入中的灰階 preview 題目（樂觀 UI：Modal 關閉後立刻顯示、真題目到位清掉）
+  const [pendingQuestions, setPendingQuestions] = useState<PendingQuestion[]>([]);
+
   // 同步 initialQuestions prop → local state
   // 原因：router.refresh() 會讓 server component 重新傳入新的 initialQuestions，
   // 但 useState(initialQuestions) 只在第一次 render 讀取 prop，後續不會自動更新。
@@ -132,6 +143,8 @@ export function QuizEditor({
   // （要手動 F5 才看得到）。
   useEffect(() => {
     setQuestions(initialQuestions);
+    // 真題目到位後清掉灰階 pending（避免 empty flash）
+    setPendingQuestions([]);
   }, [initialQuestions]);
 
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -356,6 +369,21 @@ export function QuizEditor({
     setIsSubmitting(true);
     setShowAIModal(false);
 
+    // 樂觀 UI：把 AI 題目立刻轉成 pending preview 顯示（灰階卡片）
+    // API 完成後會由 useEffect（監聽 initialQuestions）清掉
+    const batchId = Date.now();
+    setPendingQuestions(
+      aiQuestions.map((q, i) => ({
+        tempId: `pending-${batchId}-${i}`,
+        body: q.question,
+        hasOptions: !!q.options && q.options.length > 0,
+        options: (q.options ?? []).map((text, j) => ({
+          id: String.fromCharCode(65 + j), // A / B / C / D
+          text,
+        })),
+      })),
+    );
+
     const res = await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -365,6 +393,7 @@ export function QuizEditor({
     // 之前沒檢查 res.ok，API 回 401/400/500 時還是照樣顯示「匯入成功」，
     // 導致用戶看到題目 (0) 卻不知道為什麼
     if (!res.ok) {
+      setPendingQuestions([]); // 失敗清掉灰階 preview
       setIsSubmitting(false);
       const msg = await res.text().catch(() => '');
       // eslint-disable-next-line no-alert
@@ -378,7 +407,7 @@ export function QuizEditor({
     }
     setIsSubmitting(false);
     setImportSuccess(true);
-    router.refresh();
+    router.refresh(); // pending 由 useEffect 監聽 initialQuestions 變化後清
   };
 
   // 控制「上傳講義命題」Modal 顯示
@@ -1057,11 +1086,45 @@ export function QuizEditor({
                         />
                       ),
               )}
+
+              {/* ── 匯入中：灰階 preview（樂觀 UI，避免使用者以為卡住）── */}
+              {pendingQuestions.map((pq, i) => (
+                <div
+                  key={pq.tempId}
+                  className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4"
+                >
+                  <div className="mb-2 flex items-center gap-2">
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <span className="text-xs font-medium text-primary">
+                      匯入中 Q
+                      {questions.length + i + 1}
+                    </span>
+                  </div>
+                  <p className="line-clamp-2 text-sm font-medium text-foreground/80">
+                    {pq.body}
+                  </p>
+                  {pq.hasOptions && pq.options.length > 0 && (
+                    <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
+                      {pq.options.map(opt => (
+                        <div
+                          key={opt.id}
+                          className="line-clamp-1 rounded border border-muted-foreground/10 bg-background/50 px-2 py-1 text-xs text-muted-foreground"
+                        >
+                          {opt.id}
+                          .
+                          {' '}
+                          {opt.text}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           </SortableContext>
         </DndContext>
 
-        {questions.length === 0 && !addingNew && (
+        {questions.length === 0 && pendingQuestions.length === 0 && !addingNew && (
           <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">
             還沒有題目，點選下方按鈕新增第一題
           </div>
