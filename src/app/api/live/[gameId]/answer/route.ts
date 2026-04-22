@@ -1,7 +1,22 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { recordAnswer, verifyPlayerToken } from '@/services/live/liveStore';
+import { publishToGame, publishToPlayer } from '@/libs/ably/server';
+import {
+  getCurrentAnsweredCount,
+  getCurrentQuestionId,
+  getPlayerTotals,
+  getSlimLeaderboard,
+  recordAnswer,
+  tryClaimLeaderboardPublish,
+  verifyPlayerToken,
+} from '@/services/live/liveStore';
+import {
+  type AnswerSubmittedPayload,
+  type LeaderboardUpdatePayload,
+  LiveGameEvent,
+  LivePlayerEvent,
+} from '@/services/live/types';
 
 export const runtime = 'nodejs';
 
@@ -51,6 +66,44 @@ export async function POST(
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status ?? 400 });
   }
+
+  // ── 背景發 Ably 事件：一律 swallow 失敗，不可阻斷 client 回應 ──
+  // 1. 個別推 answer:submitted 到該玩家私人 channel（含累計分數）
+  // 2. 搶到節流權時才推 leaderboard:update 公開給全場
+  const totals = await getPlayerTotals(parsed.data.playerId);
+  const answerPayload: AnswerSubmittedPayload = {
+    questionId: parsed.data.questionId,
+    isCorrect: result.isCorrect,
+    score: result.score,
+    totalScore: totals?.score ?? result.score,
+    correctCount: totals?.correctCount ?? (result.isCorrect ? 1 : 0),
+  };
+  const publishPromises: Promise<unknown>[] = [
+    publishToPlayer(
+      gameId,
+      parsed.data.playerId,
+      LivePlayerEvent.AnswerSubmitted,
+      answerPayload,
+    ),
+  ];
+
+  const claimed = await tryClaimLeaderboardPublish(gameId);
+  if (claimed) {
+    const currentQid = await getCurrentQuestionId(gameId);
+    const [players, answeredCount] = await Promise.all([
+      getSlimLeaderboard(gameId),
+      currentQid ? getCurrentAnsweredCount(gameId, currentQid) : Promise.resolve(0),
+    ]);
+    const payload: LeaderboardUpdatePayload = { players, answeredCount };
+    publishPromises.push(
+      publishToGame(gameId, LiveGameEvent.LeaderboardUpdate, payload),
+    );
+  }
+
+  // 背景跑完不 block response（fire-and-forget）
+  Promise.all(publishPromises).catch((err) => {
+    console.error('[answer] ably publish failed', err);
+  });
 
   return NextResponse.json({
     isCorrect: result.isCorrect,

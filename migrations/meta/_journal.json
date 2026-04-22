@@ -134,6 +134,13 @@
       "when": 1776767602318,
       "tag": "0018_live_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1776825600000,
+      "tag": "20260422_live_leaderboard_throttle",
+      "breakpoints": true
     }
   ]
 }

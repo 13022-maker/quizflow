@@ -14,6 +14,7 @@ import { calcLiveScore, gradeAnswer, isLiveSupportedType } from './scoring';
 import type {
   LiveAnswerStat,
   LiveHostState,
+  LiveLeaderboardEntry,
   LivePlayerState,
   LivePlayerSummary,
   LiveQuestionForHost,
@@ -64,7 +65,7 @@ async function getPlayers(gameId: number): Promise<LivePlayerSummary[]> {
 }
 
 // 當前題目的答題統計（每個選項被選次數；複選題每個 id 各計一次）
-async function getAnswerStats(gameId: number, questionId: number): Promise<{
+export async function getAnswerStats(gameId: number, questionId: number): Promise<{
   stats: LiveAnswerStat[];
   answeredCount: number;
 }> {
@@ -315,38 +316,15 @@ export async function recordAnswer(params: {
     responseMs = durationMs;
   }
 
-  // 已作答則直接回傳既有紀錄（防重複送分）
-  const [existing] = await db
-    .select()
-    .from(liveAnswerSchema)
-    .where(and(
-      eq(liveAnswerSchema.playerId, playerId),
-      eq(liveAnswerSchema.questionId, questionId),
-    ))
-    .limit(1);
-  if (existing) {
-    return { ok: true, isCorrect: existing.isCorrect, score: existing.score };
-  }
-
   const isCorrect = isTimedOut
     ? false
     : gradeAnswer(question.type, question.correctAnswers, selectedOptionId);
   const score = calcLiveScore(isCorrect, responseMs, durationMs);
 
-  // 寫入答題紀錄；同時累加 player 分數
-  try {
-    await db.insert(liveAnswerSchema).values({
-      gameId,
-      playerId,
-      questionId,
-      selectedOptionId,
-      isCorrect,
-      responseTimeMs: responseMs,
-      score,
-    });
-  } catch {
-    // 極少見的 race condition（unique index）：查既有回傳
-    const [again] = await db
+  // insert liveAnswer + update livePlayer.score 包成一個 transaction，
+  // 避免答題寫入但分數沒累加的中間狀態（server 崩潰 / 網路中斷皆可回滾）
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
       .select()
       .from(liveAnswerSchema)
       .where(and(
@@ -354,21 +332,213 @@ export async function recordAnswer(params: {
         eq(liveAnswerSchema.questionId, questionId),
       ))
       .limit(1);
-    if (again) {
-      return { ok: true, isCorrect: again.isCorrect, score: again.score };
+    if (existing) {
+      return { ok: true, isCorrect: existing.isCorrect, score: existing.score };
     }
-    return { ok: false, error: 'INSERT_FAILED', status: 500 };
+
+    try {
+      await tx.insert(liveAnswerSchema).values({
+        gameId,
+        playerId,
+        questionId,
+        selectedOptionId,
+        isCorrect,
+        responseTimeMs: responseMs,
+        score,
+      });
+    } catch {
+      // unique index race：查既有回傳（仍在 tx 內）
+      const [again] = await tx
+        .select()
+        .from(liveAnswerSchema)
+        .where(and(
+          eq(liveAnswerSchema.playerId, playerId),
+          eq(liveAnswerSchema.questionId, questionId),
+        ))
+        .limit(1);
+      if (again) {
+        return { ok: true, isCorrect: again.isCorrect, score: again.score };
+      }
+      return { ok: false, error: 'INSERT_FAILED', status: 500 } as const;
+    }
+
+    await tx
+      .update(livePlayerSchema)
+      .set({
+        score: sql`${livePlayerSchema.score} + ${score}`,
+        correctCount: sql`${livePlayerSchema.correctCount} + ${isCorrect ? 1 : 0}`,
+      })
+      .where(eq(livePlayerSchema.id, playerId));
+
+    return { ok: true, isCorrect, score };
+  });
+}
+
+/**
+ * 排行榜節流：conditional UPDATE，只有距離上次 publish ≥ 1 秒的呼叫會「搶到」
+ * 權限，回傳 true；其餘並行呼叫回傳 false 應跳過 publish。跨 serverless
+ * instance 一致（狀態存在 DB），不依賴 process-local memory。
+ */
+export async function tryClaimLeaderboardPublish(gameId: number): Promise<boolean> {
+  const result = await db
+    .update(liveGameSchema)
+    .set({ lastLeaderboardPublishAt: new Date() })
+    .where(and(
+      eq(liveGameSchema.id, gameId),
+      sql`(${liveGameSchema.lastLeaderboardPublishAt} IS NULL OR now() - ${liveGameSchema.lastLeaderboardPublishAt} >= interval '1 second')`,
+    ))
+    .returning();
+  return result.length > 0;
+}
+
+/**
+ * 階段轉換（start / next / result / finish / join）要繞過節流立刻 flush 一次，
+ * 避免最後一筆 answer 剛好落在 throttle window 被吞掉導致排行榜停留在舊值。
+ */
+export async function markLeaderboardPublished(gameId: number): Promise<void> {
+  await db
+    .update(liveGameSchema)
+    .set({ lastLeaderboardPublishAt: new Date() })
+    .where(eq(liveGameSchema.id, gameId));
+}
+
+/**
+ * 精簡版排行榜 payload：server 端預計算 rank 與 answeredCount，client 端不再 sort。
+ * answeredCount 以玩家在這場 game 的總答題數計（不限當前題）。
+ */
+export async function getSlimLeaderboard(gameId: number): Promise<LiveLeaderboardEntry[]> {
+  const players = await db
+    .select({
+      id: livePlayerSchema.id,
+      nickname: livePlayerSchema.nickname,
+      score: livePlayerSchema.score,
+    })
+    .from(livePlayerSchema)
+    .where(eq(livePlayerSchema.gameId, gameId))
+    .orderBy(desc(livePlayerSchema.score), asc(livePlayerSchema.joinedAt));
+
+  if (players.length === 0) {
+    return [];
   }
 
-  await db
-    .update(livePlayerSchema)
-    .set({
-      score: sql`${livePlayerSchema.score} + ${score}`,
-      correctCount: sql`${livePlayerSchema.correctCount} + ${isCorrect ? 1 : 0}`,
+  // 一次查所有玩家的累計答題數
+  const answeredRows = await db
+    .select({
+      playerId: liveAnswerSchema.playerId,
+      count: sql<number>`count(*)::int`,
     })
-    .where(eq(livePlayerSchema.id, playerId));
+    .from(liveAnswerSchema)
+    .where(eq(liveAnswerSchema.gameId, gameId))
+    .groupBy(liveAnswerSchema.playerId);
 
-  return { ok: true, isCorrect, score };
+  const answeredMap = new Map<number, number>();
+  for (const r of answeredRows) {
+    answeredMap.set(r.playerId, r.count);
+  }
+
+  return players.map((p, i) => ({
+    playerId: p.id,
+    studentName: p.nickname,
+    score: p.score,
+    rank: i + 1,
+    answeredCount: answeredMap.get(p.id) ?? 0,
+  }));
+}
+
+/** 當前題目已答人數（給 leaderboard:update 帶過去顯示 host 進度條） */
+export async function getCurrentAnsweredCount(
+  gameId: number,
+  questionId: number,
+): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(liveAnswerSchema)
+    .where(and(
+      eq(liveAnswerSchema.gameId, gameId),
+      eq(liveAnswerSchema.questionId, questionId),
+    ));
+  return row?.count ?? 0;
+}
+
+/** 取玩家累計資訊（用於 answer:submitted payload） */
+export async function getPlayerTotals(
+  playerId: number,
+): Promise<{ score: number; correctCount: number } | null> {
+  const [row] = await db
+    .select({
+      score: livePlayerSchema.score,
+      correctCount: livePlayerSchema.correctCount,
+    })
+    .from(livePlayerSchema)
+    .where(eq(livePlayerSchema.id, playerId))
+    .limit(1);
+  return row ?? null;
+}
+
+/** 取 game 當前題目 id（answer route publish 事件時需要） */
+export async function getCurrentQuestionId(gameId: number): Promise<number | null> {
+  const [game] = await db
+    .select({
+      quizId: liveGameSchema.quizId,
+      currentQuestionIndex: liveGameSchema.currentQuestionIndex,
+    })
+    .from(liveGameSchema)
+    .where(eq(liveGameSchema.id, gameId))
+    .limit(1);
+  if (!game || game.currentQuestionIndex < 0) {
+    return null;
+  }
+  const questions = await getLiveQuestions(game.quizId);
+  return questions[game.currentQuestionIndex]?.id ?? null;
+}
+
+/** 取 game + 當前題目（給 liveActions.ts 在發 quiz:start / question:next 時組 payload） */
+export async function getGameWithCurrentQuestion(gameId: number): Promise<
+  | {
+    game: {
+      id: number;
+      status: string;
+      currentQuestionIndex: number;
+      questionStartedAt: Date | null;
+      questionDuration: number;
+    };
+    totalQuestions: number;
+    currentQuestion: LiveQuestionForPlayer | null;
+    correctAnswers: string[];
+  }
+  | null
+> {
+  const [game] = await db
+    .select()
+    .from(liveGameSchema)
+    .where(eq(liveGameSchema.id, gameId))
+    .limit(1);
+  if (!game) {
+    return null;
+  }
+  const questions = await getLiveQuestions(game.quizId);
+  const idx = game.currentQuestionIndex;
+  const current = idx >= 0 && idx < questions.length ? questions[idx] : null;
+  return {
+    game: {
+      id: game.id,
+      status: game.status,
+      currentQuestionIndex: idx,
+      questionStartedAt: game.questionStartedAt,
+      questionDuration: game.questionDuration,
+    },
+    totalQuestions: questions.length,
+    currentQuestion: current
+      ? {
+          id: current.id,
+          type: current.type,
+          body: current.body,
+          imageUrl: current.imageUrl,
+          options: current.options,
+        }
+      : null,
+    correctAnswers: current?.correctAnswers ?? [],
+  };
 }
 
 // Player 透過 token 查 id（學生 API 身分驗證）

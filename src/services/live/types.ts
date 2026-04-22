@@ -32,6 +32,15 @@ export type LivePlayerSummary = {
   correctCount: number;
 };
 
+// 精簡版排行榜 entry：payload 只保留必要欄位，rank 由 server 端預先算好
+export type LiveLeaderboardEntry = {
+  playerId: number;
+  studentName: string;
+  score: number;
+  rank: number;
+  answeredCount: number;
+};
+
 // 單題答題統計
 export type LiveAnswerStat = {
   optionId: string;
@@ -85,4 +94,54 @@ export type LivePlayerState = {
     answerStats: LiveAnswerStat[];
   } | null;
   leaderboard: LivePlayerSummary[]; // finished 階段回完整排行
+};
+
+// ── Ably 事件 payload（server 端 publish / client 端 subscribe 共用）──
+
+// 公開 channel：live:${prefix}:game:${gameId}
+export const LiveGameEvent = {
+  QuizStart: 'quiz:start',
+  QuestionNext: 'question:next',
+  QuestionResult: 'question:result',
+  LeaderboardUpdate: 'leaderboard:update',
+  GameFinished: 'game:finished',
+} as const;
+
+// 私人 channel：live:${prefix}:game:${gameId}:player:${playerId}
+export const LivePlayerEvent = {
+  AnswerSubmitted: 'answer:submitted',
+} as const;
+
+export type QuizStartPayload = {
+  questionIndex: number;
+  startAt: string; // ISO
+  duration: number;
+  totalQuestions: number;
+  question: LiveQuestionForPlayer;
+};
+
+export type QuestionNextPayload = QuizStartPayload;
+
+export type QuestionResultPayload = {
+  questionIndex: number;
+  correctAnswers: string[];
+  answerStats: LiveAnswerStat[];
+  answeredCount: number;
+};
+
+export type LeaderboardUpdatePayload = {
+  players: LiveLeaderboardEntry[];
+  answeredCount: number;
+};
+
+export type GameFinishedPayload = {
+  leaderboard: LiveLeaderboardEntry[];
+};
+
+export type AnswerSubmittedPayload = {
+  questionId: number;
+  isCorrect: boolean;
+  score: number; // 本題得分
+  totalScore: number; // 累計總分
+  correctCount: number; // 累計答對題數
 };

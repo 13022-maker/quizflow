@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   endGame as endGameAction,
@@ -16,17 +16,22 @@ export function useLiveHostGame(gameId: number) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
+  // 保存最新 setters 避免 cb 閉包過期（hook 其實只依賴 gameId）
+  const setStateRef = useRef(setState);
+  const setErrorRef = useRef(setError);
+  setStateRef.current = setState;
+  setErrorRef.current = setError;
+
   useEffect(() => {
     const unsub = liveRealtime.subscribeHostState(
       gameId,
       (s) => {
-        setState(s);
-        setError(null);
+        setStateRef.current(s);
+        setErrorRef.current(null);
       },
       {
-        intervalMs: 1500,
         onError: (err) => {
-          setError(err instanceof Error ? err.message : 'network error');
+          setErrorRef.current(err instanceof Error ? err.message : 'network error');
         },
       },
     );

@@ -8,7 +8,9 @@ type Props = {
 };
 
 export function LiveLeaderboard({ players, highlightPlayerId }: Props) {
-  const sorted = [...players].sort((a, b) => b.score - a.score);
+  // players 已由 server 端依分數排序（getSlimLeaderboard / getPlayers），
+  // 這裡不再 re-sort，省一次 O(n log n)。
+  const sorted = players;
   const medals = ['🥇', '🥈', '🥉'];
 
   return (

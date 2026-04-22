@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { liveRealtime } from '@/services/live/realtimeAdapter';
 import type { LivePlayerState } from '@/services/live/types';
@@ -16,7 +16,11 @@ export function useLivePlayerGame(
 ) {
   const [state, setState] = useState<LivePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+
+  const setStateRef = useRef(setState);
+  const setErrorRef = useRef(setError);
+  setStateRef.current = setState;
+  setErrorRef.current = setError;
 
   useEffect(() => {
     if (!gameId || !playerId || !playerToken) {
@@ -27,25 +31,25 @@ export function useLivePlayerGame(
       playerId,
       playerToken,
       (s) => {
-        setState(s);
-        setError(null);
+        setStateRef.current(s);
+        setErrorRef.current(null);
       },
       {
-        intervalMs: 2000,
         onError: (err) => {
-          setError(err instanceof Error ? err.message : 'network error');
+          setErrorRef.current(err instanceof Error ? err.message : 'network error');
         },
       },
     );
     return unsub;
   }, [gameId, playerId, playerToken]);
 
+  // 送出動作：UI 已經 optimistic 切換，這裡只負責背景 POST。
+  // 回傳 SubmitResult 讓呼叫端失敗時能 revert UI 並顯示錯誤。
   const submit = useCallback(
     async (
       questionId: number,
       selectedOptionId: string | string[],
     ): Promise<SubmitResult> => {
-      setSubmitting(true);
       try {
         const res = await fetch(`/api/live/${gameId}/answer`, {
           method: 'POST',
@@ -65,12 +69,10 @@ export function useLivePlayerGame(
         return { ok: true, isCorrect: data.isCorrect, score: data.score };
       } catch (err) {
         return { ok: false, error: err instanceof Error ? err.message : 'network error' };
-      } finally {
-        setSubmitting(false);
       }
     },
     [gameId, playerId, playerToken],
   );
 
-  return { state, error, submit, submitting };
+  return { state, error, submit };
 }

@@ -336,6 +336,8 @@ export const liveGameSchema = pgTable('live_game', {
   currentQuestionIndex: integer('current_question_index').default(-1).notNull(), // -1 = 尚未開始
   questionStartedAt: timestamp('question_started_at', { mode: 'date' }),
   questionDuration: integer('question_duration').default(20).notNull(), // 秒
+  // 排行榜節流：上次 publish leaderboard 事件的時間，conditional UPDATE 搶權用
+  lastLeaderboardPublishAt: timestamp('last_leaderboard_publish_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   endedAt: timestamp('ended_at', { mode: 'date' }),
 });

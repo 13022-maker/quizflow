@@ -4,13 +4,30 @@ import { auth } from '@clerk/nextjs/server';
 import { and, asc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+import { publishToGame } from '@/libs/ably/server';
 import { db } from '@/libs/DB';
 import {
   liveGameSchema,
   questionSchema,
   quizSchema,
 } from '@/models/Schema';
+import {
+  getAnswerStats,
+  getCurrentAnsweredCount,
+  getCurrentQuestionId,
+  getGameWithCurrentQuestion,
+  getSlimLeaderboard,
+  markLeaderboardPublished,
+} from '@/services/live/liveStore';
 import { isLiveSupportedType } from '@/services/live/scoring';
+import {
+  type GameFinishedPayload,
+  type LeaderboardUpdatePayload,
+  LiveGameEvent,
+  type QuestionNextPayload,
+  type QuestionResultPayload,
+  type QuizStartPayload,
+} from '@/services/live/types';
 
 // 生成 6 碼大寫英數 game pin（與 quizActions 同邏輯）
 function generatePin(): string {
@@ -45,6 +62,22 @@ async function loadOwnedGame(gameId: number, orgId: string) {
     .where(and(eq(liveGameSchema.id, gameId), eq(liveGameSchema.hostOrgId, orgId)))
     .limit(1);
   return game ?? null;
+}
+
+// 階段轉換後 flush 一次 leaderboard：繞過節流，避免上一題最後一筆答案被吞
+async function flushLeaderboard(gameId: number): Promise<void> {
+  try {
+    await markLeaderboardPublished(gameId);
+    const currentQid = await getCurrentQuestionId(gameId);
+    const [players, answeredCount] = await Promise.all([
+      getSlimLeaderboard(gameId),
+      currentQid ? getCurrentAnsweredCount(gameId, currentQid) : Promise.resolve(0),
+    ]);
+    const payload: LeaderboardUpdatePayload = { players, answeredCount };
+    await publishToGame(gameId, LiveGameEvent.LeaderboardUpdate, payload);
+  } catch (err) {
+    console.error('[liveActions] flushLeaderboard failed', err);
+  }
 }
 
 const CreateLiveGameSchema = z.object({
@@ -136,14 +169,32 @@ export async function startGame(gameId: number) {
     return { error: 'ALREADY_STARTED' };
   }
 
+  const startedAt = new Date();
   await db
     .update(liveGameSchema)
     .set({
       status: 'playing',
       currentQuestionIndex: 0,
-      questionStartedAt: new Date(),
+      questionStartedAt: startedAt,
     })
     .where(eq(liveGameSchema.id, game.id));
+
+  // 發布 quiz:start：學生端據此切換 UI + 用 startAt/duration 本地倒數
+  void (async () => {
+    const info = await getGameWithCurrentQuestion(game.id);
+    if (!info?.currentQuestion) {
+      return;
+    }
+    const payload: QuizStartPayload = {
+      questionIndex: info.game.currentQuestionIndex,
+      startAt: startedAt.toISOString(),
+      duration: info.game.questionDuration,
+      totalQuestions: info.totalQuestions,
+      question: info.currentQuestion,
+    };
+    await publishToGame(game.id, LiveGameEvent.QuizStart, payload);
+    await flushLeaderboard(game.id);
+  })();
 
   return { ok: true as const };
 }
@@ -165,6 +216,24 @@ export async function showResult(gameId: number) {
     .update(liveGameSchema)
     .set({ status: 'showing_result' })
     .where(eq(liveGameSchema.id, game.id));
+
+  // 發布 question:result：含正解 + 各選項統計，繞過節流 flush leaderboard
+  void (async () => {
+    const currentQid = await getCurrentQuestionId(game.id);
+    if (!currentQid) {
+      return;
+    }
+    const info = await getGameWithCurrentQuestion(game.id);
+    const stats = await getAnswerStats(game.id, currentQid);
+    const payload: QuestionResultPayload = {
+      questionIndex: info?.game.currentQuestionIndex ?? game.currentQuestionIndex,
+      correctAnswers: info?.correctAnswers ?? [],
+      answerStats: stats.stats,
+      answeredCount: stats.answeredCount,
+    };
+    await publishToGame(game.id, LiveGameEvent.QuestionResult, payload);
+    await flushLeaderboard(game.id);
+  })();
 
   return { ok: true as const };
 }
@@ -194,17 +263,41 @@ export async function nextQuestion(gameId: number) {
       .update(liveGameSchema)
       .set({ status: 'finished', endedAt: new Date() })
       .where(eq(liveGameSchema.id, game.id));
+
+    void (async () => {
+      const leaderboard = await getSlimLeaderboard(game.id);
+      const payload: GameFinishedPayload = { leaderboard };
+      await publishToGame(game.id, LiveGameEvent.GameFinished, payload);
+    })();
+
     return { ok: true as const, finished: true };
   }
 
+  const startedAt = new Date();
   await db
     .update(liveGameSchema)
     .set({
       status: 'playing',
       currentQuestionIndex: nextIdx,
-      questionStartedAt: new Date(),
+      questionStartedAt: startedAt,
     })
     .where(eq(liveGameSchema.id, game.id));
+
+  void (async () => {
+    const info = await getGameWithCurrentQuestion(game.id);
+    if (!info?.currentQuestion) {
+      return;
+    }
+    const payload: QuestionNextPayload = {
+      questionIndex: info.game.currentQuestionIndex,
+      startAt: startedAt.toISOString(),
+      duration: info.game.questionDuration,
+      totalQuestions: info.totalQuestions,
+      question: info.currentQuestion,
+    };
+    await publishToGame(game.id, LiveGameEvent.QuestionNext, payload);
+    await flushLeaderboard(game.id);
+  })();
 
   return { ok: true as const, finished: false };
 }
@@ -223,6 +316,12 @@ export async function endGame(gameId: number) {
     .update(liveGameSchema)
     .set({ status: 'finished', endedAt: new Date() })
     .where(eq(liveGameSchema.id, game.id));
+
+  void (async () => {
+    const leaderboard = await getSlimLeaderboard(game.id);
+    const payload: GameFinishedPayload = { leaderboard };
+    await publishToGame(game.id, LiveGameEvent.GameFinished, payload);
+  })();
 
   return { ok: true as const };
 }

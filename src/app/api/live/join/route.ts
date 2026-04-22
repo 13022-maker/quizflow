@@ -2,9 +2,21 @@ import { nanoid } from 'nanoid';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { publishToGame } from '@/libs/ably/server';
 import { db } from '@/libs/DB';
 import { liveGameSchema, livePlayerSchema } from '@/models/Schema';
-import { findGameByPin, isNicknameTaken } from '@/services/live/liveStore';
+import {
+  findGameByPin,
+  getCurrentAnsweredCount,
+  getCurrentQuestionId,
+  getSlimLeaderboard,
+  isNicknameTaken,
+  markLeaderboardPublished,
+} from '@/services/live/liveStore';
+import {
+  type LeaderboardUpdatePayload,
+  LiveGameEvent,
+} from '@/services/live/types';
 
 export const runtime = 'nodejs';
 
@@ -55,8 +67,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '加入失敗，請重試' }, { status: 500 });
     }
 
-    // touch updatedAt on game? game has no updatedAt; skip.
     void liveGameSchema;
+
+    // 繞過節流 flush 一次 leaderboard 讓 host 立刻看到新玩家
+    void (async () => {
+      try {
+        await markLeaderboardPublished(game.id);
+        const currentQid = await getCurrentQuestionId(game.id);
+        const [players, answeredCount] = await Promise.all([
+          getSlimLeaderboard(game.id),
+          currentQid ? getCurrentAnsweredCount(game.id, currentQid) : Promise.resolve(0),
+        ]);
+        const payload: LeaderboardUpdatePayload = { players, answeredCount };
+        await publishToGame(game.id, LiveGameEvent.LeaderboardUpdate, payload);
+      } catch (err) {
+        console.error('[join] ably publish failed', err);
+      }
+    })();
 
     return NextResponse.json({
       gameId: game.id,

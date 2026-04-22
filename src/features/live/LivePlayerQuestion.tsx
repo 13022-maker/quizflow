@@ -4,15 +4,18 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useCountdown } from '@/hooks/useCountdown';
+import type { SubmitResult } from '@/hooks/useLivePlayerGame';
 import type { LivePlayerState, LiveQuestionForPlayer } from '@/services/live/types';
 
 type Props = {
   state: LivePlayerState;
-  onSubmit: (questionId: number, selectedOptionId: string | string[]) => Promise<void>;
-  submitting: boolean;
+  onSubmit: (
+    questionId: number,
+    selectedOptionId: string | string[],
+  ) => Promise<SubmitResult>;
 };
 
-export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
+export function LivePlayerQuestion({ state, onSubmit }: Props) {
   const { currentQuestion, game, myAnswer, lastResult } = state;
   const { remaining, percent } = useCountdown(
     game.questionStartedAt,
@@ -23,11 +26,18 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
   const [selectedSingle, setSelectedSingle] = useState<string | null>(null);
   const [selectedMulti, setSelectedMulti] = useState<Set<string>>(new Set());
 
-  // 換題清空選擇
+  // Optimistic UI：點送出當下立即把 UI 切成「已送出」，不等 API。
+  // 失敗才 revert；成功則等 server 權威資料（answer:submitted 事件）進 state.myAnswer。
+  const [optimisticQid, setOptimisticQid] = useState<number | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // 換題清空選擇 + optimistic flag
   const questionId = currentQuestion?.id ?? null;
   useEffect(() => {
     setSelectedSingle(null);
     setSelectedMulti(new Set());
+    setOptimisticQid(null);
+    setSubmitError(null);
   }, [questionId]);
 
   if (!currentQuestion) {
@@ -39,7 +49,9 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
   }
 
   const isShowingResult = game.status === 'showing_result';
-  const hasAnswered = !!myAnswer;
+  const serverAnswered = !!myAnswer;
+  const optimisticAnswered = optimisticQid === currentQuestion.id;
+  const hasAnswered = serverAnswered || optimisticAnswered;
   const isMulti = currentQuestion.type === 'multiple_choice';
 
   const handleToggleMulti = (optId: string) => {
@@ -52,21 +64,34 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
     setSelectedMulti(next);
   };
 
-  const handleSubmit = async () => {
-    if (isMulti) {
-      if (selectedMulti.size === 0) {
-        return;
-      }
-      await onSubmit(currentQuestion.id, Array.from(selectedMulti));
-    } else {
-      if (!selectedSingle) {
-        return;
-      }
-      await onSubmit(currentQuestion.id, selectedSingle);
+  const handleSubmit = () => {
+    const selection: string | string[] | null = isMulti
+      ? (selectedMulti.size === 0 ? null : Array.from(selectedMulti))
+      : selectedSingle;
+    if (selection === null) {
+      return;
     }
+    // 先鎖 UI，再背景送出，避免等 API round-trip
+    setOptimisticQid(currentQuestion.id);
+    setSubmitError(null);
+    onSubmit(currentQuestion.id, selection).then((result) => {
+      if (!result.ok) {
+        // 失敗：revert 讓使用者能重選
+        setOptimisticQid(null);
+        setSubmitError(result.error);
+      }
+      // 成功不做事，等 answer:submitted 事件把 state.myAnswer patch 進來
+    });
   };
 
   const correctAnswers = lastResult?.correctAnswers ?? [];
+
+  // optimistic 階段：把本地選擇當 myAnswerIds 顯示「已選」樣式
+  const displayAnswerIds: Set<string> = serverAnswered
+    ? myAnswerIds(myAnswer?.selectedOptionId)
+    : optimisticAnswered
+      ? (isMulti ? new Set(selectedMulti) : new Set(selectedSingle ? [selectedSingle] : []))
+      : new Set();
 
   return (
     <div className="mx-auto max-w-xl space-y-5 px-4 py-6">
@@ -125,9 +150,9 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
         question={currentQuestion}
         selectedSingle={selectedSingle}
         selectedMulti={selectedMulti}
-        myAnswerIds={myAnswerIds(myAnswer?.selectedOptionId)}
+        myAnswerIds={displayAnswerIds}
         correctAnswers={isShowingResult ? correctAnswers : undefined}
-        disabled={hasAnswered || isShowingResult || submitting}
+        disabled={hasAnswered || isShowingResult}
         onSelectSingle={setSelectedSingle}
         onToggleMulti={handleToggleMulti}
       />
@@ -138,13 +163,17 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
           size="lg"
           className="w-full"
           onClick={handleSubmit}
-          disabled={
-            submitting
-            || (isMulti ? selectedMulti.size === 0 : !selectedSingle)
-          }
+          disabled={isMulti ? selectedMulti.size === 0 : !selectedSingle}
         >
-          {submitting ? '送出中⋯' : '送出答案'}
+          送出答案
         </Button>
+      )}
+      {submitError && (
+        <p className="rounded-lg bg-red-50 p-3 text-center text-sm text-red-700">
+          送出失敗：
+          {submitError}
+          ，請再試一次
+        </p>
       )}
       {hasAnswered && !isShowingResult && (
         <p className="text-center text-sm text-muted-foreground">
@@ -228,6 +257,9 @@ function PlayerOptionList({
           } else {
             className = 'border-2 border-border bg-card opacity-60';
           }
+        } else if (wasMyAnswer) {
+          // 已送出（server 回傳或 optimistic）的「已選」強調
+          className = 'border-2 border-primary bg-primary/20';
         } else if (picked) {
           className = 'border-2 border-primary bg-primary/10';
         }
