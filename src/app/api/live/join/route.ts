@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { db } from '@/libs/DB';
 import { liveGameSchema, livePlayerSchema } from '@/models/Schema';
+import { publishTick } from '@/services/live/ablyServer';
 import { findGameByPin, isNicknameTaken } from '@/services/live/liveStore';
 
 export const runtime = 'nodejs';
@@ -57,6 +58,9 @@ export async function POST(request: Request) {
 
     // touch updatedAt on game? game has no updatedAt; skip.
     void liveGameSchema;
+
+    // 通知 host lobby 更新玩家列表
+    await publishTick(game.id);
 
     return NextResponse.json({
       gameId: game.id,

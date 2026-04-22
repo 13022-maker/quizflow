@@ -10,6 +10,7 @@ import {
   questionSchema,
 } from '@/models/Schema';
 
+import { publishTick } from './ablyServer';
 import { calcLiveScore, gradeAnswer, isLiveSupportedType } from './scoring';
 import type {
   LiveAnswerStat,
@@ -368,6 +369,8 @@ export async function recordAnswer(params: {
     })
     .where(eq(livePlayerSchema.id, playerId));
 
+  // 通知 host（看 answeredCount/stats 更新）與其他 player（排名可能變動）
+  await publishTick(gameId);
   return { ok: true, isCorrect, score };
 }
 

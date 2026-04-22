@@ -39,6 +39,13 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/answer',
 ]);
 
+// 需要 Clerk context（route 內會呼叫 auth()）但不強制登入的 API，
+// 例：Ably token 端點 — host 角色讀 orgId，player 角色用 playerToken 驗，兩種都不該被 auth.protect 擋
+const isOptionalAuthRoute = createRouteMatcher([
+  '/api/live/ably-auth',
+  '/:locale/api/live/ably-auth',
+]);
+
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/:locale/dashboard(.*)',
@@ -63,7 +70,8 @@ export default function middleware(
     || isProtectedRoute(request)
   ) {
     return clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
+      // optional-auth route：要 Clerk context 讓 route 內的 auth() 能讀 session，但不強制登入
+      if (isProtectedRoute(req) && !isOptionalAuthRoute(req)) {
         const locale
           = req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
 

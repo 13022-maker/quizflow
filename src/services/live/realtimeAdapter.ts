@@ -1,7 +1,10 @@
-// Live Mode realtime 抽象層
-// 目前僅提供 short polling 實作，Hook / UI 透過這個介面訂閱狀態。
-// 未來可換成 Supabase Realtime / Socket.IO 而不需改 hook 以上。
+// Live Mode realtime 抽象層：hook / UI 透過這個介面訂閱狀態
+// 提供兩種實作：
+//   - PollingRealtimeAdapter：setInterval + fetch，不需外部服務，本機 dev 即用
+//   - AblyRealtimeAdapter：透過 Ably 訂 tick，延遲 <100ms（需設 ABLY_API_KEY + NEXT_PUBLIC_LIVE_REALTIME=ably）
+// 選擇邏輯在檔尾
 
+import { AblyRealtimeAdapter } from './ablyAdapter';
 import type { LiveHostState, LivePlayerState } from './types';
 
 export type Unsubscribe = () => void;
@@ -122,5 +125,14 @@ export class PollingRealtimeAdapter implements LiveRealtimeAdapter {
   }
 }
 
+// 根據 env flag 選 adapter：NEXT_PUBLIC_LIVE_REALTIME=ably → Ably；其他 → polling
+// 未設 NEXT_PUBLIC_LIVE_REALTIME 時預設 polling，零設定即可本機開發
+function selectAdapter(): LiveRealtimeAdapter {
+  if (process.env.NEXT_PUBLIC_LIVE_REALTIME === 'ably') {
+    return new AblyRealtimeAdapter();
+  }
+  return new PollingRealtimeAdapter();
+}
+
 // 單例：Hook 層直接用
-export const liveRealtime: LiveRealtimeAdapter = new PollingRealtimeAdapter();
+export const liveRealtime: LiveRealtimeAdapter = selectAdapter();
