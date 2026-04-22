@@ -199,15 +199,46 @@ STRIPE_SECRET_KEY=any_fake_value
   - `POST /api/paddle/checkout` 建立 customer（含 try/catch），`useCheckout` hook 開 overlay
   - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 created/updated/canceled
   - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix）
+- **Live Mode**（Kahoot 風格直播競賽 MVP）：6 碼 PIN 加入、老師主控 + 學生同步、Kahoot 式計分（500 底分 + 最多 500 速度加成）、即時排行榜
+  - Realtime：**抽象 adapter 介面**（`src/services/live/realtimeAdapter.ts`）雙實作
+    - Polling（預設）：setInterval + REST fetch，host 每 1.5s、player 每 2s
+    - Ably（flag 啟用）：WebSocket tick-only，延遲 <200ms，設 `NEXT_PUBLIC_LIVE_REALTIME=ably` + `ABLY_API_KEY` 即切換
+  - Schema：`live_game` / `live_player` / `live_answer`（`src/models/Schema.ts`）
+  - 後端：`src/services/live/`（liveStore / scoring / types / realtimeAdapter / ablyAdapter / ablyServer / playerSession）+ `src/actions/liveActions.ts`
+  - API：`/api/live/join`（學生加入）、`/api/live/[gameId]/host-state` + `.../player-state`（REST 權威來源）、`/api/live/[gameId]/answer`（學生提交）、`/api/live/ably-auth`（Ably token）
+  - UI：`src/features/live/`（LiveHostLobby / LiveLeaderboard / LivePlayerJoin / LivePlayerQuestion + 2 個 Room container + hooks）
+  - 路由：`/dashboard/live/host/[gameId]`（老師）、`/live/join` + `/live/play/[gameId]`（學生）
+  - 入口：QuizEditor 頂部按鈕、QuizTableColumns 下拉選單
+  - 本次 MVP 只支援 `single_choice` / `multiple_choice` / `true_false`；ranking / short_answer / listening 待後續
 
 ### 🔥 下一步優先順序（依序開發）
 1. **Paddle production 上線**（階段 2）：production env 補上 PADDLE_* 變數、webhook destination 改回 `https://quizflow-psi.vercel.app/api/webhook`、merge `feature/paddle-sandbox` → main
 2. 免費試用機制（Pro 功能 30 天體驗，到期自動降級）
 3. 多語系擴展（日語、韓語、英語、簡體中文）
-4. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
+4. Live Mode v2：斷線重連（Ably Presence + Reactor Webhook + localStorage 身份恢復 + 老師端斷線狀態 UI）、支援 ranking / short_answer / listening 題型、UI 完整 i18n（目前中文硬寫在 components 裡）
 5. Playwright E2E 測試覆蓋核心流程
 
 ## 技術債與技術決策
+
+### Live Mode Realtime：Polling（預設）+ Ably（flag 啟用）
+- **雙實作 adapter**（`src/services/live/realtimeAdapter.ts`）：根據 `NEXT_PUBLIC_LIVE_REALTIME` 動態選擇
+  - 未設或非 `ably` → `PollingRealtimeAdapter`：host 1.5s、player 2s setInterval fetch，零外部依賴、本機 dev 免設定
+  - `ably` → `AblyRealtimeAdapter`：WebSocket tick-only，需同時設 server 端 `ABLY_API_KEY`
+- **Tick-only 模式**（而非 push 完整 state）：server 發空 payload 的 `tick` 到 `live:{gameId}` channel，client 收到後用既有 REST 拉自己 state。選擇原因：
+  - 單 channel 即可（不用依 host/player 分），channel 計費 = 遊戲數
+  - 無隱私洩漏（player 分數 / 排名走 REST 認證層，channel 全 public subscribe）
+  - REST endpoint 仍是權威 state 來源，adapter 僅替換「何時觸發 fetch」
+- **Token endpoint**：單一 `/api/live/ably-auth` 用 `?role=host|player` 分流；host 驗 Clerk orgId 擁有 game、player 驗 playerToken
+- **Middleware 陷阱（踩過 2 次，謹記）**：
+  - 不可把 `/api/live/ably-auth` 放進 `isPublicApiRoute`（會整個 skip `clerkMiddleware`，endpoint 內 `auth()` 炸 500）
+  - 正解：`isOptionalAuthRoute` matcher + 條件式 `if (isProtectedRoute && !isOptionalAuthRoute) auth.protect(...)` → 保留 Clerk context 但不強制登入
+- **所有 publish 只在 server 端**（`ablyServer.publishTick`），client token capability 只含 `subscribe`，防訊息偽造
+- **reactionMs 由 server 計算**（`Date.now() - game.questionStartedAt`），client 傳來的時間戳完全不信任（防竄改瀏覽器時鐘拉分）
+- **Server fallback**：`ABLY_API_KEY` 未設時 `publishTick` 直接 no-op，不會 throw；也就是拔掉 env 即自動回滾 polling
+- Ably 免費 tier：200 併發、3M msg/月，tick-only 模式訊息量低（每 mutation 一則），規劃**跟 Paddle production 同 trigger**（用戶破 100 再評估付費方案）
+
+### Drizzle migration snapshot 脫鉤（已存在問題，非本次造成）
+`migrations/meta/` 缺 0015/0016/0017 的 snapshot，導致下次 `npm run db:generate` 會把 vocab 表、quiz marketplace 欄位等既有內容當 diff 又塞一次到新產 migration 裡。**每次產新 migration 後必須檢視 SQL，手動刪除不屬於本次改動的 CREATE TABLE / ALTER TABLE**（本次 `0018_flashy_pete_wisdom.sql` 已處理）。長期解法：重建 snapshot，但要在本機 PGlite + Neon 都驗證。
 
 ### AI SDK 維持 @anthropic-ai/sdk（不遷移）
 目前使用 @anthropic-ai/sdk 直接呼叫。Vercel 驗證器建議改成 @ai-sdk/anthropic（Vercel AI SDK）。
