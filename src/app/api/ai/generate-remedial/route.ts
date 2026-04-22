@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 import { db } from '@/libs/DB';
 import { responseSchema } from '@/models/Schema';
 
@@ -19,6 +20,7 @@ export async function POST(req: Request) {
       weakPoints: WeakPoint[];
       responseId: number;
     };
+    const locale = normalizeAiLocale(body.locale);
 
     if (!weakPoints?.length || !responseId) {
       return NextResponse.json({ error: '缺少必要資料' }, { status: 400 });
@@ -48,7 +50,6 @@ ${conceptList}
 2. 每題附上簡短解析，像家教一樣解釋為什麼
 3. 題目難度比原本的測驗稍微簡單，建立信心
 4. 只回傳合法 JSON，不要 markdown
-5. 所有文字使用繁體中文
 
 JSON 格式：
 {
@@ -61,7 +62,8 @@ JSON 格式：
       "targetConcept": "針對的弱點概念"
     }
   ]
-}`;
+}
+${getOutputLanguageInstruction(locale)}`;
 
     const apiKey = process.env.OPENAI_API_KEY;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;

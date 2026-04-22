@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
   const count: number = body.count ?? 5;
   const difficulty: string = body.difficulty ?? 'medium';
   const model: string = body.model ?? 'gemini';
+  const locale = normalizeAiLocale(body.locale);
 
   if (!url) {
     return NextResponse.json({ error: '請提供連結' }, { status: 400 });
@@ -232,7 +234,8 @@ ${typesPrompt}
     { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["事件A","事件B","事件C","事件D"], "answer": ["事件A","事件B","事件C","事件D"], "explanation": "說明" }
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;
+每種題型各出 ${count} 題，只出勾選的題型。
+${getOutputLanguageInstruction(locale)}`;
 
   // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
   let effectiveModel = model;

@@ -12,6 +12,7 @@
  *   { type, question, options?, answer, explanation? }[]
  */
 
+import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
 
 // ─── Types ───────────────────────────────────────────────
@@ -99,6 +100,8 @@ function fmtSize(b: number) {
 
 // ─── Component ────────────────────────────────────────────
 export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) {
+  const locale = useLocale();
+
   // Mode
   const [mode, setMode] = useState<Mode>('text');
 
@@ -301,7 +304,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
+          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty, locale }),
         });
         if (!res.ok) {
           let errMsg = '命題失敗';
@@ -362,6 +365,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('count', String(effectiveCount));
         fd.append('difficulty', difficulty);
         fd.append('model', model);
+        fd.append('locale', locale);
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         if (!res.ok) {
@@ -391,6 +395,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             count: effectiveCount,
             difficulty,
             model,
+            locale,
           }),
         });
         if (!res.ok) {

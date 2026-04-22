@@ -3,6 +3,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
+import { useLocale } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { updateQuestion } from '@/actions/questionActions';
@@ -33,6 +34,7 @@ export function InlineQuestionCard({
   isDeleting,
   isPro,
 }: Props) {
+  const locale = useLocale();
   const {
     attributes,
     listeners,
@@ -108,7 +110,7 @@ export function InlineQuestionCard({
       const res = await fetch(`/api/ai/regenerate-question/${question.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ locale }),
       });
       const data = await res.json();
       if (!res.ok) {

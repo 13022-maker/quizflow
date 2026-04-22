@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -45,6 +46,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const { topic, types = ['mc'], difficulty = 'medium' } = body;
+  const locale = normalizeAiLocale(body.locale);
   const hasListening = (types as string[]).includes('listening');
   const count = Math.min(Number(body.count) || 5, hasListening ? 5 : 20);
 
@@ -86,7 +88,7 @@ ${typesPrompt}
     { "type": "listening", "question": "根據對話內容，小明最後決定做什麼？", "options": ["(A)去圖書館","(B)回家寫功課","(C)去打球","(D)去吃飯"], "answer": "C", "explanation": "說明", "listeningText": "小華：嘿，小明，等一下要不要一起去打球？\\n小明：好啊！我剛好寫完功課了。" }
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
+每種題型各出 ${count} 題，只出勾選的題型。
 聽力題特別注意：
 - 【口語化手法】listeningText 必須像真人說話，自然穿插語氣詞（欸、嗯、啊、對、那個、然後），允許短停頓（用「，」或「…」表示），避免書面語如「由於／因此／然而／此外」，改用口語連接詞（所以、結果、可是、不過）
 - 【情境多樣化】從以下情境隨機挑選，不要每題都是學生對話：
@@ -98,7 +100,8 @@ ${typesPrompt}
 - 【字數分級】
   - 簡單：選項 ≤8 字、listeningText ≤50 字
   - 中等：選項 ≤15 字、listeningText ≤100 字
-  - 困難：選項不限、listeningText ≤200 字`;
+  - 困難：選項不限、listeningText ≤200 字
+${getOutputLanguageInstruction(locale)}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;

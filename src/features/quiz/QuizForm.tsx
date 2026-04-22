@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { createQuiz } from '@/actions/quizActions';
@@ -14,37 +15,36 @@ type TemplateItem = {
   iconBg: string;
 };
 
-// 收起在「使用範本」區的預設標題範本（僅差別在預設標題文字）
-const TITLE_TEMPLATES: TemplateItem[] = [
-  { icon: '📝', title: '隨堂測驗', subtitle: '課中快速檢測', iconBg: 'bg-blue-100' },
-  { icon: '📋', title: '期中考', subtitle: '完整章節評量', iconBg: 'bg-indigo-100' },
-  { icon: '🔄', title: '複習小考', subtitle: '段考前鞏固記憶', iconBg: 'bg-sky-100' },
-  { icon: '🎯', title: '自學挑戰', subtitle: '學生課後練習', iconBg: 'bg-amber-100' },
-  { icon: '📖', title: '課前預習', subtitle: '熟悉新單元重點', iconBg: 'bg-emerald-100' },
-  { icon: '💡', title: '知識檢測', subtitle: '檢測自我理解', iconBg: 'bg-yellow-100' },
-];
-
-// 真正不同流程的模式（單字記憶 = vocab mode）
-const VOCAB_TEMPLATE: TemplateItem = {
-  icon: '🔤',
-  title: '單字記憶',
-  subtitle: '中英單字反覆過關',
-  description: '以下為單字記憶練習，看中文提示打出英文，答錯的單字會重新出現直到全部過關。',
-  quizMode: 'vocab',
-  iconBg: 'bg-rose-100',
-};
-
-function getDefaultTitle() {
-  const d = new Date();
-  return `新測驗 ${d.getMonth() + 1}/${d.getDate()}`;
-}
-
 export function QuizForm() {
+  const t = useTranslations('QuizFormExtra');
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
   const [customTitle, setCustomTitle] = useState('');
   const [showTemplates, setShowTemplates] = useState(false);
   const [error, setError] = useState('');
+
+  const TITLE_TEMPLATES: TemplateItem[] = [
+    { icon: '📝', title: t('tmpl_quiz_title'), subtitle: t('tmpl_quiz_subtitle'), iconBg: 'bg-blue-100' },
+    { icon: '📋', title: t('tmpl_midterm_title'), subtitle: t('tmpl_midterm_subtitle'), iconBg: 'bg-indigo-100' },
+    { icon: '🔄', title: t('tmpl_review_title'), subtitle: t('tmpl_review_subtitle'), iconBg: 'bg-sky-100' },
+    { icon: '🎯', title: t('tmpl_challenge_title'), subtitle: t('tmpl_challenge_subtitle'), iconBg: 'bg-amber-100' },
+    { icon: '📖', title: t('tmpl_preview_title'), subtitle: t('tmpl_preview_subtitle'), iconBg: 'bg-emerald-100' },
+    { icon: '💡', title: t('tmpl_check_title'), subtitle: t('tmpl_check_subtitle'), iconBg: 'bg-yellow-100' },
+  ];
+
+  const VOCAB_TEMPLATE: TemplateItem = {
+    icon: '🔤',
+    title: t('vocab_title'),
+    subtitle: t('vocab_subtitle'),
+    description: t('vocab_description'),
+    quizMode: 'vocab',
+    iconBg: 'bg-rose-100',
+  };
+
+  const getDefaultTitle = () => {
+    const d = new Date();
+    return t('default_title', { date: `${d.getMonth() + 1}/${d.getDate()}` });
+  };
 
   const runCreate = (key: string, data: Parameters<typeof createQuiz>[0]) => {
     setPendingKey(key);
@@ -83,15 +83,15 @@ export function QuizForm() {
       {/* 主要動線：輸入標題（選填）＋ 直接開始 */}
       <div className="space-y-3">
         <label htmlFor="quiz-title" className="block text-sm font-medium text-foreground">
-          測驗標題
-          <span className="ml-1 text-xs font-normal text-muted-foreground">（選填，之後可改）</span>
+          {t('title_label')}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">{t('title_hint')}</span>
         </label>
         <input
           id="quiz-title"
           type="text"
           value={customTitle}
           onChange={e => setCustomTitle(e.target.value)}
-          placeholder={`例如：第三章隨堂測驗（留空會自動帶入「${getDefaultTitle()}」）`}
+          placeholder={t('title_placeholder', { fallback: getDefaultTitle() })}
           disabled={isPending}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -107,7 +107,7 @@ export function QuizForm() {
           disabled={isPending}
           className="h-12 w-full text-base font-semibold"
         >
-          {primaryLoading ? '建立中…' : '✨ 直接開始建立'}
+          {primaryLoading ? t('creating') : t('primary_cta')}
         </Button>
       </div>
 
@@ -127,7 +127,7 @@ export function QuizForm() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-foreground">
-            {vocabLoading ? '建立中…' : VOCAB_TEMPLATE.title}
+            {vocabLoading ? t('creating') : VOCAB_TEMPLATE.title}
           </div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             {VOCAB_TEMPLATE.subtitle}
@@ -143,7 +143,7 @@ export function QuizForm() {
           onClick={() => setShowTemplates(v => !v)}
           className="flex w-full items-center justify-between rounded-lg px-1 py-2 text-xs font-medium text-muted-foreground hover:text-foreground"
         >
-          <span>使用預設標題範本</span>
+          <span>{t('templates_toggle')}</span>
           <span className={`transition-transform ${showTemplates ? 'rotate-180' : ''}`}>▾</span>
         </button>
         {showTemplates && (
@@ -165,7 +165,7 @@ export function QuizForm() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-semibold text-foreground">
-                      {isLoading ? '建立中…' : tmpl.title}
+                      {isLoading ? t('creating') : tmpl.title}
                     </div>
                     <div className="truncate text-[11px] text-muted-foreground">
                       {tmpl.subtitle}
@@ -184,10 +184,10 @@ export function QuizForm() {
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          建立後直接進入出題頁，可選
+          {t('tip_prefix')}
           {' '}
-          <strong>AI 智慧出題</strong>
-          或手動出題。
+          <strong>{t('tip_ai')}</strong>
+          {t('tip_suffix')}
         </p>
       </div>
     </div>

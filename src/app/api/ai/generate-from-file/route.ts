@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -162,6 +163,7 @@ export async function POST(request: Request) {
   const hasListening = types.includes('listening');
   const count = Math.min(rawCount, hasListening ? 5 : 20);
   const difficulty = (formData.get('difficulty') as string) || 'medium';
+  const locale = normalizeAiLocale(formData.get('locale'));
   const startPage = Number.parseInt(formData.get('startPage') as string) || 1;
   const endPage = Number.parseInt(formData.get('endPage') as string) || 0;
 
@@ -215,11 +217,11 @@ export async function POST(request: Request) {
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
 
   // 音檔用聽力題專用 prompt，文件 / 圖片用一般 prompt
-  const prompt = isAudio
+  const basePrompt = isAudio
     ? `請聽取以上音檔內容，根據音檔生成聽力測驗題。
 
 難度：${diffLabel}
-每種題型各出 ${count} 題，所有文字使用繁體中文。
+每種題型各出 ${count} 題。
 
 規則：
 1. 所有題目必須根據音檔的實際內容出題，不可自行捏造
@@ -230,7 +232,7 @@ export async function POST(request: Request) {
 6. JSON 格式：
 {
   "title": "根據音檔內容命名的聽力測驗標題",
-  "transcript": "音檔的完整逐字稿（繁體中文）",
+  "transcript": "音檔的完整逐字稿",
   "questions": [
     { "type": "listening", "question": "根據音檔，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }
   ]
@@ -266,6 +268,8 @@ ${typesPrompt}
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`;
+
+  const prompt = `${basePrompt}\n${getOutputLanguageInstruction(locale)}`;
 
   const imageMimeMap: Record<string, string> = {
     jpg: 'image/jpeg',

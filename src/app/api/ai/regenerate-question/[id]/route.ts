@@ -11,6 +11,7 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
 import { questionSchema, quizSchema } from '@/models/Schema';
@@ -94,6 +95,7 @@ export async function POST(
   // 解析使用者額外提示（可選）
   const reqBody = await request.json().catch(() => ({}));
   const hint: string = typeof reqBody.hint === 'string' ? reqBody.hint.trim().slice(0, 200) : '';
+  const locale = normalizeAiLocale(reqBody.locale);
 
   // 組原題給 AI 作為上下文
   const originalOptions = (question.options ?? [])
@@ -125,14 +127,14 @@ ${hint ? `老師額外要求：${hint}` : ''}
 2. 題型必須是${isMulti ? '多選題（2–4 個正解）' : '單選題（1 個正解）'}，共 4 個選項
 3. 難度與原題相當
 4. 數學／科學符號只用 Unicode（如 π √ ² ³ ½ ≤ ≥ × ÷ ± ∞ ≠ ≈ ∑ ∫），禁止 LaTeX（不可寫 \\frac、\\sqrt、$...$）
-5. 所有文字使用繁體中文
-6. 只回傳合法 JSON，不要 markdown 或任何說明文字：
+5. 只回傳合法 JSON，不要 markdown 或任何說明文字：
 {
   "question": "新題目",
   "options": ["(A)...", "(B)...", "(C)...", "(D)..."],
   "answer": ${isMulti ? '"A,C"' : '"A"'},
   "explanation": "解析說明"
-}`;
+}
+${getOutputLanguageInstruction(locale)}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw = '';

@@ -1,0 +1,325 @@
+{
+  "Index": {
+    "meta_title": "QuizFlow - AI 스마트 퀴즈 플랫폼, 출제·채점·분석을 한번에",
+    "meta_description": "몇 분 안에 퀴즈를 만들고, 한 번의 클릭으로 학생들과 공유하며, 응답 결과를 실시간으로 확인하세요. 무료 플랜은 10개의 퀴즈를 제공하며, Pro 플랜으로 업그레이드하면 무제한 출제와 AI 자동 생성 기능을 이용할 수 있습니다."
+  },
+  "PricingPage": {
+    "meta_title": "QuizFlow 요금제 - 무료로 시작, 언제든지 업그레이드",
+    "meta_description": "무료 플랜은 10개의 퀴즈를 제공합니다. Pro 플랜($9/월)로 업그레이드하면 무제한 출제와 AI 자동 생성 기능을 이용할 수 있습니다."
+  },
+  "Navbar": {
+    "sign_in": "로그인",
+    "sign_up": "회원가입",
+    "product": "제품",
+    "pricing": "가격",
+    "docs": "문서",
+    "blog": "블로그",
+    "community": "커뮤니티",
+    "company": "회사 소개"
+  },
+  "Hero": {
+    "follow_twitter": "QuizFlow를 Twitter에서 팔로우",
+    "title": "더 스마트한 방법으로 <important>출제, 공유, 분석</important>학생들의 응답 상황을.",
+    "description": "몇 분 안에 매력적인 퀴즈를 만들고, 하나의 링크로 공유하여, 학생들의 학습 상황을 실시간으로 파악하세요. 현대 교육자를 위해 출제, 채점, 분석을 한번에.",
+    "primary_button": "무료로 시작하기",
+    "secondary_button": "사용 방법 보기"
+  },
+  "Sponsors": {
+    "title": "아래 학교의 선생님들이 신뢰하고 있습니다"
+  },
+  "Features": {
+    "section_subtitle": "기능 특징",
+    "section_title": "선생님 출제에 필요한 모든 기능",
+    "section_description": "QuizFlow는 퀴즈 생성·공유·분석에 필요한 도구를 제공합니다. 간단하고 직관적이며 복잡한 설정이 필요 없습니다.",
+    "feature1_title": "빠른 출제 도구",
+    "feature2_title": "원클릭 공유 링크",
+    "feature3_title": "실시간 응답 결과",
+    "feature4_title": "AI 자동 문제 생성",
+    "feature5_title": "학생 학습 분석",
+    "feature6_title": "성적 리포트 내보내기",
+    "feature1_description": "객관식, O/X, 빈칸 채우기, 주관식 문제를 지원하며, 드래그로 문제 순서를 바꾸고 몇 분 안에 출제를 완료할 수 있습니다.",
+    "feature2_description": "퀴즈 생성 후 전용 링크가 자동으로 생성되어 카카오톡이나 칠판에 붙이기만 하면 됩니다. 학생은 앱 다운로드가 필요 없습니다.",
+    "feature3_description": "학생이 답을 제출하면 즉시 자동 채점되어, 점수와 각 문제의 상세 해설이 실시간으로 표시됩니다.",
+    "feature4_description": "교과서, 슬라이드, 이미지를 업로드하면 AI가 자동으로 문제와 해설을 생성하여 수동 출제 시간을 절약합니다 (Pro 전용).",
+    "feature5_description": "각 문제의 정답률과 학급 전체의 응답 분포를 확인하여, 학생들의 학습 맹점을 빠르게 찾아낼 수 있습니다.",
+    "feature6_description": "모든 응답 기록을 CSV 파일로 내보내어 성적부 입력이나 학교 행정 시스템과의 연동에 편리합니다."
+  },
+  "Pricing": {
+    "section_subtitle": "요금제",
+    "section_title": "심플하고 투명한 가격",
+    "section_description": "무료로 시작하고, 필요할 때 업그레이드하세요. 숨겨진 비용은 없습니다.",
+    "button_text": "지금 시작하기"
+  },
+  "PricingPlan": {
+    "free_plan_name": "무료 버전",
+    "premium_plan_name": "Pro 플랜",
+    "enterprise_plan_name": "엔터프라이즈 플랜",
+    "free_plan_description": "막 시작하는 선생님께 적합",
+    "premium_plan_description": "무제한 출제가 필요한 선생님께 적합",
+    "enterprise_plan_description": "학교 및 교육기관에 적합",
+    "feature_team_member": "{number} 교사 계정",
+    "feature_website": "{number} 개의 퀴즈",
+    "feature_storage": "AI 자동 문제 생성 기능 (Pro 전용)",
+    "feature_transfer": "무제한 응답 횟수",
+    "feature_email_support": "이메일 지원",
+    "plan_interval_month": "월",
+    "plan_interval_year": "년",
+    "next_renew_date": "구독이 {date}에 자동 갱신됩니다"
+  },
+  "FAQ": {
+    "question1": "무료 플랜에서는 몇 개의 퀴즈를 만들 수 있나요?",
+    "answer1": "무료 플랜은 최대 10개의 퀴즈를 만들 수 있습니다. 각 퀴즈의 문제 수에는 제한이 없으며, 원하는 만큼의 학생에게 공유할 수 있습니다. 더 많은 퀴즈나 AI 자동 문제 생성 기능이 필요하다면 월 $9의 Pro 플랜으로 업그레이드하여 무제한 퀴즈와 모든 고급 기능을 이용하실 수 있습니다.",
+    "question2": "학생들은 응답하려면 계정이 필요한가요?",
+    "answer2": "필요 없습니다. 학생은 공유받은 링크를 클릭하기만 하면 브라우저에서 바로 응답할 수 있으며, 사전 등록이나 로그인이 필요 없습니다. 응답 완료 후 시스템이 즉시 점수와 각 문제의 상세 해설을 표시하고, 선생님도 관리 페이지에서 모든 응답 기록을 확인할 수 있습니다.",
+    "question3": "AI 자동 문제 생성은 어떤 형식을 지원하나요?",
+    "answer3": "Pro 플랜의 AI 출제 기능은 텍스트, PDF 문서, 이미지(JPG, PNG), 동영상(MP4), 음성 파일(MP3) 등 다양한 자료 형식을 지원합니다. 교재를 업로드하기만 하면 AI가 자동으로 객관식, O/X, 빈칸 채우기, 주관식 문제를 생성하고, 각 문제의 상세한 해설을 제공합니다."
+  },
+  "CTA": {
+    "title": "출제를 더 쉽게 만들 준비가 되셨나요?",
+    "description": "QuizFlow를 사용하는 선생님 대열에 합류하여, 출제 시간을 절약하고, 학생들의 학습 상황을 더 깊이 이해하세요.",
+    "button_text": "무료로 시작하기"
+  },
+  "Footer": {
+    "product": "제품",
+    "pricing": "가격",
+    "docs": "문서",
+    "blog": "블로그",
+    "community": "커뮤니티",
+    "company": "회사 소개",
+    "terms_of_service": "이용 약관",
+    "privacy_policy": "개인정보 처리방침",
+    "refund_policy": "환불 정책",
+    "footer_text": "© {year} {name}. 현대 교육자를 위해."
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "이 작업을 수행할 권한이 없습니다"
+  },
+  "SignIn": {
+    "meta_title": "로그인",
+    "meta_description": "QuizFlow 계정에 로그인하여 퀴즈 생성을 시작하세요."
+  },
+  "SignUp": {
+    "meta_title": "회원가입",
+    "meta_description": "무료 QuizFlow 계정을 만들고 몇 분 안에 출제를 시작하세요."
+  },
+  "DashboardLayout": {
+    "home": "홈",
+    "quizzes": "내 퀴즈",
+    "todos": "할 일",
+    "members": "구성원",
+    "billing": "결제",
+    "settings": "설정"
+  },
+  "Quizzes": {
+    "title_bar": "내 퀴즈",
+    "title_bar_description": "퀴즈를 관리하고 학생들과 공유",
+    "add_quiz_button": "퀴즈 만들기",
+    "empty_title": "아직 퀴즈가 없습니다",
+    "empty_description": "첫 번째 퀴즈를 만들고 학생들과 공유해 보세요.",
+    "empty_button": "퀴즈 만들기"
+  },
+  "QuizTableColumns": {
+    "title_header": "제목",
+    "status_header": "상태",
+    "created_at_header": "생성 시간",
+    "open_menu": "메뉴 열기",
+    "edit": "편집",
+    "results": "성적",
+    "copy_link": "학생용 링크 복사",
+    "copy_link_copied": "복사되었습니다!",
+    "qr_code": "📱 QR 코드",
+    "delete": "삭제",
+    "status_draft": "초안",
+    "status_published": "공개",
+    "status_closed": "종료"
+  },
+  "AddQuiz": {
+    "title_bar": "퀴즈 만들기",
+    "section_title": "새 퀴즈 만들기",
+    "section_description": "30초 생성, 제목과 설정은 언제든지 변경 가능",
+    "title_label": "퀴즈 제목",
+    "title_placeholder": "예: 3장 쪽지시험",
+    "description_label": "시험 주제 (선택)",
+    "description_placeholder": "예: 백거이의 유명한 시, 삼각함수, 대만 지형",
+    "description_hint": "학생이 응답 전에 이 설명을 보며, AI 출제 시에도 이 주제를 기반으로 문제를 생성합니다.",
+    "submit_button": "퀴즈 만들기",
+    "cancel_button": "취소"
+  },
+  "Dashboard": {
+    "meta_title": "QuizFlow 관리 페이지",
+    "meta_description": "퀴즈 관리, 학생 성적 확인, 학습 성과 추적을 한곳에서."
+  },
+  "DashboardIndex": {
+    "title_bar": "대시보드",
+    "title_bar_description": "QuizFlow에 오신 것을 환영합니다",
+    "message_state_title": "첫 번째 퀴즈를 만들어 보세요",
+    "message_state_description": "여기에서 퀴즈를 만들 수 있습니다. <code>dashboard/page.tsx</code>를 편집하여 이 페이지를 맞춤 설정할 수 있습니다.",
+    "message_state_button": "퀴즈 만들기",
+    "message_state_alternative": "무제한 퀴즈와 AI 자동 출제 기능이 필요하신가요? <url></url>로 업그레이드, 월 $9부터.",
+    "max_message": "",
+    "stat_quiz_count": "총 퀴즈 수",
+    "stat_responses": "학생 응답 횟수",
+    "stat_avg_rate": "평균 정답률",
+    "recent_quizzes": "최근 퀴즈",
+    "new_quiz_button": "+ 새 퀴즈 만들기",
+    "view_all_quizzes": "모든 퀴즈 보기 →",
+    "col_title": "제목",
+    "col_status": "상태",
+    "col_actions": "작업",
+    "action_edit": "편집",
+    "action_results": "성적"
+  },
+  "UserProfile": {
+    "title_bar": "사용자 정보",
+    "title_bar_description": "개인 정보 확인 및 관리"
+  },
+  "OrganizationProfile": {
+    "title_bar": "조직 관리",
+    "title_bar_description": "조직 관리"
+  },
+  "Billing": {
+    "title_bar": "결제",
+    "title_bar_description": "결제 및 구독 플랜 관리",
+    "current_section_title": "현재 플랜",
+    "current_section_description": "필요에 맞게 유료 플랜 조정",
+    "manage_subscription_button": "구독 관리"
+  },
+  "BillingOptions": {
+    "current_plan": "현재 플랜",
+    "upgrade_plan": "Pro로 업그레이드"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "결제 확인",
+    "message_state_title": "결제 성공",
+    "message_state_description": "결제가 성공적으로 처리되었습니다. 구매해 주셔서 감사합니다!",
+    "message_state_button": "결제 페이지로 돌아가기"
+  },
+  "QuizResults": {
+    "title": "응답 성적",
+    "total_responses": "응답자 수",
+    "avg_score": "평균 점수",
+    "question_count": "문제 수",
+    "question_breakdown": "문제별 정답률",
+    "question_body": "문제",
+    "correct_count": "정답 / 응답",
+    "correct_rate": "정답률",
+    "short_answer_note": "(주관식, 수동 채점 필요)",
+    "response_list": "모든 응답 기록",
+    "no_responses": "아직 학생 응답이 없습니다",
+    "student_name": "학생 이름",
+    "student_email": "이메일",
+    "score": "점수",
+    "submitted_at": "응답 시간"
+  },
+  "QuizTake": {
+    "not_available": "이 퀴즈는 현재 응답할 수 없습니다",
+    "not_available_description": "퀴즈가 아직 공개되지 않았거나 종료되었을 수 있습니다. 선생님께 확인해 주세요.",
+    "no_questions": "이 퀴즈에는 문제가 없습니다"
+  },
+  "DataTable": {
+    "no_results": "데이터가 없습니다."
+  },
+  "Todos": {
+    "title_bar": "할 일 목록",
+    "title_bar_description": "할 일 확인 및 관리",
+    "add_todo_button": "할 일 추가"
+  },
+  "TodoTableColumns": {
+    "open_menu": "메뉴 열기",
+    "edit": "편집",
+    "delete": "삭제",
+    "title_header": "제목",
+    "message_header": "내용",
+    "created_at_header": "생성 시간"
+  },
+  "AddTodo": {
+    "title_bar": "할 일 추가",
+    "add_todo_section_title": "새 할 일 만들기",
+    "add_todo_section_description": "아래 양식을 작성하여 새 할 일 만들기"
+  },
+  "EditTodo": {
+    "title_bar": "할 일 편집",
+    "edit_todo_section_title": "할 일 수정",
+    "edit_todo_section_description": "아래 양식을 작성하여 할 일 편집"
+  },
+  "TodoForm": {
+    "title_label": "제목",
+    "title_description": "할 일의 설명적인 제목을 입력하세요.",
+    "message_title": "내용",
+    "message_description": "할 일의 상세 내용을 입력하세요.",
+    "submit_button": "제출"
+  },
+  "InAppBrowser": {
+    "title": "모바일 브라우저에서 여는 것을 권장합니다",
+    "description": "현재 앱 내장 브라우저를 사용하고 있습니다. 열 때마다 다시 로그인해야 합니다. URL을 복사하여 Chrome 또는 Safari에 붙여넣으면 로그인 상태를 유지할 수 있습니다.",
+    "copy_button": "관리 페이지 URL 복사",
+    "copied": "복사되었습니다!",
+    "dismiss": "다시 표시하지 않음"
+  },
+  "Onboarding": {
+    "title": "QuizFlow 시작하기",
+    "subtitle": "아래 단계를 따라 몇 분 안에 첫 번째 퀴즈를 완성하세요",
+    "dismiss": "다시 표시하지 않음",
+    "close_aria": "가이드 닫기",
+    "step1_title": "퀴즈 만들기",
+    "step1_description": "「새 퀴즈 만들기」를 클릭하여 제목을 입력하고 문제를 추가하세요 (객관식, O/X, 주관식 모두 지원).",
+    "step1_action": "지금 만들기",
+    "step2_title": "문제 추가 또는 AI 출제",
+    "step2_description": "수동으로 문제를 추가하거나 Pro 플랜으로 업그레이드하여 교과서나 슬라이드를 업로드하면 AI가 자동으로 문제와 해설을 생성합니다.",
+    "step3_title": "학생에게 링크 공유",
+    "step3_description": "퀴즈 공개 후 전용 링크를 복사하여 카카오톡이나 칠판에 붙이기만 하면 됩니다. 학생은 계정 없이 응답할 수 있습니다."
+  },
+  "PricingExtra": {
+    "section_badge": "플랜과 가격",
+    "section_heading": "매달 절약하는 수업 준비 시간은 구독료보다 훨씬 가치 있습니다",
+    "section_subtitle": "당신에게 맞는 플랜을 선택하세요, 언제든 업그레이드하거나 취소할 수 있습니다",
+    "cycle_monthly": "월 결제",
+    "cycle_yearly": "연 결제",
+    "save_most": "최대 할인",
+    "footer_prefix": "결제는",
+    "footer_suffix": "에 의해 안전하게 처리됩니다 · 언제든 취소 가능 · 약정 없음",
+    "free_name": "무료 체험",
+    "free_description": "먼저 체험해 보세요, 신용카드 불필요, 퀴즈 한 개 만들어 본 후 결정하세요",
+    "free_cta": "무료로 시작하기",
+    "pro_name": "Pro 교사",
+    "pro_description": "한 달 구독료는 당신의 주말 수업 준비 시간보다도 저렴합니다",
+    "pro_cta": "현재 무료 체험 중",
+    "school_name": "학교 플랜",
+    "school_description": "학교 선생님 모두가 함께 사용, 행정 담당자도 더 이상 시험지를 재촉할 필요 없습니다",
+    "school_cta": "현재 무료 체험 중"
+  },
+  "AiQuota": {
+    "title_danger": "이번 달 AI 출제 {used} / {quota} 회 사용됨",
+    "title_warn": "이번 달 AI 출제 {remaining} 회 남음",
+    "subtitle_danger": "Pro로 업그레이드하면 AI 출제를 무제한으로 이용할 수 있습니다",
+    "subtitle_warn": "Pro 플랜은 AI 출제 무제한, 연 결제 시 월 평균 약 NT$208",
+    "cta": "Pro로 업그레이드"
+  },
+  "QuizFormExtra": {
+    "title_label": "퀴즈 제목",
+    "title_hint": "(선택, 나중에 수정 가능)",
+    "title_placeholder": "예: 3장 쪽지시험 (비워두면 「{fallback}」가 자동 입력됩니다)",
+    "default_title": "새 퀴즈 {date}",
+    "primary_cta": "✨ 바로 만들기 시작",
+    "creating": "만드는 중…",
+    "vocab_title": "단어 암기",
+    "vocab_subtitle": "영단어 반복 마스터",
+    "vocab_description": "단어 암기 연습: 중국어 힌트를 보고 영단어를 입력하세요. 틀린 단어는 모두 맞힐 때까지 반복해서 출제됩니다.",
+    "templates_toggle": "기본 제목 템플릿 사용",
+    "tmpl_quiz_title": "쪽지시험",
+    "tmpl_quiz_subtitle": "수업 중 빠른 체크",
+    "tmpl_midterm_title": "중간고사",
+    "tmpl_midterm_subtitle": "전체 단원 평가",
+    "tmpl_review_title": "복습 퀴즈",
+    "tmpl_review_subtitle": "정기고사 전 마지막 복습",
+    "tmpl_challenge_title": "자기주도 챌린지",
+    "tmpl_challenge_subtitle": "방과 후 연습",
+    "tmpl_preview_title": "예습",
+    "tmpl_preview_subtitle": "새 단원 요점 파악",
+    "tmpl_check_title": "지식 점검",
+    "tmpl_check_subtitle": "자기 이해도 확인",
+    "tip_prefix": "만들기 후 바로 출제 페이지로 이동, 선택 가능",
+    "tip_ai": "AI 스마트 출제",
+    "tip_suffix": "또는 수동 출제."
+  }
+}

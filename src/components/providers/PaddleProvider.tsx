@@ -6,14 +6,36 @@
  */
 
 import { initializePaddle } from '@paddle/paddle-js';
+import { useLocale } from 'next-intl';
 import { useEffect } from 'react';
 
+// Paddle 目前支援的 locale，不在此清單內一律 fallback 'en'
+// 參考：https://developer.paddle.com/reference/platform/supported-locales
+const PADDLE_SUPPORTED_LOCALES = new Set([
+  'en',
+  'zh',
+  'ja',
+  'ko',
+  'de',
+  'es',
+  'fr',
+  'it',
+  'nl',
+  'pl',
+  'pt',
+  'ru',
+]);
+
 export function PaddleProvider() {
+  const locale = useLocale();
+
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN;
     if (!token) {
       return; // 未設定 token 時不初始化（開發中）
     }
+
+    const paddleLocale = PADDLE_SUPPORTED_LOCALES.has(locale) ? locale : 'en';
 
     initializePaddle({
       token,
@@ -25,11 +47,11 @@ export function PaddleProvider() {
         settings: {
           displayMode: 'overlay',
           theme: 'light',
-          locale: 'zh',
+          locale: paddleLocale,
         },
       },
     });
-  }, []);
+  }, [locale]);
 
   return null;
 }

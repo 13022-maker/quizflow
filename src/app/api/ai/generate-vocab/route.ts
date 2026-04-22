@@ -12,6 +12,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { getOutputLanguageInstruction, normalizeAiLocale } from '@/libs/aiOutputLocale';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
   const topic = String(body.topic ?? '').trim();
   const difficulty = String(body.difficulty ?? 'medium');
   const count = Math.min(Math.max(Number(body.count) || 15, 5), 30);
+  const locale = normalizeAiLocale(body.locale);
 
   if (!topic) {
     return NextResponse.json({ error: '請輸入單字主題' }, { status: 400 });
@@ -70,12 +72,12 @@ export async function POST(request: Request) {
 單字數量：${count}
 
 規則：
-1. 每個單字提供：英文拼寫、繁體中文意思（簡潔、2-8 字）、一個例句（英文短句，盡量 ≤ 12 字）
+1. 每個單字提供：英文拼寫、母語意思（簡潔、2-8 字）、一個例句（英文短句，盡量 ≤ 12 字）
 2. 避免重複單字與近義詞過度重疊
 3. 英文單字一律小寫（除非是專有名詞）
-4. 中文意思以一般教科書常用翻譯為準
+4. 母語意思以一般教科書常用翻譯為準；英文例句保持英文
 5. 只回傳合法 JSON，不要任何 markdown 或說明文字
-6. JSON 格式：
+6. JSON 格式（"chinese" 欄位用於儲存母語翻譯，請依下方輸出語言要求填入對應語言）：
 {
   "title": "根據主題命名的單字表標題（≤ 20 字）",
   "words": [
@@ -83,7 +85,8 @@ export async function POST(request: Request) {
     { "english": "book", "chinese": "書", "example": "She reads a book." }
   ]
 }
-共 ${count} 個單字，全部用繁體中文標示中文意思。`;
+共 ${count} 個單字。
+${getOutputLanguageInstruction(locale)}`;
 
   let raw: string;
   let usedModel = 'gemini';

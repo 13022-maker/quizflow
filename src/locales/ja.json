@@ -1,0 +1,325 @@
+{
+  "Index": {
+    "meta_title": "QuizFlow - AIスマートクイズプラットフォーム、作問・採点・分析をワンストップで",
+    "meta_description": "数分でクイズを作成し、ワンクリックで生徒と共有、回答結果をリアルタイムで確認できます。無料プランは10個のクイズを提供、Proプランにアップグレードすれば無制限の作問とAI自動生成機能を利用できます。"
+  },
+  "PricingPage": {
+    "meta_title": "QuizFlow 料金プラン - 無料で始めて、いつでもアップグレード",
+    "meta_description": "無料プランは10個のクイズを提供します。Proプラン（$9/月）にアップグレードすると、無制限の作問とAI自動生成機能を利用できます。"
+  },
+  "Navbar": {
+    "sign_in": "ログイン",
+    "sign_up": "新規登録",
+    "product": "製品",
+    "pricing": "料金",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社概要"
+  },
+  "Hero": {
+    "follow_twitter": "QuizFlowをTwitterでフォロー",
+    "title": "よりスマートな方法で、<important>作問・共有・分析</important>生徒の回答状況を。",
+    "description": "数分で魅力的なクイズを作成し、一つのリンクで共有、生徒の学習状況をリアルタイムで把握できます。現代の教育者のために、作問・採点・分析をワンストップで。",
+    "primary_button": "無料で使い始める",
+    "secondary_button": "使い方を見る"
+  },
+  "Sponsors": {
+    "title": "以下の学校の先生方にご信頼いただいています"
+  },
+  "Features": {
+    "section_subtitle": "機能と特徴",
+    "section_title": "先生が作問に必要なすべての機能",
+    "section_description": "QuizFlowはクイズの作成・共有・分析に必要なツールを提供します。シンプルで直感的、複雑な設定は不要です。",
+    "feature1_title": "高速作問ツール",
+    "feature2_title": "ワンクリック共有リンク",
+    "feature3_title": "リアルタイム回答結果",
+    "feature4_title": "AI自動問題生成",
+    "feature5_title": "生徒の学習分析",
+    "feature6_title": "成績レポートの書き出し",
+    "feature1_description": "選択問題、○×問題、穴埋め問題、記述問題に対応し、ドラッグで問題を並び替え、数分で作問完了。",
+    "feature2_description": "クイズ作成後に専用リンクが自動生成され、LINEや黒板に貼るだけ。生徒はアプリのダウンロード不要。",
+    "feature3_description": "生徒が回答を送信するとすぐに自動採点、点数と各問題の詳細解説がリアルタイムで表示されます。",
+    "feature4_description": "教科書、スライド、画像をアップロードすると、AIが自動で問題と解説を生成。手動作問の時間を節約できます（Pro限定）。",
+    "feature5_description": "各問題の正答率とクラス全体の回答分布を確認、生徒の学習の盲点をすばやく発見できます。",
+    "feature6_description": "すべての回答記録をCSVファイルに書き出し、成績簿の入力や校務システムとの連携に便利です。"
+  },
+  "Pricing": {
+    "section_subtitle": "プラン料金",
+    "section_title": "シンプルで透明な料金設定",
+    "section_description": "無料で始めて、必要になったらアップグレード。隠れた費用はありません。",
+    "button_text": "今すぐ始める"
+  },
+  "PricingPlan": {
+    "free_plan_name": "無料版",
+    "premium_plan_name": "Proプラン",
+    "enterprise_plan_name": "エンタープライズプラン",
+    "free_plan_description": "試してみたい先生に最適",
+    "premium_plan_description": "無制限の作問が必要な先生に最適",
+    "enterprise_plan_description": "学校や教育機関に最適",
+    "feature_team_member": "{number} 教師アカウント",
+    "feature_website": "{number} 個のクイズ",
+    "feature_storage": "AI自動問題生成機能（Pro限定）",
+    "feature_transfer": "無制限の回答回数",
+    "feature_email_support": "メールサポート",
+    "plan_interval_month": "月",
+    "plan_interval_year": "年",
+    "next_renew_date": "ご契約は {date} に自動更新されます"
+  },
+  "FAQ": {
+    "question1": "無料プランでは何個のクイズを作成できますか？",
+    "answer1": "無料プランは最大10個のクイズを作成できます。各クイズの問題数に制限はなく、任意の人数の生徒に共有して回答してもらえます。さらに多くのクイズやAI自動問題生成機能が必要な場合は、月額$9のProプランにアップグレードすることで、無制限のクイズと全ての上級機能をご利用いただけます。",
+    "question2": "生徒は回答にアカウントが必要ですか？",
+    "answer2": "不要です。生徒は共有されたリンクをクリックするだけで、ブラウザで直接回答できます。事前登録やログインは一切不要です。回答完了後、システムはすぐに点数と各問題の詳細解説を表示し、先生も管理画面ですべての回答記録を確認できます。",
+    "question3": "AI自動問題生成はどのような形式に対応していますか？",
+    "answer3": "ProプランのAI作問機能は、テキスト、PDFドキュメント、画像（JPG、PNG）、動画（MP4）、音声ファイル（MP3）など多様な素材形式に対応しています。教材をアップロードするだけで、AIが自動的に選択問題、○×問題、穴埋め問題、記述問題を生成し、各問題の詳細な解説を付けてくれます。"
+  },
+  "CTA": {
+    "title": "作問をもっと簡単にする準備はできましたか？",
+    "description": "QuizFlowを使う先生方の仲間入りをして、作問時間を節約し、生徒の学習状況をより深く理解しましょう。",
+    "button_text": "無料で使い始める"
+  },
+  "Footer": {
+    "product": "製品",
+    "pricing": "料金",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社概要",
+    "terms_of_service": "利用規約",
+    "privacy_policy": "プライバシーポリシー",
+    "refund_policy": "返金ポリシー",
+    "footer_text": "© {year} {name}。現代の教育者のために。"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "この操作を実行する権限がありません"
+  },
+  "SignIn": {
+    "meta_title": "ログイン",
+    "meta_description": "QuizFlowアカウントにログインして、クイズの作成を始めましょう。"
+  },
+  "SignUp": {
+    "meta_title": "新規登録",
+    "meta_description": "無料のQuizFlowアカウントを作成し、数分で作問を始めましょう。"
+  },
+  "DashboardLayout": {
+    "home": "ホーム",
+    "quizzes": "マイクイズ",
+    "todos": "タスク",
+    "members": "メンバー",
+    "billing": "請求",
+    "settings": "設定"
+  },
+  "Quizzes": {
+    "title_bar": "マイクイズ",
+    "title_bar_description": "クイズを管理して生徒に共有",
+    "add_quiz_button": "クイズを作成",
+    "empty_title": "まだクイズがありません",
+    "empty_description": "最初のクイズを作成して、生徒に共有しましょう。",
+    "empty_button": "クイズを作成"
+  },
+  "QuizTableColumns": {
+    "title_header": "タイトル",
+    "status_header": "ステータス",
+    "created_at_header": "作成日時",
+    "open_menu": "メニューを開く",
+    "edit": "編集",
+    "results": "成績",
+    "copy_link": "生徒用リンクをコピー",
+    "copy_link_copied": "コピーしました！",
+    "qr_code": "📱 QRコード",
+    "delete": "削除",
+    "status_draft": "下書き",
+    "status_published": "公開中",
+    "status_closed": "終了"
+  },
+  "AddQuiz": {
+    "title_bar": "クイズを作成",
+    "section_title": "新規クイズを作成",
+    "section_description": "30秒で作成、タイトルと設定はいつでも変更可能",
+    "title_label": "クイズタイトル",
+    "title_placeholder": "例：第3章 小テスト",
+    "description_label": "テーマ（任意）",
+    "description_placeholder": "例：白居易の有名な詩、三角関数、台湾の地形",
+    "description_hint": "生徒が回答前にこの説明を確認でき、AIが作問する際にもこのテーマを基にします。",
+    "submit_button": "クイズを作成",
+    "cancel_button": "キャンセル"
+  },
+  "Dashboard": {
+    "meta_title": "QuizFlow 管理画面",
+    "meta_description": "クイズの管理、生徒の成績確認、学習パフォーマンスの追跡をすべて一箇所で。"
+  },
+  "DashboardIndex": {
+    "title_bar": "ダッシュボード",
+    "title_bar_description": "QuizFlowへようこそ",
+    "message_state_title": "最初のクイズを作成しましょう",
+    "message_state_description": "ここからクイズを作成できます。<code>dashboard/page.tsx</code> を編集してこのページをカスタマイズできます。",
+    "message_state_button": "クイズを作成",
+    "message_state_alternative": "無制限のクイズとAI自動作問機能が必要ですか？<url></url>へのアップグレードで月額$9から。",
+    "max_message": "",
+    "stat_quiz_count": "クイズ総数",
+    "stat_responses": "生徒の回答数",
+    "stat_avg_rate": "平均正答率",
+    "recent_quizzes": "最近のクイズ",
+    "new_quiz_button": "+ 新規クイズ作成",
+    "view_all_quizzes": "すべてのクイズを見る →",
+    "col_title": "タイトル",
+    "col_status": "ステータス",
+    "col_actions": "操作",
+    "action_edit": "編集",
+    "action_results": "成績"
+  },
+  "UserProfile": {
+    "title_bar": "ユーザー情報",
+    "title_bar_description": "プロフィールを確認・管理"
+  },
+  "OrganizationProfile": {
+    "title_bar": "組織管理",
+    "title_bar_description": "組織を管理"
+  },
+  "Billing": {
+    "title_bar": "請求",
+    "title_bar_description": "請求とサブスクリプションプランを管理",
+    "current_section_title": "現在のプラン",
+    "current_section_description": "ニーズに合わせてプランを調整",
+    "manage_subscription_button": "サブスクリプション管理"
+  },
+  "BillingOptions": {
+    "current_plan": "現在のプラン",
+    "upgrade_plan": "Proにアップグレード"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "支払い確認",
+    "message_state_title": "お支払いが完了しました",
+    "message_state_description": "お支払いが正常に処理されました。ご購入ありがとうございます！",
+    "message_state_button": "請求ページに戻る"
+  },
+  "QuizResults": {
+    "title": "回答成績",
+    "total_responses": "回答者数",
+    "avg_score": "平均点",
+    "question_count": "問題数",
+    "question_breakdown": "問題別正答率",
+    "question_body": "問題",
+    "correct_count": "正解 / 回答",
+    "correct_rate": "正答率",
+    "short_answer_note": "（記述問題、手動採点が必要）",
+    "response_list": "すべての回答記録",
+    "no_responses": "まだ回答がありません",
+    "student_name": "生徒氏名",
+    "student_email": "メールアドレス",
+    "score": "点数",
+    "submitted_at": "回答日時"
+  },
+  "QuizTake": {
+    "not_available": "このクイズは現在回答できません",
+    "not_available_description": "クイズがまだ公開されていないか、すでに終了している可能性があります。先生にご確認ください。",
+    "no_questions": "このクイズには問題がありません"
+  },
+  "DataTable": {
+    "no_results": "データがありません。"
+  },
+  "Todos": {
+    "title_bar": "タスク一覧",
+    "title_bar_description": "タスクを確認・管理",
+    "add_todo_button": "タスクを追加"
+  },
+  "TodoTableColumns": {
+    "open_menu": "メニューを開く",
+    "edit": "編集",
+    "delete": "削除",
+    "title_header": "タイトル",
+    "message_header": "内容",
+    "created_at_header": "作成日時"
+  },
+  "AddTodo": {
+    "title_bar": "タスクを追加",
+    "add_todo_section_title": "新規タスクを作成",
+    "add_todo_section_description": "以下のフォームに入力して新しいタスクを作成"
+  },
+  "EditTodo": {
+    "title_bar": "タスクを編集",
+    "edit_todo_section_title": "タスクを修正",
+    "edit_todo_section_description": "以下のフォームに入力してタスクを編集"
+  },
+  "TodoForm": {
+    "title_label": "タイトル",
+    "title_description": "タスクのわかりやすいタイトルを入力してください。",
+    "message_title": "内容",
+    "message_description": "タスクの詳細な内容を入力してください。",
+    "submit_button": "送信"
+  },
+  "InAppBrowser": {
+    "title": "モバイルブラウザで開くことをおすすめします",
+    "description": "現在、アプリ内蔵ブラウザを使用しています。毎回ログインし直す必要があります。URLをコピーしてChromeまたはSafariに貼り付けると、ログイン状態を維持できます。",
+    "copy_button": "管理画面URLをコピー",
+    "copied": "コピーしました！",
+    "dismiss": "今後表示しない"
+  },
+  "Onboarding": {
+    "title": "QuizFlowを始めましょう",
+    "subtitle": "以下の手順に従って、数分で最初のクイズを完成させましょう",
+    "dismiss": "今後表示しない",
+    "close_aria": "ガイドを閉じる",
+    "step1_title": "クイズを作成",
+    "step1_description": "「クイズを作成」をクリックし、タイトルを入力して問題を追加（選択問題、○×問題、記述問題すべて対応）。",
+    "step1_action": "今すぐ作成",
+    "step2_title": "問題の追加またはAI作問",
+    "step2_description": "手動で問題を追加するか、Proプランにアップグレードして教科書やスライドをアップロードし、AIに自動で問題と解説を生成させます。",
+    "step3_title": "リンクを生徒に共有",
+    "step3_description": "クイズ公開後に専用リンクをコピーして、LINEや黒板に貼り付けるだけ。生徒はアカウント不要で回答できます。"
+  },
+  "PricingExtra": {
+    "section_badge": "プランと料金",
+    "section_heading": "毎月節約できる授業準備時間は、サブスク料金の何倍もの価値",
+    "section_subtitle": "あなたに合ったプランをお選びください。いつでもアップグレード・解約可能です",
+    "cycle_monthly": "月払い",
+    "cycle_yearly": "年払い",
+    "save_most": "最もお得",
+    "footer_prefix": "お支払いは",
+    "footer_suffix": "により安全に処理されます · いつでも解約可 · 契約縛りなし",
+    "free_name": "無料トライアル",
+    "free_description": "まずはお試し、クレジットカード不要。1枚作ってから決めても大丈夫",
+    "free_cta": "無料で使い始める",
+    "pro_name": "Pro 先生",
+    "pro_description": "1ヶ月のサブスク料金は、週末の授業準備時間にすら及びません",
+    "pro_cta": "現在無料トライアル中",
+    "school_name": "学校プラン",
+    "school_description": "学校の先生全員で使えて、管理職がクイズを催促する必要もなくなります",
+    "school_cta": "現在無料トライアル中"
+  },
+  "AiQuota": {
+    "title_danger": "今月のAI作問は {used} / {quota} 回使用済み",
+    "title_warn": "今月のAI作問は残り {remaining} 回",
+    "subtitle_danger": "Proにアップグレードすれば、AI作問が無制限でご利用いただけます",
+    "subtitle_warn": "Proプランは AI作問無制限、年払いなら月額平均約 NT$208",
+    "cta": "Proにアップグレード"
+  },
+  "QuizFormExtra": {
+    "title_label": "クイズタイトル",
+    "title_hint": "（任意、後で変更可能）",
+    "title_placeholder": "例：第3章 小テスト（空欄の場合は「{fallback}」が自動で入ります）",
+    "default_title": "新規クイズ {date}",
+    "primary_cta": "✨ 今すぐ作成開始",
+    "creating": "作成中…",
+    "vocab_title": "単語暗記",
+    "vocab_subtitle": "英単語を完全マスター",
+    "vocab_description": "単語暗記練習：表示されたヒントを見て英単語を入力。間違えた単語は全問正解するまで繰り返し出題されます。",
+    "templates_toggle": "タイトルテンプレートを使う",
+    "tmpl_quiz_title": "小テスト",
+    "tmpl_quiz_subtitle": "授業中のクイックチェック",
+    "tmpl_midterm_title": "中間試験",
+    "tmpl_midterm_subtitle": "章全体の評価",
+    "tmpl_review_title": "復習テスト",
+    "tmpl_review_subtitle": "定期考査前の総復習",
+    "tmpl_challenge_title": "自主学習チャレンジ",
+    "tmpl_challenge_subtitle": "放課後の練習",
+    "tmpl_preview_title": "予習",
+    "tmpl_preview_subtitle": "新しい単元のポイントを把握",
+    "tmpl_check_title": "理解度チェック",
+    "tmpl_check_subtitle": "自分の理解を確認",
+    "tip_prefix": "作成後すぐに作問画面へ、選べます",
+    "tip_ai": "AIスマート作問",
+    "tip_suffix": "または手動で作問します。"
+  }
+}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useLocale } from 'next-intl';
 import { useRef, useState } from 'react';
 
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
@@ -54,6 +55,7 @@ function formatSize(bytes: number) {
 const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
 
 export default function FileQuizGenerator({ onImport, onClose }: Props) {
+  const locale = useLocale();
   const [file, setFile] = useState<File | null>(null);
   const [types, setTypes] = useState<QuestionType[]>(['mc']);
   const [count, setCount] = useState(5);
@@ -158,6 +160,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       fd.append('count', String(count));
       fd.append('difficulty', difficulty);
       fd.append('model', model);
+      fd.append('locale', locale);
 
       const res = await fetch('/api/ai/generate-from-file', { method: 'POST', body: fd });
       const data = await res.json();

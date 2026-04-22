@@ -8,6 +8,7 @@
  *   { type: 'short', question: 中文意思, answer: 英文單字, explanation?: 例句 }
  */
 
+import { useLocale } from 'next-intl';
 import { useState } from 'react';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -47,6 +48,7 @@ const QUICK_TOPICS = [
 ];
 
 export default function VocabAIModal({ defaultTopic = '', onImport, onClose }: Props) {
+  const locale = useLocale();
   const [topic, setTopic] = useState(defaultTopic);
   const [count, setCount] = useState(15);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
@@ -67,7 +69,7 @@ export default function VocabAIModal({ defaultTopic = '', onImport, onClose }: P
       const res = await fetch('/api/ai/generate-vocab', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, count, difficulty }),
+        body: JSON.stringify({ topic, count, difficulty, locale }),
       });
       const data = await res.json();
       if (!res.ok) {

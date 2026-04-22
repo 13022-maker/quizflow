@@ -1,34 +1,35 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 
-// 三個步驟的定義
-const STEPS = [
-  {
-    number: 1,
-    icon: '📝',
-    title: '建立測驗',
-    description: '點擊「建立新測驗」，輸入標題、新增題目（選擇題、是非題、問答題皆支援）。',
-    action: { label: '立即建立', href: '/dashboard/quizzes/new' },
-  },
-  {
-    number: 2,
-    icon: '✨',
-    title: '新增題目或 AI 出題',
-    description: '手動新增題目，或升級 Pro 方案後上傳課本、簡報，讓 AI 自動生成試題並附解析。',
-    action: null,
-  },
-  {
-    number: 3,
-    icon: '🔗',
-    title: '分享連結給學生',
-    description: '發佈測驗後複製專屬連結，貼到 LINE 或黑板，學生無需帳號即可作答。',
-    action: null,
-  },
-] as const;
-
 export function OnboardingSteps() {
+  const t = useTranslations('Onboarding');
+
+  const steps = [
+    {
+      number: 1,
+      icon: '📝',
+      title: t('step1_title'),
+      description: t('step1_description'),
+      action: { label: t('step1_action'), href: '/dashboard/quizzes/new' },
+    },
+    {
+      number: 2,
+      icon: '✨',
+      title: t('step2_title'),
+      description: t('step2_description'),
+      action: null,
+    },
+    {
+      number: 3,
+      icon: '🔗',
+      title: t('step3_title'),
+      description: t('step3_description'),
+      action: null,
+    },
+  ] as const;
   // 用 null 代表「尚未從 localStorage 讀取」，避免 hydration mismatch
   const [dismissed, setDismissed] = useState<boolean | null>(null);
 
@@ -51,23 +52,23 @@ export function OnboardingSteps() {
       {/* 標題列 */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold">開始使用 QuizFlow</h2>
+          <h2 className="text-lg font-semibold">{t('title')}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            跟著以下步驟，幾分鐘內完成第一份測驗
+            {t('subtitle')}
           </p>
         </div>
         <button
           onClick={handleDismiss}
           className="text-xs text-muted-foreground hover:text-foreground"
-          aria-label="關閉引導"
+          aria-label={t('close_aria')}
         >
-          不再顯示
+          {t('dismiss')}
         </button>
       </div>
 
       {/* 步驟卡片 */}
       <div className="grid gap-4 sm:grid-cols-3">
-        {STEPS.map(step => (
+        {steps.map(step => (
           <div
             key={step.number}
             className="relative rounded-lg border bg-muted/30 p-4"

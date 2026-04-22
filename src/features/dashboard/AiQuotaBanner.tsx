@@ -7,6 +7,7 @@
  */
 
 import Link from 'next/link';
+import { getTranslations } from 'next-intl/server';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
 import { getOrgPlanId } from '@/libs/Plan';
@@ -42,13 +43,14 @@ export async function AiQuotaBanner({ orgId }: Props) {
 
   const icon = level === 'danger' ? '🚨' : level === 'warn' ? '⚡' : '📊';
 
+  const t = await getTranslations('AiQuota');
   const title = level === 'danger'
-    ? `本月 AI 出題已用 ${usage.used} / ${usage.quota} 次`
-    : `本月 AI 出題還剩 ${usage.remaining} 次`;
+    ? t('title_danger', { used: usage.used, quota: usage.quota })
+    : t('title_warn', { remaining: usage.remaining });
 
   const subtitle = level === 'danger'
-    ? '升級 Pro 即可無限使用 AI 出題，不再卡額度'
-    : 'Pro 方案 AI 出題無上限，年繳平均每月只要 NT$208';
+    ? t('subtitle_danger')
+    : t('subtitle_warn');
 
   const barColor = {
     info: 'bg-primary',
@@ -70,7 +72,7 @@ export async function AiQuotaBanner({ orgId }: Props) {
           href="/dashboard/billing"
           className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
-          升級 Pro
+          {t('cta')}
         </Link>
       </div>
       {/* 進度條 */}

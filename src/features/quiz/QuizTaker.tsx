@@ -2,6 +2,7 @@
 
 import type { InferSelectModel } from 'drizzle-orm';
 import dynamic from 'next/dynamic';
+import { useLocale } from 'next-intl';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
@@ -1593,6 +1594,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
 // ── AI 補強練習元件 ──────────────────────────────────────────
 function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[]; responseId: number }) {
+  const locale = useLocale();
   const [questions, setQuestions] = useState<RemedialQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -1609,7 +1611,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
       const res = await fetch('/api/ai/generate-remedial', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ weakPoints, responseId }),
+        body: JSON.stringify({ weakPoints, responseId, locale }),
       });
       const data = await res.json();
       if (!res.ok) {
