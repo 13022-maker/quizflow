@@ -103,12 +103,20 @@ export function ResponseDetailDialog({ responseId, onClose }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      }}
       role="presentation"
     >
       <div
         className="relative flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-card shadow-2xl"
-        onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
@@ -386,7 +394,11 @@ function EssayGradingSection({
                 {item.aiGrading.sentenceFeedback.map((s, i) => (
                   // eslint-disable-next-line react/no-array-index-key
                   <li key={i} className="rounded border-l-2 border-primary/40 bg-background/60 px-2 py-1 text-[11px]">
-                    <p className="text-muted-foreground">「{s.sentence}」</p>
+                    <p className="text-muted-foreground">
+                      「
+                      {s.sentence}
+                      」
+                    </p>
                     <p className="mt-0.5">{s.comment}</p>
                   </li>
                 ))}

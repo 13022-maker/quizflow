@@ -43,7 +43,7 @@ export async function checkAndIncrementAiUsage(
 ): Promise<
   | { allowed: true; remaining: number }
   | { allowed: false; reason: string; remaining: number }
-> {
+  > {
   // VIP 白名單不限制
   const { isVipUser } = await import('@/libs/vip');
   if (await isVipUser()) {
@@ -134,10 +134,10 @@ export async function getAiUsageRemaining(
   orgId: string,
   feature: AiFeature = 'question_generation',
 ): Promise<{
-  quota: number;
-  used: number;
-  remaining: number;
-}> {
+    quota: number;
+    used: number;
+    remaining: number;
+  }> {
   const planId = await getOrgPlanId(orgId);
   const quota = getPlanQuota(planId, feature);
 

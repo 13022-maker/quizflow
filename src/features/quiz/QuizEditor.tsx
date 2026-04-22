@@ -1095,7 +1095,7 @@ export function QuizEditor({
                   className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <div className="size-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     <span className="text-xs font-medium text-primary">
                       匯入中 Q
                       {questions.length + i + 1}

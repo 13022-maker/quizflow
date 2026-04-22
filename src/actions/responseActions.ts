@@ -4,8 +4,8 @@ import { auth } from '@clerk/nextjs/server';
 import { and, asc, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import type { EssayGradingResult } from '@/lib/ai/prompts';
+import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
 const SubmitSchema = z.object({

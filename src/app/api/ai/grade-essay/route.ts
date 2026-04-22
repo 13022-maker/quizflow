@@ -6,8 +6,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
-import { db } from '@/libs/DB';
-import { isProOrAbove } from '@/libs/Plan';
 import { anthropic, CLAUDE_MODEL } from '@/lib/ai/client';
 import {
   buildEssayGradingUserPrompt,
@@ -15,6 +13,8 @@ import {
   ESSAY_GRADING_SYSTEM_PROMPT,
   EssayGradingResultSchema,
 } from '@/lib/ai/prompts';
+import { db } from '@/libs/DB';
+import { isProOrAbove } from '@/libs/Plan';
 import {
   answerSchema,
   questionSchema,
