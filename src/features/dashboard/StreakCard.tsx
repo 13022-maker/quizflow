@@ -183,13 +183,6 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
         aria-hidden="true"
       />
 
-      {/* 標題 */}
-      <div className="relative mb-3 flex items-center justify-center">
-        <span className="text-sm font-bold tracking-wide text-amber-900 drop-shadow-sm">
-          考完成績馬上到…
-        </span>
-      </div>
-
       {/* 頭部：連勝 + 森林規模 */}
       <div className="relative mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -265,15 +258,19 @@ export function StreakCard({ totalResponses = 0 }: { totalResponses?: number }) 
       {/* 進度條：距離下一個森林階段 */}
       {maxStage < 5 && (
         <div className="relative mt-4">
-          <div className="mb-1 flex items-center justify-between text-[11px] text-amber-900/70">
-            <span>
+          <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-amber-900/70">
+            <span className="flex-1 text-left">
               本週
               {' '}
               <span className="font-semibold text-emerald-700">{activeCount}</span>
               {' '}
               天有栽種
             </span>
-            <span>
+            {/* 中間標語：跟左右文字同一列、置中對齊 */}
+            <span className="flex-1 text-center text-xs font-bold text-amber-900 drop-shadow-sm">
+              考完成績馬上到…
+            </span>
+            <span className="flex-1 text-right">
               再
               {' '}
               <span className="font-semibold text-amber-900">{Math.max(0, (nextThreshold ?? 0) - totalResponses)}</span>

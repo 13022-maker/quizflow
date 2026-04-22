@@ -136,11 +136,6 @@ export default async function DashboardIndexPage() {
         </div>
       )}
 
-      {/* 連勝卡片 */}
-      <div className="mx-4 mb-4">
-        <StreakCard totalResponses={totalResponses} />
-      </div>
-
       {hasQuizzes
         ? <TemplateB data={dashboardData} />
         : (
@@ -156,6 +151,11 @@ export default async function DashboardIndexPage() {
               <OnboardingSteps />
             </div>
           )}
+
+      {/* 連勝卡片（移到頁尾，避免搶戲） */}
+      <div className="mx-4 mb-6 mt-2">
+        <StreakCard totalResponses={totalResponses} />
+      </div>
     </>
   );
 }
