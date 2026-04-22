@@ -10,16 +10,41 @@ export function TemplateB({ data }: { data: DashboardData }) {
   return (
     <div className="pb-8">
       {/* Hero Banner */}
-      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 px-6 py-8 text-white shadow-lg sm:p-10">
-        <p className="text-sm font-medium text-white/70">{greeting}</p>
-        <h1 className="mt-1 text-2xl font-bold sm:text-3xl">歡迎使用 QuizFlow</h1>
-        <p className="mt-2 max-w-lg text-sm text-white/80">
-          {data.publishedCount > 0
-            ? `您有 ${data.publishedCount} 份測驗進行中，共 ${data.totalResponses} 位學生已作答。`
-            : '開始建立您的第一份測驗，幾分鐘內即可分享給學生。'}
+      <div className="mx-4 mb-6 overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-500 px-6 py-10 text-white shadow-lg sm:px-10 sm:py-14">
+        {/* 小字時段問候（uppercase + tracking 做 premium 感） */}
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/70">{greeting}</p>
+        {/* 大字 Hero 標題：放大、加黑、收緊字距 */}
+        <h1 className="mt-3 text-3xl font-black leading-tight tracking-tight sm:text-5xl">
+          歡迎使用 QuizFlow
+        </h1>
+        {/* 統計副標：數字獨立粗黑、整行字級放大 */}
+        {data.publishedCount > 0
+          ? (
+              <p className="mt-5 max-w-xl text-base text-white/85 sm:text-lg">
+                您有
+                {' '}
+                <span className="text-2xl font-black text-white sm:text-3xl">{data.publishedCount}</span>
+                {' '}
+                份測驗進行中，共
+                {' '}
+                <span className="text-2xl font-black text-white sm:text-3xl">{data.totalResponses}</span>
+                {' '}
+                位學生已作答。
+              </p>
+            )
+          : (
+              <p className="mt-5 max-w-xl text-base text-white/85 sm:text-lg">
+                開始建立您的第一份測驗，幾分鐘內即可分享給學生。
+              </p>
+            )}
+        {/* 品牌 tagline：三段式標語，取代原本的 pill */}
+        <p className="mt-8 text-sm font-medium tracking-wide text-white/60">
+          少紙化
+          <span className="mx-2 text-white/30">·</span>
+          效率佳
+          <span className="mx-2 text-white/30">·</span>
+          讓老師專注教學
         </p>
-        {/* 標語 */}
-        <p className="mt-4 rounded-full bg-white/15 px-3 py-1 text-xs font-medium backdrop-blur-sm" style={{ width: 'fit-content' }}>少紙化、效率佳</p>
       </div>
 
       {/* ── 快速行動卡片 ── */}
