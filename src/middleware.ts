@@ -37,6 +37,9 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // 監考牆學生端：作答進度回報（以 studentToken 驗證）
+  '/api/quiz/(.*)/progress',
+  '/:locale/api/quiz/(.*)/progress',
 ]);
 
 // 需要 Clerk context（route 內會呼叫 auth()）但不強制登入的 API，
@@ -44,6 +47,9 @@ const isPublicApiRoute = createRouteMatcher([
 const isOptionalAuthRoute = createRouteMatcher([
   '/api/live/ably-auth',
   '/:locale/api/live/ably-auth',
+  // 監考牆 Ably token：host 要 Clerk 驗 orgId、student 用 studentToken 驗身分
+  '/api/quiz/(.*)/ably-auth',
+  '/:locale/api/quiz/(.*)/ably-auth',
 ]);
 
 const isProtectedRoute = createRouteMatcher([
