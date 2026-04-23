@@ -13,6 +13,8 @@ type CardInput = {
   front: string;
   back: string;
   phonetic?: string;
+  phoneticPinyin?: string;
+  imageUrl?: string;
   example?: string;
 };
 
@@ -42,6 +44,8 @@ export async function createVocabSet(data: { title: string; cards: CardInput[] }
         front: card.front,
         back: card.back,
         phonetic: card.phonetic ?? null,
+        phoneticPinyin: card.phoneticPinyin ?? null,
+        imageUrl: card.imageUrl ?? null,
         example: card.example ?? null,
         position: i,
       })),

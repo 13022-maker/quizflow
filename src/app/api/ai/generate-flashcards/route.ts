@@ -27,7 +27,9 @@ const SYSTEM_PROMPT = `你是一位專業的語言教學專家。根據使用者
 - front: 單字本身（原文）
 - back: 中文解釋（簡短明確）
 - example: 一個簡短的例句（使用該單字）
-- phonetic: 音標或注音（英文用 KK 音標，中文用注音）
+- phonetic: 主要音標（英文用 KK 音標；中文用「注音符號」如 ㄊㄞˊ ㄨㄢ ㄏㄟ ㄒㄩㄥˊ）
+- phoneticPinyin: 若為「中文單字」才需填；使用標準「漢語拼音」含聲調符號（例如 tái wān hēi xióng）；英文單字請填空字串 ""
+- imageKeyword: 一個英文關鍵字（1-2 字），用來搜圖代表此單字（例如 "apple"、"black bear"）
 
 回覆格式為 JSON 陣列：
 [
@@ -35,7 +37,17 @@ const SYSTEM_PROMPT = `你是一位專業的語言教學專家。根據使用者
     "front": "apple",
     "back": "蘋果",
     "example": "I eat an apple every day.",
-    "phonetic": "/ˈæp.əl/"
+    "phonetic": "/ˈæp.əl/",
+    "phoneticPinyin": "",
+    "imageKeyword": "apple"
+  },
+  {
+    "front": "台灣黑熊",
+    "back": "台灣特有的黑熊",
+    "example": "台灣黑熊是台灣的象徵動物。",
+    "phonetic": "ㄊㄞˊ ㄨㄢ ㄏㄟ ㄒㄩㄥˊ",
+    "phoneticPinyin": "tái wān hēi xióng",
+    "imageKeyword": "formosan black bear"
   }
 ]
 
@@ -43,7 +55,7 @@ const SYSTEM_PROMPT = `你是一位專業的語言教學專家。根據使用者
 - 只回覆 JSON 陣列，不要加其他文字
 - 解釋要精簡，適合學生記憶
 - 例句要簡短自然
-- 如果是中文單字，音標用注音符號`;
+- 中文字必須同時提供 phonetic（注音）與 phoneticPinyin（漢語拼音）`;
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -103,7 +115,14 @@ export async function POST(request: Request) {
   }
 }
 
-function parseCards(text: string): Array<{ front: string; back: string; example: string; phonetic: string }> {
+function parseCards(text: string): Array<{
+  front: string;
+  back: string;
+  example: string;
+  phonetic: string;
+  phoneticPinyin: string;
+  imageKeyword: string;
+}> {
   try {
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
@@ -120,6 +139,8 @@ function parseCards(text: string): Array<{ front: string; back: string; example:
       back: String(c.back),
       example: String(c.example ?? ''),
       phonetic: String(c.phonetic ?? ''),
+      phoneticPinyin: String(c.phoneticPinyin ?? ''),
+      imageKeyword: String(c.imageKeyword ?? c.front ?? ''),
     }));
   } catch {
     return [];

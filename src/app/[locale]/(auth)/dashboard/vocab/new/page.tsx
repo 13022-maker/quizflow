@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
 import { Button } from '@/components/ui/button';
@@ -11,13 +11,17 @@ type VocabCard = {
   back: string;
   example: string;
   phonetic: string;
+  phoneticPinyin: string;
+  imageKeyword: string;
+  imageUrl: string;
 };
 
 function SpeakerButton({ text }: { text: string }) {
   const [loading, setLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleSpeak = useCallback(async () => {
+  const handleSpeak = useCallback(async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (loading) {
       return;
     }
@@ -78,6 +82,22 @@ export default function NewVocabPage() {
   const [error, setError] = useState('');
   const [previewIndex, setPreviewIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  const [editingImage, setEditingImage] = useState(false);
+
+  const card = cards[previewIndex];
+
+  const currentKeyword = useMemo(
+    () => card?.imageKeyword?.trim() || card?.front || '',
+    [card?.imageKeyword, card?.front],
+  );
+
+  const googleSearchUrl = currentKeyword
+    ? `https://www.google.com/search?tbm=isch&q=${encodeURIComponent(currentKeyword)}`
+    : '';
+
+  const updateCardImage = (url: string) => {
+    setCards(prev => prev.map((c, i) => (i === previewIndex ? { ...c, imageUrl: url } : c)));
+  };
 
   const handleGenerate = async () => {
     if (!words.trim()) {
@@ -96,9 +116,19 @@ export default function NewVocabPage() {
         throw new Error(data.error || '生成失敗');
       }
       const { cards: generated } = await res.json();
-      setCards(generated);
+      const normalized: VocabCard[] = (generated ?? []).map((c: Partial<VocabCard>) => ({
+        front: c.front ?? '',
+        back: c.back ?? '',
+        example: c.example ?? '',
+        phonetic: c.phonetic ?? '',
+        phoneticPinyin: c.phoneticPinyin ?? '',
+        imageKeyword: c.imageKeyword ?? c.front ?? '',
+        imageUrl: '',
+      }));
+      setCards(normalized);
       setPreviewIndex(0);
       setFlipped(false);
+      setEditingImage(false);
       if (!title.trim()) {
         setTitle('單字練習');
       }
@@ -115,14 +145,22 @@ export default function NewVocabPage() {
     }
     setSaving(true);
     try {
-      await createVocabSet({ title: title.trim(), cards });
+      await createVocabSet({
+        title: title.trim(),
+        cards: cards.map(c => ({
+          front: c.front,
+          back: c.back,
+          phonetic: c.phonetic,
+          phoneticPinyin: c.phoneticPinyin,
+          imageUrl: c.imageUrl,
+          example: c.example,
+        })),
+      });
     } catch {
       setError('儲存失敗');
       setSaving(false);
     }
   };
-
-  const card = cards[previewIndex];
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
@@ -194,12 +232,25 @@ export default function NewVocabPage() {
             >
               {/* 正面 */}
               <div
-                className="rounded-xl border-2 border-blue-100 bg-gradient-to-br from-blue-50 to-white p-8 text-center shadow-sm"
+                className="rounded-2xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-violet-50 p-6 text-center shadow-sm"
                 style={{ backfaceVisibility: 'hidden' }}
               >
+                {card.imageUrl && (
+                  <div className="mb-3 overflow-hidden rounded-xl bg-white ring-1 ring-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={card.imageUrl}
+                      alt={card.front}
+                      className="h-28 w-full object-cover"
+                    />
+                  </div>
+                )}
                 <p className="text-3xl font-bold text-gray-800">{card.front}</p>
                 {card.phonetic && (
                   <p className="mt-2 text-sm text-gray-400">{card.phonetic}</p>
+                )}
+                {card.phoneticPinyin && (
+                  <p className="text-sm italic text-gray-400">{card.phoneticPinyin}</p>
                 )}
                 <div className="mt-3 flex justify-center">
                   <SpeakerButton text={card.front} />
@@ -209,10 +260,10 @@ export default function NewVocabPage() {
 
               {/* 背面 */}
               <div
-                className="absolute inset-0 rounded-xl border-2 border-green-100 bg-gradient-to-br from-green-50 to-white p-8 text-center shadow-sm"
+                className="absolute inset-0 rounded-2xl border-2 border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-teal-50 p-6 text-center shadow-sm"
                 style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
               >
-                <p className="text-2xl font-bold text-green-700">{card.back}</p>
+                <p className="text-2xl font-bold text-emerald-700">{card.back}</p>
                 {card.example && (
                   <p className="mt-3 text-sm italic text-gray-500">{card.example}</p>
                 )}
@@ -223,6 +274,58 @@ export default function NewVocabPage() {
             </div>
           </div>
 
+          {/* 圖片設定 */}
+          <div className="mb-3 rounded-xl border border-dashed border-indigo-200 bg-indigo-50/40 p-3">
+            <button
+              type="button"
+              onClick={() => setEditingImage(prev => !prev)}
+              className="flex w-full items-center justify-between text-left text-xs font-semibold text-indigo-700"
+            >
+              <span>
+                🖼️
+                {' '}
+                {card.imageUrl ? '已設定圖片' : '為這張卡片加上圖片'}
+              </span>
+              <span className="text-indigo-400">{editingImage ? '收起' : '展開'}</span>
+            </button>
+            {editingImage && (
+              <div className="mt-3 space-y-2">
+                <input
+                  type="url"
+                  value={card.imageUrl}
+                  onChange={e => updateCardImage(e.target.value)}
+                  placeholder="貼上圖片網址（https://...）"
+                  className="w-full rounded-lg border border-indigo-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                />
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  {googleSearchUrl
+                    ? (
+                        <a
+                          href={googleSearchUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1 font-medium text-indigo-600 ring-1 ring-indigo-200 hover:bg-indigo-50"
+                        >
+                          🔎 Google 搜圖「
+                          {currentKeyword}
+                          」
+                        </a>
+                      )
+                    : <span />}
+                  {card.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => updateCardImage('')}
+                      className="text-red-500 hover:underline"
+                    >
+                      移除圖片
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 導覽 */}
           <div className="mb-6 flex justify-center gap-2">
             <button
@@ -231,6 +334,7 @@ export default function NewVocabPage() {
               onClick={() => {
                 setPreviewIndex(prev => prev - 1);
                 setFlipped(false);
+                setEditingImage(false);
               }}
               className="rounded px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30"
             >
@@ -242,6 +346,7 @@ export default function NewVocabPage() {
               onClick={() => {
                 setPreviewIndex(prev => prev + 1);
                 setFlipped(false);
+                setEditingImage(false);
               }}
               className="rounded px-3 py-1 text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30"
             >
