@@ -48,8 +48,15 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
     setLiveError(null);
     startTransition(async () => {
       const res = await createLiveGame({ quizId: quiz.id });
-      if ('error' in res) {
+      // DEBUG：把完整 res 印到 console 方便定位暫時的 'error' in undefined
+      // eslint-disable-next-line no-console
+      console.warn('[createLiveGame result]', res);
+      if (res && typeof res === 'object' && 'error' in res) {
         setLiveError(res.error ?? '建立失敗');
+        return;
+      }
+      if (!res || !('gameId' in res)) {
+        setLiveError('建立失敗：server 回傳異常');
         return;
       }
       router.push(`/dashboard/live/host/${res.gameId}`);

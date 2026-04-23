@@ -118,9 +118,12 @@ export async function createLiveGame(input: CreateLiveGameInput) {
     // DB 層 exception（例如 live_game 表不存在：migration 未跑）
     // 包起來避免 client 收到 unhandled rejection 觸發「Application error」白屏。
     // 第一句訊息給使用者看，後面附原 message 供除錯。
+    const name = err instanceof Error ? err.name : 'UnknownError';
     const detail = err instanceof Error ? err.message : String(err);
+    // DEBUG：暫時把 stack 前 8 行帶回 client，定位後拔掉
+    const debugStack = err instanceof Error ? err.stack?.split('\n').slice(0, 8).join(' | ') : undefined;
     console.error('[createLiveGame] unexpected error:', err);
-    return { error: `Live Mode 建立失敗：${detail}` };
+    return { error: `Live Mode 建立失敗：[${name}] ${detail}`, debugStack };
   }
 }
 
