@@ -174,7 +174,7 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
       )}
       {isShowingResult && !myAnswer && (
         <div className="rounded-xl bg-muted p-4 text-center text-sm text-muted-foreground">
-          ⏱ 時間到，未作答
+          ⏱ 逾時作答不計分
         </div>
       )}
     </div>
