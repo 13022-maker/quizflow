@@ -1,5 +1,6 @@
 import Link from 'next/link';
 
+import { QuickCreateAIButton } from './QuickCreateAIButton';
 import { RecentQuizzesGrid } from './RecentQuizzesGrid';
 import type { DashboardData } from './types';
 
@@ -68,24 +69,8 @@ export function TemplateB({ data }: { data: DashboardData }) {
           </svg>
         </Link>
 
-        {/* AI 智慧出題 */}
-        <Link
-          href="/dashboard/quizzes/new"
-          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-violet-200 hover:shadow-md"
-        >
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-600 transition-colors group-hover:bg-violet-600 group-hover:text-white">
-            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-bold text-foreground">AI 智慧出題</h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">上傳講義或輸入主題，AI 自動生成試題</p>
-          </div>
-          <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
+        {/* AI 智慧出題：一鍵直達編輯頁 + AI Modal（省略 /new 中間頁） */}
+        <QuickCreateAIButton />
 
         {/* 查看最新成績 */}
         <Link
