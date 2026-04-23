@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
+import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
 import { getOrgPlanId } from '@/libs/Plan';
@@ -131,9 +132,9 @@ export default async function QuizzesPage() {
               </Link>
             )
           : (
-              <Link href="/dashboard/quizzes/new" className={buttonVariants({ size: 'sm' })}>
+              <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
                 {t('add_quiz_button')}
-              </Link>
+              </CreateQuizWithAIButton>
             )}
       </div>
 
@@ -150,9 +151,9 @@ export default async function QuizzesPage() {
               title={t('empty_title')}
               description={t('empty_description')}
               button={(
-                <Link href="/dashboard/quizzes/new" className={buttonVariants()}>
+                <CreateQuizWithAIButton className={buttonVariants()}>
                   {t('empty_button')}
-                </Link>
+                </CreateQuizWithAIButton>
               )}
             />
           )
