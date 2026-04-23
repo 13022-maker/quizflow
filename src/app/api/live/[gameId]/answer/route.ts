@@ -100,10 +100,13 @@ export async function POST(
     );
   }
 
-  // 背景跑完不 block response（fire-and-forget）
-  Promise.all(publishPromises).catch((err) => {
+  // 必須 await：Vercel serverless return 後 instance 可能被凍結，fire-and-forget
+  // 的 publish 跑不完 → 學生端永遠收不到 answer:submitted，體感答完沒反應
+  try {
+    await Promise.all(publishPromises);
+  } catch (err) {
     console.error('[answer] ably publish failed', err);
-  });
+  }
 
   return NextResponse.json({
     isCorrect: result.isCorrect,

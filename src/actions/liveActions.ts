@@ -180,21 +180,24 @@ export async function startGame(gameId: number) {
     .where(eq(liveGameSchema.id, game.id));
 
   // 發布 quiz:start：學生端據此切換 UI + 用 startAt/duration 本地倒數
-  void (async () => {
+  // 必須 await：Vercel serverless return 後 instance 會凍結，fire-and-forget 的
+  // publish 可能根本跑不完，導致學生端拿不到事件
+  try {
     const info = await getGameWithCurrentQuestion(game.id);
-    if (!info?.currentQuestion) {
-      return;
+    if (info?.currentQuestion) {
+      const payload: QuizStartPayload = {
+        questionIndex: info.game.currentQuestionIndex,
+        startAt: startedAt.toISOString(),
+        duration: info.game.questionDuration,
+        totalQuestions: info.totalQuestions,
+        question: info.currentQuestion,
+      };
+      await publishToGame(game.id, LiveGameEvent.QuizStart, payload);
+      await flushLeaderboard(game.id);
     }
-    const payload: QuizStartPayload = {
-      questionIndex: info.game.currentQuestionIndex,
-      startAt: startedAt.toISOString(),
-      duration: info.game.questionDuration,
-      totalQuestions: info.totalQuestions,
-      question: info.currentQuestion,
-    };
-    await publishToGame(game.id, LiveGameEvent.QuizStart, payload);
-    await flushLeaderboard(game.id);
-  })();
+  } catch (err) {
+    console.error('[startGame] publish failed', err);
+  }
 
   return { ok: true as const };
 }
@@ -218,22 +221,23 @@ export async function showResult(gameId: number) {
     .where(eq(liveGameSchema.id, game.id));
 
   // 發布 question:result：含正解 + 各選項統計，繞過節流 flush leaderboard
-  void (async () => {
+  try {
     const currentQid = await getCurrentQuestionId(game.id);
-    if (!currentQid) {
-      return;
+    if (currentQid) {
+      const info = await getGameWithCurrentQuestion(game.id);
+      const stats = await getAnswerStats(game.id, currentQid);
+      const payload: QuestionResultPayload = {
+        questionIndex: info?.game.currentQuestionIndex ?? game.currentQuestionIndex,
+        correctAnswers: info?.correctAnswers ?? [],
+        answerStats: stats.stats,
+        answeredCount: stats.answeredCount,
+      };
+      await publishToGame(game.id, LiveGameEvent.QuestionResult, payload);
+      await flushLeaderboard(game.id);
     }
-    const info = await getGameWithCurrentQuestion(game.id);
-    const stats = await getAnswerStats(game.id, currentQid);
-    const payload: QuestionResultPayload = {
-      questionIndex: info?.game.currentQuestionIndex ?? game.currentQuestionIndex,
-      correctAnswers: info?.correctAnswers ?? [],
-      answerStats: stats.stats,
-      answeredCount: stats.answeredCount,
-    };
-    await publishToGame(game.id, LiveGameEvent.QuestionResult, payload);
-    await flushLeaderboard(game.id);
-  })();
+  } catch (err) {
+    console.error('[showResult] publish failed', err);
+  }
 
   return { ok: true as const };
 }
@@ -264,11 +268,13 @@ export async function nextQuestion(gameId: number) {
       .set({ status: 'finished', endedAt: new Date() })
       .where(eq(liveGameSchema.id, game.id));
 
-    void (async () => {
+    try {
       const leaderboard = await getSlimLeaderboard(game.id);
       const payload: GameFinishedPayload = { leaderboard };
       await publishToGame(game.id, LiveGameEvent.GameFinished, payload);
-    })();
+    } catch (err) {
+      console.error('[nextQuestion:finished] publish failed', err);
+    }
 
     return { ok: true as const, finished: true };
   }
@@ -283,21 +289,22 @@ export async function nextQuestion(gameId: number) {
     })
     .where(eq(liveGameSchema.id, game.id));
 
-  void (async () => {
+  try {
     const info = await getGameWithCurrentQuestion(game.id);
-    if (!info?.currentQuestion) {
-      return;
+    if (info?.currentQuestion) {
+      const payload: QuestionNextPayload = {
+        questionIndex: info.game.currentQuestionIndex,
+        startAt: startedAt.toISOString(),
+        duration: info.game.questionDuration,
+        totalQuestions: info.totalQuestions,
+        question: info.currentQuestion,
+      };
+      await publishToGame(game.id, LiveGameEvent.QuestionNext, payload);
+      await flushLeaderboard(game.id);
     }
-    const payload: QuestionNextPayload = {
-      questionIndex: info.game.currentQuestionIndex,
-      startAt: startedAt.toISOString(),
-      duration: info.game.questionDuration,
-      totalQuestions: info.totalQuestions,
-      question: info.currentQuestion,
-    };
-    await publishToGame(game.id, LiveGameEvent.QuestionNext, payload);
-    await flushLeaderboard(game.id);
-  })();
+  } catch (err) {
+    console.error('[nextQuestion] publish failed', err);
+  }
 
   return { ok: true as const, finished: false };
 }
@@ -317,11 +324,13 @@ export async function endGame(gameId: number) {
     .set({ status: 'finished', endedAt: new Date() })
     .where(eq(liveGameSchema.id, game.id));
 
-  void (async () => {
+  try {
     const leaderboard = await getSlimLeaderboard(game.id);
     const payload: GameFinishedPayload = { leaderboard };
     await publishToGame(game.id, LiveGameEvent.GameFinished, payload);
-  })();
+  } catch (err) {
+    console.error('[endGame] publish failed', err);
+  }
 
   return { ok: true as const };
 }

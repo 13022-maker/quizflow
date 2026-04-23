@@ -69,21 +69,20 @@ export async function POST(request: Request) {
 
     void liveGameSchema;
 
-    // 繞過節流 flush 一次 leaderboard 讓 host 立刻看到新玩家
-    void (async () => {
-      try {
-        await markLeaderboardPublished(game.id);
-        const currentQid = await getCurrentQuestionId(game.id);
-        const [players, answeredCount] = await Promise.all([
-          getSlimLeaderboard(game.id),
-          currentQid ? getCurrentAnsweredCount(game.id, currentQid) : Promise.resolve(0),
-        ]);
-        const payload: LeaderboardUpdatePayload = { players, answeredCount };
-        await publishToGame(game.id, LiveGameEvent.LeaderboardUpdate, payload);
-      } catch (err) {
-        console.error('[join] ably publish failed', err);
-      }
-    })();
+    // 繞過節流 flush 一次 leaderboard 讓 host 立刻看到新玩家。
+    // 必須 await：Vercel return 後 instance 凍結會讓事件跑不完
+    try {
+      await markLeaderboardPublished(game.id);
+      const currentQid = await getCurrentQuestionId(game.id);
+      const [players, answeredCount] = await Promise.all([
+        getSlimLeaderboard(game.id),
+        currentQid ? getCurrentAnsweredCount(game.id, currentQid) : Promise.resolve(0),
+      ]);
+      const payload: LeaderboardUpdatePayload = { players, answeredCount };
+      await publishToGame(game.id, LiveGameEvent.LeaderboardUpdate, payload);
+    } catch (err) {
+      console.error('[join] ably publish failed', err);
+    }
 
     return NextResponse.json({
       gameId: game.id,

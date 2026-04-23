@@ -21,6 +21,12 @@ import type {
   LiveQuestionForPlayer,
 } from './types';
 
+// 是非題預設選項（與 QuizTaker / QuizEditor / AI 匯入一致）
+const TRUE_FALSE_DEFAULTS: { id: string; text: string }[] = [
+  { id: 'tf-true', text: '正確' },
+  { id: 'tf-false', text: '錯誤' },
+];
+
 // 取得某 game 的題目清單（依 position 排序，只含支援的三種題型）
 export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForHost[]> {
   const rows = await db
@@ -39,14 +45,22 @@ export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForH
 
   return rows
     .filter(r => isLiveSupportedType(r.type))
-    .map(r => ({
-      id: r.id,
-      type: r.type as 'single_choice' | 'multiple_choice' | 'true_false',
-      body: r.body,
-      imageUrl: r.imageUrl,
-      options: (r.options ?? []) as { id: string; text: string }[],
-      correctAnswers: (r.correctAnswers ?? []) as string[],
-    }));
+    .map((r) => {
+      const rawOptions = (r.options ?? []) as { id: string; text: string }[];
+      // 防禦性：舊版 true_false 題 DB options 可能是空的，補上預設兩顆
+      // （對照：QuizTaker.tsx:71/103/462/562/814 已有相同 fallback）
+      const options = r.type === 'true_false' && rawOptions.length === 0
+        ? TRUE_FALSE_DEFAULTS
+        : rawOptions;
+      return {
+        id: r.id,
+        type: r.type as 'single_choice' | 'multiple_choice' | 'true_false',
+        body: r.body,
+        imageUrl: r.imageUrl,
+        options,
+        correctAnswers: (r.correctAnswers ?? []) as string[],
+      };
+    });
 }
 
 // 取得玩家清單（照分數高→低）
@@ -303,15 +317,17 @@ export async function recordAnswer(params: {
     return { ok: false, error: 'NOT_CURRENT_QUESTION', status: 409 };
   }
 
-  // 逾時檢查
+  // 逾時檢查。加 500ms grace period 容忍學生點擊到 POST 抵達的網路 RTT，
+  // 避免壓線答對被誤判逾時
+  const TIMEOUT_GRACE_MS = 500;
   const startedAtMs = game.questionStartedAt ? game.questionStartedAt.getTime() : 0;
   const nowMs = Date.now();
   const elapsed = nowMs - startedAtMs;
   const durationMs = game.questionDuration * 1000;
 
-  let responseMs = Math.max(0, elapsed);
+  let responseMs = Math.max(0, Math.min(elapsed, durationMs));
   let isTimedOut = false;
-  if (!startedAtMs || elapsed >= durationMs) {
+  if (!startedAtMs || elapsed >= durationMs + TIMEOUT_GRACE_MS) {
     isTimedOut = true;
     responseMs = durationMs;
   }
@@ -320,6 +336,22 @@ export async function recordAnswer(params: {
     ? false
     : gradeAnswer(question.type, question.correctAnswers, selectedOptionId);
   const score = calcLiveScore(isCorrect, responseMs, durationMs);
+
+  // 診斷 log：批改異常時可由 Vercel function log 直接比對 correctAnswers vs
+  // selectedOptionId 是否字面一致。關鍵欄位用 JSON.stringify 保留原始格式。
+  // 用 console.warn 避開 lint 的 no-console 限制（warn 被允許做 ops 觀測）
+  console.warn('[recordAnswer]', JSON.stringify({
+    gameId,
+    playerId,
+    questionId,
+    questionType: question.type,
+    correctAnswers: question.correctAnswers,
+    selectedOptionId,
+    isTimedOut,
+    isCorrect,
+    elapsedMs: elapsed,
+    durationMs,
+  }));
 
   // insert liveAnswer + update livePlayer.score 包成一個 transaction，
   // 避免答題寫入但分數沒累加的中間狀態（server 崩潰 / 網路中斷皆可回滾）

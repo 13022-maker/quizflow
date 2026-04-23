@@ -24,6 +24,9 @@ import {
   type LiveHostState,
   LivePlayerEvent,
   type LivePlayerState,
+  type QuestionNextPayload,
+  type QuestionResultPayload,
+  type QuizStartPayload,
 } from './types';
 
 export type Unsubscribe = () => void;
@@ -200,7 +203,56 @@ export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
       }
     };
 
-    const onPhaseEvent = () => hydrate();
+    // Player 端 phase event：用 payload 直接 reduce 進 state，省掉 REST
+    // round-trip（原本每個 phase 切換都要多打一次 /player-state）。
+    // quiz:start 與 question:next 長相一致，共用同一個 reducer。
+    const applyQuizPhaseStart = (p: QuizStartPayload) => {
+      if (!state) {
+        return;
+      }
+      state = {
+        ...state,
+        game: {
+          ...state.game,
+          status: 'playing',
+          currentQuestionIndex: p.questionIndex,
+          questionStartedAt: p.startAt,
+          questionDuration: p.duration,
+          totalQuestions: p.totalQuestions,
+        },
+        currentQuestion: p.question,
+        myAnswer: null,
+        lastResult: null,
+      };
+      emit();
+    };
+    const onQuizStart = (msg: AblyNs.Message) =>
+      applyQuizPhaseStart(msg.data as QuizStartPayload);
+    const onQuestionNext = (msg: AblyNs.Message) =>
+      applyQuizPhaseStart(msg.data as QuestionNextPayload);
+
+    const onQuestionResult = (msg: AblyNs.Message) => {
+      const p = msg.data as QuestionResultPayload;
+      if (!state) {
+        return;
+      }
+      state = {
+        ...state,
+        game: { ...state.game, status: 'showing_result' },
+        lastResult: {
+          correctAnswers: p.correctAnswers,
+          answerStats: p.answerStats,
+        },
+      };
+      emit();
+    };
+
+    // game:finished payload 的 leaderboard 不含 correctCount（精簡版只有 answeredCount）。
+    // 為了讓最終排行的「答對 X 題」準確，這裡用 hydrate 拉一次完整 state。
+    // 一場遊戲只發生一次，不影響體感。
+    const onGameFinished = () => {
+      hydrate();
+    };
 
     const onLeaderboard = (msg: AblyNs.Message) => {
       const p = msg.data as LeaderboardUpdatePayload;
@@ -265,9 +317,10 @@ export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
         gameCh = realtime.channels.get(gameChannel(gameId));
         playerCh = realtime.channels.get(playerChannel(gameId, playerId));
 
-        for (const ev of PHASE_EVENTS) {
-          gameCh.subscribe(ev, onPhaseEvent);
-        }
+        gameCh.subscribe(LiveGameEvent.QuizStart, onQuizStart);
+        gameCh.subscribe(LiveGameEvent.QuestionNext, onQuestionNext);
+        gameCh.subscribe(LiveGameEvent.QuestionResult, onQuestionResult);
+        gameCh.subscribe(LiveGameEvent.GameFinished, onGameFinished);
         gameCh.subscribe(LiveGameEvent.LeaderboardUpdate, onLeaderboard);
         playerCh.subscribe(LivePlayerEvent.AnswerSubmitted, onAnswerSubmitted);
 
@@ -288,9 +341,10 @@ export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
     return () => {
       cancelled = true;
       if (gameCh) {
-        for (const ev of PHASE_EVENTS) {
-          gameCh.unsubscribe(ev, onPhaseEvent);
-        }
+        gameCh.unsubscribe(LiveGameEvent.QuizStart, onQuizStart);
+        gameCh.unsubscribe(LiveGameEvent.QuestionNext, onQuestionNext);
+        gameCh.unsubscribe(LiveGameEvent.QuestionResult, onQuestionResult);
+        gameCh.unsubscribe(LiveGameEvent.GameFinished, onGameFinished);
         gameCh.unsubscribe(LiveGameEvent.LeaderboardUpdate, onLeaderboard);
         gameCh.detach().catch(() => {});
       }
