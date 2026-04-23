@@ -35,6 +35,8 @@ export default async function VocabPublicPage({
       front: vocabCardSchema.front,
       back: vocabCardSchema.back,
       phonetic: vocabCardSchema.phonetic,
+      phoneticPinyin: vocabCardSchema.phoneticPinyin,
+      imageUrl: vocabCardSchema.imageUrl,
       example: vocabCardSchema.example,
     })
     .from(vocabCardSchema)

@@ -307,7 +307,9 @@ export const vocabCardSchema = pgTable('vocabulary_card', {
   setId: integer('set_id').notNull().references(() => vocabSetSchema.id, { onDelete: 'cascade' }),
   front: text('front').notNull(),
   back: text('back').notNull(),
-  phonetic: text('phonetic'),
+  phonetic: text('phonetic'), // 注音 / KK 音標
+  phoneticPinyin: text('phonetic_pinyin'), // 漢語拼音（中文卡片專用，可選）
+  imageUrl: text('image_url'), // 卡片配圖 URL（可選）
   example: text('example'),
   position: integer('position').notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
