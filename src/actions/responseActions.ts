@@ -116,28 +116,35 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
   let responseId: number;
 
   if (studentToken) {
-    const [updated] = await db
-      .update(responseSchema)
-      .set({
-        studentName: studentName || null,
-        studentEmail: studentEmail || null,
-        score,
-        totalPoints,
-        leaveCount: leaveCount ?? 0,
-        status: 'submitted',
-        submittedAt: new Date(),
-      })
-      .where(and(
-        eq(responseSchema.quizId, quizId),
-        eq(responseSchema.studentToken, studentToken),
-      ))
-      .returning();
-    if (!updated) {
-      throw new Error('找不到對應的作答紀錄，請重新整理頁面');
+    try {
+      const updatedRows = await db
+        .update(responseSchema)
+        .set({
+          studentName: studentName || null,
+          studentEmail: studentEmail || null,
+          score,
+          totalPoints,
+          leaveCount: leaveCount ?? 0,
+          status: 'submitted',
+          submittedAt: new Date(),
+        })
+        .where(and(
+          eq(responseSchema.quizId, quizId),
+          eq(responseSchema.studentToken, studentToken),
+        ))
+        .returning();
+
+      if (updatedRows.length === 0) {
+        throw new Error('找不到對應的作答紀錄，請重新整理頁面');
+      }
+      responseId = updatedRows[0]!.id;
+      // 砍掉先前（若有）寫過的 answer 避免重複
+      await db.delete(answerSchema).where(eq(answerSchema.responseId, responseId));
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[submitQuizResponse] attempt UPDATE failed', { quizId, studentToken: `${studentToken.slice(0, 8)}...`, err });
+      throw new Error(`attempt-update-failed: ${msg}`);
     }
-    responseId = updated.id;
-    // 砍掉前次誤提交的 answer（如果此 token 曾部分提交過，避免重複）
-    await db.delete(answerSchema).where(eq(answerSchema.responseId, responseId));
   } else {
     const [inserted] = await db
       .insert(responseSchema)
