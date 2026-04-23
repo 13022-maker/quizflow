@@ -14,6 +14,9 @@ const SubmitSchema = z.object({
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
   // 考試防作弊：學生離開頁面次數（preventLeave 開啟時才有意義）
   leaveCount: z.number().int().min(0).optional(),
+  // 監考牆 attempt flow：若 client 在開始作答時已建 response row + 拿到 token，
+  // 送此 token → server 改 UPDATE 既有 row（而非 INSERT 新 row）
+  studentToken: z.string().min(1).optional(),
 });
 
 export type SubmitInput = z.infer<typeof SubmitSchema>;
@@ -44,7 +47,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     throw new Error('格式錯誤');
   }
 
-  const { quizId, studentName, studentEmail, answers, leaveCount } = parsed.data;
+  const { quizId, studentName, studentEmail, answers, leaveCount, studentToken } = parsed.data;
 
   // 取得測驗設定（用於 server-side 驗證作答次數）
   const [quiz] = await db
@@ -107,21 +110,50 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     details.push({ questionId: question.id, isCorrect, points: question.points });
   }
 
-  // 寫入 response
-  const [inserted] = await db
-    .insert(responseSchema)
-    .values({
-      quizId,
-      studentName: studentName || null,
-      studentEmail: studentEmail || null,
-      score,
-      totalPoints,
-      leaveCount: leaveCount ?? 0,
-    })
-    .returning();
+  // 寫入 response：
+  //   - 有 studentToken（監考牆 attempt flow）→ UPDATE 既有 row，status 設 submitted
+  //   - 無 studentToken（舊匿名 flow）→ INSERT 新 row
+  let responseId: number;
 
-  if (!inserted) {
-    throw new Error('儲存失敗');
+  if (studentToken) {
+    const [updated] = await db
+      .update(responseSchema)
+      .set({
+        studentName: studentName || null,
+        studentEmail: studentEmail || null,
+        score,
+        totalPoints,
+        leaveCount: leaveCount ?? 0,
+        status: 'submitted',
+        submittedAt: new Date(),
+      })
+      .where(and(
+        eq(responseSchema.quizId, quizId),
+        eq(responseSchema.studentToken, studentToken),
+      ))
+      .returning();
+    if (!updated) {
+      throw new Error('找不到對應的作答紀錄，請重新整理頁面');
+    }
+    responseId = updated.id;
+    // 砍掉前次誤提交的 answer（如果此 token 曾部分提交過，避免重複）
+    await db.delete(answerSchema).where(eq(answerSchema.responseId, responseId));
+  } else {
+    const [inserted] = await db
+      .insert(responseSchema)
+      .values({
+        quizId,
+        studentName: studentName || null,
+        studentEmail: studentEmail || null,
+        score,
+        totalPoints,
+        leaveCount: leaveCount ?? 0,
+      })
+      .returning();
+    if (!inserted) {
+      throw new Error('儲存失敗');
+    }
+    responseId = inserted.id;
   }
 
   // 寫入每題的 answer
@@ -130,7 +162,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     .map((q) => {
       const detail = details.find(d => d.questionId === q.id)!;
       return {
-        responseId: inserted.id,
+        responseId,
         questionId: q.id,
         answer: answers[q.id.toString()] as string | string[],
         isCorrect: detail.isCorrect,
@@ -141,5 +173,5 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     await db.insert(answerSchema).values(answerRows);
   }
 
-  return { responseId: inserted.id, score, totalPoints, details };
+  return { responseId, score, totalPoints, details };
 }

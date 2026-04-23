@@ -4,6 +4,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { startQuizAttempt } from '@/actions/quizAttemptActions';
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import { Button } from '@/components/ui/button';
@@ -1155,6 +1156,12 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 考試防作弊：離開頁面次數與警告等級
   // 防禦性預設：quiz.preventLeave 可能在舊資料中不存在
   const preventLeave = quiz.preventLeave ?? false;
+
+  // 監考牆 attempt flow：preventLeave=true 時，進頁面即建 response row + 拿 studentToken
+  // localStorage key 用 accessCode 綁定（同份測驗同一份 browser 複用）
+  const attemptStorageKey = `quiz_attempt_${quiz.accessCode ?? quiz.id}`;
+  const [studentToken, setStudentToken] = useState<string | null>(null);
+
   const [leaveCount, setLeaveCount] = useState(0);
   // 警告等級：null（無）/ 'warning'（1-2 次黃色）/ 'danger'（3+ 次紅色）
   const [leaveWarning, setLeaveWarning] = useState<'warning' | 'danger' | null>(null);
@@ -1190,6 +1197,80 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // 倒數計時器
   const [timeLeft, setTimeLeft] = useState<number | null>(quiz.timeLimitSeconds ?? null);
   const autoSubmittedRef = useRef(false);
+
+  // ── 監考牆 attempt flow：preventLeave=true 時進頁面即 startQuizAttempt ───
+  // 只嘗試一次；失敗不阻擋作答（退回匿名流程）
+  useEffect(() => {
+    if (!preventLeave || !quiz.accessCode || studentToken) {
+      return;
+    }
+    // 先看 localStorage 有沒有既有 token（重新整理 / 同 browser 重進頁面）
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = window.localStorage.getItem(attemptStorageKey);
+        if (stored) {
+          const parsed = JSON.parse(stored) as { studentToken?: string };
+          if (parsed?.studentToken) {
+            setStudentToken(parsed.studentToken);
+            return;
+          }
+        }
+      } catch {
+        // localStorage 讀取失敗（例如隱私模式），忽略走建立流程
+      }
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await startQuizAttempt({ accessCode: quiz.accessCode! });
+        if (cancelled) {
+          return;
+        }
+        if (r.ok) {
+          setStudentToken(r.studentToken);
+          try {
+            window.localStorage.setItem(
+              attemptStorageKey,
+              JSON.stringify({ responseId: r.responseId, studentToken: r.studentToken }),
+            );
+          } catch {
+            // localStorage 寫入失敗無妨，token 仍在 state 中
+          }
+        }
+        // 失敗靜默（r.ok=false）— 後續 submit 走舊匿名 flow
+      } catch {
+        // 網路錯誤等，靜默
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // 刻意只跑一次（accessCode 固定）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preventLeave]);
+
+  // ── 監考牆 attempt flow：節流 POST 進度（answers / leaveCount 變動時）──
+  // 節流避免連打 API：每 1.5s 合併一次進度
+  useEffect(() => {
+    if (!studentToken || result) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      fetch(`/api/quiz/${quiz.id}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentToken,
+          questionIndex: answeredCount - 1, // 0-indexed；-1 = 尚未答過
+          leaveCount,
+        }),
+      }).catch(() => {
+        // 靜默失敗（作答不該被網路抖動影響）
+      });
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [studentToken, answeredCount, leaveCount, quiz.id, result]);
 
   // ── 考試防作弊：離開頁面偵測 ─────────────────────────────────
   // 只在 preventLeave = true 且尚未送出作答時啟動
@@ -1271,8 +1352,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         studentEmail: studentEmail || undefined,
         answers: stringKeyAnswers,
         leaveCount: preventLeave ? leaveCountRef.current : undefined,
+        // attempt flow：有 token 時 server 改 UPDATE 既有 row（而非 INSERT）
+        studentToken: studentToken ?? undefined,
       });
       setResult(res);
+      // submit 成功，清 localStorage 避免下次進頁面誤用過期 token
+      if (studentToken && typeof window !== 'undefined') {
+        try {
+          window.localStorage.removeItem(attemptStorageKey);
+        } catch {
+          // ignore
+        }
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
