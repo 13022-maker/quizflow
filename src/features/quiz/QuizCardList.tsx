@@ -63,13 +63,13 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
         <div className="mb-3 flex items-start justify-between gap-3">
           <Link
             href={`/dashboard/quizzes/${quiz.id}/edit`}
-            className="min-w-0 flex-1"
+            className="min-w-0 flex-1 border-l-[3px] border-primary/70 pl-3"
           >
-            <h3 className="text-base font-semibold leading-snug text-foreground group-hover:text-primary sm:text-lg">
+            <h3 className="text-lg font-bold leading-snug tracking-tight text-foreground group-hover:text-primary sm:text-xl">
               {quiz.title}
             </h3>
             {quiz.description && (
-              <p className="mt-0.5 line-clamp-1 text-sm text-muted-foreground">{quiz.description}</p>
+              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{quiz.description}</p>
             )}
           </Link>
           <span className={`flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${status.bg}`}>
