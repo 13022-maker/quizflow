@@ -19,35 +19,9 @@ export async function generateMetadata({ params }: { params: { accessCode: strin
 export default async function QuizTakePage({ params }: { params: { accessCode: string } }) {
   const t = await getTranslations('QuizTake');
 
-  // 依 accessCode 查詢測驗（只顯示已發佈的）
+  // 依 accessCode 查詢測驗（只顯示已發佈的）— 使用 full select 自動包含 publisher 欄位
   const [quiz] = await db
-    .select({
-      id: quizSchema.id,
-      ownerId: quizSchema.ownerId,
-      title: quizSchema.title,
-      description: quizSchema.description,
-      accessCode: quizSchema.accessCode,
-      roomCode: quizSchema.roomCode,
-      status: quizSchema.status,
-      showAnswers: quizSchema.showAnswers,
-      shuffleQuestions: quizSchema.shuffleQuestions,
-      shuffleOptions: quizSchema.shuffleOptions,
-      preventLeave: quizSchema.preventLeave,
-      timeLimitSeconds: quizSchema.timeLimitSeconds,
-      allowedAttempts: quizSchema.allowedAttempts,
-      expiresAt: quizSchema.expiresAt,
-      scoringMode: quizSchema.scoringMode,
-      attemptDecayRate: quizSchema.attemptDecayRate,
-      quizMode: quizSchema.quizMode,
-      isMarketplace: quizSchema.isMarketplace,
-      category: quizSchema.category,
-      gradeLevel: quizSchema.gradeLevel,
-      tags: quizSchema.tags,
-      copyCount: quizSchema.copyCount,
-      originalQuizId: quizSchema.originalQuizId,
-      createdAt: quizSchema.createdAt,
-      updatedAt: quizSchema.updatedAt,
-    })
+    .select()
     .from(quizSchema)
     .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
