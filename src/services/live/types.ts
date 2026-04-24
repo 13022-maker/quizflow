@@ -1,6 +1,8 @@
 // Live Mode 型別定義：前後端共用，避免到處 import Drizzle row 型別
 
-export type LiveGameStatus = 'waiting' | 'playing' | 'showing_result' | 'finished';
+// 對應 phase 狀態機：waiting=idle / playing=active / locked / showing_result=reveal / finished=ended
+// 命名沿用 DB enum，內部 transition 統一走 stateMachine.ts
+export type LiveGameStatus = 'waiting' | 'playing' | 'locked' | 'showing_result' | 'finished';
 
 export type LiveQuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
 
@@ -38,7 +40,14 @@ export type LiveAnswerStat = {
   count: number;
 };
 
-export type LiveHostState = {
+// 同步用的時間 + 序號資訊：所有 live state 都帶這個，client 用來去重 / 校時
+export type LiveSyncMeta = {
+  seq: number; // 全域單調遞增；client 收到較舊的 state 直接丟棄
+  serverNow: number; // server 當下 epoch ms；client 與 Date.now() 比對算 skew
+  quizVersion: number; // quiz 結構版本，client 偵測落差時 force refresh
+};
+
+export type LiveHostState = LiveSyncMeta & {
   game: {
     id: number;
     quizId: number;
@@ -47,6 +56,7 @@ export type LiveHostState = {
     status: LiveGameStatus;
     currentQuestionIndex: number;
     questionStartedAt: string | null; // ISO string，client 端 parseable
+    questionEndsAt: string | null; // ISO string；絕對結束時間（含 buffer），權威時間來源
     questionDuration: number;
     totalQuestions: number;
   };
@@ -56,13 +66,14 @@ export type LiveHostState = {
   answeredCount: number; // 當題已答人數
 };
 
-export type LivePlayerState = {
+export type LivePlayerState = LiveSyncMeta & {
   game: {
     id: number;
     title: string;
     status: LiveGameStatus;
     currentQuestionIndex: number;
     questionStartedAt: string | null;
+    questionEndsAt: string | null;
     questionDuration: number;
     totalQuestions: number;
   };

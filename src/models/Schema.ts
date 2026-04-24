@@ -344,11 +344,14 @@ export const vocabCardSchema = pgTable('vocabulary_card', {
 // ---------- Live Mode（直播競賽模式） ----------
 // 老師即時帶學生作答（Kahoot 風格）：gamePin 加入 → 同步推題 → 計分排行
 
+// 對應 phase 狀態機（idle=waiting / active=playing / locked / reveal=showing_result / ended=finished）
+// 命名沿用既有 status 以避免大規模 rename，但內部 transition 由 stateMachine.ts 控制
 export const liveGameStatusEnum = pgEnum('live_game_status', [
-  'waiting', // 等待玩家加入
-  'playing', // 題目進行中
-  'showing_result', // 顯示單題結果
-  'finished', // 全部結束
+  'waiting', // idle：等待玩家加入
+  'playing', // active：題目進行中（player 可送答）
+  'locked', // 倒數結束、尚未 reveal（自癒 tick 寫入；player 不能再送）
+  'showing_result', // reveal：顯示單題結果
+  'finished', // ended：全部結束
 ]);
 
 export const liveGameSchema = pgTable('live_game', {
@@ -361,8 +364,14 @@ export const liveGameSchema = pgTable('live_game', {
   title: text('title').notNull(),
   gamePin: text('game_pin').notNull().unique(), // 6 碼大寫英數
   status: liveGameStatusEnum('status').default('waiting').notNull(),
+  // 全域 monotonic 計數器；每次 phase / question / answer mutation +1，client 用來去重 / 排序訊息
+  seq: integer('seq').default(0).notNull(),
+  // 當前 quiz 結構版本，老師改題時遞增；client 偵測到落差時 force refresh
+  quizVersion: integer('quiz_version').default(1).notNull(),
   currentQuestionIndex: integer('current_question_index').default(-1).notNull(), // -1 = 尚未開始
   questionStartedAt: timestamp('question_started_at', { mode: 'date' }),
+  // 由 server 在推題時計算 = questionStartedAt + duration；client / submit / tick 統一以此為時間權威
+  questionEndsAt: timestamp('question_ends_at', { mode: 'date' }),
   questionDuration: integer('question_duration').default(20).notNull(), // 秒
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   endedAt: timestamp('ended_at', { mode: 'date' }),

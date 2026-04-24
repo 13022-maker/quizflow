@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
@@ -12,6 +12,12 @@ import {
 } from '@/models/Schema';
 import { publishTick } from '@/services/live/ablyServer';
 import { isLiveSupportedType } from '@/services/live/scoring';
+import { validSourcesFor } from '@/services/live/stateMachine';
+import type { LiveGameStatus } from '@/services/live/types';
+
+// 倒數 buffer：學生端收到推題後有 BUFFER_MS 的緩衝顯示「3, 2, 1」再開始計時
+// 設計同步優化文件 §4：startsAt = now + BUFFER_MS, endsAt = startsAt + duration
+const BUFFER_MS = 2000;
 
 // 生成 6 碼大寫英數 game pin（與 quizActions 同邏輯）
 function generatePin(): string {
@@ -117,14 +123,44 @@ export async function createLiveGame(input: CreateLiveGameInput) {
   } catch (err) {
     // DB 層 exception（例如 live_game 表不存在：migration 未跑）
     // 包起來避免 client 收到 unhandled rejection 觸發「Application error」白屏。
-    // 第一句訊息給使用者看，後面附原 message 供除錯。
     const name = err instanceof Error ? err.name : 'UnknownError';
     const detail = err instanceof Error ? err.message : String(err);
-    // DEBUG：暫時把 stack 前 8 行帶回 client，定位後拔掉
     const debugStack = err instanceof Error ? err.stack?.split('\n').slice(0, 8).join(' | ') : undefined;
     console.error('[createLiveGame] unexpected error:', err);
     return { error: `Live Mode 建立失敗：[${name}] ${detail}`, debugStack };
   }
+}
+
+// 統一的 atomic 推進工具：在合法 source phase 才寫入，並 +1 seq；失敗回 null
+async function transitionGame(params: {
+  gameId: number;
+  orgId: string;
+  to: LiveGameStatus;
+  set?: Partial<typeof liveGameSchema.$inferInsert>;
+}): Promise<{ status: LiveGameStatus; seq: number } | null> {
+  const sources = validSourcesFor(params.to);
+  if (sources.length === 0) {
+    return null;
+  }
+
+  const [updated] = await db
+    .update(liveGameSchema)
+    .set({
+      ...(params.set ?? {}),
+      status: params.to,
+      seq: sql`${liveGameSchema.seq} + 1`,
+    })
+    .where(and(
+      eq(liveGameSchema.id, params.gameId),
+      eq(liveGameSchema.hostOrgId, params.orgId),
+      inArray(liveGameSchema.status, sources as LiveGameStatus[]),
+    ))
+    .returning();
+
+  if (!updated) {
+    return null;
+  }
+  return { status: updated.status, seq: updated.seq };
 }
 
 export async function startGame(gameId: number) {
@@ -136,20 +172,26 @@ export async function startGame(gameId: number) {
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
-  if (game.status !== 'waiting') {
-    return { error: 'ALREADY_STARTED' };
+
+  const now = Date.now();
+  const startsAt = new Date(now + BUFFER_MS);
+  const endsAt = new Date(now + BUFFER_MS + game.questionDuration * 1000);
+
+  const updated = await transitionGame({
+    gameId,
+    orgId,
+    to: 'playing',
+    set: {
+      currentQuestionIndex: 0,
+      questionStartedAt: startsAt,
+      questionEndsAt: endsAt,
+    },
+  });
+  if (!updated) {
+    return { error: 'INVALID_TRANSITION' };
   }
 
-  await db
-    .update(liveGameSchema)
-    .set({
-      status: 'playing',
-      currentQuestionIndex: 0,
-      questionStartedAt: new Date(),
-    })
-    .where(eq(liveGameSchema.id, game.id));
-
-  await publishTick(game.id);
+  await publishTick(gameId, updated.seq);
   return { ok: true as const };
 }
 
@@ -158,20 +200,13 @@ export async function showResult(gameId: number) {
   if (!orgId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
-  if (!game) {
-    return { error: 'GAME_NOT_FOUND' };
-  }
-  if (game.status !== 'playing') {
-    return { error: 'NOT_PLAYING' };
+  // playing → showing_result（手動提早結束）或 locked → showing_result（自癒之後 reveal）
+  const updated = await transitionGame({ gameId, orgId, to: 'showing_result' });
+  if (!updated) {
+    return { error: 'INVALID_TRANSITION' };
   }
 
-  await db
-    .update(liveGameSchema)
-    .set({ status: 'showing_result' })
-    .where(eq(liveGameSchema.id, game.id));
-
-  await publishTick(game.id);
+  await publishTick(gameId, updated.seq);
   return { ok: true as const };
 }
 
@@ -196,24 +231,38 @@ export async function nextQuestion(gameId: number) {
   const nextIdx = game.currentQuestionIndex + 1;
   if (nextIdx >= supportedCount) {
     // 已經是最後一題 → 結束
-    await db
-      .update(liveGameSchema)
-      .set({ status: 'finished', endedAt: new Date() })
-      .where(eq(liveGameSchema.id, game.id));
-    await publishTick(game.id);
+    const updated = await transitionGame({
+      gameId,
+      orgId,
+      to: 'finished',
+      set: { endedAt: new Date() },
+    });
+    if (!updated) {
+      return { error: 'INVALID_TRANSITION' };
+    }
+    await publishTick(gameId, updated.seq);
     return { ok: true as const, finished: true };
   }
 
-  await db
-    .update(liveGameSchema)
-    .set({
-      status: 'playing',
-      currentQuestionIndex: nextIdx,
-      questionStartedAt: new Date(),
-    })
-    .where(eq(liveGameSchema.id, game.id));
+  const now = Date.now();
+  const startsAt = new Date(now + BUFFER_MS);
+  const endsAt = new Date(now + BUFFER_MS + game.questionDuration * 1000);
 
-  await publishTick(game.id);
+  const updated = await transitionGame({
+    gameId,
+    orgId,
+    to: 'playing',
+    set: {
+      currentQuestionIndex: nextIdx,
+      questionStartedAt: startsAt,
+      questionEndsAt: endsAt,
+    },
+  });
+  if (!updated) {
+    return { error: 'INVALID_TRANSITION' };
+  }
+
+  await publishTick(gameId, updated.seq);
   return { ok: true as const, finished: false };
 }
 
@@ -222,16 +271,16 @@ export async function endGame(gameId: number) {
   if (!orgId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
-  if (!game) {
-    return { error: 'GAME_NOT_FOUND' };
+  const updated = await transitionGame({
+    gameId,
+    orgId,
+    to: 'finished',
+    set: { endedAt: new Date() },
+  });
+  if (!updated) {
+    return { error: 'INVALID_TRANSITION' };
   }
 
-  await db
-    .update(liveGameSchema)
-    .set({ status: 'finished', endedAt: new Date() })
-    .where(eq(liveGameSchema.id, game.id));
-
-  await publishTick(game.id);
+  await publishTick(gameId, updated.seq);
   return { ok: true as const };
 }

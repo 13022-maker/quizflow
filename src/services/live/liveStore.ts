@@ -1,6 +1,6 @@
 // Live Mode 統一資料存取層：把 DB query 集中在此，API Route / Server Action 呼叫即可。
 
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import {
@@ -20,6 +20,10 @@ import type {
   LiveQuestionForHost,
   LiveQuestionForPlayer,
 } from './types';
+
+// submit 容忍：學生送答比 questionEndsAt 多最多 TOLERANCE_MS 視為 in-window
+// 用意是緩衝網路 latency，避免最後一秒按下卻被誤判 expired
+const SUBMIT_TOLERANCE_MS = 1000;
 
 // 取得某 game 的題目清單（依 position 排序，只含支援的三種題型）
 export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForHost[]> {
@@ -129,6 +133,9 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
   }
 
   return {
+    seq: game.seq,
+    serverNow: Date.now(),
+    quizVersion: game.quizVersion,
     game: {
       id: game.id,
       quizId: game.quizId,
@@ -137,6 +144,7 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
       status: game.status,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
+      questionEndsAt: game.questionEndsAt ? game.questionEndsAt.toISOString() : null,
       questionDuration: game.questionDuration,
       totalQuestions: questions.length,
     },
@@ -232,12 +240,16 @@ export async function getPlayerState(
   const leaderboard = game.status === 'finished' ? players : [];
 
   return {
+    seq: game.seq,
+    serverNow: Date.now(),
+    quizVersion: game.quizVersion,
     game: {
       id: game.id,
       title: game.title,
       status: game.status,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
+      questionEndsAt: game.questionEndsAt ? game.questionEndsAt.toISOString() : null,
       questionDuration: game.questionDuration,
       totalQuestions: questions.length,
     },
@@ -279,8 +291,10 @@ export async function recordAnswer(params: {
   if (!game) {
     return { ok: false, error: 'GAME_NOT_FOUND', status: 404 };
   }
+  // 嚴格 phase 檢查：只有 active (playing) 才能送答
+  // locked / showing_result / finished 一律拒絕（即使 +1s 容忍也不行）
   if (game.status !== 'playing') {
-    return { ok: false, error: 'NOT_PLAYING', status: 409 };
+    return { ok: false, error: 'LOCKED', status: 409 };
   }
 
   const [question] = await db
@@ -295,26 +309,30 @@ export async function recordAnswer(params: {
     return { ok: false, error: 'UNSUPPORTED_TYPE', status: 400 };
   }
 
-  // 確認這題是「當前題」
+  // 確認這題是「當前題」（防 race：student 看到舊題就提交、teacher 已切下一題）
   const questions = await getLiveQuestions(game.quizId);
   const currentIdx = game.currentQuestionIndex;
   const currentQuestion = questions[currentIdx];
   if (!currentQuestion || currentQuestion.id !== questionId) {
-    return { ok: false, error: 'NOT_CURRENT_QUESTION', status: 409 };
+    return { ok: false, error: 'QUESTION_MISMATCH', status: 409 };
   }
 
-  // 逾時檢查
+  // 絕對時間（endsAt）檢查：以 server 端 questionEndsAt 為權威
+  // SUBMIT_TOLERANCE_MS 容忍網路 latency；超過直接 expired
   const startedAtMs = game.questionStartedAt ? game.questionStartedAt.getTime() : 0;
+  const endsAtMs = game.questionEndsAt
+    ? game.questionEndsAt.getTime()
+    : startedAtMs + game.questionDuration * 1000;
   const nowMs = Date.now();
-  const elapsed = nowMs - startedAtMs;
   const durationMs = game.questionDuration * 1000;
 
-  let responseMs = Math.max(0, elapsed);
-  let isTimedOut = false;
-  if (!startedAtMs || elapsed >= durationMs) {
-    isTimedOut = true;
-    responseMs = durationMs;
+  if (!startedAtMs || nowMs > endsAtMs + SUBMIT_TOLERANCE_MS) {
+    return { ok: false, error: 'EXPIRED', status: 409 };
   }
+
+  // responseMs 由 server 計算（不信任 client 時鐘，防竄改瀏覽器時鐘拉分）
+  const elapsed = Math.max(0, nowMs - startedAtMs);
+  const responseMs = Math.min(elapsed, durationMs);
 
   // 已作答則直接回傳既有紀錄（防重複送分）
   const [existing] = await db
@@ -329,9 +347,7 @@ export async function recordAnswer(params: {
     return { ok: true, isCorrect: existing.isCorrect, score: existing.score };
   }
 
-  const isCorrect = isTimedOut
-    ? false
-    : gradeAnswer(question.type, question.correctAnswers, selectedOptionId);
+  const isCorrect = gradeAnswer(question.type, question.correctAnswers, selectedOptionId);
   const score = calcLiveScore(isCorrect, responseMs, durationMs);
 
   // 寫入答題紀錄；同時累加 player 分數
@@ -369,9 +385,45 @@ export async function recordAnswer(params: {
     })
     .where(eq(livePlayerSchema.id, playerId));
 
+  // 答題本身 +1 seq，讓 host / 其他 player 透過 seq 驅動 re-fetch
+  const [bumped] = await db
+    .update(liveGameSchema)
+    .set({ seq: sql`${liveGameSchema.seq} + 1` })
+    .where(eq(liveGameSchema.id, gameId))
+    .returning();
+
   // 通知 host（看 answeredCount/stats 更新）與其他 player（排名可能變動）
-  await publishTick(gameId);
+  await publishTick(gameId, bumped?.seq);
   return { ok: true, isCorrect, score };
+}
+
+/**
+ * 自癒 lock：當倒數結束（now > questionEndsAt）但 phase 還停在 'playing'，
+ * atomic 切到 'locked'。第一個觸發 tick 的 client 會贏，其餘 client 收到 changed=false。
+ *
+ * 用 SQL `WHERE status='playing' AND question_ends_at <= NOW()` 確保 race-safe。
+ */
+export async function tickLockExpired(
+  gameId: number,
+): Promise<{ changed: boolean; seq: number | null }> {
+  const [updated] = await db
+    .update(liveGameSchema)
+    .set({
+      status: 'locked',
+      seq: sql`${liveGameSchema.seq} + 1`,
+    })
+    .where(and(
+      eq(liveGameSchema.id, gameId),
+      eq(liveGameSchema.status, 'playing'),
+      lte(liveGameSchema.questionEndsAt, sql`NOW()`),
+    ))
+    .returning();
+
+  if (!updated) {
+    return { changed: false, seq: null };
+  }
+  await publishTick(gameId, updated.seq);
+  return { changed: true, seq: updated.seq };
 }
 
 // Player 透過 token 查 id（學生 API 身分驗證）

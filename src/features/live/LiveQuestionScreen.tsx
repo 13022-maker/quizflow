@@ -8,6 +8,7 @@ import { LiveResultChart } from './LiveResultChart';
 
 type Props = {
   state: LiveHostState;
+  skew: number;
   onRevealResult: () => void;
   onNext: () => void;
   pending: boolean;
@@ -15,15 +16,17 @@ type Props = {
 
 export function LiveQuestionScreen({
   state,
+  skew,
   onRevealResult,
   onNext,
   pending,
 }: Props) {
   const { currentQuestion, game, answerStats, answeredCount, players } = state;
-  const { remaining, percent } = useCountdown(
-    game.questionStartedAt,
-    game.questionDuration,
-  );
+  const { remaining, percent } = useCountdown({
+    endsAt: game.questionEndsAt ? new Date(game.questionEndsAt).getTime() : null,
+    skew,
+    durationMs: game.questionDuration * 1000,
+  });
 
   if (!currentQuestion) {
     return (
@@ -34,6 +37,7 @@ export function LiveQuestionScreen({
   }
 
   const isShowingResult = game.status === 'showing_result';
+  const isLocked = game.status === 'locked';
   const isLastQuestion = game.currentQuestionIndex >= game.totalQuestions - 1;
 
   return (
@@ -75,8 +79,8 @@ export function LiveQuestionScreen({
         )}
       </div>
 
-      {/* 倒數進度條 */}
-      {!isShowingResult && (
+      {/* 倒數進度條（playing 才顯示；locked 顯示「時間到」） */}
+      {!isShowingResult && !isLocked && (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">剩餘時間</span>
@@ -93,6 +97,11 @@ export function LiveQuestionScreen({
               style={{ width: `${percent}%` }}
             />
           </div>
+        </div>
+      )}
+      {isLocked && (
+        <div className="rounded-lg bg-amber-50 px-4 py-2 text-center text-sm font-medium text-amber-800">
+          ⏱ 時間到，按下「顯示答案」公布結果
         </div>
       )}
 

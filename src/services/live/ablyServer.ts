@@ -26,14 +26,15 @@ export function isAblyEnabled(): boolean {
 }
 
 // 發 tick 到 live:{gameId}，讓訂閱的 host / player 重抓自己的 state
+// payload 帶 seq：client 比對 lastSeq 過濾過期 / 重複訊息（Ably history rewind 也會送舊訊息）
 // 失敗不 throw（Ably 掛掉不應拖垮 mutation），只 log
-export async function publishTick(gameId: number): Promise<void> {
+export async function publishTick(gameId: number, seq?: number): Promise<void> {
   if (!isAblyEnabled()) {
     return;
   }
   try {
     const channel = getAbly().channels.get(`live:${gameId}`);
-    await channel.publish('tick', { ts: Date.now() });
+    await channel.publish('tick', { ts: Date.now(), seq });
   } catch (err) {
     console.warn('[ablyServer] publishTick failed', { gameId, err });
   }

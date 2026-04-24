@@ -8,16 +8,18 @@ import type { LivePlayerState, LiveQuestionForPlayer } from '@/services/live/typ
 
 type Props = {
   state: LivePlayerState;
+  skew: number;
   onSubmit: (questionId: number, selectedOptionId: string | string[]) => Promise<void>;
   submitting: boolean;
 };
 
-export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
+export function LivePlayerQuestion({ state, skew, onSubmit, submitting }: Props) {
   const { currentQuestion, game, myAnswer, lastResult } = state;
-  const { remaining, percent } = useCountdown(
-    game.questionStartedAt,
-    game.questionDuration,
-  );
+  const { remaining, percent } = useCountdown({
+    endsAt: game.questionEndsAt ? new Date(game.questionEndsAt).getTime() : null,
+    skew,
+    durationMs: game.questionDuration * 1000,
+  });
 
   // 單選 / 是非：string；複選：string[]
   const [selectedSingle, setSelectedSingle] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
   }
 
   const isShowingResult = game.status === 'showing_result';
+  const isLocked = game.status === 'locked';
   const hasAnswered = !!myAnswer;
   const isMulti = currentQuestion.type === 'multiple_choice';
 
@@ -85,8 +88,8 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
         </span>
       </div>
 
-      {/* 倒數 */}
-      {!isShowingResult && (
+      {/* 倒數（playing 才顯示；locked 顯示時間到的提示） */}
+      {!isShowingResult && !isLocked && (
         <div className="space-y-1">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">剩餘</span>
@@ -120,20 +123,20 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
         )}
       </div>
 
-      {/* 選項 */}
+      {/* 選項：locked / showing_result / 已答題都不能再點 */}
       <PlayerOptionList
         question={currentQuestion}
         selectedSingle={selectedSingle}
         selectedMulti={selectedMulti}
         myAnswerIds={myAnswerIds(myAnswer?.selectedOptionId)}
         correctAnswers={isShowingResult ? correctAnswers : undefined}
-        disabled={hasAnswered || isShowingResult || submitting}
+        disabled={hasAnswered || isShowingResult || isLocked || submitting}
         onSelectSingle={setSelectedSingle}
         onToggleMulti={handleToggleMulti}
       />
 
       {/* 提交 / 狀態 */}
-      {!isShowingResult && !hasAnswered && (
+      {!isShowingResult && !isLocked && !hasAnswered && (
         <Button
           size="lg"
           className="w-full"
@@ -146,9 +149,19 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
           {submitting ? '送出中⋯' : '送出答案'}
         </Button>
       )}
-      {hasAnswered && !isShowingResult && (
+      {hasAnswered && !isShowingResult && !isLocked && (
         <p className="text-center text-sm text-muted-foreground">
           已送出，等待其他玩家⋯
+        </p>
+      )}
+      {isLocked && !myAnswer && (
+        <div className="rounded-xl bg-muted p-4 text-center text-sm text-muted-foreground">
+          ⏱ 時間到，等待老師公布答案⋯
+        </div>
+      )}
+      {isLocked && myAnswer && (
+        <p className="text-center text-sm text-muted-foreground">
+          已送出，等待老師公布答案⋯
         </p>
       )}
       {isShowingResult && myAnswer && (

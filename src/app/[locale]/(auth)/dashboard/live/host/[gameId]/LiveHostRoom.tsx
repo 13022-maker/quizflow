@@ -14,7 +14,7 @@ type Props = {
 };
 
 export function LiveHostRoom({ gameId, gamePin, title }: Props) {
-  const { state, error, pending, actions } = useLiveHostGame(gameId);
+  const { state, error, pending, skew, actions } = useLiveHostGame(gameId);
 
   if (error && !state) {
     return (
@@ -58,9 +58,10 @@ export function LiveHostRoom({ gameId, gamePin, title }: Props) {
         />
       )}
 
-      {(status === 'playing' || status === 'showing_result') && (
+      {(status === 'playing' || status === 'locked' || status === 'showing_result') && (
         <LiveQuestionScreen
           state={state}
+          skew={skew}
           onRevealResult={actions.revealResult}
           onNext={actions.next}
           pending={pending}

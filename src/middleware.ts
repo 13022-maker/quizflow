@@ -37,6 +37,9 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // 自癒 tick：phase 到時轉 locked，無敏感資料、host 與 player 都會打
+  '/api/live/(.*)/tick',
+  '/:locale/api/live/(.*)/tick',
 ]);
 
 // 需要 Clerk context（route 內會呼叫 auth()）但不強制登入的 API，

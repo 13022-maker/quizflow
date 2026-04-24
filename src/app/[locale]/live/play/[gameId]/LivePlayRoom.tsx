@@ -54,7 +54,7 @@ function LiveRoomInner({
   playerId: number;
   playerToken: string;
 }) {
-  const { state, error, submit, submitting } = useLivePlayerGame(
+  const { state, error, submit, submitting, skew } = useLivePlayerGame(
     gameId,
     playerId,
     playerToken,
@@ -108,6 +108,7 @@ function LiveRoomInner({
   return (
     <LivePlayerQuestion
       state={state}
+      skew={skew}
       onSubmit={async (questionId, sel) => {
         await submit(questionId, sel);
       }}
