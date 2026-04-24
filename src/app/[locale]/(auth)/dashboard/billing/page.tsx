@@ -1,6 +1,7 @@
 import { auth } from '@clerk/nextjs/server';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
+import { UpgradeProButton } from '@/features/billing/UpgradeProButton';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { getOrgPlanId } from '@/libs/Plan';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
@@ -106,17 +107,12 @@ export default async function BillingPage() {
                   <FeatureItem text="班級 AI 分析報表" />
                   <FeatureItem text="CSV 成績匯出" />
                 </ul>
-                {/* TODO: 串接 Paddle Checkout overlay（hooks/useCheckout） */}
-                <button
-                  type="button"
-                  disabled
-                  className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60"
-                >
-                  即將推出 — NT$299/月
-                </button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  付款功能開發中，敬請期待
-                </p>
+                <UpgradeProButton
+                  priceIdMonthly={process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY}
+                  priceIdYearly={process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY}
+                  monthlyPriceTwd={299}
+                  yearlyPriceTwd={2490}
+                />
               </div>
             )
           : (
