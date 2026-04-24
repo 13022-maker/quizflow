@@ -177,6 +177,11 @@ export function QuizEditor({
   );
   const [showAnswers, setShowAnswers] = useState(initialQuiz.showAnswers);
   const [preventLeave, setPreventLeave] = useState(initialQuiz.preventLeave);
+  // 自適應測驗（CAT）：開啟後測驗會依學生答題能力動態挑題
+  const [adaptiveMode, setAdaptiveMode] = useState(initialQuiz.adaptiveMode ?? false);
+  const [adaptiveTargetCount, setAdaptiveTargetCount] = useState<string>(
+    String(initialQuiz.adaptiveTargetCount ?? 10),
+  );
 
   // 目前選中的快速方案（null = 未選或手動調整後取消）
   type ModePreset = 'exam' | 'practice' | 'review';
@@ -256,6 +261,25 @@ export function QuizEditor({
     startTransition(async () => {
       await updateQuizSettings(initialQuiz.id, { preventLeave: value });
     });
+  };
+
+  // ── 適性測驗（CAT）開關 ────────────────────────────────────────────
+  const handleAdaptiveModeChange = (value: boolean) => {
+    setAdaptiveMode(value);
+    setActivePreset(null);
+    startTransition(async () => {
+      await updateQuizSettings(initialQuiz.id, { adaptiveMode: value });
+    });
+  };
+
+  const handleAdaptiveTargetChange = (value: string) => {
+    setAdaptiveTargetCount(value);
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 5 && parsed <= 20) {
+      startTransition(async () => {
+        await updateQuizSettings(initialQuiz.id, { adaptiveTargetCount: parsed });
+      });
+    }
   };
 
   // ── 快速套用方案 ──────────────────────────────────────────────────
@@ -898,6 +922,33 @@ export function QuizEditor({
                 />
                 防止學生中途離開（考試防作弊）
               </label>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <Switch
+                  checked={adaptiveMode}
+                  onCheckedChange={handleAdaptiveModeChange}
+                  disabled={isPending}
+                />
+                適性測驗（CAT）
+                <span className="text-xs text-muted-foreground">依學生答題能力自動調整難度</span>
+              </label>
+              {adaptiveMode && (
+                <div className="ml-10 flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>目標題數</span>
+                  <select
+                    value={adaptiveTargetCount}
+                    onChange={e => handleAdaptiveTargetChange(e.target.value)}
+                    disabled={isPending}
+                    className="rounded-md border border-input bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="5">5 題</option>
+                    <option value="10">10 題</option>
+                    <option value="15">15 題</option>
+                    <option value="20">20 題</option>
+                  </select>
+                  <span className="text-purple-600">· 出題時記得在每題設定難度 1–5</span>
+                </div>
+              )}
             </div>
 
             {/* 第二列：兩個 select */}

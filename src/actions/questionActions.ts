@@ -22,16 +22,17 @@ async function verifyOwnership(quizId: number, orgId: string) {
 }
 
 const QuestionInputSchema = z.object({
-  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
-  body: z.string().min(1, '請輸入題目內���'),
+  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening', 'speaking']),
+  body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
-  audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網��
+  audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網址
   audioTranscript: z.string().optional(), // 音檔逐字稿
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
   correctAnswers: z.array(z.string()).optional(),
   points: z.coerce.number().min(1).default(1),
+  difficulty: z.coerce.number().int().min(1).max(5).default(3), // 1=最簡單 5=最難（適性測驗用）
 });
 
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;
@@ -70,6 +71,7 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     correctAnswers: parsed.data.correctAnswers ?? null,
     points: parsed.data.points,
     position: nextPosition,
+    difficulty: parsed.data.difficulty,
   });
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
@@ -99,6 +101,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       options: parsed.data.options ?? null,
       correctAnswers: parsed.data.correctAnswers ?? null,
       points: parsed.data.points,
+      difficulty: parsed.data.difficulty,
     })
     .where(eq(questionSchema.id, id));
 

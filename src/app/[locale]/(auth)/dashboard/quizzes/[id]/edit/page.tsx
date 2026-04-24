@@ -69,6 +69,8 @@ export default async function EditQuizPage({
       tags: quizSchema.tags,
       copyCount: quizSchema.copyCount,
       originalQuizId: quizSchema.originalQuizId,
+      adaptiveMode: quizSchema.adaptiveMode,
+      adaptiveTargetCount: quizSchema.adaptiveTargetCount,
       updatedAt: quizSchema.updatedAt,
       createdAt: quizSchema.createdAt,
     })

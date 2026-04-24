@@ -1,6 +1,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
+import { AdaptiveQuizTaker } from '@/features/quiz/AdaptiveQuizTaker';
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { VocabTaker } from '@/features/quiz/VocabTaker';
 import { db } from '@/libs/DB';
@@ -39,6 +40,8 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       scoringMode: quizSchema.scoringMode,
       attemptDecayRate: quizSchema.attemptDecayRate,
       quizMode: quizSchema.quizMode,
+      adaptiveMode: quizSchema.adaptiveMode,
+      adaptiveTargetCount: quizSchema.adaptiveTargetCount,
       isMarketplace: quizSchema.isMarketplace,
       category: quizSchema.category,
       gradeLevel: quizSchema.gradeLevel,
@@ -96,6 +99,26 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       <div className="min-h-screen bg-gradient-to-b from-amber-50/80 via-white to-orange-50/50 pb-24 pt-10 md:py-16 md:pb-24">
         <div className="mx-auto max-w-2xl px-4">
           <VocabTaker quiz={quiz} questions={questions} />
+        </div>
+      </div>
+    );
+  }
+
+  // 適性測驗模式（CAT）：完全不同的作答 flow，動態挑題、即時批改
+  if (quiz.adaptiveMode) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-purple-50/60 via-white to-indigo-50/40 pb-24 pt-10 md:py-16 md:pb-24">
+        <div className="mx-auto max-w-2xl px-4 space-y-4">
+          <div className="rounded-2xl border border-purple-100 bg-white p-5 shadow-sm">
+            <h1 className="text-xl font-bold text-purple-700">{quiz.title}</h1>
+            {quiz.description && (
+              <p className="mt-1 text-sm text-muted-foreground">{quiz.description}</p>
+            )}
+            <p className="mt-2 text-xs text-purple-600">
+              🧠 適性測驗模式 · 系統會依你的答題自動調整題目難度
+            </p>
+          </div>
+          <AdaptiveQuizTaker quiz={quiz} />
         </div>
       </div>
     );

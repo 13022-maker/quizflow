@@ -6,6 +6,21 @@ import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
+// 口說題的單題評量結果（client 端從 /api/ai/grade-speech 拿到再送回來）
+const SpeechAssessmentSchema = z.object({
+  audioUrl: z.string(),
+  transcript: z.string(),
+  durationSeconds: z.number().nonnegative(),
+  language: z.string(),
+  scores: z.object({
+    pronunciation: z.number().min(0).max(100),
+    fluency: z.number().min(0).max(100),
+    content: z.number().min(0).max(100),
+    overall: z.number().min(0).max(100),
+  }),
+  feedback: z.string().max(500).default(''),
+});
+
 const SubmitSchema = z.object({
   quizId: z.number().int().positive(),
   studentName: z.string().max(100).optional(),
@@ -14,6 +29,8 @@ const SubmitSchema = z.object({
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
   // 考試防作弊：學生離開頁面次數（preventLeave 開啟時才有意義）
   leaveCount: z.number().int().min(0).optional(),
+  // 口說題評量結果：{ questionId: assessment }
+  speechAssessments: z.record(z.string(), SpeechAssessmentSchema).optional(),
 });
 
 export type SubmitInput = z.infer<typeof SubmitSchema>;
@@ -44,7 +61,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     throw new Error('格式錯誤');
   }
 
-  const { quizId, studentName, studentEmail, answers, leaveCount } = parsed.data;
+  const { quizId, studentName, studentEmail, answers, leaveCount, speechAssessments } = parsed.data;
 
   // 取得測驗設定（用於 server-side 驗證作答次數）
   const [quiz] = await db
@@ -79,8 +96,28 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
   for (const question of questions) {
     const studentAnswer = answers[question.id.toString()];
     const isShortAnswer = question.type === 'short_answer';
+    const isSpeaking = question.type === 'speaking';
 
     let isCorrect: boolean | null = null;
+
+    if (isSpeaking) {
+      // 口說題：依 AI 評分的 overallScore（0–100）按比例給分
+      const assessment = speechAssessments?.[question.id.toString()];
+      if (assessment) {
+        const ratio = assessment.scores.overall / 100;
+        const earned = Math.round(question.points * ratio);
+        score += earned;
+        totalPoints += question.points;
+        // overall ≥ 60 視為「答對」標記，方便老師端統計
+        isCorrect = assessment.scores.overall >= 60;
+        details.push({ questionId: question.id, isCorrect, points: earned });
+      } else {
+        // 學生未完成口說評分（理論上前端已擋）：給 0 分但仍計入滿分
+        totalPoints += question.points;
+        details.push({ questionId: question.id, isCorrect: false, points: 0 });
+      }
+      continue;
+    }
 
     if (!isShortAnswer && question.correctAnswers && studentAnswer !== undefined) {
       const correct = question.correctAnswers;
@@ -126,14 +163,34 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
 
   // 寫入每題的 answer
   const answerRows = questions
-    .filter(q => answers[q.id.toString()] !== undefined)
+    .filter((q) => {
+      const hasText = answers[q.id.toString()] !== undefined;
+      const hasSpeech = q.type === 'speaking' && !!speechAssessments?.[q.id.toString()];
+      return hasText || hasSpeech;
+    })
     .map((q) => {
       const detail = details.find(d => d.questionId === q.id)!;
+      const speech = q.type === 'speaking' ? speechAssessments?.[q.id.toString()] : undefined;
       return {
         responseId: inserted.id,
         questionId: q.id,
-        answer: answers[q.id.toString()] as string | string[],
+        // 口說題的「answer」字串存逐字稿，讓老師成績頁可一眼看到學生說了什麼
+        answer: speech
+          ? speech.transcript
+          : (answers[q.id.toString()] as string | string[]),
         isCorrect: detail.isCorrect,
+        audioUrl: speech?.audioUrl ?? null,
+        speechAssessment: speech
+          ? {
+              transcript: speech.transcript,
+              pronunciationScore: speech.scores.pronunciation,
+              fluencyScore: speech.scores.fluency,
+              contentScore: speech.scores.content,
+              overallScore: speech.scores.overall,
+              feedback: speech.feedback,
+              language: speech.language,
+            }
+          : null,
       };
     });
 

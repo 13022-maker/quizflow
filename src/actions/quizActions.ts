@@ -138,6 +138,8 @@ export async function updateQuizSettings(
     timeLimitSeconds?: number | null;
     preventLeave?: boolean;
     expiresAt?: Date | null;
+    adaptiveMode?: boolean;
+    adaptiveTargetCount?: number;
   },
 ) {
   const { orgId } = await auth();
@@ -145,9 +147,15 @@ export async function updateQuizSettings(
     throw new Error('Unauthorized');
   }
 
+  // adaptiveTargetCount 限制 5–20 題
+  const sanitized = { ...data };
+  if (sanitized.adaptiveTargetCount !== undefined) {
+    sanitized.adaptiveTargetCount = Math.max(5, Math.min(20, Math.round(sanitized.adaptiveTargetCount)));
+  }
+
   await db
     .update(quizSchema)
-    .set(data)
+    .set(sanitized)
     .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
 
   revalidatePath(`/dashboard/quizzes/${id}/edit`);
