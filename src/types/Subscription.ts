@@ -22,5 +22,6 @@ export type PricingPlan = {
     storage: number;
     transfer: number;
     aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）
+    batchQuota?: number; // 每月批次出題題數上限（僅 publisher 方案有；undefined = 不提供批次功能）
   };
 };

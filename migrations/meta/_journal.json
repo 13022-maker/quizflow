@@ -134,6 +134,13 @@
       "when": 1776912000000,
       "tag": "0018_live_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1776998400000,
+      "tag": "0019_publisher_tier",
+      "breakpoints": true
     }
   ]
 }

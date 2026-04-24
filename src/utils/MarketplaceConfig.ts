@@ -27,3 +27,12 @@ export const GRADE_LEVELS = [
   '大學',
   '社會人士',
 ] as const;
+
+// 書商認證狀態（Phase 2）：新申請預設 pending，管理員（VIP_EMAILS）到後台審核
+export const PUBLISHER_VERIFICATION_STATUSES = [
+  'pending', // 申請中，尚未審核
+  'verified', // 已認證，可在 marketplace / 學生頁顯示徽章
+  'rejected', // 已拒絕（附原因）
+] as const;
+
+export type PublisherVerificationStatus = typeof PUBLISHER_VERIFICATION_STATUSES[number];

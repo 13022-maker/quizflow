@@ -28,6 +28,9 @@ function mapPlan(plan: string): string {
   if (plan === 'pro') {
     return PLAN_ID.PREMIUM;
   }
+  if (plan === 'publisher') {
+    return PLAN_ID.PUBLISHER;
+  }
   return PLAN_ID.FREE;
 }
 
@@ -80,7 +83,7 @@ export async function getOrgPlanId(_orgId: string): Promise<string> {
  */
 export async function isProOrAbove(orgId: string): Promise<boolean> {
   const planId = await getOrgPlanId(orgId);
-  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE) {
+  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return true;
   }
 

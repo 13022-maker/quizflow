@@ -20,6 +20,9 @@ function resolvePlan(priceId?: string): string {
     [process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY ?? '']: 'pro',
     [process.env.NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY ?? '']: 'team',
     [process.env.NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY ?? '']: 'team',
+    // Publisher 方案（Phase 2）：Price ID 待使用者到 Paddle Dashboard 手動建立後填入 env
+    [process.env.NEXT_PUBLIC_PADDLE_PRICE_PUBLISHER_MONTHLY ?? '']: 'publisher',
+    [process.env.NEXT_PUBLIC_PADDLE_PRICE_PUBLISHER_YEARLY ?? '']: 'publisher',
   };
   return map[priceId ?? ''] ?? 'free';
 }
