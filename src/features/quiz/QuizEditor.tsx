@@ -648,12 +648,26 @@ export function QuizEditor({
               // live_game 表不存在）導致整頁白屏「Application error」。
               try {
                 const res = await createLiveGame({ quizId: initialQuiz.id });
+                // DEBUG：把完整 res 印到 console，定位後會拔掉
+                // eslint-disable-next-line no-console
+                console.warn('[QuizEditor createLiveGame result]', res);
+                if (!res || typeof res !== 'object') {
+                  // server action 回 undefined：常見原因為 Clerk session 中斷、Next.js RSC flight 解析失敗
+                  setLiveError('Live Mode 建立失敗：伺服器未回應（可能需重新登入）');
+                  return;
+                }
                 if ('error' in res) {
                   setLiveError(res.error ?? '建立失敗');
                   return;
                 }
+                if (!('gameId' in res)) {
+                  setLiveError('Live Mode 建立失敗：伺服器回傳異常');
+                  return;
+                }
                 router.push(`/dashboard/live/host/${res.gameId}`);
               } catch (err) {
+                // eslint-disable-next-line no-console
+                console.error('[QuizEditor createLiveGame catch]', err);
                 setLiveError(
                   err instanceof Error
                     ? `Live Mode 建立失敗：${err.message}`
