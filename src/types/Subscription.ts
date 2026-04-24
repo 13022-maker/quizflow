@@ -22,5 +22,6 @@ export type PricingPlan = {
     storage: number;
     transfer: number;
     aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）
+    essayGradingQuota: number; // 每月 AI 申論題/作文批改份數上限（999 = 無限，0 = 不開放）
   };
 };

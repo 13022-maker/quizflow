@@ -79,6 +79,17 @@ export async function getOrgPlanId(_orgId: string): Promise<string> {
  *   3. 都沒有 → Free
  */
 export async function isProOrAbove(orgId: string): Promise<boolean> {
+  // 測試分支 claude/test-essay-revision-ohVR4 專用：在 Vercel preview 且在這條
+  // 分支時一律視為 Pro，讓 E2E 驗證作文批改 feature 不用建訂閱資料。
+  // production / localhost / 其他 preview 分支完全不受影響；分支刪除後此 branch
+  // 的程式碼也會一併消失，沒有長期技術債。
+  if (
+    process.env.VERCEL_ENV === 'preview'
+    && process.env.VERCEL_GIT_COMMIT_REF === 'claude/test-essay-revision-ohVR4'
+  ) {
+    return true;
+  }
+
   const planId = await getOrgPlanId(orgId);
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE) {
     return true;

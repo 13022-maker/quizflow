@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
+import { AiQuotaBanner } from '@/features/dashboard/AiQuotaBanner';
 import { ClassAIAnalysis } from '@/features/quiz/ClassAIAnalysis';
 import type { BreakdownQuestion, BreakdownRow, OptionStats } from '@/features/quiz/QuestionBreakdownTable';
 import { QuestionBreakdownTable } from '@/features/quiz/QuestionBreakdownTable';
@@ -66,6 +67,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         questionId: answerSchema.questionId,
         isCorrect: answerSchema.isCorrect,
         answer: answerSchema.answer,
+        gradedAt: answerSchema.gradedAt,
       })
       .from(answerSchema)
       .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
@@ -85,8 +87,33 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     const total = qAnswers.length;
     const correct = qAnswers.filter(a => a.isCorrect === true).length;
     const rate = total > 0 ? Math.round((correct / total) * 100) : null;
-    return { question: q, total, correct, rate };
+    // 申論題：統計已批改份數
+    const gradedCount = q.type === 'short_answer'
+      ? qAnswers.filter(a => a.gradedAt !== null).length
+      : 0;
+    return { question: q, total, correct, rate, gradedCount };
   });
+
+  // 每個 response 的簡答題批改狀態（判斷待批改 badge）
+  const essayStatusByResponseId = new Map<number, { hasEssay: boolean; hasUngradedEssay: boolean }>();
+  for (const a of answers) {
+    const q = questions.find(qq => qq.id === a.questionId);
+    if (!q || q.type !== 'short_answer') {
+      continue;
+    }
+    const entry = essayStatusByResponseId.get(a.responseId) ?? { hasEssay: false, hasUngradedEssay: false };
+    entry.hasEssay = true;
+    const text
+      = typeof a.answer === 'string'
+        ? a.answer
+        : Array.isArray(a.answer)
+          ? a.answer.join(' ')
+          : '';
+    if (!a.gradedAt && text.trim() !== '') {
+      entry.hasUngradedEssay = true;
+    }
+    essayStatusByResponseId.set(a.responseId, entry);
+  }
 
   // 每題選項分佈：{ [questionId]: { [optionId]: count } }
   // single_choice / true_false 的 answer 是單一 option id 字串
@@ -111,20 +138,28 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     .slice(0, 3);
 
   // 給客戶端元件的序列化資料（Date → ISO string）
-  const responseRows: ResponseRow[] = responses.map(r => ({
-    id: r.id,
-    studentName: r.studentName,
-    studentEmail: r.studentEmail,
-    score: r.score,
-    totalPoints: r.totalPoints,
-    leaveCount: r.leaveCount,
-    submittedAt: r.submittedAt.toISOString(),
-  }));
+  const responseRows: ResponseRow[] = responses.map((r) => {
+    const essayStatus = essayStatusByResponseId.get(r.id);
+    return {
+      id: r.id,
+      studentName: r.studentName,
+      studentEmail: r.studentEmail,
+      score: r.score,
+      totalPoints: r.totalPoints,
+      leaveCount: r.leaveCount,
+      submittedAt: r.submittedAt.toISOString(),
+      hasEssay: essayStatus?.hasEssay ?? false,
+      hasUngradedEssay: essayStatus?.hasUngradedEssay ?? false,
+    };
+  });
 
   // 給 AI 分析的題目統計（排除簡答題）
   const aiQuestionStats = questionStats
     .filter(qs => qs.question.type !== 'short_answer' && qs.rate !== null)
     .map(qs => ({ question: qs.question.body, correctRate: qs.rate! }));
+
+  // 該 quiz 是否有任何簡答題（決定是否顯示批改配額 banner）
+  const hasAnyEssay = questions.some(q => q.type === 'short_answer');
 
   // 給答對率表格客戶端元件的序列化資料（去掉 Date）
   const breakdownRows: BreakdownRow[] = questionStats.map(qs => ({
@@ -138,6 +173,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     total: qs.total,
     correct: qs.correct,
     rate: qs.rate,
+    gradedCount: qs.gradedCount,
   }));
 
   return (
@@ -156,6 +192,13 @@ export default async function QuizResultsPage({ params }: { params: { id: string
           <h1 className="text-2xl font-bold">{t('title')}</h1>
         </div>
       </div>
+
+      {/* AI 批改配額狀態（含 Pro 方案時顯示已用份數；Free 時顯示升級 CTA） */}
+      {hasAnyEssay && (
+        <div className="mb-6">
+          <AiQuotaBanner orgId={orgId} feature="essay_grading" />
+        </div>
+      )}
 
       {/* 摘要卡片 */}
       <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-3">

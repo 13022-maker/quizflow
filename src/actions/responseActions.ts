@@ -1,8 +1,10 @@
 'use server';
 
-import { and, count, eq } from 'drizzle-orm';
+import { auth } from '@clerk/nextjs/server';
+import { and, asc, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+import type { EssayGradingResult } from '@/lib/ai/prompts';
 import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
@@ -74,6 +76,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
   // 批改
   let score = 0;
   let totalPoints = 0;
+  let hasUngradedShortAnswer = false;
   const details: SubmitResult['details'] = [];
 
   for (const question of questions) {
@@ -97,15 +100,22 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
       }
     }
 
-    if (!isShortAnswer) {
-      totalPoints += question.points;
-    }
+    // 所有題型的滿分都納入 totalPoints（含簡答題，讓批改前的分母正確）
+    totalPoints += question.points;
+
     if (isCorrect === true) {
       score += question.points;
     }
 
+    if (isShortAnswer && studentAnswer !== undefined && String(studentAnswer).trim() !== '') {
+      hasUngradedShortAnswer = true;
+    }
+
     details.push({ questionId: question.id, isCorrect, points: question.points });
   }
+
+  // 若含待批改的簡答題，score 先記為 null（等 AI / 老師批改後由 recomputeResponseScore 回填）
+  const finalScore = hasUngradedShortAnswer ? null : score;
 
   // 寫入 response
   const [inserted] = await db
@@ -114,7 +124,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
       quizId,
       studentName: studentName || null,
       studentEmail: studentEmail || null,
-      score,
+      score: finalScore,
       totalPoints,
       leaveCount: leaveCount ?? 0,
     })
@@ -141,5 +151,227 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     await db.insert(answerSchema).values(answerRows);
   }
 
-  return { responseId: inserted.id, score, totalPoints, details };
+  return { responseId: inserted.id, score: finalScore ?? 0, totalPoints, details };
+}
+
+/**
+ * 重新計算單一 response 的 score
+ * - 非簡答題：依 isCorrect × question.points
+ * - 簡答題：依 answer.points（AI/老師批改後寫入）
+ * - 若仍有尚未批改（gradedAt=null 且有作答）的簡答題，score 保持 null
+ */
+export async function recomputeResponseScore(responseId: number): Promise<void> {
+  const rows = await db
+    .select({
+      questionId: answerSchema.questionId,
+      questionType: questionSchema.type,
+      questionPoints: questionSchema.points,
+      answerText: answerSchema.answer,
+      isCorrect: answerSchema.isCorrect,
+      answerPoints: answerSchema.points,
+      gradedAt: answerSchema.gradedAt,
+    })
+    .from(answerSchema)
+    .innerJoin(questionSchema, eq(answerSchema.questionId, questionSchema.id))
+    .where(eq(answerSchema.responseId, responseId));
+
+  let score = 0;
+  let hasUngraded = false;
+
+  for (const row of rows) {
+    if (row.questionType === 'short_answer') {
+      const studentText
+        = typeof row.answerText === 'string'
+          ? row.answerText
+          : Array.isArray(row.answerText)
+            ? row.answerText.join(' ')
+            : '';
+      if (!row.gradedAt && studentText.trim() !== '') {
+        hasUngraded = true;
+        continue;
+      }
+      score += row.answerPoints ?? 0;
+    } else if (row.isCorrect === true) {
+      score += row.questionPoints;
+    }
+  }
+
+  await db
+    .update(responseSchema)
+    .set({ score: hasUngraded ? null : score })
+    .where(eq(responseSchema.id, responseId));
+}
+
+export type ResponseDetail = {
+  response: {
+    id: number;
+    quizId: number;
+    studentName: string | null;
+    studentEmail: string | null;
+    score: number | null;
+    totalPoints: number | null;
+    submittedAt: string;
+  };
+  items: Array<{
+    answerId: number;
+    questionId: number;
+    position: number;
+    questionBody: string;
+    questionType: string;
+    questionPoints: number;
+    options: { id: string; text: string }[] | null;
+    correctAnswers: string[] | null;
+    studentAnswer: string | string[];
+    isCorrect: boolean | null;
+    // 申論題批改狀態
+    awardedPoints: number | null;
+    aiGrading: EssayGradingResult | null;
+    teacherFeedback: string | null;
+    gradedAt: string | null;
+    gradedBy: string | null;
+  }>;
+};
+
+/**
+ * 取得單一 response 的完整作答內容（老師成績詳細檢視用）
+ * 驗證 quiz.ownerId === orgId 做多租戶隔離
+ */
+export async function getResponseDetail(
+  responseId: number,
+): Promise<ResponseDetail | null> {
+  const { orgId } = await auth();
+  if (!orgId) {
+    return null;
+  }
+
+  const [responseRow] = await db
+    .select({
+      id: responseSchema.id,
+      quizId: responseSchema.quizId,
+      studentName: responseSchema.studentName,
+      studentEmail: responseSchema.studentEmail,
+      score: responseSchema.score,
+      totalPoints: responseSchema.totalPoints,
+      submittedAt: responseSchema.submittedAt,
+      ownerId: quizSchema.ownerId,
+    })
+    .from(responseSchema)
+    .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
+    .where(eq(responseSchema.id, responseId))
+    .limit(1);
+
+  if (!responseRow || responseRow.ownerId !== orgId) {
+    return null;
+  }
+
+  const rows = await db
+    .select({
+      answerId: answerSchema.id,
+      questionId: answerSchema.questionId,
+      studentAnswer: answerSchema.answer,
+      isCorrect: answerSchema.isCorrect,
+      awardedPoints: answerSchema.points,
+      aiGrading: answerSchema.aiGrading,
+      teacherFeedback: answerSchema.teacherFeedback,
+      gradedAt: answerSchema.gradedAt,
+      gradedBy: answerSchema.gradedBy,
+      questionBody: questionSchema.body,
+      questionType: questionSchema.type,
+      questionPoints: questionSchema.points,
+      position: questionSchema.position,
+      options: questionSchema.options,
+      correctAnswers: questionSchema.correctAnswers,
+    })
+    .from(answerSchema)
+    .innerJoin(questionSchema, eq(answerSchema.questionId, questionSchema.id))
+    .where(eq(answerSchema.responseId, responseId))
+    .orderBy(asc(questionSchema.position));
+
+  return {
+    response: {
+      id: responseRow.id,
+      quizId: responseRow.quizId,
+      studentName: responseRow.studentName,
+      studentEmail: responseRow.studentEmail,
+      score: responseRow.score,
+      totalPoints: responseRow.totalPoints,
+      submittedAt: responseRow.submittedAt.toISOString(),
+    },
+    items: rows.map(r => ({
+      answerId: r.answerId,
+      questionId: r.questionId,
+      position: r.position,
+      questionBody: r.questionBody,
+      questionType: r.questionType,
+      questionPoints: r.questionPoints,
+      options: r.options,
+      correctAnswers: r.correctAnswers,
+      studentAnswer: r.studentAnswer,
+      isCorrect: r.isCorrect,
+      awardedPoints: r.awardedPoints,
+      aiGrading: r.aiGrading,
+      teacherFeedback: r.teacherFeedback,
+      gradedAt: r.gradedAt ? r.gradedAt.toISOString() : null,
+      gradedBy: r.gradedBy,
+    })),
+  };
+}
+
+/**
+ * 列出某 quiz 所有 response 的「待批改」狀態（用於列表頁 badge）
+ * 多租戶：orgId 驗證透過呼叫端的 quiz 擁有權檢查
+ */
+export async function listResponseGradingStatus(
+  quizId: number,
+): Promise<Array<{ responseId: number; hasUngradedEssay: boolean; hasEssay: boolean }>> {
+  const { orgId } = await auth();
+  if (!orgId) {
+    return [];
+  }
+
+  const [quiz] = await db
+    .select({ ownerId: quizSchema.ownerId })
+    .from(quizSchema)
+    .where(eq(quizSchema.id, quizId))
+    .limit(1);
+
+  if (!quiz || quiz.ownerId !== orgId) {
+    return [];
+  }
+
+  const rows = await db
+    .select({
+      responseId: answerSchema.responseId,
+      questionType: questionSchema.type,
+      studentAnswer: answerSchema.answer,
+      gradedAt: answerSchema.gradedAt,
+    })
+    .from(answerSchema)
+    .innerJoin(questionSchema, eq(answerSchema.questionId, questionSchema.id))
+    .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
+    .where(eq(responseSchema.quizId, quizId));
+
+  const byResponse = new Map<number, { hasUngradedEssay: boolean; hasEssay: boolean }>();
+  for (const r of rows) {
+    if (r.questionType !== 'short_answer') {
+      continue;
+    }
+    const current = byResponse.get(r.responseId) ?? { hasUngradedEssay: false, hasEssay: false };
+    current.hasEssay = true;
+    const text
+      = typeof r.studentAnswer === 'string'
+        ? r.studentAnswer
+        : Array.isArray(r.studentAnswer)
+          ? r.studentAnswer.join(' ')
+          : '';
+    if (!r.gradedAt && text.trim() !== '') {
+      current.hasUngradedEssay = true;
+    }
+    byResponse.set(r.responseId, current);
+  }
+
+  return Array.from(byResponse.entries()).map(([responseId, v]) => ({
+    responseId,
+    ...v,
+  }));
 }
