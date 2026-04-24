@@ -117,6 +117,27 @@ export function TemplateB({ data }: { data: DashboardData }) {
         </Link>
       </div>
 
+      {/* 課堂即時回饋（與測驗無關，課中互動用） */}
+      <div className="mx-4 mb-8">
+        <Link
+          href="/dashboard/reactions"
+          className="group flex items-center gap-4 rounded-xl border-2 border-transparent bg-gradient-to-r from-pink-50 via-rose-50 to-amber-50 p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-rose-200 hover:shadow-md"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-2xl">
+            🎉
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-bold text-foreground">課堂即時回饋</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+              開頻道給學生匿名按 emoji，秒知道誰跟不上（不限測驗、可實體 / 線上課）
+            </p>
+          </div>
+          <svg className="size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+      </div>
+
       {/* Horizontal Stats Strip */}
       <div className="mx-4 mb-8 grid grid-cols-3 divide-x overflow-hidden rounded-xl border bg-card shadow-sm">
         <StatBlock value={String(data.totalQuizCount)} label="測驗總數" />
