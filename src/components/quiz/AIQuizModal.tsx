@@ -492,11 +492,15 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
         {/* ── Header ── */}
         <div className="flex shrink-0 items-center justify-between px-5 pb-3 pt-5">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🤖</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-xl shadow-md shadow-amber-200/60">
+              🤖
+            </div>
             <div>
-              <h2 className="text-base font-bold leading-tight text-gray-900">AI 出題</h2>
-              <p className="text-xs text-gray-400">自動生成試卷，省時省力</p>
+              <h2 className="text-base font-bold leading-tight">
+                <span className="bg-gradient-to-r from-amber-600 to-amber-800 bg-clip-text text-transparent">AI 出題</span>
+              </h2>
+              <p className="text-xs text-gray-500">自動生成試卷，省時省力</p>
             </div>
           </div>
           <button
@@ -590,13 +594,14 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">
                   ✨ 快速範例（點選即可套用）
                 </p>
-                <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {/* 改 flex-wrap：手機自動換行，避免最後一個 chip 被橫向截斷 */}
+                <div className="flex flex-wrap gap-2">
                   {TEMPLATES.map(tpl => (
                     <button
                       key={tpl.label}
                       type="button"
                       onClick={() => applyTemplate(tpl)}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-all hover:border-amber-400 hover:bg-amber-100"
+                      className="flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 transition-all hover:-translate-y-0.5 hover:border-amber-400 hover:bg-amber-100 hover:shadow-sm"
                     >
                       <span className="text-sm">{tpl.emoji}</span>
                       {tpl.label}
@@ -884,7 +889,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
               選擇題型（可複選）
             </label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {QUESTION_TYPES.map((t) => {
                 const checked = types.includes(t.value);
                 // 聽力題選中時，其他題型按鈕 disabled；其他題型選中時，聽力題按鈕 disabled
@@ -897,12 +902,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                     key={t.value}
                     onClick={() => toggleType(t.value)}
                     disabled={disabled}
-                    className={`flex items-center gap-3 rounded-xl border-2 p-3 text-left transition-all ${
+                    className={`flex items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all sm:gap-3 sm:p-3 ${
                       checked
-                        ? 'border-amber-400 bg-amber-50'
+                        ? 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
                         : disabled
                           ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-40'
-                          : 'border-gray-200 hover:border-amber-300'
+                          : 'border-gray-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md'
                     }`}
                   >
                     <div className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors ${
@@ -911,10 +916,11 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                     >
                       {checked && '✓'}
                     </div>
-                    <span className="text-lg">{t.emoji}</span>
-                    <div>
-                      <p className="text-sm font-bold leading-tight text-gray-800">{t.label}</p>
-                      <p className="text-xs text-gray-400">{t.sub}</p>
+                    <span className="shrink-0 text-lg">{t.emoji}</span>
+                    {/* min-w-0 + break-keep 防止 Chinese label 被切成單字一行 */}
+                    <div className="min-w-0 flex-1">
+                      <p className="break-keep text-sm font-bold leading-tight text-gray-800">{t.label}</p>
+                      <p className="break-keep text-xs text-gray-400">{t.sub}</p>
                     </div>
                   </button>
                 );
@@ -923,7 +929,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           </div>
 
           {/* ── Count + Difficulty ── */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* 手機 < 640px 上下堆疊，避免 slider 數字徽章與右欄按鈕擠壓重疊 */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
@@ -936,9 +943,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   max={maxCount}
                   value={effectiveCount}
                   onChange={e => setCount(Number(e.target.value))}
-                  className="h-1.5 flex-1 accent-amber-500"
+                  className="h-2 flex-1 accent-amber-500"
                 />
-                <span className="w-6 text-center text-lg font-bold tabular-nums text-amber-600">
+                <span className="inline-flex min-w-[2.5rem] items-center justify-center rounded-lg bg-amber-50 px-2 py-1 text-base font-bold tabular-nums text-amber-600">
                   {effectiveCount}
                 </span>
               </div>
@@ -951,14 +958,14 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
                 難度等級
               </label>
-              <div className="flex gap-1">
+              <div className="flex gap-1.5">
                 {DIFFICULTIES.map(d => (
                   <button
                     key={d.value}
                     onClick={() => setDifficulty(d.value)}
                     className={`flex-1 rounded-lg border-2 py-2 text-xs font-bold transition-all ${
                       difficulty === d.value
-                        ? 'border-gray-900 bg-gray-900 text-white'
+                        ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
                         : 'border-gray-200 text-gray-600 hover:border-gray-400'
                     }`}
                   >
@@ -1023,12 +1030,11 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 <button
                   onClick={generate}
                   disabled={!canGenerate || loading || ttsGenerating}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold text-white transition-all disabled:cursor-not-allowed"
-                  style={{
-                    background: (!canGenerate || loading)
-                      ? '#d1d5db'
-                      : 'linear-gradient(135deg, #f59e0b, #d97706)',
-                  }}
+                  className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold text-white transition-all disabled:cursor-not-allowed ${
+                    (!canGenerate || loading)
+                      ? 'bg-gray-300'
+                      : 'animate-gradient-shift bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 bg-[length:200%_auto] shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40'
+                  }`}
                 >
                   {loading
                     ? (
@@ -1058,8 +1064,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   </button>
                   <button
                     onClick={() => onImport(result.questions, result.title)}
-                    className="flex-[2] rounded-2xl py-3 text-sm font-bold text-white transition-all"
-                    style={{ background: 'linear-gradient(135deg, #1f2937, #374151)' }}
+                    className="flex-[2] rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                   >
                     ✓ 匯入
                     {' '}
