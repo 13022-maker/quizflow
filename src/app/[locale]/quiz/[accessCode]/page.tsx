@@ -1,10 +1,37 @@
 import { asc, eq } from 'drizzle-orm';
+import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { VocabTaker } from '@/features/quiz/VocabTaker';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
+
+// 學生作答頁底部品牌 + 註冊 CTA（病毒迴圈入口）
+// 學生看到後可知道：這是 QuizFlow → 老師也能免費建測驗 → 可能自己變老師
+function StudentFooter() {
+  return (
+    <footer className="mt-8 border-t border-border/50 pb-12 pt-6 text-center text-xs text-muted-foreground">
+      <p>
+        由
+        {' '}
+        <Link href="/" className="font-semibold text-primary hover:underline">
+          QuizFlow
+        </Link>
+        {' '}
+        提供，老師出題平台
+      </p>
+      <p className="mt-2">
+        <Link
+          href="/sign-up?ref=student-footer"
+          className="text-primary hover:underline"
+        >
+          你也想出題給學生？免費建立你的第一份測驗 →
+        </Link>
+      </p>
+    </footer>
+  );
+}
 
 export async function generateMetadata({ params }: { params: { accessCode: string } }) {
   const [quiz] = await db
@@ -20,34 +47,9 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   const t = await getTranslations('QuizTake');
 
   // 依 accessCode 查詢測驗（只顯示已發佈的）
+  // 用全欄位 select 避免 schema 擴充時 Taker 元件型別不符（PR #27 加了 publisher 欄位）
   const [quiz] = await db
-    .select({
-      id: quizSchema.id,
-      ownerId: quizSchema.ownerId,
-      title: quizSchema.title,
-      description: quizSchema.description,
-      accessCode: quizSchema.accessCode,
-      roomCode: quizSchema.roomCode,
-      status: quizSchema.status,
-      showAnswers: quizSchema.showAnswers,
-      shuffleQuestions: quizSchema.shuffleQuestions,
-      shuffleOptions: quizSchema.shuffleOptions,
-      preventLeave: quizSchema.preventLeave,
-      timeLimitSeconds: quizSchema.timeLimitSeconds,
-      allowedAttempts: quizSchema.allowedAttempts,
-      expiresAt: quizSchema.expiresAt,
-      scoringMode: quizSchema.scoringMode,
-      attemptDecayRate: quizSchema.attemptDecayRate,
-      quizMode: quizSchema.quizMode,
-      isMarketplace: quizSchema.isMarketplace,
-      category: quizSchema.category,
-      gradeLevel: quizSchema.gradeLevel,
-      tags: quizSchema.tags,
-      copyCount: quizSchema.copyCount,
-      originalQuizId: quizSchema.originalQuizId,
-      createdAt: quizSchema.createdAt,
-      updatedAt: quizSchema.updatedAt,
-    })
+    .select()
     .from(quizSchema)
     .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
@@ -96,6 +98,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       <div className="min-h-screen bg-gradient-to-b from-amber-50/80 via-white to-orange-50/50 pb-24 pt-10 md:py-16 md:pb-24">
         <div className="mx-auto max-w-2xl px-4">
           <VocabTaker quiz={quiz} questions={questions} />
+          <StudentFooter />
         </div>
       </div>
     );
@@ -105,6 +108,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
     <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-emerald-50/30 pb-24 pt-10 md:py-16 md:pb-24">
       <div className="mx-auto max-w-2xl px-4">
         <QuizTaker quiz={quiz} questions={questions} />
+        <StudentFooter />
       </div>
     </div>
   );
