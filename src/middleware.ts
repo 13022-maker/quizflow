@@ -50,6 +50,9 @@ const isOptionalAuthRoute = createRouteMatcher([
   // 監考牆 Ably token：host 要 Clerk 驗 orgId、student 用 studentToken 驗身分
   '/api/quiz/(.*)/ably-auth',
   '/:locale/api/quiz/(.*)/ably-auth',
+  // 課堂 Emoji 回饋 token：host 要 Clerk 驗 orgId、student 完全匿名
+  '/api/reactions/token',
+  '/:locale/api/reactions/token',
 ]);
 
 const isProtectedRoute = createRouteMatcher([
