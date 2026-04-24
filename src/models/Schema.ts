@@ -95,6 +95,34 @@ export const quizSchema = pgTable('quiz', {
   tags: jsonb('tags').$type<string[]>(),
   copyCount: integer('copy_count').default(0).notNull(),
   originalQuizId: integer('original_quiz_id'),
+  // 書商專區（Phase 2）：標註此測驗屬於哪家出版商 + 書本章節元資料，供 marketplace 認證徽章 / 搜尋使用
+  publisherId: integer('publisher_id'), // FK → publisher.id（nullable：一般老師測驗無 publisher）
+  isbn: text('isbn'),
+  chapter: text('chapter'), // 例：「第三課 光合作用」
+  bookTitle: text('book_title'),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// ---------- publishers（書商 / 教材出版商） ----------
+// 用於 marketplace 品牌認證與批次出題綁定；一個 Clerk Organization 對應一筆 publisher
+// verifiedStatus 由管理員（VIP_EMAILS）人工審核，認證後可在 marketplace / 學生頁顯示徽章
+
+export const publisherSchema = pgTable('publisher', {
+  id: serial('id').primaryKey(),
+  orgId: text('org_id').notNull().unique(), // Clerk organization ID
+  displayName: text('display_name').notNull(), // 例：南一書局 / 翰林出版
+  slug: text('slug').notNull().unique(), // URL-safe，例：nani / hanlin
+  logoUrl: text('logo_url'),
+  bio: text('bio'),
+  websiteUrl: text('website_url'),
+  verifiedStatus: text('verified_status').default('pending').notNull(), // pending / verified / rejected
+  verifiedAt: timestamp('verified_at', { mode: 'date' }),
+  contactEmail: text('contact_email'),
+  taxId: text('tax_id'), // 統一編號
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())

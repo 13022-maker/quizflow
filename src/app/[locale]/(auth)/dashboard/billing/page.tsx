@@ -21,7 +21,7 @@ export default async function BillingPage() {
 
   const planId = await getOrgPlanId(orgId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
-  const isPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE;
+  const isPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER;
   const aiUsage = await getAiUsageRemaining(orgId);
 
   return (
@@ -37,9 +37,11 @@ export default async function BillingPage() {
               <p className="mt-1 text-2xl font-bold">
                 {planId === PLAN_ID.ENTERPRISE
                   ? '學校方案'
-                  : isPro
-                    ? 'Pro 老師'
-                    : '免費版'}
+                  : planId === PLAN_ID.PUBLISHER
+                    ? '書商方案'
+                    : isPro
+                      ? 'Pro 老師'
+                      : '免費版'}
               </p>
             </div>
             <div className="text-right">
@@ -123,7 +125,13 @@ export default async function BillingPage() {
                 <p className="mb-4 text-sm text-muted-foreground">
                   你目前使用的是
                   {' '}
-                  <strong>{planId === PLAN_ID.ENTERPRISE ? '學校方案' : 'Pro 老師'}</strong>
+                  <strong>
+                    {planId === PLAN_ID.ENTERPRISE
+                      ? '學校方案'
+                      : planId === PLAN_ID.PUBLISHER
+                        ? '書商方案'
+                        : 'Pro 老師'}
+                  </strong>
                   {' '}
                   方案。
                 </p>

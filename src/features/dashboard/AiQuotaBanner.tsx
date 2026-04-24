@@ -23,7 +23,7 @@ export async function AiQuotaBanner({ orgId }: Props) {
 
   const planId = await getOrgPlanId(orgId);
   // 付費方案不顯示
-  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE) {
+  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return null;
   }
 

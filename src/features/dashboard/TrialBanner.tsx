@@ -17,7 +17,7 @@ type Props = {
 export async function TrialBanner({ clerkUserId, orgId }: Props) {
   // 已付費用戶不顯示試用 banner（無 orgId 時也用空字串走 user-level 查詢）
   const planId = await getOrgPlanId(orgId ?? '');
-  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE) {
+  if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return null;
   }
 

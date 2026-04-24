@@ -2,16 +2,19 @@ import { useTranslations } from 'next-intl';
 
 import { PricingCard } from '@/features/billing/PricingCard';
 import { PricingFeature } from '@/features/billing/PricingFeature';
-import { PricingPlanList } from '@/utils/AppConfig';
+import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
 export const PricingInformation = (props: {
   buttonList: Record<string, React.ReactNode>;
 }) => {
   const t = useTranslations('PricingPlan');
 
+  // 書商方案（publisher）非自助購買，走 sales 流程，不顯示於公開定價頁
+  const publicPlans = Object.values(PricingPlanList).filter(plan => plan.id !== PLAN_ID.PUBLISHER);
+
   return (
     <div className="grid grid-cols-1 gap-x-6 gap-y-8 md:grid-cols-3">
-      {Object.values(PricingPlanList).map(plan => (
+      {publicPlans.map(plan => (
         <PricingCard
           key={plan.id}
           planId={plan.id}

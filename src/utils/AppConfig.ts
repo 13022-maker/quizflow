@@ -20,6 +20,7 @@ export const PLAN_ID = {
   FREE: 'free',
   PREMIUM: 'premium',
   ENTERPRISE: 'enterprise',
+  PUBLISHER: 'publisher', // 書商專區：批次出題 + 品牌露出
 } as const;
 
 export const VIP_EMAILS = new Set([
@@ -61,6 +62,19 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       storage: 10,
       transfer: 0,
       aiQuota: 999, // 學校方案無限 AI 出題
+    },
+  },
+  [PLAN_ID.PUBLISHER]: {
+    id: PLAN_ID.PUBLISHER,
+    price: 990, // 書商方案：NT$990/月（年繳 NT$9,900），位於 Pro 與 Enterprise 之間
+    interval: BILLING_INTERVAL.MONTH,
+    features: {
+      teamMember: 5, // 書商編輯席次（小型編輯團隊）
+      website: 999, // 無限測驗
+      storage: 20,
+      transfer: 0,
+      aiQuota: 999, // 無限 AI 出題
+      batchQuota: 200, // 每月最多 200 題批次出題
     },
   },
 };
