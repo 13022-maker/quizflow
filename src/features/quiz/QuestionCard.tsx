@@ -7,6 +7,7 @@ import { useState } from 'react';
 
 import type { questionSchema } from '@/models/Schema';
 
+import { EssayRubricEditor } from './EssayRubricEditor';
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
 
 type Question = InferSelectModel<typeof questionSchema>;
@@ -14,13 +15,14 @@ type Question = InferSelectModel<typeof questionSchema>;
 type Props = {
   question: Question;
   index: number;
+  quizId: number;
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
   onAudioRegenerated?: (questionId: number, audioUrl: string) => void;
 };
 
-export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, onAudioRegenerated }: Props) {
+export function QuestionCard({ question, index, quizId, onEdit, onDelete, isDeleting, onAudioRegenerated }: Props) {
   const {
     attributes,
     listeners,
@@ -166,6 +168,14 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
               </span>
             )}
           </p>
+        )}
+
+        {question.type === 'short_answer' && (
+          <EssayRubricEditor
+            questionId={question.id}
+            quizId={quizId}
+            initialRubric={question.rubric}
+          />
         )}
       </div>
 

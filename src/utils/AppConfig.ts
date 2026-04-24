@@ -37,6 +37,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       storage: 0,
       transfer: 0,
       aiQuota: 10, // 免費用戶每月 10 次 AI 出題
+      essayGradingQuota: 0, // 免費方案不開放 AI 批改
     },
   },
   [PLAN_ID.PREMIUM]: {
@@ -49,6 +50,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       storage: 1,
       transfer: 0,
       aiQuota: 999, // Pro 無限 AI 出題
+      essayGradingQuota: 500, // Pro 每月 500 份 AI 批改
     },
   },
   [PLAN_ID.ENTERPRISE]: {
@@ -61,6 +63,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       storage: 10,
       transfer: 0,
       aiQuota: 999, // 學校方案無限 AI 出題
+      essayGradingQuota: 999, // Enterprise 無限 AI 批改
     },
   },
 };
