@@ -167,6 +167,14 @@ export const responseSchema = pgTable('response', {
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
   studentName: text('student_name'), // 學生自填，可為空
   studentEmail: text('student_email'), // 學生自填，可為空
+  // 即時監考用：進頁面即建 row + 生成 token，localStorage 持久化學生身分
+  // null = 舊流程（submit 時才建 row，無 token）
+  studentToken: text('student_token').unique(),
+  // 監考牆看「目前作答到第幾題」，每次答題更新；-1 = 尚未開始答題
+  lastAnsweredQuestionIndex: integer('last_answered_question_index').default(-1).notNull(),
+  // in_progress = 作答中（監考牆顯示）；submitted = 已提交（計分完成）；default 為 submitted 以相容既有 row
+  status: text('status', { enum: ['in_progress', 'submitted'] }).default('submitted').notNull(),
+  startedAt: timestamp('started_at', { mode: 'date' }).defaultNow().notNull(),
   score: integer('score'), // 計算後寫入（null = 含簡答題，未完整批改）
   totalPoints: integer('total_points'), // 滿分（不含簡答題）
   leaveCount: integer('leave_count').default(0).notNull(), // 考試防作弊：學生離開頁面次數

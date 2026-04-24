@@ -20,34 +20,9 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   const t = await getTranslations('QuizTake');
 
   // 依 accessCode 查詢測驗（只顯示已發佈的）
+  // 用全欄位 select 避免 schema 擴充時 QuizTaker / VocabTaker 需要但此處漏選
   const [quiz] = await db
-    .select({
-      id: quizSchema.id,
-      ownerId: quizSchema.ownerId,
-      title: quizSchema.title,
-      description: quizSchema.description,
-      accessCode: quizSchema.accessCode,
-      roomCode: quizSchema.roomCode,
-      status: quizSchema.status,
-      showAnswers: quizSchema.showAnswers,
-      shuffleQuestions: quizSchema.shuffleQuestions,
-      shuffleOptions: quizSchema.shuffleOptions,
-      preventLeave: quizSchema.preventLeave,
-      timeLimitSeconds: quizSchema.timeLimitSeconds,
-      allowedAttempts: quizSchema.allowedAttempts,
-      expiresAt: quizSchema.expiresAt,
-      scoringMode: quizSchema.scoringMode,
-      attemptDecayRate: quizSchema.attemptDecayRate,
-      quizMode: quizSchema.quizMode,
-      isMarketplace: quizSchema.isMarketplace,
-      category: quizSchema.category,
-      gradeLevel: quizSchema.gradeLevel,
-      tags: quizSchema.tags,
-      copyCount: quizSchema.copyCount,
-      originalQuizId: quizSchema.originalQuizId,
-      createdAt: quizSchema.createdAt,
-      updatedAt: quizSchema.updatedAt,
-    })
+    .select()
     .from(quizSchema)
     .where(eq(quizSchema.accessCode, params.accessCode))
     .limit(1);
