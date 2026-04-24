@@ -137,7 +137,46 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 STRIPE_SECRET_KEY=any_fake_value
 # ANTHROPIC_API_KEY= （analyze-weak-points / analyze-class-performance 需要）
+# ABLY_API_KEY= （Live Mode 即時通訊，未設時 publish 會 no-op）
+# NEXT_PUBLIC_ABLY_ENV_PREFIX=local （channel 命名前綴，dev/preview/prod 隔離）
 ```
+
+## Live Mode 實作約定（重要）
+
+Live Mode 即時通訊走 **Ably**（Pub/Sub），**不要回頭用 polling**。
+
+**核心原則**：
+- **Client 只 subscribe**，所有 publish 在 server 端走 REST 完成，避免偽造
+- **Server publish 必須 `await` 完成才 return**（Vercel serverless return 後 instance 會凍結，fire-and-forget IIFE 會掉訊息）
+- **Token capability 僅 subscribe**，`/api/ably/token` 區分 host（Clerk orgId 驗）與 player（playerToken 驗）
+- **Channel 命名加 env prefix**：`live:${NEXT_PUBLIC_ABLY_ENV_PREFIX}:game:${gameId}` 跨環境隔離
+
+**事件一覽**（payload 型別都在 `src/services/live/types.ts`）：
+
+| Channel | 事件 | 誰發 |
+|---|---|---|
+| `live:{env}:game:{gameId}` | `quiz:start` / `question:next` / `question:result` / `game:finished` / `leaderboard:update` | server（actions + answer route）|
+| `live:{env}:game:{gameId}:player:{playerId}` | `answer:submitted` | server（answer route）|
+
+**效能設計**：
+- **倒數計時**：`useCountdown` 用 `startAt` + `duration` 本地計算，**不走 Ably tick**
+- **排行榜節流**：DB-level `last_leaderboard_publish_at` conditional UPDATE，1s 內 coalesce；階段轉換繞過節流 flush
+- **Optimistic UI**：學生送答**不等 fetch**，UI 立刻鎖住，失敗再 revert
+- **Player phase event**：`quiz:start` / `question:next` / `question:result` **用 payload 直接 reduce state**，不 re-hydrate；`game:finished` 例外（payload 缺 correctCount）
+- **斷線重連**：`channel.on('attached')` 非首次觸發時呼叫 `hydrate()` 補漏
+
+**防禦性**：
+- `getLiveQuestions` 對 `true_false` 題 options 空時自動補 `[{id:'tf-true'},{id:'tf-false'}]`
+- `recordAnswer` timeout 判斷加 500ms grace period 吸收網路 RTT
+- `recordAnswer` 用 `db.transaction()` 包 insert + update，避免「答題寫入但分數沒累加」
+- `recordAnswer` 有 `console.warn('[recordAnswer]', ...)` 診斷 log，批改異常可查 Vercel function log
+
+**相關檔案**：
+- `src/libs/ably/{channels,server,client}.ts` — Ably 基礎設施
+- `src/app/api/ably/token/route.ts` — Token 簽發
+- `src/services/live/{realtimeAdapter,liveStore,types,scoring}.ts` — Live Mode 核心
+- `src/actions/liveActions.ts` — startGame / nextQuestion / showResult / endGame
+- `src/hooks/useLive{Host,Player}Game.ts` + `useCountdown.ts`
 
 ## 已修復的問題（Bug Fix 記錄）
 
@@ -204,7 +243,7 @@ STRIPE_SECRET_KEY=any_fake_value
 1. **Paddle production 上線**（階段 2）：production env 補上 PADDLE_* 變數、webhook destination 改回 `https://quizflow-psi.vercel.app/api/webhook`、merge `feature/paddle-sandbox` → main
 2. 免費試用機制（Pro 功能 30 天體驗，到期自動降級）
 3. 多語系擴展（日語、韓語、英語、簡體中文）
-4. 遊戲化測驗（WebSocket 即時競賽、排行榜、積分系統）
+4. 遊戲化測驗（Ably Live Mode 已完成，見「Live Mode 實作約定」；可延伸：排行榜常駐、積分系統、歷史戰績）
 5. Playwright E2E 測試覆蓋核心流程
 
 ## 技術債與技術決策
