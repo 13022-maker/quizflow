@@ -507,7 +507,8 @@ function ResultScreen({
       ${questionsHtml}
       ${weakHtml}
       ${vocabHtml}
-      <p style="text-align:center;margin-top:32px;color:#aaa;font-size:12px">由 QuizFlow 生成</p>
+      <p style="text-align:center;margin-top:32px;color:#aaa;font-size:12px">由 <a href="https://quizflow-psi.vercel.app/?ref=report-footer" style="color:#4f46e5;text-decoration:none">QuizFlow</a> 生成</p>
+      <p style="text-align:center;margin-top:4px;color:#888;font-size:13px">想為學生建立這樣的測驗？<a href="https://quizflow-psi.vercel.app/sign-up?ref=report" style="color:#4f46e5;font-weight:600;text-decoration:none">免費開始 →</a></p>
       </body></html>`;
 
     const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
@@ -654,6 +655,27 @@ function ResultScreen({
           >
             📄 下載學習報告
           </button>
+        </div>
+      </div>
+
+      {/* 學生轉老師 CTA（病毒迴圈：作答完成當下最佳轉化時機） */}
+      <div className="rounded-2xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/5 p-6 shadow-sm">
+        <div className="flex items-start gap-4">
+          <span className="text-3xl" aria-hidden>✨</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-primary">你也是老師嗎？</p>
+            <h3 className="mt-1 text-lg font-bold">免費建立你自己的測驗</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              10 份測驗 + AI 自動出題通通免費，學生掃 QR 就能作答、自動批改、報表一次搞定
+            </p>
+            <a
+              href="/sign-up?ref=student-result"
+              className="mt-3 inline-flex items-center gap-1 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+            >
+              3 分鐘建立我的第一份測驗
+              <span aria-hidden>→</span>
+            </a>
+          </div>
         </div>
       </div>
 
