@@ -5,18 +5,17 @@
 
 import Link from 'next/link';
 
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { getTrialStatus } from '@/libs/trial';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 type Props = {
   clerkUserId: string;
-  orgId: string | null | undefined;
 };
 
-export async function TrialBanner({ clerkUserId, orgId }: Props) {
-  // 已付費用戶不顯示試用 banner（無 orgId 時也用空字串走 user-level 查詢）
-  const planId = await getOrgPlanId(orgId ?? '');
+export async function TrialBanner({ clerkUserId }: Props) {
+  // 已付費用戶不顯示試用 banner
+  const planId = await getUserPlanId(clerkUserId);
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return null;
   }

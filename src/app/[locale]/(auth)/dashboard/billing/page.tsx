@@ -2,7 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
 import { TitleBar } from '@/features/dashboard/TitleBar';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
 export const dynamic = 'force-dynamic';
@@ -19,7 +19,7 @@ export default async function BillingPage() {
     );
   }
 
-  const planId = await getOrgPlanId(userId);
+  const planId = await getUserPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const isPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER;
   const aiUsage = await getAiUsageRemaining(userId);

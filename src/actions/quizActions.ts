@@ -8,7 +8,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
@@ -65,7 +65,7 @@ export async function createQuiz(data: CreateQuizInput) {
     // VIP 直接跳過 quota 檢查
   } else {
   // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
-    const planId = await getOrgPlanId(userId);
+    const planId = await getUserPlanId(userId);
     const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
     if (quizLimit < 999) {
       const [row] = await db

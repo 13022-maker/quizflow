@@ -125,14 +125,14 @@ export default async function DashboardIndexPage() {
       {/* Pro 試用倒數 / 到期提示 */}
       {userId && (
         <div className="mx-4 mb-4">
-          <TrialBanner clerkUserId={userId} orgId={userId} />
+          <TrialBanner clerkUserId={userId} />
         </div>
       )}
 
       {/* 免費版 AI 額度警示 */}
       {userId && (
         <div className="mx-4 mb-4">
-          <AiQuotaBanner orgId={userId} />
+          <AiQuotaBanner userId={userId} />
         </div>
       )}
 

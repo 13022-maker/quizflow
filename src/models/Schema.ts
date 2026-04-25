@@ -24,6 +24,9 @@ import {
 
 // Need a database for production? Check out https://www.prisma.io/?via=saasboilerplatesrc
 // Tested and compatible with Next.js Boilerplate
+// @deprecated boilerplate 遺留的 Stripe 訂閱表，QuizFlow 已遷移至 Paddle（subscription + paddle_customer）。
+//             無程式碼引用，留著 schema 僅為避免產生 DROP TABLE migration（production 仍有歷史 row）。
+//             待 publisher 重評時（2026-10-25）一併處理。
 export const organizationSchema = pgTable(
   'organization',
   {
@@ -72,7 +75,7 @@ export const quizStatusEnum = pgEnum('quiz_status', [
 
 export const quizSchema = pgTable('quiz', {
   id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(), // Clerk user/org ID
+  ownerId: text('owner_id').notNull(), // Clerk user ID
   title: text('title').notNull(),
   description: text('description'),
   accessCode: text('access_code').unique(), // 8 碼隨機英數字，學生連結用（防猜測）
@@ -108,12 +111,14 @@ export const quizSchema = pgTable('quiz', {
 });
 
 // ---------- publishers（書商 / 教材出版商） ----------
-// 用於 marketplace 品牌認證與批次出題綁定；一個 Clerk Organization 對應一筆 publisher
+// 用於 marketplace 品牌認證與批次出題綁定
 // verifiedStatus 由管理員（VIP_EMAILS）人工審核，認證後可在 marketplace / 學生頁顯示徽章
+// 註：org_id 欄位歷史命名（原綁 Clerk Organization），remove-org 後僅當作識別字串保留，
+//     2026-10-25 重評是否改名 owner_id（與其他表一致）
 
 export const publisherSchema = pgTable('publisher', {
   id: serial('id').primaryKey(),
-  orgId: text('org_id').notNull().unique(), // Clerk organization ID
+  orgId: text('org_id').notNull().unique(), // 識別字串（歷史命名，已脫離 Clerk Org）
   displayName: text('display_name').notNull(), // 例：南一書局 / 翰林出版
   slug: text('slug').notNull().unique(), // URL-safe，例：nani / hanlin
   logoUrl: text('logo_url'),
@@ -262,11 +267,11 @@ export const userTrialSchema = pgTable('user_trial', {
 });
 
 // ---------- ai_usage ----------
-// 記錄每個 org 每月的 AI 出題次數（用於 Free Plan quota 限制）
+// 記錄每個用戶每月的 AI 出題次數（用於 Free Plan quota 限制）
 
 export const aiUsageSchema = pgTable('ai_usage', {
   id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(), // Clerk org ID
+  ownerId: text('owner_id').notNull(), // Clerk user ID
   yearMonth: text('year_month').notNull(), // 格式：'2026-04'
   count: integer('count').default(0).notNull(), // 當月已使用次數
   updatedAt: timestamp('updated_at', { mode: 'date' })
@@ -356,7 +361,7 @@ export const liveGameSchema = pgTable('live_game', {
   quizId: integer('quiz_id')
     .notNull()
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
-  hostOrgId: text('host_org_id').notNull(), // Clerk orgId，多租戶隔離
+  hostOrgId: text('host_org_id').notNull(), // Clerk userId（欄位名待 Phase 3 改 host_user_id），多租戶隔離
   hostUserId: text('host_user_id').notNull(), // Clerk userId
   title: text('title').notNull(),
   gamePin: text('game_pin').notNull().unique(), // 6 碼大寫英數

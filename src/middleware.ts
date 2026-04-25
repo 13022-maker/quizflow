@@ -49,8 +49,6 @@ const isOptionalAuthRoute = createRouteMatcher([
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/:locale/dashboard(.*)',
-  '/onboarding(.*)',
-  '/:locale/onboarding(.*)',
   '/api(.*)',
   '/:locale/api(.*)',
 ]);
@@ -81,22 +79,6 @@ export default function middleware(
           // `unauthenticatedUrl` is needed to avoid error: "Unable to find `next-intl` locale because the middleware didn't run on this request"
           unauthenticatedUrl: signInUrl.toString(),
         });
-      }
-
-      const authObj = await auth();
-
-      if (
-        authObj.userId
-        && !authObj.orgId
-        && req.nextUrl.pathname.includes('/dashboard')
-        && !req.nextUrl.pathname.endsWith('/organization-selection')
-      ) {
-        const orgSelection = new URL(
-          '/onboarding/organization-selection',
-          req.url,
-        );
-
-        return NextResponse.redirect(orgSelection);
       }
 
       // API routes 不經過 intlMiddleware，避免被 i18n 重導向到 /zh/api/...

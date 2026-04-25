@@ -3,7 +3,7 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { aiUsageSchema } from '@/models/Schema';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
@@ -38,7 +38,7 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
   }
 
   // 取得方案
-  const planId = await getOrgPlanId(userId);
+  const planId = await getUserPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const quota = plan.features.aiQuota;
 
@@ -98,7 +98,7 @@ export async function getAiUsageRemaining(userId: string): Promise<{
   used: number;
   remaining: number;
 }> {
-  const planId = await getOrgPlanId(userId);
+  const planId = await getUserPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const quota = plan.features.aiQuota;
 

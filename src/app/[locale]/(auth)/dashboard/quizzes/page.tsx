@@ -9,7 +9,7 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { quizSchema, responseSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -35,7 +35,7 @@ export default async function QuizzesPage() {
       // 並行查詢：測驗清單、方案資訊
       // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
       [planId, quizzes] = await Promise.all([
-        getOrgPlanId(userId),
+        getUserPlanId(userId),
         db.select({
           id: quizSchema.id,
           ownerId: quizSchema.ownerId,

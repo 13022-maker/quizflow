@@ -1,11 +1,11 @@
 /**
  * 方案查詢工具
  *
- * 訂閱資料現在來自 Paddle，由 webhook 寫入 subscription 表（key = clerkUserId）。
- * 注意：QuizFlow 採用 Clerk Organization 作為多租戶 tenant（quiz/quota 以 orgId 為單位），
- * 但訂閱本身是「個人」付費，因此查詢時需要透過 auth() 取得當下 userId。
+ * 訂閱資料來自 Paddle，由 webhook 寫入 subscription 表（key = clerkUserId）。
+ * QuizFlow 已移除 Clerk Organization，所有資源（quiz/quota/subscription）皆以 userId 為單位。
  *
- * 函式簽名（getOrgPlanId(orgId)）保留向後相容，呼叫者不需要改。
+ * 內部以 auth() 取得當下 userId 做查詢；getUserPlanId 的 _userId 參數目前未使用，
+ * 保留作為未來 Team plan 擴展點（屆時可改為「用此 userId 查所屬 team 訂閱」）。
  */
 
 import { auth } from '@clerk/nextjs/server';
@@ -37,20 +37,16 @@ function mapPlan(plan: string): string {
 /**
  * 取得目前登入用戶的方案 ID
  *
- * 目前實作：方案 1（純 user-level 訂閱）— 老師個人付費，自己受惠
- * 短期內 99% 用戶是 1 人 = 1 org，行為等同方案 3
+ * 純 user-level 訂閱：以 auth() 取得當下 userId，查 subscription 表決定方案。
  *
- * TODO（方案 3：Team org-fanout）— 等第一個學校採購（Team plan）時實作：
- *   1. 先用 userId 查當下用戶訂閱 → 若為 PREMIUM/ENTERPRISE 直接回傳
- *   2. 若無，再查 org 內所有 member 的 subscription，
- *      若有任一 member 持有 plan = 'team' 的有效訂閱 → 整 org 視為 ENTERPRISE
- *   3. 否則回傳 FREE
- *   做法：透過 clerkClient().organizations.getOrganizationMembershipList({ organizationId: orgId })
- *   取得所有 userId，再 IN 查 subscription
+ * TODO（Team plan，等第一個學校採購時實作）：
+ *   未來推 Team plan 需自建 team / team_membership 表（已無 Clerk Org 可借用），
+ *   邏輯：先用 userId 查個人訂閱 → 若為 PREMIUM/ENTERPRISE 直接回傳；
+ *   否則查該 user 所屬 team，若 team 有人持 'team' 有效訂閱 → 整 team 視為 ENTERPRISE。
  *
- * 簽名保留 orgId 參數以便未來方案 3 升級不需修改 8 處呼叫。
+ * 參數 _userId 目前未使用（內部以 auth() 取得），保留作未來 Team plan 擴展點。
  */
-export async function getOrgPlanId(_orgId: string): Promise<string> {
+export async function getUserPlanId(_userId: string): Promise<string> {
   const { userId } = await auth();
   if (!userId) {
     return PLAN_ID.FREE;
@@ -81,13 +77,12 @@ export async function getOrgPlanId(_orgId: string): Promise<string> {
  *      lazy init：新用戶首次呼叫時會自動建立試用紀錄
  *   3. 都沒有 → Free
  */
-export async function isProOrAbove(orgId: string): Promise<boolean> {
-  const planId = await getOrgPlanId(orgId);
+export async function isProOrAbove(userId: string): Promise<boolean> {
+  const planId = await getUserPlanId(userId);
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return true;
   }
 
-  const { userId } = await auth();
   if (!userId) {
     return false;
   }

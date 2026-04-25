@@ -9,25 +9,25 @@
 import Link from 'next/link';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 type Props = {
-  orgId: string | null | undefined;
+  userId: string | null | undefined;
 };
 
-export async function AiQuotaBanner({ orgId }: Props) {
-  if (!orgId) {
+export async function AiQuotaBanner({ userId }: Props) {
+  if (!userId) {
     return null;
   }
 
-  const planId = await getOrgPlanId(orgId);
+  const planId = await getUserPlanId(userId);
   // 付費方案不顯示
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
     return null;
   }
 
-  const usage = await getAiUsageRemaining(orgId);
+  const usage = await getAiUsageRemaining(userId);
   if (usage.quota >= 999) {
     return null;
   }

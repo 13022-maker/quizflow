@@ -7,7 +7,7 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { QuizForm } from '@/features/quiz/QuizForm';
 import { QuizLimitWall } from '@/features/quiz/QuizLimitWall';
 import { db } from '@/libs/DB';
-import { getOrgPlanId } from '@/libs/Plan';
+import { getUserPlanId } from '@/libs/Plan';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -27,7 +27,7 @@ export default async function NewQuizPage() {
 
   // 伺服器端先查方案與測驗數量，超過上限就顯示升級牆
   if (userId) {
-    const planId = await getOrgPlanId(userId);
+    const planId = await getUserPlanId(userId);
     const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
 
     if (quizLimit < 999) {
