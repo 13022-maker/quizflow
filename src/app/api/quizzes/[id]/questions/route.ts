@@ -20,6 +20,7 @@ type GeneratedQuestion = {
   explanation?: string;
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題已生成的音檔 URL
+  competencyCode?: string; // 108 新課綱「學習表現」代碼
 };
 
 // 題型對應：AIQuizModal → DB enum
@@ -143,6 +144,7 @@ export async function POST(
       correctAnswers: correctAnswers.length ? correctAnswers : null,
       audioUrl: q.audioUrl || null,
       audioTranscript: q.listeningText || null,
+      competencyCode: q.competencyCode || null,
       points: 1,
       position: nextPosition++,
     };

@@ -33,6 +33,7 @@ const QuestionInputSchema = z.object({
   correctAnswers: z.array(z.string()).optional(),
   points: z.coerce.number().min(1).default(1),
   difficulty: z.coerce.number().int().min(1).max(5).default(3), // 1=最簡單 5=最難（適性測驗用）
+  competencyCode: z.string().max(40).optional().or(z.literal('')), // 108 新課綱學習表現代碼
 });
 
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;
@@ -72,6 +73,7 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     points: parsed.data.points,
     position: nextPosition,
     difficulty: parsed.data.difficulty,
+    competencyCode: parsed.data.competencyCode || null,
   });
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
@@ -102,6 +104,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       correctAnswers: parsed.data.correctAnswers ?? null,
       points: parsed.data.points,
       difficulty: parsed.data.difficulty,
+      competencyCode: parsed.data.competencyCode || null,
     })
     .where(eq(questionSchema.id, id));
 

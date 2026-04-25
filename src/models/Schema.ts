@@ -154,6 +154,8 @@ export const questionSchema = pgTable('question', {
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
   difficulty: integer('difficulty').default(3).notNull(), // 難度 1（最簡單）～ 5（最難），用於自適應測驗
+  // 108 新課綱「學習表現」代碼，例：5-IV-3、a-IV-1（nullable，AI 出題時老師可選填對齊指標）
+  competencyCode: text('competency_code'),
   aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()

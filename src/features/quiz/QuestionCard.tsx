@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
 import { useState } from 'react';
 
+import { findCompetency } from '@/lib/curriculum/codes';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -96,6 +97,22 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
             {' '}
             分
           </span>
+          {(() => {
+            const c = findCompetency(question.competencyCode);
+            if (!c) {
+              return null;
+            }
+            return (
+              <span
+                className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                title={`${c.subject.label} · ${c.strand} · ${c.description}`}
+              >
+                📘
+                {' '}
+                {c.code}
+              </span>
+            );
+          })()}
         </div>
         <p className="line-clamp-2 text-sm">{question.body}</p>
         {question.imageUrl && (

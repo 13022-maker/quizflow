@@ -3,9 +3,12 @@
  *
  * 目前涵蓋：
  * - gradeSpeechPrompt：口說題評分（發音 / 流暢度 / 內容三維度）
+ * - competencyPromptAddon：108 課綱對齊出題附加指令（注入 generate-questions 主 prompt）
  *
  * 後續可逐步把 generate-questions / analyze-weak-points 等 route 內 inline prompt 搬進來
  */
+
+import { findCompetency } from '@/lib/curriculum/codes';
 
 export type SpeechGradingInput = {
   /** 老師設定的題目（口說 prompt） */
@@ -79,4 +82,41 @@ export function whisperLanguageCode(language: SpeechGradingInput['language']): s
     'ko': 'ko',
   };
   return map[language] ?? 'en';
+}
+
+/**
+ * 108 課綱對齊出題附加指令
+ *
+ * 給定學習表現代碼（如 5-IV-3、a-IV-1），回傳一段嵌入主 prompt 的補充指令。
+ * 找不到代碼則回傳空字串（讓主 prompt 不變、安全降級）。
+ *
+ * 設計原則：
+ * - 強調「素養 / 情境題」而非死記硬背，呼應 108 新課綱核心
+ * - 把代碼描述明白寫出，AI 才能對齊；不只是貼一個編號
+ * - 出題時要求把代碼也回填到每題（appendix 欄位）以利老師審題與後續成績分析
+ */
+export function competencyPromptAddon(code: string | null | undefined): string {
+  const competency = findCompetency(code);
+  if (!competency) {
+    return '';
+  }
+  return `
+
+【108 新課綱對齊（重要）】
+本次出題需對齊以下「學習表現」指標：
+- 學科：${competency.subject.label}（${competency.subject.emoji}）
+- 代碼：${competency.code}
+- 主軸：${competency.strand}
+- 學習表現：${competency.description}
+
+請依此指標出題，並遵守：
+1. **素養導向**：題目須結合真實情境（生活、社會、學習場域），避免單純記憶或公式套用
+2. **情境包裝**：以情境短文 / 對話 / 圖表脈絡帶入，學生需「理解情境 → 應用知識 → 產出答案」
+3. **核心素養三面向**（自主行動 / 溝通互動 / 社會參與）至少體現一面向
+4. 每題的 explanation 末尾請加上「對應指標：${competency.code}」字樣，方便老師核對
+
+避免：
+- 純背誦類題目（如「下列何者是…的定義」）
+- 與情境脫鉤的純計算題
+- 只考查單一字詞 / 公式記憶`;
 }

@@ -148,6 +148,13 @@
       "when": 1777084800000,
       "tag": "0020_adaptive_speaking",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1777171200000,
+      "tag": "0021_competency_code",
+      "breakpoints": true
     }
   ]
 }

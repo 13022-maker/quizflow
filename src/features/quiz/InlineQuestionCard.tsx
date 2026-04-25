@@ -6,6 +6,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { useState, useTransition } from 'react';
 
 import { updateQuestion } from '@/actions/questionActions';
+import { findCompetency } from '@/lib/curriculum/codes';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -176,6 +177,22 @@ export function InlineQuestionCard({
             {' '}
             分
           </span>
+          {(() => {
+            const c = findCompetency(question.competencyCode);
+            if (!c) {
+              return null;
+            }
+            return (
+              <span
+                className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700"
+                title={`${c.subject.label} · ${c.strand} · ${c.description}`}
+              >
+                📘
+                {' '}
+                {c.code}
+              </span>
+            );
+          })()}
           {saveState === 'saving' && (
             <span className="text-xs text-muted-foreground">儲存中…</span>
           )}

@@ -327,5 +327,13 @@
     "feedback": "Feedback",
     "err_no_recorder": "This browser does not support MediaRecorder. Please update or use Chrome / Edge.",
     "err_no_mic": "This browser does not support recording. Please use Chrome / Edge / Safari."
+  },
+  "Curriculum": {
+    "section_title": "Taiwan 108 Curriculum",
+    "section_subtitle": "Optional — when set, AI generates competency-based situational questions",
+    "subject_placeholder": "— Any subject —",
+    "code_placeholder": "— Pick a learning indicator —",
+    "code_placeholder_pick_subject_first": "Please pick a subject first",
+    "stage_iv": "Stage IV (Junior High, grades 7-9)"
   }
 }

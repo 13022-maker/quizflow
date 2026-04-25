@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { competencyPromptAddon } from '@/lib/ai/prompts';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { topic, types = ['mc'], difficulty = 'medium' } = body;
+  const { topic, types = ['mc'], difficulty = 'medium', competencyCode = null } = body;
   const hasListening = (types as string[]).includes('listening');
   const count = Math.min(Number(body.count) || 5, hasListening ? 5 : 20);
 
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
   const typesPrompt = (types as string[])
     .map(t => `- ${TYPE_LABELS[t] ?? t}，共 ${count} 題`)
     .join('\n');
+
+  // 108 新課綱「學習表現」對齊（選填）— 找不到代碼回傳空字串，主 prompt 不變
+  const competencyAddon = competencyPromptAddon(competencyCode);
 
   const prompt = `你是台灣高中的出題專家，請根據以下主題或課文內容出題。
 
@@ -98,7 +102,7 @@ ${typesPrompt}
 - 【字數分級】
   - 簡單：選項 ≤8 字、listeningText ≤50 字
   - 中等：選項 ≤15 字、listeningText ≤100 字
-  - 困難：選項不限、listeningText ≤200 字`;
+  - 困難：選項不限、listeningText ≤200 字${competencyAddon}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
@@ -199,6 +203,13 @@ ${typesPrompt}
       if (requestedTypes.size === 1 && requestedTypes.has('listening') && q.type === 'mc') {
         q.type = 'listening';
       }
+    }
+  }
+
+  // 把對齊的 competencyCode 回填每題（client 端 import questions 時持久化到 DB）
+  if (competencyCode && result.questions) {
+    for (const q of result.questions) {
+      q.competencyCode = competencyCode;
     }
   }
 

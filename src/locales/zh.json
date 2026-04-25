@@ -327,5 +327,13 @@
     "feedback": "老師建議",
     "err_no_recorder": "此瀏覽器不支援 MediaRecorder，請更新瀏覽器或改用 Chrome / Edge",
     "err_no_mic": "此瀏覽器不支援錄音功能，請改用 Chrome / Edge / Safari"
+  },
+  "Curriculum": {
+    "section_title": "108 課綱對齊",
+    "section_subtitle": "選填，啟用後 AI 會出素養 / 情境題",
+    "subject_placeholder": "— 不指定 —",
+    "code_placeholder": "— 選擇學習表現指標 —",
+    "code_placeholder_pick_subject_first": "請先選學科",
+    "stage_iv": "第四學習階段（國中 7-9 年級）"
   }
 }

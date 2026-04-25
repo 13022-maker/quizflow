@@ -70,6 +70,7 @@ type AIGeneratedQuestion = {
   explanation?: string;
   listeningText?: string; // 聽力題口語化文字
   audioUrl?: string; // 聽力題 TTS 音檔 URL
+  competencyCode?: string; // 108 新課綱「學習表現」代碼
 };
 
 // 匯入中的 pending 題目（灰階 preview 用，API 未完成前暫代）
