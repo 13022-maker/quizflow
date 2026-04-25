@@ -9,6 +9,8 @@ import type { BreakdownQuestion, BreakdownRow, OptionStats } from '@/features/qu
 import { QuestionBreakdownTable } from '@/features/quiz/QuestionBreakdownTable';
 import type { ResponseRow } from '@/features/quiz/ResultsResponseTable';
 import { ResultsResponseTable } from '@/features/quiz/ResultsResponseTable';
+import type { SpeechAssessment, SpeechQuestionGroup } from '@/features/quiz/SpeechSubmissionsList';
+import { SpeechSubmissionsList } from '@/features/quiz/SpeechSubmissionsList';
 import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
@@ -66,6 +68,8 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         questionId: answerSchema.questionId,
         isCorrect: answerSchema.isCorrect,
         answer: answerSchema.answer,
+        audioUrl: answerSchema.audioUrl,
+        speechAssessment: answerSchema.speechAssessment,
       })
       .from(answerSchema)
       .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
@@ -119,12 +123,39 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     totalPoints: r.totalPoints,
     leaveCount: r.leaveCount,
     submittedAt: r.submittedAt.toISOString(),
+    estimatedAbility: r.estimatedAbility ?? null,
   }));
 
   // 給 AI 分析的題目統計（排除簡答題）
   const aiQuestionStats = questionStats
     .filter(qs => qs.question.type !== 'short_answer' && qs.rate !== null)
     .map(qs => ({ question: qs.question.body, correctRate: qs.rate! }));
+
+  // 口說題作答分組：每題下列出所有學生作答（含錄音 + 評量）
+  const responseById = new Map(responses.map(r => [r.id, r]));
+  const speechGroups: SpeechQuestionGroup[] = questions
+    .filter(q => q.type === 'speaking')
+    .map((q) => {
+      const subs = answers
+        .filter(a => a.questionId === q.id && (a.audioUrl || a.speechAssessment))
+        .map((a) => {
+          const resp = responseById.get(a.responseId);
+          return {
+            responseId: a.responseId,
+            studentName: resp?.studentName ?? null,
+            studentEmail: resp?.studentEmail ?? null,
+            submittedAt: (resp?.submittedAt ?? new Date()).toISOString(),
+            audioUrl: a.audioUrl,
+            assessment: (a.speechAssessment as SpeechAssessment | null) ?? null,
+          };
+        })
+        .sort((a, b) => (b.assessment?.overallScore ?? 0) - (a.assessment?.overallScore ?? 0));
+      return {
+        questionId: q.id,
+        questionBody: q.body,
+        submissions: subs,
+      };
+    });
 
   // 給答對率表格客戶端元件的序列化資料（去掉 Date）
   const breakdownRows: BreakdownRow[] = questionStats.map(qs => ({
@@ -219,6 +250,14 @@ export default async function QuizResultsPage({ params }: { params: { id: string
       {aiQuestionStats.length > 0 && (
         <section className="mb-8">
           <ClassAIAnalysis quizTitle={quiz.title} questionStats={aiQuestionStats} />
+        </section>
+      )}
+
+      {/* 口說題作答（含錄音 + AI 評量）— 只在有 speaking 題時顯示 */}
+      {speechGroups.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-semibold">🎤 口說題作答</h2>
+          <SpeechSubmissionsList groups={speechGroups} />
         </section>
       )}
 

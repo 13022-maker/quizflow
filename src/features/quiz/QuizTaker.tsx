@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { FlashCard } from './FlashCard';
+import type { SpeechAssessmentResult } from './SpeakingQuestion';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
 // 避免一般測驗的學生作答頁被 ~200KB 的依賴拖累
@@ -18,6 +19,15 @@ const RankingQuestion = dynamic(
   {
     ssr: false,
     loading: () => <p className="text-sm text-muted-foreground">載入排序題…</p>,
+  },
+);
+
+// 口說題：MediaRecorder API 較重，只在含 speaking 題時才載入
+const SpeakingQuestion = dynamic(
+  () => import('./SpeakingQuestion').then(m => m.SpeakingQuestion),
+  {
+    ssr: false,
+    loading: () => <p className="text-sm text-muted-foreground">載入口說題…</p>,
   },
 );
 
@@ -91,12 +101,16 @@ function QuestionItem({
   answer,
   onChange,
   tutor,
+  speechAssessment,
+  onSpeechAssessment,
 }: {
   question: Question;
   index: number;
   answer: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
   tutor?: TutorState;
+  speechAssessment?: SpeechAssessmentResult;
+  onSpeechAssessment?: (result: SpeechAssessmentResult | null) => void;
 }) {
   // 是非題若 DB 中沒有 options，自動補上預設選項
   const TRUE_FALSE_DEFAULTS = [
@@ -252,6 +266,22 @@ function QuestionItem({
             onChange={v => onChange(v)}
           />
         </div>
+      )}
+
+      {/* 口說題：錄音 + AI 評分 */}
+      {question.type === 'speaking' && (
+        <SpeakingQuestion
+          questionId={question.id}
+          prompt={question.body}
+          referenceText={question.audioTranscript ?? null}
+          language="en"
+          initial={speechAssessment}
+          onAssessment={(result) => {
+            onSpeechAssessment?.(result);
+            // 同步把 transcript 存到 answer，供未做 speech grading 設定時 fallback
+            onChange(result?.transcript ?? '');
+          }}
+        />
       )}
 
       {/* 家教模式：確認按鈕 + 即時批改 feedback */}
@@ -1119,6 +1149,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   }, []);
 
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
+  // 口說題：每題的 AI 評量結果（audioUrl + scores + transcript），submit 時一併送出
+  const [speechAssessments, setSpeechAssessments] = useState<Record<number, SpeechAssessmentResult>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
@@ -1142,6 +1174,10 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const answeredCount = displayQuestions.filter((q) => {
     if (q.type === 'short_answer') {
       return true;
+    }
+    if (q.type === 'speaking') {
+      // 口說題：必須評分完才算「已答」（純錄音未評分不算）
+      return !!speechAssessments[q.id];
     }
     const ans = answers[q.id];
     if (q.type === 'ranking') {
@@ -1234,6 +1270,10 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         if (q.type === 'short_answer') {
           return false;
         }
+        if (q.type === 'speaking') {
+          // 口說題必須完成 AI 評分才算
+          return !speechAssessments[q.id];
+        }
         const ans = answers[q.id];
         // 排序題：必須拖完所有選項才算作答完成
         if (q.type === 'ranking') {
@@ -1264,6 +1304,15 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       for (const [key, value] of Object.entries(answers)) {
         stringKeyAnswers[String(key)] = value;
       }
+      // 口說題評量結果（key 同樣轉 string）
+      const stringKeySpeech: Record<string, SpeechAssessmentResult> = {};
+      for (const [key, value] of Object.entries(speechAssessments)) {
+        stringKeySpeech[String(key)] = value;
+        // 確保 answers 中有此 questionId 的字串值（transcript），便於 server 端寫入 answer 表
+        if (stringKeyAnswers[String(key)] === undefined) {
+          stringKeyAnswers[String(key)] = value.transcript;
+        }
+      }
 
       const res = await submitQuizResponse({
         quizId: quiz.id,
@@ -1271,6 +1320,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         studentEmail: studentEmail || undefined,
         answers: stringKeyAnswers,
         leaveCount: preventLeave ? leaveCountRef.current : undefined,
+        speechAssessments: Object.keys(stringKeySpeech).length > 0 ? stringKeySpeech : undefined,
       });
       setResult(res);
     } catch (err) {
@@ -1522,7 +1572,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         {/* 題號導覽列 */}
         <div className="flex flex-wrap gap-1">
           {displayQuestions.map((q, i) => {
-            const isAnswered = q.type === 'short_answer' || !!answers[q.id];
+            const hasInput = q.type === 'speaking' ? !!speechAssessments[q.id] : !!answers[q.id];
+            const isAnswered = q.type === 'short_answer' || hasInput;
             const isFlagged = flagged.has(q.id);
             return (
               <button
@@ -1562,6 +1613,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             index={index}
             answer={answers[question.id]}
             onChange={value => handleAnswer(question.id, value)}
+            speechAssessment={speechAssessments[question.id]}
+            onSpeechAssessment={(result) => {
+              setSpeechAssessments((prev) => {
+                const next = { ...prev };
+                if (result) {
+                  next[question.id] = result;
+                } else {
+                  delete next[question.id];
+                }
+                return next;
+              });
+            }}
             tutor={
               tutorMode
                 ? {

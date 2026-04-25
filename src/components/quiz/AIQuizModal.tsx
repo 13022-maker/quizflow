@@ -12,7 +12,9 @@
  *   { type, question, options?, answer, explanation? }[]
  */
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+
+import { CURRICULUM, findCompetency } from '@/lib/curriculum/codes';
 
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
@@ -106,6 +108,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [types, setTypes] = useState<QuestionType[]>(['mc']);
   const [count, setCount] = useState(10);
   const [difficulty, setDifficulty] = useState<Difficulty>('medium');
+  // 108 新課綱對齊（選填）：先選學科，再選學習表現代碼
+  const [competencySubjectId, setCompetencySubjectId] = useState<string>('');
+  const [competencyCode, setCompetencyCode] = useState<string>('');
 
   const hasListening = types.includes('listening');
   const maxCount = hasListening ? 5 : 20;
@@ -301,7 +306,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
+          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty, competencyCode: competencyCode || undefined }),
         });
         if (!res.ok) {
           let errMsg = '命題失敗';
@@ -362,6 +367,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('count', String(effectiveCount));
         fd.append('difficulty', difficulty);
         fd.append('model', model);
+        if (competencyCode) {
+          fd.append('competencyCode', competencyCode);
+        }
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         if (!res.ok) {
@@ -391,6 +399,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             count: effectiveCount,
             difficulty,
             model,
+            competencyCode: competencyCode || undefined,
           }),
         });
         if (!res.ok) {
@@ -504,6 +513,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="flex size-8 items-center justify-center rounded-full bg-gray-100 text-lg text-gray-500 transition-colors hover:bg-gray-200"
           >
@@ -976,6 +986,17 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             </div>
           </div>
 
+          {/* ── 108 課綱對齊（選填） ── */}
+          <CompetencyPicker
+            subjectId={competencySubjectId}
+            code={competencyCode}
+            onSubjectChange={(id) => {
+              setCompetencySubjectId(id);
+              setCompetencyCode(''); // 切學科要清空代碼
+            }}
+            onCodeChange={setCompetencyCode}
+          />
+
           {/* ── Error / Warning ── */}
           {error && (
             <div className={`rounded-xl border px-4 py-3 text-sm ${
@@ -1077,6 +1098,81 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         </div>
 
       </div>
+    </div>
+  );
+}
+
+// ─── 108 課綱對齊選填欄位（學科 → 學習表現代碼） ───────────────
+function CompetencyPicker({
+  subjectId,
+  code,
+  onSubjectChange,
+  onCodeChange,
+}: {
+  subjectId: string;
+  code: string;
+  onSubjectChange: (id: string) => void;
+  onCodeChange: (code: string) => void;
+}) {
+  const subject = useMemo(
+    () => CURRICULUM.find(s => s.id === subjectId),
+    [subjectId],
+  );
+  const selected = useMemo(() => findCompetency(code), [code]);
+
+  return (
+    <div className="rounded-2xl border-2 border-amber-100 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-5">
+      <div className="mb-3 flex items-baseline justify-between">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label className="text-xs font-bold uppercase tracking-widest text-amber-700">
+          108 課綱對齊
+        </label>
+        <span className="text-[10px] text-amber-600">選填，啟用後 AI 會出素養 / 情境題</span>
+      </div>
+      <div className="flex gap-2 max-sm:flex-col">
+        <select
+          value={subjectId}
+          onChange={e => onSubjectChange(e.target.value)}
+          className="h-9 flex-1 rounded-md border-2 border-gray-200 bg-white px-3 text-sm focus:border-amber-400 focus:outline-none"
+        >
+          <option value="">— 不指定 —</option>
+          {CURRICULUM.map(s => (
+            <option key={s.id} value={s.id}>
+              {s.emoji}
+              {' '}
+              {s.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={code}
+          onChange={e => onCodeChange(e.target.value)}
+          disabled={!subject}
+          className="h-9 flex-[2] rounded-md border-2 border-gray-200 bg-white px-3 text-sm focus:border-amber-400 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
+        >
+          <option value="">{subject ? '— 選擇學習表現指標 —' : '請先選學科'}</option>
+          {subject?.codes.map(c => (
+            <option key={c.code} value={c.code}>
+              {c.code}
+              {' '}
+              ·
+              {' '}
+              {c.strand}
+            </option>
+          ))}
+        </select>
+      </div>
+      {selected && (
+        <p className="mt-2 rounded bg-white/70 px-3 py-2 text-xs text-amber-800">
+          📘
+          {' '}
+          <span className="font-medium">{selected.code}</span>
+          {' '}
+          —
+          {' '}
+          {selected.description}
+        </p>
+      )}
     </div>
   );
 }

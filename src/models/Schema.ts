@@ -60,6 +60,7 @@ export const questionTypeEnum = pgEnum('question_type', [
   'short_answer', // 簡答題
   'ranking', // 排序題（拖拉排序）
   'listening', // 聽力題（播放音檔 + 選擇題）
+  'speaking', // 口說題（學生錄音、AI 批改發音 / 流暢度 / 內容）
 ]);
 
 export const quizStatusEnum = pgEnum('quiz_status', [
@@ -88,6 +89,9 @@ export const quizSchema = pgTable('quiz', {
   attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
   expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
   quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
+  // 自適應測驗（CAT / IRT 簡版）：開啟後依學生能力動態出題（10 題左右收斂）
+  adaptiveMode: boolean('adaptive_mode').default(false).notNull(),
+  adaptiveTargetCount: integer('adaptive_target_count').default(10).notNull(), // 適性測驗目標題數
   // 題庫市集
   isMarketplace: boolean('is_marketplace').default(false).notNull(),
   category: text('category'),
@@ -149,6 +153,9 @@ export const questionSchema = pgTable('question', {
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
+  difficulty: integer('difficulty').default(3).notNull(), // 難度 1（最簡單）～ 5（最難），用於自適應測驗
+  // 108 新課綱「學習表現」代碼，例：5-IV-3、a-IV-1（nullable，AI 出題時老師可選填對齊指標）
+  competencyCode: text('competency_code'),
   aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
@@ -170,6 +177,7 @@ export const responseSchema = pgTable('response', {
   score: integer('score'), // 計算後寫入（null = 含簡答題，未完整批改）
   totalPoints: integer('total_points'), // 滿分（不含簡答題）
   leaveCount: integer('leave_count').default(0).notNull(), // 考試防作弊：學生離開頁面次數
+  estimatedAbility: real('estimated_ability'), // 自適應測驗最終 theta 估計（-3 ～ +3，0 為平均水準）
   submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
@@ -186,6 +194,17 @@ export const answerSchema = pgTable('answer', {
     .references(() => questionSchema.id, { onDelete: 'cascade' }),
   answer: jsonb('answer').$type<string | string[]>().notNull(), // 字串或選項 id 陣列
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
+  // 口說題專用：學生錄音 URL（Vercel Blob）+ AI 評量結果
+  audioUrl: text('audio_url'),
+  speechAssessment: jsonb('speech_assessment').$type<{
+    transcript: string;
+    pronunciationScore: number; // 0–100
+    fluencyScore: number; // 0–100
+    contentScore: number; // 0–100
+    overallScore: number; // 0–100
+    feedback: string;
+    language: string;
+  }>(),
 });
 
 // ---------- quiz_attempts ----------

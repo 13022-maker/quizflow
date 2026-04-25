@@ -14,6 +14,7 @@ export const QUESTION_TYPE_LABELS = {
   short_answer: '簡答題',
   ranking: '排序題',
   listening: '聽力題',
+  speaking: '口說題',
 } as const;
 
 const TRUE_FALSE_OPTIONS = [
@@ -53,7 +54,7 @@ function normalizeImageUrl(raw: string): { url: string; warning?: string } {
 }
 
 const QuestionSchema = z.object({
-  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
+  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening', 'speaking']),
   body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().optional(), // 題目圖片網址
   audioUrl: z.string().optional(), // 聽力題音檔網址
@@ -63,6 +64,7 @@ const QuestionSchema = z.object({
     .optional(),
   correctAnswers: z.array(z.string()).optional(),
   points: z.coerce.number().min(1).default(1),
+  difficulty: z.coerce.number().int().min(1).max(5).default(3), // 1=入門 5=挑戰，適性測驗用
 });
 
 export type QuestionFormValues = z.infer<typeof QuestionSchema>;
@@ -83,7 +85,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(QuestionSchema),
     defaultValues: defaultValues
-      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', ...defaultValues }
+      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', difficulty: 3, ...defaultValues }
       : {
           type: 'single_choice',
           body: '',
@@ -96,6 +98,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
           ],
           correctAnswers: [],
           points: 1,
+          difficulty: 3,
         },
   });
 
@@ -213,6 +216,10 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
     } else if (type === 'short_answer') {
       replace([]);
       form.setValue('correctAnswers', []);
+    } else if (type === 'speaking') {
+      // 口說題：無選項；correctAnswers[0] 改用作「參考答案」(referenceText) 字串
+      replace([]);
+      form.setValue('correctAnswers', []);
     } else if (type === 'ranking') {
       // 排序題：至少 3 個選項才有意義
       const current = form.getValues('options') ?? [];
@@ -295,6 +302,22 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
             {...form.register('points')}
             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
           />
+        </div>
+        <div className="w-28">
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label className="mb-1 block text-sm font-medium" title="適性測驗依此挑題">
+            難度
+          </label>
+          <select
+            {...form.register('difficulty')}
+            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+          >
+            <option value={1}>1 · 入門</option>
+            <option value={2}>2 · 簡單</option>
+            <option value={3}>3 · 一般</option>
+            <option value={4}>4 · 困難</option>
+            <option value={5}>5 · 挑戰</option>
+          </select>
         </div>
       </div>
 
