@@ -6,6 +6,7 @@ import { getTranslations } from 'next-intl/server';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
+import { TrialPill } from '@/features/dashboard/TrialPill';
 import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
@@ -120,31 +121,35 @@ export default async function QuizzesPage() {
           </div>
         )}
 
-        {/* 建立按鈕：達上限時顯示 disabled 樣式並引導升級 */}
-        {isAtLimit
-          ? (
-              <Link
-                href="/dashboard/billing"
-                className={buttonVariants({ size: 'sm', variant: 'outline' })}
-                title="免費方案已達測驗上限，請升級 Pro 繼續建立"
-              >
-                🔒 已達上限 · 升級
-              </Link>
-            )
-          : (
-              // 主按鈕直達 AI 命題；旁邊加小字「手動建立」副入口連到 /new 頁（手動 / vocab）
-              <div className="flex items-center gap-3">
+        {/* 右側：試用 pill + 建立按鈕（達上限導升級頁；否則 TrialPill + 手動建立連結 + AI 出題主按鈕） */}
+        <div className="flex items-center gap-3">
+          {/* 試用倒數 pill（已付費或未試用者不顯示）；orgId post-Phase 2 已從 auth() 移除，傳 null 即可（getOrgPlanId 內部用 userId） */}
+          {userId && <TrialPill clerkUserId={userId} orgId={null} />}
+
+          {isAtLimit
+            ? (
                 <Link
-                  href="/dashboard/quizzes/new"
-                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  href="/dashboard/billing"
+                  className={buttonVariants({ size: 'sm', variant: 'outline' })}
+                  title="免費方案已達測驗上限，請升級 Pro 繼續建立"
                 >
-                  手動建立 ↗
+                  🔒 已達上限 · 升級
                 </Link>
-                <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
-                  {t('add_quiz_button')}
-                </CreateQuizWithAIButton>
-              </div>
-            )}
+              )
+            : (
+                <>
+                  <Link
+                    href="/dashboard/quizzes/new"
+                    className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                  >
+                    手動建立 ↗
+                  </Link>
+                  <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
+                    {t('add_quiz_button')}
+                  </CreateQuizWithAIButton>
+                </>
+              )}
+        </div>
       </div>
 
       {/* 測驗列表或空白提示 */}

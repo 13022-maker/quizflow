@@ -245,7 +245,7 @@ export const userStreakSchema = pgTable('user_streak', {
 });
 
 // ---------- user_trial ----------
-// 新註冊老師自動獲得 30 天 Pro 試用（首次查詢 lazy init 建立此紀錄）
+// 新註冊老師自動獲得 21 天 Pro 試用（首次查詢 lazy init 建立此紀錄）
 // ends_at 獨立儲存方便未來支援延長試用 / 客製化天數
 // 若有付費訂閱（subscription 表 status = active/trialing/past_due），試用紀錄會被忽略
 
