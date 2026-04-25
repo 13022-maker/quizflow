@@ -222,7 +222,11 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
                             return (
                               <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badge.tone}`} title={`θ ≈ ${r.estimatedAbility.toFixed(2)} · PR ${badge.pr}`}>
                                 {badge.label}
-                                <span className="text-[10px] opacity-70">PR {badge.pr}</span>
+                                <span className="text-[10px] opacity-70">
+                                  PR
+                                  {' '}
+                                  {badge.pr}
+                                </span>
                               </span>
                             );
                           })()

@@ -69,9 +69,9 @@ export function SpeechSubmissionsList({ groups }: { groups: SpeechQuestionGroup[
         const isOpen = expanded.has(g.questionId);
         const avgOverall = g.submissions.length > 0
           ? Math.round(
-              g.submissions.reduce((sum, s) => sum + (s.assessment?.overallScore ?? 0), 0)
-              / g.submissions.length,
-            )
+            g.submissions.reduce((sum, s) => sum + (s.assessment?.overallScore ?? 0), 0)
+            / g.submissions.length,
+          )
           : null;
         return (
           <div key={g.questionId} className="overflow-hidden rounded-xl border bg-white">
@@ -81,14 +81,21 @@ export function SpeechSubmissionsList({ groups }: { groups: SpeechQuestionGroup[
               className="flex w-full items-start gap-3 px-5 py-4 text-left hover:bg-muted/30"
             >
               <span className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-purple-100 text-xs font-bold text-purple-700">
-                Q{idx + 1}
+                Q
+                {idx + 1}
               </span>
               <div className="flex-1">
                 <p className="line-clamp-2 text-sm font-medium">{g.questionBody}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {g.submissions.length} 位學生作答
+                  {g.submissions.length}
+                  {' '}
+                  位學生作答
                   {avgOverall !== null && (
-                    <span className="ml-2">· 平均分數 <span className="font-semibold text-purple-600">{avgOverall}</span></span>
+                    <span className="ml-2">
+                      · 平均分數
+                      {' '}
+                      <span className="font-semibold text-purple-600">{avgOverall}</span>
+                    </span>
                   )}
                 </p>
               </div>

@@ -275,7 +275,11 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
                   />
                 </div>
                 {saveError && (
-                  <p className="mt-2 text-xs text-red-600">⚠️ {saveError}</p>
+                  <p className="mt-2 text-xs text-red-600">
+                    ⚠️
+                    {' '}
+                    {saveError}
+                  </p>
                 )}
                 <div className="mt-3 flex gap-2">
                   <Button
@@ -292,7 +296,10 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
           : (
               <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
                 <p className="text-sm font-semibold text-emerald-800">✓ 已送出給老師</p>
-                <p className="mt-1 text-xs text-emerald-700">作答編號 #{savedResponseId}</p>
+                <p className="mt-1 text-xs text-emerald-700">
+                  作答編號 #
+                  {savedResponseId}
+                </p>
                 <div className="mt-3 flex justify-center">
                   <Button variant="outline" onClick={handleRetake}>重新測驗</Button>
                 </div>
