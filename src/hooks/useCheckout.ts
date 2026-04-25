@@ -7,6 +7,7 @@
  */
 
 import { getPaddleInstance } from '@paddle/paddle-js';
+import { track } from '@vercel/analytics';
 import { useState } from 'react';
 
 export function useCheckout() {
@@ -16,6 +17,13 @@ export function useCheckout() {
   const openCheckout = async (priceId: string) => {
     setLoading(true);
     setError(null);
+
+    // 追蹤付費漏斗起點；包 try/catch 避免 analytics 錯誤中斷結帳
+    try {
+      track('checkout_opened', { price_id: priceId });
+    } catch (err) {
+      console.error('[analytics] checkout_opened track failed', err);
+    }
 
     try {
       const res = await fetch('/api/paddle/checkout', {

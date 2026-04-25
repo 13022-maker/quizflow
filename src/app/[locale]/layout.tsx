@@ -1,5 +1,6 @@
 import '@/styles/global.css';
 
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
@@ -63,6 +64,7 @@ export default function RootLayout(props: {
 
           <PaddleProvider />
           <DemoBadge />
+          <Analytics />
         </NextIntlClientProvider>
       </body>
     </html>

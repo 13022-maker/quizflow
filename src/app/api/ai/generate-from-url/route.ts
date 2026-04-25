@@ -16,6 +16,7 @@ import { NextResponse } from 'next/server';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { AnalyticsEvents, trackServerEvent } from '@/libs/analytics';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -298,6 +299,13 @@ ${typesPrompt}
         }
       }
     }
+
+    // 追蹤 AI 出題成功事件（不 await 避免阻塞回應）
+    void trackServerEvent(AnalyticsEvents.AI_GENERATE_SUCCEEDED, {
+      mode: 'url',
+      count: result.questions?.length ?? 0,
+      types: types.join(','),
+    });
 
     return NextResponse.json(result);
   } catch (err) {
