@@ -162,6 +162,13 @@
       "when": 1777151302357,
       "tag": "0022_certain_vulcan",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1777156621705,
+      "tag": "0023_quick_apocalypse",
+      "breakpoints": true
     }
   ]
 }
