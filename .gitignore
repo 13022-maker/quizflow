@@ -54,5 +54,8 @@ yarn-error.log*
 # local folder
 local
 
+# 本地產出（migration 對照表等）
+tmp/
+
 # vercel
 .vercel
