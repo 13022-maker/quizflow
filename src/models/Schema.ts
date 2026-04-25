@@ -1,6 +1,9 @@
+import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
+  check,
   integer,
   jsonb,
   pgEnum,
@@ -73,42 +76,66 @@ export const quizStatusEnum = pgEnum('quiz_status', [
 
 // ---------- quizzes ----------
 
-export const quizSchema = pgTable('quiz', {
-  id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(), // Clerk user ID
-  title: text('title').notNull(),
-  description: text('description'),
-  accessCode: text('access_code').unique(), // 8 碼隨機英數字，學生連結用（防猜測）
-  status: quizStatusEnum('status').default('draft').notNull(),
-  shuffleQuestions: boolean('shuffle_questions').default(false).notNull(),
-  shuffleOptions: boolean('shuffle_options').default(false).notNull(),
-  allowedAttempts: integer('allowed_attempts'), // null = 無限制
-  showAnswers: boolean('show_answers').default(true).notNull(),
-  timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
-  preventLeave: boolean('prevent_leave').default(false).notNull(), // 考試防作弊：攔截離開頁面
-  roomCode: text('room_code').unique(), // 6 碼大寫英數房間碼（學生用來快速加入）
-  scoringMode: text('scoring_mode').default('highest').notNull(), // highest / latest / first / decay
-  attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
-  expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
-  quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
-  // 題庫市集
-  isMarketplace: boolean('is_marketplace').default(false).notNull(),
-  category: text('category'),
-  gradeLevel: text('grade_level'),
-  tags: jsonb('tags').$type<string[]>(),
-  copyCount: integer('copy_count').default(0).notNull(),
-  originalQuizId: integer('original_quiz_id'),
-  // 書商專區（Phase 2）：標註此測驗屬於哪家出版商 + 書本章節元資料，供 marketplace 認證徽章 / 搜尋使用
-  publisherId: integer('publisher_id'), // FK → publisher.id（nullable：一般老師測驗無 publisher）
-  isbn: text('isbn'),
-  chapter: text('chapter'), // 例：「第三課 光合作用」
-  bookTitle: text('book_title'),
-  updatedAt: timestamp('updated_at', { mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-});
+export const quizSchema = pgTable(
+  'quiz',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: text('owner_id').notNull(), // Clerk user ID
+    title: text('title').notNull(),
+    description: text('description'),
+    accessCode: text('access_code').unique(), // 8 碼隨機英數字，學生連結用（防猜測）
+    status: quizStatusEnum('status').default('draft').notNull(),
+    shuffleQuestions: boolean('shuffle_questions').default(false).notNull(),
+    shuffleOptions: boolean('shuffle_options').default(false).notNull(),
+    allowedAttempts: integer('allowed_attempts'), // null = 無限制
+    showAnswers: boolean('show_answers').default(true).notNull(),
+    timeLimitSeconds: integer('time_limit_seconds'), // null = 無限制
+    preventLeave: boolean('prevent_leave').default(false).notNull(), // 考試防作弊：攔截離開頁面
+    roomCode: text('room_code').unique(), // 6 碼大寫英數房間碼（學生用來快速加入）
+    scoringMode: text('scoring_mode').default('highest').notNull(), // highest / latest / first / decay
+    attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
+    expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
+    quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
+    // 題庫市集
+    isMarketplace: boolean('is_marketplace').default(false).notNull(),
+    category: text('category'),
+    gradeLevel: text('grade_level'),
+    tags: jsonb('tags').$type<string[]>(),
+    copyCount: integer('copy_count').default(0).notNull(),
+    // 自參照:fork 來源 quiz id（社群化 Phase 1 commit 1 補 FK + ON DELETE SET NULL）
+    originalQuizId: integer('original_quiz_id').references(
+      (): AnyPgColumn => quizSchema.id,
+      { onDelete: 'set null' },
+    ),
+    // 書商專區（Phase 2）：標註此測驗屬於哪家出版商 + 書本章節元資料，供 marketplace 認證徽章 / 搜尋使用
+    publisherId: integer('publisher_id'), // FK → publisher.id（nullable：一般老師測驗無 publisher）
+    isbn: text('isbn'),
+    chapter: text('chapter'), // 例：「第三課 光合作用」
+    bookTitle: text('book_title'),
+    // ---------- 社群化 Phase 1（commit 1）----------
+    visibility: text('visibility').default('private').notNull(), // private / unlisted / public（CHECK 約束於 table builder 第二參數）
+    slug: text('slug'), // 全域唯一（僅當非 NULL，partial unique index），供 public quiz 友善 URL
+    publishedAt: timestamp('published_at', { mode: 'date' }), // 首次發佈時間（visibility 從 private 切換時填入）
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // visibility 限定三態（用 text + CHECK，避免 PG enum 加新值要 ALTER TYPE 的痛）
+      visibilityCheck: check(
+        'quiz_visibility_check',
+        sql`${table.visibility} IN ('private', 'unlisted', 'public')`,
+      ),
+      // slug 全域唯一但 NULL 不參與（partial unique index）
+      slugUniqueIdx: uniqueIndex('quiz_slug_unique_idx')
+        .on(table.slug)
+        .where(sql`${table.slug} IS NOT NULL`),
+    };
+  },
+);
 
 // ---------- publishers（書商 / 教材出版商） ----------
 // 用於 marketplace 品牌認證與批次出題綁定

@@ -45,6 +45,13 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       tags: quizSchema.tags,
       copyCount: quizSchema.copyCount,
       originalQuizId: quizSchema.originalQuizId,
+      publisherId: quizSchema.publisherId,
+      isbn: quizSchema.isbn,
+      chapter: quizSchema.chapter,
+      bookTitle: quizSchema.bookTitle,
+      visibility: quizSchema.visibility,
+      slug: quizSchema.slug,
+      publishedAt: quizSchema.publishedAt,
       createdAt: quizSchema.createdAt,
       updatedAt: quizSchema.updatedAt,
     })
