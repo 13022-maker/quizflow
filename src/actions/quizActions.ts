@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
+import { AnalyticsEvents, trackServerEvent } from '@/libs/analytics';
 import { db } from '@/libs/DB';
 import { getOrgPlanId } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
@@ -122,6 +123,11 @@ export async function updateQuiz(
     .update(quizSchema)
     .set({ title: data.title, description: data.description, status: data.status })
     .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
+
+  // 只在狀態切到 published 時追蹤；不計 draft / closed 更新
+  if (data.status === 'published') {
+    void trackServerEvent(AnalyticsEvents.QUIZ_PUBLISHED, { quiz_id: id });
+  }
 
   revalidatePath(`/dashboard/quizzes/${id}/edit`);
   revalidatePath('/dashboard/quizzes');
