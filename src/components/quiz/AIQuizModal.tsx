@@ -513,6 +513,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="flex size-8 items-center justify-center rounded-full bg-gray-100 text-lg text-gray-500 transition-colors hover:bg-gray-200"
           >
@@ -1122,6 +1123,7 @@ function CompetencyPicker({
   return (
     <div className="rounded-2xl border-2 border-amber-100 bg-gradient-to-br from-amber-50/40 to-orange-50/30 p-5">
       <div className="mb-3 flex items-baseline justify-between">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
         <label className="text-xs font-bold uppercase tracking-widest text-amber-700">
           108 課綱對齊
         </label>
