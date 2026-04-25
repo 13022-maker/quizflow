@@ -1,6 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, count, desc, eq, inArray, isNotNull } from 'drizzle-orm';
-import Link from 'next/link';
 
 import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
@@ -9,6 +8,7 @@ import { StreakCard } from '@/features/dashboard/StreakCard';
 import { TemplateB } from '@/features/dashboard/templates/TemplateB';
 import type { DashboardData } from '@/features/dashboard/templates/types';
 import { TrialBanner } from '@/features/dashboard/TrialBanner';
+import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { db } from '@/libs/DB';
 import { quizSchema, responseSchema } from '@/models/Schema';
 
@@ -140,13 +140,13 @@ export default async function DashboardIndexPage() {
         ? <TemplateB data={dashboardData} />
         : (
             <div className="px-4 pb-8">
+              {/* 空狀態主按鈕：點下直達 AI 命題（建立測驗後 redirect 到 edit?ai=1） */}
               <div className="mb-6 flex justify-end">
-                <Link
-                  href="/dashboard/quizzes/new"
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                <CreateQuizWithAIButton
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-70"
                 >
                   + 建立新測驗
-                </Link>
+                </CreateQuizWithAIButton>
               </div>
               <OnboardingSteps />
             </div>

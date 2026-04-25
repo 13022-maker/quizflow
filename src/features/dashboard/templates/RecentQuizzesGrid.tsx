@@ -8,6 +8,8 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
+import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
+
 import { QuizCardActions } from './QuizCardActions';
 import type { EnrichedQuiz } from './types';
 import { relativeDate, STATUS_LABEL } from './types';
@@ -152,9 +154,10 @@ export function RecentQuizzesGrid({
                   );
                 })}
 
-                <Link
-                  href="/dashboard/quizzes/new"
-                  className="group flex min-h-[188px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 p-5 text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary"
+                {/* 虛線卡片：點下直達 AI 命題（沿用 dashed 樣式做為「快速新增」視覺提示） */}
+                <CreateQuizWithAIButton
+                  className="group flex min-h-[188px] w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed border-muted-foreground/20 bg-muted/30 p-5 text-muted-foreground transition-all hover:border-primary/50 hover:bg-primary/5 hover:text-primary disabled:opacity-70"
+                  pendingLabel="建立中…"
                 >
                   <div className="mb-2 flex size-10 items-center justify-center rounded-full bg-white shadow-sm transition-transform group-hover:scale-110">
                     <svg className="size-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -162,7 +165,7 @@ export function RecentQuizzesGrid({
                     </svg>
                   </div>
                   <span className="text-sm font-semibold">建立新測驗</span>
-                </Link>
+                </CreateQuizWithAIButton>
               </div>
             )}
     </div>

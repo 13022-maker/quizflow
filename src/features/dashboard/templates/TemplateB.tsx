@@ -50,7 +50,7 @@ export function TemplateB({ data }: { data: DashboardData }) {
 
       {/* ── 快速行動卡片 ── */}
       <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 建立新測驗 */}
+        {/* 進階建立：副選單入口（手動出題、單字記憶等需要先進 /new 頁的流程） */}
         <Link
           href="/dashboard/quizzes/new"
           className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
@@ -61,8 +61,8 @@ export function TemplateB({ data }: { data: DashboardData }) {
             </svg>
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-bold text-foreground">建立新測驗</h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">手動出題，自由掌控題目內容與配分</p>
+            <h3 className="text-[15px] font-bold text-foreground">進階建立</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">手動出題、單字記憶模式</p>
           </div>
           <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />

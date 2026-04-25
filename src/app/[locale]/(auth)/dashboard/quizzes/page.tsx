@@ -132,9 +132,18 @@ export default async function QuizzesPage() {
               </Link>
             )
           : (
-              <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
-                {t('add_quiz_button')}
-              </CreateQuizWithAIButton>
+              // 主按鈕直達 AI 命題；旁邊加小字「手動建立」副入口連到 /new 頁（手動 / vocab）
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard/quizzes/new"
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  手動建立 ↗
+                </Link>
+                <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
+                  {t('add_quiz_button')}
+                </CreateQuizWithAIButton>
+              </div>
             )}
       </div>
 
