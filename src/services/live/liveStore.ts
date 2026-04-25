@@ -21,6 +21,154 @@ import type {
   LiveQuestionForPlayer,
 } from './types';
 
+// 自動推進緩衝秒數（與 liveActions.ts 同步）
+const PLAY_PHASE_BUFFER_SEC = 5;
+const RESULT_PHASE_DURATION_SEC = 5;
+
+type LiveGameRow = typeof liveGameSchema.$inferSelect;
+
+/**
+ * 自動推進：當 game.nextTransitionAt 已過期，順手執行對應的 transition。
+ *
+ * 注意：時間比較用 SQL NOW() 而不是 JS Date.now()，避免 timestamp（無時區）欄位
+ * 跟 JS Date 之間的時區 round-trip 失準。WHERE 條件含時間檢查 = optimistic lock + 時間檢查 atomic。
+ * 回傳 true 代表有狀態改動（呼叫端應重新載入 game）。
+ */
+async function maybeAutoAdvance(game: LiveGameRow): Promise<boolean> {
+  if (!game.nextTransitionAt) {
+    return false;
+  }
+
+  // 改用 JS Date 寫入（避免 'use server' 模組 import 鏈上 sql 模板被編譯壞）
+  // 比較側仍用 SQL NOW()，繞過 timestamp 無時區欄位的 JS Date round-trip 偏差
+  const nowMs = Date.now();
+
+  if (game.status === 'playing') {
+    // playing → showing_result
+    const updated = await db
+      .update(liveGameSchema)
+      .set({
+        status: 'showing_result',
+        nextTransitionAt: new Date(nowMs + RESULT_PHASE_DURATION_SEC * 1000),
+      })
+      .where(and(
+        eq(liveGameSchema.id, game.id),
+        eq(liveGameSchema.status, 'playing'),
+        sql`${liveGameSchema.nextTransitionAt} <= NOW()`,
+      ))
+      .returning();
+    if (updated.length > 0) {
+      await publishTick(game.id);
+      return true;
+    }
+  } else if (game.status === 'showing_result') {
+    // showing_result → 下一題 OR finished（用 supportedCount 判斷）
+    const supportedCount = (await getLiveQuestions(game.quizId)).length;
+    const nextIdx = game.currentQuestionIndex + 1;
+    if (nextIdx >= supportedCount) {
+      const updated = await db
+        .update(liveGameSchema)
+        .set({ status: 'finished', endedAt: new Date(nowMs), nextTransitionAt: null })
+        .where(and(
+          eq(liveGameSchema.id, game.id),
+          eq(liveGameSchema.status, 'showing_result'),
+          eq(liveGameSchema.currentQuestionIndex, game.currentQuestionIndex),
+          sql`${liveGameSchema.nextTransitionAt} <= NOW()`,
+        ))
+        .returning();
+      if (updated.length > 0) {
+        await publishTick(game.id);
+        return true;
+      }
+    } else {
+      const startedAt = new Date(nowMs);
+      const transitionAt = new Date(nowMs + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000);
+      const updated = await db
+        .update(liveGameSchema)
+        .set({
+          status: 'playing',
+          currentQuestionIndex: nextIdx,
+          questionStartedAt: startedAt,
+          nextTransitionAt: transitionAt,
+        })
+        .where(and(
+          eq(liveGameSchema.id, game.id),
+          eq(liveGameSchema.status, 'showing_result'),
+          eq(liveGameSchema.currentQuestionIndex, game.currentQuestionIndex),
+          sql`${liveGameSchema.nextTransitionAt} <= NOW()`,
+        ))
+        .returning();
+      if (updated.length > 0) {
+        await publishTick(game.id);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * 載入 live_game 並順手執行自動推進；若狀態有變動則重新查一次回傳最新值。
+ * 任何讀取 game state 的入口都應該呼叫這個（取代直接 select）。
+ *
+ * Self-heal：'use server' Server Action（startGame / nextQuestion）寫入
+ * nextTransitionAt 會被 Next.js 編譯器吃掉變 null。在 status='playing' 但
+ * nextTransitionAt 為 null 時，從 questionStartedAt 反推回填（liveStore 非
+ * 'use server'，UPDATE 寫入 timestamp 一切正常）。
+ */
+async function loadGameWithAutoAdvance(gameId: number): Promise<LiveGameRow | null> {
+  let [game] = await db
+    .select()
+    .from(liveGameSchema)
+    .where(eq(liveGameSchema.id, gameId))
+    .limit(1);
+  if (!game) {
+    return null;
+  }
+
+  // Self-heal NULL nextTransitionAt（'use server' Server Action 寫入會被吃掉）
+  if (!game.nextTransitionAt) {
+    if (game.status === 'playing' && game.questionStartedAt) {
+      // 從 questionStartedAt 反推：題目開始時間 + 題目時長 + 5s 緩衝
+      const transitionAt = new Date(
+        game.questionStartedAt.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000,
+      );
+      await db
+        .update(liveGameSchema)
+        .set({ nextTransitionAt: transitionAt })
+        .where(and(
+          eq(liveGameSchema.id, gameId),
+          eq(liveGameSchema.status, 'playing'),
+        ));
+      game = { ...game, nextTransitionAt: transitionAt };
+    } else if (game.status === 'showing_result') {
+      // 沒有 result phase 起始時戳，給它 5s 後再切（最差情況下使用者多等 5s）
+      const transitionAt = new Date(Date.now() + RESULT_PHASE_DURATION_SEC * 1000);
+      await db
+        .update(liveGameSchema)
+        .set({ nextTransitionAt: transitionAt })
+        .where(and(
+          eq(liveGameSchema.id, gameId),
+          eq(liveGameSchema.status, 'showing_result'),
+        ));
+      game = { ...game, nextTransitionAt: transitionAt };
+    }
+  }
+
+  const advanced = await maybeAutoAdvance(game);
+  if (!advanced) {
+    return game;
+  }
+
+  const [refreshed] = await db
+    .select()
+    .from(liveGameSchema)
+    .where(eq(liveGameSchema.id, gameId))
+    .limit(1);
+  return refreshed ?? null;
+}
+
 // 取得某 game 的題目清單（依 position 排序，只含支援的三種題型）
 export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForHost[]> {
   const rows = await db
@@ -103,11 +251,7 @@ async function getAnswerStats(gameId: number, questionId: number): Promise<{
 
 // 取得老師主控台需要的完整 state
 export async function getHostState(gameId: number): Promise<LiveHostState | null> {
-  const [game] = await db
-    .select()
-    .from(liveGameSchema)
-    .where(eq(liveGameSchema.id, gameId))
-    .limit(1);
+  const game = await loadGameWithAutoAdvance(gameId);
   if (!game) {
     return null;
   }
@@ -152,11 +296,7 @@ export async function getPlayerState(
   gameId: number,
   playerId: number,
 ): Promise<LivePlayerState | null> {
-  const [game] = await db
-    .select()
-    .from(liveGameSchema)
-    .where(eq(liveGameSchema.id, gameId))
-    .limit(1);
+  const game = await loadGameWithAutoAdvance(gameId);
   if (!game) {
     return null;
   }
@@ -270,12 +410,8 @@ export async function recordAnswer(params: {
   > {
   const { gameId, playerId, questionId, selectedOptionId } = params;
 
-  // 撈 game + 題目，驗證狀態
-  const [game] = await db
-    .select()
-    .from(liveGameSchema)
-    .where(eq(liveGameSchema.id, gameId))
-    .limit(1);
+  // 撈 game + 題目，驗證狀態（順便觸發自動推進，免得作答到一半時間到了卻沒切題）
+  const game = await loadGameWithAutoAdvance(gameId);
   if (!game) {
     return { ok: false, error: 'GAME_NOT_FOUND', status: 404 };
   }

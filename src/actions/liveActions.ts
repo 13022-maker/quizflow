@@ -13,6 +13,14 @@ import {
 import { publishTick } from '@/services/live/ablyServer';
 import { isLiveSupportedType } from '@/services/live/scoring';
 
+// 自動推進等待時間（秒）：題目倒數結束後緩衝、答案揭示停留
+const PLAY_PHASE_BUFFER_SEC = 5;
+const RESULT_PHASE_DURATION_SEC = 5;
+
+// 註：'use server' 檔案內 Drizzle 的 sql 模板（含 ${param} 參數）寫入會被
+// Next.js Server Action 編譯器吃掉，欄位變 null。改用 JS Date 物件就 OK
+// （跟原本 questionStartedAt: new Date() 同 pattern）。
+
 // 生成 6 碼大寫英數 game pin（與 quizActions 同邏輯）
 function generatePin(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -140,12 +148,15 @@ export async function startGame(gameId: number) {
     return { error: 'ALREADY_STARTED' };
   }
 
+  // 用 JS Date：跟 questionStartedAt 同 pattern，可靠寫入 timestamp 欄位
+  const now = new Date();
   await db
     .update(liveGameSchema)
     .set({
       status: 'playing',
       currentQuestionIndex: 0,
-      questionStartedAt: new Date(),
+      questionStartedAt: now,
+      nextTransitionAt: new Date(now.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
     })
     .where(eq(liveGameSchema.id, game.id));
 
@@ -168,7 +179,10 @@ export async function showResult(gameId: number) {
 
   await db
     .update(liveGameSchema)
-    .set({ status: 'showing_result' })
+    .set({
+      status: 'showing_result',
+      nextTransitionAt: new Date(Date.now() + RESULT_PHASE_DURATION_SEC * 1000),
+    })
     .where(eq(liveGameSchema.id, game.id));
 
   await publishTick(game.id);
@@ -198,18 +212,20 @@ export async function nextQuestion(gameId: number) {
     // 已經是最後一題 → 結束
     await db
       .update(liveGameSchema)
-      .set({ status: 'finished', endedAt: new Date() })
+      .set({ status: 'finished', endedAt: new Date(), nextTransitionAt: null })
       .where(eq(liveGameSchema.id, game.id));
     await publishTick(game.id);
     return { ok: true as const, finished: true };
   }
 
+  const nowQ = new Date();
   await db
     .update(liveGameSchema)
     .set({
       status: 'playing',
       currentQuestionIndex: nextIdx,
-      questionStartedAt: new Date(),
+      questionStartedAt: nowQ,
+      nextTransitionAt: new Date(nowQ.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
     })
     .where(eq(liveGameSchema.id, game.id));
 
@@ -229,7 +245,7 @@ export async function endGame(gameId: number) {
 
   await db
     .update(liveGameSchema)
-    .set({ status: 'finished', endedAt: new Date() })
+    .set({ status: 'finished', endedAt: new Date(), nextTransitionAt: null })
     .where(eq(liveGameSchema.id, game.id));
 
   await publishTick(game.id);

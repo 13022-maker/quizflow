@@ -364,6 +364,8 @@ export const liveGameSchema = pgTable('live_game', {
   currentQuestionIndex: integer('current_question_index').default(-1).notNull(), // -1 = 尚未開始
   questionStartedAt: timestamp('question_started_at', { mode: 'date' }),
   questionDuration: integer('question_duration').default(20).notNull(), // 秒
+  // 下一次自動推進的時間戳（NULL = 不自動推進，例如 waiting / finished）
+  nextTransitionAt: timestamp('next_transition_at', { mode: 'date' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   endedAt: timestamp('ended_at', { mode: 'date' }),
 });
