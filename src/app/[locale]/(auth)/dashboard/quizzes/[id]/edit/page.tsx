@@ -2,6 +2,7 @@ import { auth } from '@clerk/nextjs/server';
 import { and, asc, eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
+import { TrialPill } from '@/features/dashboard/TrialPill';
 import { QuizEditor } from '@/features/quiz/QuizEditor';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
@@ -92,7 +93,17 @@ export default async function EditQuizPage({
 
   const autoOpenAI = searchParams.ai === '1';
 
-  return <QuizEditor quiz={quiz as any} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />;
+  return (
+    <>
+      {/* 試用倒數 pill；orgId post-Phase 2 已從 auth() 移除，傳 null 即可 */}
+      {userId && (
+        <div className="mb-4 flex justify-end">
+          <TrialPill clerkUserId={userId} orgId={null} />
+        </div>
+      )}
+      <QuizEditor quiz={quiz as any} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />
+    </>
+  );
 }
 
 export const dynamic = 'force-dynamic';
