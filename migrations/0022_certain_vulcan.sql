@@ -1,0 +1,1 @@
+ALTER TABLE "live_game" DROP COLUMN IF EXISTS "host_org_id";--> statement-breakpoint

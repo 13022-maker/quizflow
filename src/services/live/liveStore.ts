@@ -566,7 +566,7 @@ export async function listGamesByOrg(userId: string, quizIds: number[]) {
     .select()
     .from(liveGameSchema)
     .where(and(
-      eq(liveGameSchema.hostOrgId, userId),
+      eq(liveGameSchema.hostUserId, userId),
       inArray(liveGameSchema.quizId, quizIds),
     ));
 }

@@ -26,7 +26,7 @@ export default async function LiveHostPage({
   const [game] = await db
     .select({
       id: liveGameSchema.id,
-      hostOrgId: liveGameSchema.hostOrgId,
+      hostUserId: liveGameSchema.hostUserId,
       title: liveGameSchema.title,
       gamePin: liveGameSchema.gamePin,
     })
@@ -34,7 +34,7 @@ export default async function LiveHostPage({
     .where(eq(liveGameSchema.id, gameId))
     .limit(1);
 
-  if (!game || game.hostOrgId !== userId) {
+  if (!game || game.hostUserId !== userId) {
     return (
       <div className="mx-auto max-w-md space-y-4 px-6 py-20 text-center">
         <h1 className="text-xl font-bold">找不到直播或沒有權限</h1>

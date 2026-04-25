@@ -52,11 +52,11 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: '未登入' }, { status: 401 });
     }
     const [game] = await db
-      .select({ hostOrgId: liveGameSchema.hostOrgId })
+      .select({ hostUserId: liveGameSchema.hostUserId })
       .from(liveGameSchema)
       .where(eq(liveGameSchema.id, gameId))
       .limit(1);
-    if (!game || game.hostOrgId !== userId) {
+    if (!game || game.hostUserId !== userId) {
       return NextResponse.json({ error: '無權限' }, { status: 403 });
     }
     const tokenRequest = await createAblyTokenRequest({

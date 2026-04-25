@@ -361,8 +361,7 @@ export const liveGameSchema = pgTable('live_game', {
   quizId: integer('quiz_id')
     .notNull()
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
-  hostOrgId: text('host_org_id').notNull(), // Clerk userId（欄位名待 Phase 3 改 host_user_id），多租戶隔離
-  hostUserId: text('host_user_id').notNull(), // Clerk userId
+  hostUserId: text('host_user_id').notNull(), // Clerk userId，多租戶隔離
   title: text('title').notNull(),
   gamePin: text('game_pin').notNull().unique(), // 6 碼大寫英數
   status: liveGameStatusEnum('status').default('waiting').notNull(),

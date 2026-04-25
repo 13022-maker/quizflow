@@ -51,7 +51,7 @@ async function loadOwnedGame(gameId: number, userId: string) {
   const [game] = await db
     .select()
     .from(liveGameSchema)
-    .where(and(eq(liveGameSchema.id, gameId), eq(liveGameSchema.hostOrgId, userId)))
+    .where(and(eq(liveGameSchema.id, gameId), eq(liveGameSchema.hostUserId, userId)))
     .limit(1);
   return game ?? null;
 }
@@ -109,7 +109,6 @@ export async function createLiveGame(input: CreateLiveGameInput) {
       .insert(liveGameSchema)
       .values({
         quizId: quiz.id,
-        hostOrgId: userId,
         hostUserId: userId,
         title: quiz.title,
         gamePin,

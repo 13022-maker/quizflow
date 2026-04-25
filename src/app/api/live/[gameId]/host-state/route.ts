@@ -23,14 +23,14 @@ export async function GET(
   }
 
   const [game] = await db
-    .select({ hostOrgId: liveGameSchema.hostOrgId })
+    .select({ hostUserId: liveGameSchema.hostUserId })
     .from(liveGameSchema)
     .where(eq(liveGameSchema.id, gameId))
     .limit(1);
   if (!game) {
     return NextResponse.json({ error: '找不到這場直播' }, { status: 404 });
   }
-  if (game.hostOrgId !== userId) {
+  if (game.hostUserId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
