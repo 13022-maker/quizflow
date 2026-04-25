@@ -12,8 +12,8 @@
  * 適性測驗特性：
  *   - 不一次顯示所有題目，學生看不到剩多少題（避免「猜剩餘難度」）
  *   - 每題即時批改（與一般測驗 batch 批改不同）
- *   - 不寫入 response / answer 表（這是「能力檢測」而非「成績」）
- *   - 結果僅存在 sessionStorage，學生重整後重新測一次
+ *   - 結果預設只存 sessionStorage；學生選擇填姓名 / Email 後送 /finish 寫入 response.estimatedAbility，老師端可看到能力等級
+ *   - score = 答對題數、totalPoints = 答題數（不是 0–100 加權分）
  *
  * 不支援的題型：
  *   - speaking（口說題）— 適性測驗演算法依賴 isCorrect 二元結果，口說題給的是 0–100 分
@@ -37,7 +37,13 @@ type Quiz = InferSelectModel<typeof quizSchema>;
 // 從 server 來的「下一題」資料：與 question 表結構相同，但移除 correctAnswers
 type SafeQuestion = Omit<InferSelectModel<typeof questionSchema>, 'correctAnswers'>;
 
-type HistoryItem = { questionId: number; isCorrect: boolean };
+// 同時包含 isCorrect（給 /next 算 theta）+ answer（給 /finish 寫 DB）
+// /next 的 Zod schema 會自動 strip 掉多餘的 answer 欄位
+type HistoryItem = {
+  questionId: number;
+  isCorrect: boolean;
+  answer: string | string[];
+};
 
 type AdaptiveResult = {
   ability: number;
@@ -62,6 +68,12 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
   const [grading, setGrading] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<AdaptiveResult | null>(null);
+  // 完成測驗後送 server 寫 response 表（讓老師看到能力等級）
+  const [studentName, setStudentName] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [savedResponseId, setSavedResponseId] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState('');
 
   const sessionKey = `${SESSION_KEY_PREFIX}${quiz.id}`;
 
@@ -164,10 +176,14 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
   };
 
   const handleNext = () => {
-    if (!currentQ || !feedback) {
+    if (!currentQ || !feedback || answer === undefined) {
       return;
     }
-    const nextHistory = [...history, { questionId: currentQ.id, isCorrect: feedback.isCorrect }];
+    const nextHistory = [...history, {
+      questionId: currentQ.id,
+      isCorrect: feedback.isCorrect,
+      answer,
+    }];
     setHistory(nextHistory);
     fetchNext(nextHistory);
   };
@@ -178,7 +194,37 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
     setHistory([]);
     setAnswer(undefined);
     setFeedback(null);
+    setSavedResponseId(null);
+    setSaveError('');
     fetchNext([]);
+  };
+
+  const handleSaveResult = async () => {
+    if (!result || saving) {
+      return;
+    }
+    setSaving(true);
+    setSaveError('');
+    try {
+      const res = await fetch(`/api/quiz/${quiz.id}/adaptive/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          history: result.history.map(h => ({ questionId: h.questionId, answer: h.answer })),
+          studentName: studentName.trim() || undefined,
+          studentEmail: studentEmail.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error ?? `${res.status}`);
+      }
+      setSavedResponseId(json.responseId);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : '儲存失敗');
+    } finally {
+      setSaving(false);
+    }
   };
 
   // ── 結果畫面 ──────────────────────────────────────────────
@@ -205,12 +251,56 @@ export function AdaptiveQuizTaker({ quiz }: { quiz: Quiz }) {
           </p>
         </div>
 
-        <div className="flex justify-center gap-3">
-          <Button variant="outline" onClick={handleRetake}>重新測驗</Button>
-        </div>
+        {/* 保存結果到老師端（選填，給老師看到能力等級） */}
+        {!savedResponseId
+          ? (
+              <div className="rounded-xl border bg-white p-5">
+                <p className="text-sm font-semibold">想讓老師看到你的結果？</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  填寫姓名 / Email（選填）後送出，老師可在後台看到你的能力等級。
+                </p>
+                <div className="mt-3 flex gap-2 max-sm:flex-col">
+                  <input
+                    value={studentName}
+                    onChange={e => setStudentName(e.target.value)}
+                    placeholder="姓名"
+                    className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                  <input
+                    type="email"
+                    value={studentEmail}
+                    onChange={e => setStudentEmail(e.target.value)}
+                    placeholder="Email"
+                    className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                {saveError && (
+                  <p className="mt-2 text-xs text-red-600">⚠️ {saveError}</p>
+                )}
+                <div className="mt-3 flex gap-2">
+                  <Button
+                    onClick={handleSaveResult}
+                    disabled={saving}
+                    className="bg-purple-600 hover:bg-purple-700"
+                  >
+                    {saving ? '儲存中…' : '送出結果給老師'}
+                  </Button>
+                  <Button variant="outline" onClick={handleRetake}>重新測驗</Button>
+                </div>
+              </div>
+            )
+          : (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 text-center">
+                <p className="text-sm font-semibold text-emerald-800">✓ 已送出給老師</p>
+                <p className="mt-1 text-xs text-emerald-700">作答編號 #{savedResponseId}</p>
+                <div className="mt-3 flex justify-center">
+                  <Button variant="outline" onClick={handleRetake}>重新測驗</Button>
+                </div>
+              </div>
+            )}
 
         <p className="text-center text-xs text-gray-400">
-          適性測驗結果不寫入正式成績，僅用於評估個人目前能力。
+          適性測驗以「能力等級」為主要結果；題數較少不適合做為正式評量。
         </p>
       </div>
     );

@@ -20,13 +20,13 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import {
   abilityToLevel,
   recomputeAbility,
   selectNextQuestion,
   shouldStop,
 } from '@/lib/ai/cat';
+import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';

@@ -9,9 +9,8 @@ import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions
 import { Button } from '@/components/ui/button';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
-import type { SpeechAssessmentResult } from './SpeakingQuestion';
-
 import { FlashCard } from './FlashCard';
+import type { SpeechAssessmentResult } from './SpeakingQuestion';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
 // 避免一般測驗的學生作答頁被 ~200KB 的依賴拖累
@@ -1573,9 +1572,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         {/* 題號導覽列 */}
         <div className="flex flex-wrap gap-1">
           {displayQuestions.map((q, i) => {
-            const isAnswered
-              = q.type === 'short_answer'
-                || (q.type === 'speaking' ? !!speechAssessments[q.id] : !!answers[q.id]);
+            const hasInput = q.type === 'speaking' ? !!speechAssessments[q.id] : !!answers[q.id];
+            const isAnswered = q.type === 'short_answer' || hasInput;
             const isFlagged = flagged.has(q.id);
             return (
               <button

@@ -11,6 +11,8 @@ export type ResponseRow = {
   totalPoints: number | null;
   leaveCount: number;
   submittedAt: string; // ISO string
+  // 自適應測驗才有：theta 估計值（-3 ～ +3）
+  estimatedAbility?: number | null;
 };
 
 type SortKey = 'submittedAt' | 'rate';
@@ -22,9 +24,35 @@ function calcRate(row: ResponseRow): number | null {
   return Math.round((row.score / row.totalPoints) * 100);
 }
 
+// 把 theta (-3 ~ +3) 翻譯成「等級 + PR 百分位」標籤
+function abilityToBadge(theta: number): { label: string; tone: string; pr: number } {
+  // 簡化版常態分佈 PR
+  const erf = (x: number) => {
+    const t = 1 / (1 + 0.3275911 * Math.abs(x));
+    const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x);
+    return x >= 0 ? y : -y;
+  };
+  const pr = Math.round(50 * (1 + erf(theta / Math.SQRT2)));
+  if (theta >= 1.5) {
+    return { label: '卓越', tone: 'bg-purple-100 text-purple-700', pr };
+  }
+  if (theta >= 0.5) {
+    return { label: '進階', tone: 'bg-blue-100 text-blue-700', pr };
+  }
+  if (theta >= -0.5) {
+    return { label: '中等', tone: 'bg-emerald-100 text-emerald-700', pr };
+  }
+  if (theta >= -1.5) {
+    return { label: '初階', tone: 'bg-amber-100 text-amber-700', pr };
+  }
+  return { label: '需加強', tone: 'bg-red-100 text-red-700', pr };
+}
+
 export function ResultsResponseTable({ responses, quizId }: { responses: ResponseRow[]; quizId: number }) {
   const [sortKey, setSortKey] = useState<SortKey>('submittedAt');
   const [sortAsc, setSortAsc] = useState(false);
+  // 若有任一筆 response 有 estimatedAbility，顯示能力欄
+  const hasAdaptive = responses.some(r => r.estimatedAbility !== null && r.estimatedAbility !== undefined);
 
   // 排序邏輯
   const sorted = [...responses].sort((a, b) => {
@@ -136,6 +164,11 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
                 答對率
                 {sortIcon('rate')}
               </th>
+              {hasAdaptive && (
+                <th className="px-4 py-2 text-center font-medium text-muted-foreground" title="自適應測驗的能力等級（簡版 IRT theta）">
+                  能力等級
+                </th>
+              )}
               <th
                 className="cursor-pointer px-4 py-2 text-right font-medium text-muted-foreground hover:text-foreground"
                 onClick={() => toggleSort('submittedAt')}
@@ -181,6 +214,21 @@ export function ResultsResponseTable({ responses, quizId }: { responses: Respons
                         )
                       : '—'}
                   </td>
+                  {hasAdaptive && (
+                    <td className="px-4 py-3 text-center">
+                      {r.estimatedAbility !== null && r.estimatedAbility !== undefined
+                        ? (() => {
+                            const badge = abilityToBadge(r.estimatedAbility);
+                            return (
+                              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${badge.tone}`} title={`θ ≈ ${r.estimatedAbility.toFixed(2)} · PR ${badge.pr}`}>
+                                {badge.label}
+                                <span className="text-[10px] opacity-70">PR {badge.pr}</span>
+                              </span>
+                            );
+                          })()
+                        : <span className="text-xs text-muted-foreground">—</span>}
+                    </td>
+                  )}
                   <td className="px-4 py-3 text-right text-muted-foreground">
                     {new Date(r.submittedAt).toLocaleString('zh-TW')}
                   </td>
