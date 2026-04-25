@@ -2,7 +2,7 @@
  * 聽力題音檔上傳 API（Vercel Blob）
  * 路徑結構：audio/{quizId}/{timestamp}-{random}.{ext}
  * 限制：
- *   - 必須登入且為該 quiz 的 owner（orgId 比對）
+ *   - 必須登入且為該 quiz 的 owner（userId 比對）
  *   - 僅接受 audio/*
  *   - 單檔 < 5 MB
  */
@@ -24,8 +24,8 @@ export async function POST(
   { params }: { params: { quizId: string } },
 ) {
   try {
-    const { orgId } = await auth();
-    if (!orgId) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: '未登入' }, { status: 401 });
     }
 
@@ -38,7 +38,7 @@ export async function POST(
     const [quiz] = await db
       .select({ id: quizSchema.id })
       .from(quizSchema)
-      .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+      .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
       .limit(1);
     if (!quiz) {
       return NextResponse.json({ error: '找不到測驗或無權限' }, { status: 404 });

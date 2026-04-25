@@ -38,12 +38,12 @@ async function generateUniquePin(): Promise<string> {
   return generatePin() + Math.random().toString(36).slice(2, 3).toUpperCase();
 }
 
-// 驗證 game 屬於當前 org
-async function loadOwnedGame(gameId: number, orgId: string) {
+// 驗證 game 屬於當前使用者
+async function loadOwnedGame(gameId: number, userId: string) {
   const [game] = await db
     .select()
     .from(liveGameSchema)
-    .where(and(eq(liveGameSchema.id, gameId), eq(liveGameSchema.hostOrgId, orgId)))
+    .where(and(eq(liveGameSchema.id, gameId), eq(liveGameSchema.hostOrgId, userId)))
     .limit(1);
   return game ?? null;
 }
@@ -56,8 +56,8 @@ export type CreateLiveGameInput = z.infer<typeof CreateLiveGameSchema>;
 
 export async function createLiveGame(input: CreateLiveGameInput) {
   try {
-    const { orgId, userId } = await auth();
-    if (!orgId || !userId) {
+    const { userId } = await auth();
+    if (!userId) {
       return { error: 'Unauthorized' as const };
     }
 
@@ -77,7 +77,7 @@ export async function createLiveGame(input: CreateLiveGameInput) {
       .where(eq(quizSchema.id, parsed.data.quizId))
       .limit(1);
 
-    if (!quiz || quiz.ownerId !== orgId) {
+    if (!quiz || quiz.ownerId !== userId) {
       return { error: '找不到測驗或沒有權限' };
     }
     if (quiz.status !== 'published') {
@@ -101,7 +101,7 @@ export async function createLiveGame(input: CreateLiveGameInput) {
       .insert(liveGameSchema)
       .values({
         quizId: quiz.id,
-        hostOrgId: orgId,
+        hostOrgId: userId,
         hostUserId: userId,
         title: quiz.title,
         gamePin,
@@ -128,11 +128,11 @@ export async function createLiveGame(input: CreateLiveGameInput) {
 }
 
 export async function startGame(gameId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
+  const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
@@ -154,11 +154,11 @@ export async function startGame(gameId: number) {
 }
 
 export async function showResult(gameId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
+  const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
@@ -176,11 +176,11 @@ export async function showResult(gameId: number) {
 }
 
 export async function nextQuestion(gameId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
+  const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
@@ -218,11 +218,11 @@ export async function nextQuestion(gameId: number) {
 }
 
 export async function endGame(gameId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return { error: 'Unauthorized' as const };
   }
-  const game = await loadOwnedGame(gameId, orgId);
+  const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }

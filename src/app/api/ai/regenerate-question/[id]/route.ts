@@ -39,13 +39,13 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } },
 ) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
   // Pro 限定功能：非 Pro 阻擋並引導升級
-  const isPro = await isProOrAbove(orgId);
+  const isPro = await isProOrAbove(userId);
   if (!isPro) {
     return NextResponse.json(
       { error: '重新生成題目為 Pro 方案功能，請升級後再使用', upgradeRequired: true },
@@ -63,7 +63,7 @@ export async function POST(
     .select({ question: questionSchema, quiz: quizSchema })
     .from(questionSchema)
     .innerJoin(quizSchema, eq(quizSchema.id, questionSchema.quizId))
-    .where(and(eq(questionSchema.id, questionId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(questionSchema.id, questionId), eq(quizSchema.ownerId, userId)))
     .limit(1);
 
   if (!row) {
@@ -81,7 +81,7 @@ export async function POST(
   }
 
   // quota 檢查放在所有權驗證之後，避免非本人的請求也扣額度
-  const quota = await checkAndIncrementAiUsage(orgId);
+  const quota = await checkAndIncrementAiUsage(userId);
   if (!quota.allowed) {
     return NextResponse.json(
       { error: quota.reason, upgradeRequired: true, remaining: 0 },

@@ -25,7 +25,7 @@ type DashboardQuiz = {
 };
 
 export default async function DashboardIndexPage() {
-  const { orgId, userId } = await auth();
+  const { userId } = await auth();
 
   let recentQuizzes: DashboardQuiz[] = [];
   let totalQuizCount = 0;
@@ -34,7 +34,7 @@ export default async function DashboardIndexPage() {
   let avgScorePercent: number | null = null;
   let responseCountMap = new Map<number, number>();
 
-  if (orgId) {
+  if (userId) {
     recentQuizzes = await db
       .select({
         id: quizSchema.id,
@@ -46,27 +46,27 @@ export default async function DashboardIndexPage() {
         quizMode: quizSchema.quizMode,
       })
       .from(quizSchema)
-      .where(eq(quizSchema.ownerId, orgId))
+      .where(eq(quizSchema.ownerId, userId))
       .orderBy(desc(quizSchema.createdAt))
       .limit(18);
 
     const [countRow] = await db
       .select({ total: count() })
       .from(quizSchema)
-      .where(eq(quizSchema.ownerId, orgId));
+      .where(eq(quizSchema.ownerId, userId));
     totalQuizCount = countRow?.total ?? 0;
 
     const [pubRow] = await db
       .select({ total: count() })
       .from(quizSchema)
-      .where(and(eq(quizSchema.ownerId, orgId), eq(quizSchema.status, 'published')));
+      .where(and(eq(quizSchema.ownerId, userId), eq(quizSchema.status, 'published')));
     publishedCount = pubRow?.total ?? 0;
 
     const [respRow] = await db
       .select({ total: count() })
       .from(responseSchema)
       .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-      .where(eq(quizSchema.ownerId, orgId));
+      .where(eq(quizSchema.ownerId, userId));
     totalResponses = respRow?.total ?? 0;
 
     const scoredData = await db
@@ -75,7 +75,7 @@ export default async function DashboardIndexPage() {
       .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
       .where(
         and(
-          eq(quizSchema.ownerId, orgId),
+          eq(quizSchema.ownerId, userId),
           isNotNull(responseSchema.score),
           isNotNull(responseSchema.totalPoints),
         ),
@@ -123,16 +123,16 @@ export default async function DashboardIndexPage() {
       <CheckoutSuccessBanner />
 
       {/* Pro 試用倒數 / 到期提示 */}
-      {userId && orgId && (
+      {userId && (
         <div className="mx-4 mb-4">
-          <TrialBanner clerkUserId={userId} orgId={orgId} />
+          <TrialBanner clerkUserId={userId} orgId={userId} />
         </div>
       )}
 
       {/* 免費版 AI 額度警示 */}
-      {orgId && (
+      {userId && (
         <div className="mx-4 mb-4">
-          <AiQuotaBanner orgId={orgId} />
+          <AiQuotaBanner orgId={userId} />
         </div>
       )}
 

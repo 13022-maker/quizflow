@@ -33,8 +33,8 @@ export default async function EditQuizPage({
   params: { id: string };
   searchParams: { ai?: string };
 }) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return notFound();
   }
 
@@ -73,7 +73,7 @@ export default async function EditQuizPage({
       createdAt: quizSchema.createdAt,
     })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
 
   if (!quiz) {
@@ -88,7 +88,7 @@ export default async function EditQuizPage({
     .orderBy(asc(questionSchema.position));
 
   // 判斷是否為 Pro 方案（決定 AI 出題功能是否可用）
-  const isPro = await isProOrAbove(orgId);
+  const isPro = await isProOrAbove(userId);
 
   const autoOpenAI = searchParams.ai === '1';
 

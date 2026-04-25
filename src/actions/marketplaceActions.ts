@@ -17,8 +17,8 @@ const PublishSchema = z.object({
 });
 
 export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('未登入');
   }
 
@@ -30,7 +30,7 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
   const [quiz] = await db
     .select({ id: quizSchema.id, status: quizSchema.status, ownerId: quizSchema.ownerId })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, parsed.data.quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, parsed.data.quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
 
   if (!quiz) {
@@ -65,15 +65,15 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
 }
 
 export async function unpublishFromMarketplace(quizId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('未登入');
   }
 
   await db
     .update(quizSchema)
     .set({ isMarketplace: false })
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)));
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)));
 
   revalidatePath('/marketplace');
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
@@ -89,8 +89,8 @@ function generateRoomCode(): string {
 }
 
 export async function copyQuizFromMarketplace(sourceQuizId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('請先登入再複製');
   }
 
@@ -120,7 +120,7 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
   const [newQuiz] = await db
     .insert(quizSchema)
     .values({
-      ownerId: orgId,
+      ownerId: userId,
       title: `${source.title}（複製）`,
       description: source.description,
       accessCode: nanoid(8),

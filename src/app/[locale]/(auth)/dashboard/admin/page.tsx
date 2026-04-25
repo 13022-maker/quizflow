@@ -19,8 +19,8 @@ export default async function AdminStatsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return notFound();
   }
 
@@ -36,40 +36,40 @@ export default async function AdminStatsPage({
     .select({ total: count() })
     .from(responseSchema)
     .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-    .where(and(eq(quizSchema.ownerId, orgId), gte(responseSchema.submittedAt, today)));
+    .where(and(eq(quizSchema.ownerId, userId), gte(responseSchema.submittedAt, today)));
 
   // 本週作答數
   const [weekResponses] = await db
     .select({ total: count() })
     .from(responseSchema)
     .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-    .where(and(eq(quizSchema.ownerId, orgId), gte(responseSchema.submittedAt, weekAgo)));
+    .where(and(eq(quizSchema.ownerId, userId), gte(responseSchema.submittedAt, weekAgo)));
 
   // 今日新建測驗
   const [todayQuizzes] = await db
     .select({ total: count() })
     .from(quizSchema)
-    .where(and(eq(quizSchema.ownerId, orgId), gte(quizSchema.createdAt, today)));
+    .where(and(eq(quizSchema.ownerId, userId), gte(quizSchema.createdAt, today)));
 
   // 總測驗數
   const [totalQuizzes] = await db
     .select({ total: count() })
     .from(quizSchema)
-    .where(eq(quizSchema.ownerId, orgId));
+    .where(eq(quizSchema.ownerId, userId));
 
   // 總作答數
   const [totalResponses] = await db
     .select({ total: count() })
     .from(responseSchema)
     .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-    .where(eq(quizSchema.ownerId, orgId));
+    .where(eq(quizSchema.ownerId, userId));
 
   // 今日作答的不重複學生數
   const [todayStudents] = await db
     .select({ total: sql<number>`count(distinct ${responseSchema.studentEmail})` })
     .from(responseSchema)
     .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-    .where(and(eq(quizSchema.ownerId, orgId), gte(responseSchema.submittedAt, today)));
+    .where(and(eq(quizSchema.ownerId, userId), gte(responseSchema.submittedAt, today)));
 
   // 最近 10 筆作答
   const recentResponses = await db
@@ -83,7 +83,7 @@ export default async function AdminStatsPage({
     })
     .from(responseSchema)
     .innerJoin(quizSchema, eq(responseSchema.quizId, quizSchema.id))
-    .where(eq(quizSchema.ownerId, orgId))
+    .where(eq(quizSchema.ownerId, userId))
     .orderBy(sql`${responseSchema.submittedAt} desc`)
     .limit(10);
 
@@ -128,27 +128,11 @@ export default async function AdminStatsPage({
 
     // 總人數 >= 100 時跳過明細聚合（節省 Clerk API + DB 查詢），明細區塊不會顯示
     if (SHOW_USER_DETAILS) {
-      // 批次抓取每位用戶的 organization memberships（決定其 ownerIds）
-      // ownerId = orgId（建立測驗時使用），所以要把用戶所屬的每個 org 都納入
-      const membershipResults = await Promise.all(
-        allUsersRaw.map(async (u) => {
-          try {
-            const m = await clerk.users.getOrganizationMembershipList({ userId: u.id });
-            return { userId: u.id, orgIds: m.data.map(x => x.organization.id) };
-          } catch {
-            return { userId: u.id, orgIds: [] as string[] };
-          }
-        }),
-      );
+      // Phase 2 起 ownerId = userId，不再依賴 organization membership
+      const userIdList = allUsersRaw.map(u => u.id);
 
-      // 收集所有需要查詢的 ownerId（含用戶自己的 userId，作為相容 fallback）
-      const allOwnerIds = new Set<string>();
-      for (const { userId, orgIds } of membershipResults) {
-        allOwnerIds.add(userId);
-        for (const id of orgIds) {
-          allOwnerIds.add(id);
-        }
-      }
+      // 收集所有需要查詢的 ownerId（Phase 2 後僅 userId）
+      const allOwnerIds = new Set<string>(userIdList);
 
       // 以單一 SQL 聚合每個 ownerId 的測驗數與作答數
       const ownerIdsArr = Array.from(allOwnerIds);
@@ -178,10 +162,10 @@ export default async function AdminStatsPage({
         }
       }
 
-      // 建立 userId → ownerIds 快表
+      // 建立 userId → ownerIds 快表（Phase 2 後 ownerId 永遠等於 userId）
       const userOwnerIds = new Map<string, string[]>();
-      for (const { userId, orgIds } of membershipResults) {
-        userOwnerIds.set(userId, [userId, ...orgIds]);
+      for (const uid of userIdList) {
+        userOwnerIds.set(uid, [uid]);
       }
 
       allRegisteredUsers = allUsersRaw.map((u) => {

@@ -5,7 +5,7 @@
  *   - teacher：含答案 + 配分
  *   - student：只有題目（空白作答卷）
  *
- * 驗證：必須是該 quiz 的 owner（orgId 比對）
+ * 驗證：必須是該 quiz 的 owner（userId 比對）
  */
 
 import { auth } from '@clerk/nextjs/server';
@@ -22,8 +22,8 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } },
 ) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
@@ -59,7 +59,7 @@ export async function GET(
       createdAt: quizSchema.createdAt,
     })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
   if (!quiz) {
     return NextResponse.json({ error: '找不到測驗或無權限' }, { status: 404 });

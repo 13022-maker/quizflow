@@ -21,8 +21,8 @@ const InputSchema = z.object({
 
 export async function POST(request: Request) {
   // 僅限登入的老師使用
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 

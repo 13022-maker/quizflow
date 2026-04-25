@@ -10,8 +10,8 @@ import { DeleteVocabButton } from './DeleteButton';
 export const dynamic = 'force-dynamic';
 
 export default async function VocabListPage() {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return null;
   }
 
@@ -26,7 +26,7 @@ export default async function VocabListPage() {
     })
     .from(vocabSetSchema)
     .leftJoin(vocabCardSchema, eq(vocabCardSchema.setId, vocabSetSchema.id))
-    .where(eq(vocabSetSchema.ownerId, orgId))
+    .where(eq(vocabSetSchema.ownerId, userId))
     .groupBy(vocabSetSchema.id)
     .orderBy(desc(vocabSetSchema.createdAt));
 

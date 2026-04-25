@@ -21,7 +21,7 @@ function getCurrentYearMonth(): string {
  * 檢查 AI 出題 quota 並遞增使用次數
  * 回傳 { allowed: true } 或 { allowed: false, reason, remaining }
  */
-export async function checkAndIncrementAiUsage(orgId: string): Promise<
+export async function checkAndIncrementAiUsage(userId: string): Promise<
   | { allowed: true; remaining: number }
   | { allowed: false; reason: string; remaining: number }
 > {
@@ -38,7 +38,7 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
   }
 
   // 取得方案
-  const planId = await getOrgPlanId(orgId);
+  const planId = await getOrgPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const quota = plan.features.aiQuota;
 
@@ -55,7 +55,7 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
     .from(aiUsageSchema)
     .where(
       and(
-        eq(aiUsageSchema.ownerId, orgId),
+        eq(aiUsageSchema.ownerId, userId),
         eq(aiUsageSchema.yearMonth, yearMonth),
       ),
     )
@@ -81,7 +81,7 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
       .where(eq(aiUsageSchema.id, usage.id));
   } else {
     await db.insert(aiUsageSchema).values({
-      ownerId: orgId,
+      ownerId: userId,
       yearMonth,
       count: 1,
     });
@@ -93,12 +93,12 @@ export async function checkAndIncrementAiUsage(orgId: string): Promise<
 /**
  * 查詢當月剩餘次數（前端顯示用，不遞增）
  */
-export async function getAiUsageRemaining(orgId: string): Promise<{
+export async function getAiUsageRemaining(userId: string): Promise<{
   quota: number;
   used: number;
   remaining: number;
 }> {
-  const planId = await getOrgPlanId(orgId);
+  const planId = await getOrgPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const quota = plan.features.aiQuota;
 
@@ -112,7 +112,7 @@ export async function getAiUsageRemaining(orgId: string): Promise<{
     .from(aiUsageSchema)
     .where(
       and(
-        eq(aiUsageSchema.ownerId, orgId),
+        eq(aiUsageSchema.ownerId, userId),
         eq(aiUsageSchema.yearMonth, yearMonth),
       ),
     )

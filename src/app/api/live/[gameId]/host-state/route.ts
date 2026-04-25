@@ -17,8 +17,8 @@ export async function GET(
     return NextResponse.json({ error: 'Bad gameId' }, { status: 400 });
   }
 
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -30,7 +30,7 @@ export async function GET(
   if (!game) {
     return NextResponse.json({ error: '找不到這場直播' }, { status: 404 });
   }
-  if (game.hostOrgId !== orgId) {
+  if (game.hostOrgId !== userId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 

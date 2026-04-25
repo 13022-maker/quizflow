@@ -8,10 +8,10 @@ import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 export const dynamic = 'force-dynamic';
 
 export default async function BillingPage() {
-  const { orgId } = await auth();
+  const { userId } = await auth();
 
   // 未登入 fallback
-  if (!orgId) {
+  if (!userId) {
     return (
       <div className="py-12 text-center text-muted-foreground">
         請先登入以查看方案資訊。
@@ -19,10 +19,10 @@ export default async function BillingPage() {
     );
   }
 
-  const planId = await getOrgPlanId(orgId);
+  const planId = await getOrgPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const isPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER;
-  const aiUsage = await getAiUsageRemaining(orgId);
+  const aiUsage = await getAiUsageRemaining(userId);
 
   return (
     <>

@@ -36,9 +36,9 @@ export async function POST(
   request: Request,
   { params }: { params: { id: string } },
 ) {
-  // 驗證登入，批次匯入需要 orgId 才能確認測驗所有權
-  const { orgId } = await auth();
-  if (!orgId) {
+  // 驗證登入，批次匯入需要 userId 才能確認測驗所有權
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
@@ -57,13 +57,13 @@ export async function POST(
     .limit(1);
 
   if (!quiz) {
-    console.warn('[api/quizzes/questions POST] quiz not found', { quizId, orgId });
+    console.warn('[api/quizzes/questions POST] quiz not found', { quizId, userId });
     return NextResponse.json({ error: '找不到測驗' }, { status: 404 });
   }
-  if (quiz.ownerId !== orgId) {
+  if (quiz.ownerId !== userId) {
     console.warn('[api/quizzes/questions POST] ownership mismatch', {
       quizId,
-      sessionOrgId: orgId,
+      sessionUserId: userId,
       quizOwnerId: quiz.ownerId,
     });
     return NextResponse.json({ error: '無權限操作此測驗' }, { status: 403 });

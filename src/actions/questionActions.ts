@@ -9,11 +9,11 @@ import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 // 驗證測驗所有權
-async function verifyOwnership(quizId: number, orgId: string) {
+async function verifyOwnership(quizId: number, userId: string) {
   const [quiz] = await db
     .select({ id: quizSchema.id, ownerId: quizSchema.ownerId })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
   if (!quiz) {
     throw new Error('Quiz not found or unauthorized');
@@ -37,11 +37,11 @@ const QuestionInputSchema = z.object({
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;
 
 export async function createQuestion(quizId: number, data: QuestionInput) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
-  await verifyOwnership(quizId, orgId);
+  await verifyOwnership(quizId, userId);
 
   const parsed = QuestionInputSchema.safeParse(data);
   if (!parsed.success) {
@@ -77,11 +77,11 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
 }
 
 export async function updateQuestion(id: number, quizId: number, data: QuestionInput) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
-  await verifyOwnership(quizId, orgId);
+  await verifyOwnership(quizId, userId);
 
   const parsed = QuestionInputSchema.safeParse(data);
   if (!parsed.success) {
@@ -107,11 +107,11 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
 }
 
 export async function deleteQuestion(id: number, quizId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
-  await verifyOwnership(quizId, orgId);
+  await verifyOwnership(quizId, userId);
 
   await db.delete(questionSchema).where(eq(questionSchema.id, id));
 
@@ -119,11 +119,11 @@ export async function deleteQuestion(id: number, quizId: number) {
 }
 
 export async function reorderQuestions(quizId: number, orderedIds: number[]) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
-  await verifyOwnership(quizId, orgId);
+  await verifyOwnership(quizId, userId);
 
   await Promise.all(
     orderedIds.map((id, index) =>
@@ -139,11 +139,11 @@ export async function reorderQuestions(quizId: number, orderedIds: number[]) {
 
 // 平均分配總分 100 分到所有題目
 export async function distributePoints(quizId: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
-  await verifyOwnership(quizId, orgId);
+  await verifyOwnership(quizId, userId);
 
   // 取得所有題目 id（依 position 排序）
   const questions = await db

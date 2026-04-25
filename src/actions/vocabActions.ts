@@ -17,15 +17,15 @@ type CardInput = {
 };
 
 export async function createVocabSet(data: { title: string; cards: CardInput[] }) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
   const accessCode = nanoid(8);
 
   const [inserted] = await db.insert(vocabSetSchema).values({
-    ownerId: orgId,
+    ownerId: userId,
     title: data.title,
     accessCode,
     status: 'published',
@@ -53,13 +53,13 @@ export async function createVocabSet(data: { title: string; cards: CardInput[] }
 }
 
 export async function deleteVocabSet(id: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
   await db.delete(vocabSetSchema).where(
-    and(eq(vocabSetSchema.id, id), eq(vocabSetSchema.ownerId, orgId)),
+    and(eq(vocabSetSchema.id, id), eq(vocabSetSchema.ownerId, userId)),
   );
 
   revalidatePath('/dashboard/vocab');

@@ -11,8 +11,8 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } },
 ) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
@@ -24,7 +24,7 @@ export async function GET(
   const [quiz] = await db
     .select({ id: quizSchema.id, title: quizSchema.title })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
 
   if (!quiz) {

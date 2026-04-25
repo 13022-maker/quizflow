@@ -49,8 +49,8 @@ const CreateQuizSchema = z.object({
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
 
 export async function createQuiz(data: CreateQuizInput) {
-  const { orgId, userId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
@@ -65,13 +65,13 @@ export async function createQuiz(data: CreateQuizInput) {
     // VIP 直接跳過 quota 檢查
   } else {
   // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
-    const planId = await getOrgPlanId(orgId);
+    const planId = await getOrgPlanId(userId);
     const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
     if (quizLimit < 999) {
       const [row] = await db
         .select({ total: count() })
         .from(quizSchema)
-        .where(eq(quizSchema.ownerId, orgId));
+        .where(eq(quizSchema.ownerId, userId));
       if ((row?.total ?? 0) >= quizLimit) {
         return { error: 'QUOTA_EXCEEDED' };
       }
@@ -83,7 +83,7 @@ export async function createQuiz(data: CreateQuizInput) {
   const [inserted] = await db
     .insert(quizSchema)
     .values({
-      ownerId: orgId,
+      ownerId: userId,
       title: parsed.data.title,
       description: parsed.data.description,
       accessCode: nanoid(8), // 8 碼隨機英數字，作為學生作答連結
@@ -113,15 +113,15 @@ export async function updateQuiz(
   id: number,
   data: { title: string; description?: string; status: 'draft' | 'published' | 'closed' },
 ) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
   await db
     .update(quizSchema)
     .set({ title: data.title, description: data.description, status: data.status })
-    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
+    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, userId)));
 
   revalidatePath(`/dashboard/quizzes/${id}/edit`);
   revalidatePath('/dashboard/quizzes');
@@ -140,28 +140,28 @@ export async function updateQuizSettings(
     expiresAt?: Date | null;
   },
 ) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
   await db
     .update(quizSchema)
     .set(data)
-    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
+    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, userId)));
 
   revalidatePath(`/dashboard/quizzes/${id}/edit`);
 }
 
 export async function deleteQuiz(id: number) {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     throw new Error('Unauthorized');
   }
 
   await db
     .delete(quizSchema)
-    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, orgId)));
+    .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, userId)));
 
   revalidatePath('/dashboard/quizzes');
 }

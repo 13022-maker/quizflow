@@ -23,18 +23,18 @@ export async function generateMetadata(props: { params: { locale: string } }) {
 
 export default async function NewQuizPage() {
   const t = await getTranslations('AddQuiz');
-  const { orgId } = await auth();
+  const { userId } = await auth();
 
   // 伺服器端先查方案與測驗數量，超過上限就顯示升級牆
-  if (orgId) {
-    const planId = await getOrgPlanId(orgId);
+  if (userId) {
+    const planId = await getOrgPlanId(userId);
     const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
 
     if (quizLimit < 999) {
       const [row] = await db
         .select({ total: count() })
         .from(quizSchema)
-        .where(eq(quizSchema.ownerId, orgId));
+        .where(eq(quizSchema.ownerId, userId));
       const current = row?.total ?? 0;
 
       if (current >= quizLimit) {

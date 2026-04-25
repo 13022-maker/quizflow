@@ -421,8 +421,8 @@ export async function isNicknameTaken(gameId: number, nickname: string): Promise
   return !!row;
 }
 
-// 取得一個 orgId 底下的 games（辦法是 quizzes -> games；若之後需要列表頁可用）
-export async function listGamesByOrg(orgId: string, quizIds: number[]) {
+// 取得一個 userId 底下的 games（辦法是 quizzes -> games；若之後需要列表頁可用）
+export async function listGamesByOrg(userId: string, quizIds: number[]) {
   if (quizIds.length === 0) {
     return [];
   }
@@ -430,7 +430,7 @@ export async function listGamesByOrg(orgId: string, quizIds: number[]) {
     .select()
     .from(liveGameSchema)
     .where(and(
-      eq(liveGameSchema.hostOrgId, orgId),
+      eq(liveGameSchema.hostOrgId, userId),
       inArray(liveGameSchema.quizId, quizIds),
     ));
 }

@@ -72,19 +72,19 @@ function parseQuestionsJSON(text: string): AIGeneratedQuestion[] | null {
 export async function generateAIQuestions(
   input: { topic: string; count?: number },
 ): Promise<GenerateQuestionsResult> {
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return { success: false, error: '請先登入' };
   }
 
   // 檢查是否為付費方案
-  const hasPro = await isProOrAbove(orgId);
+  const hasPro = await isProOrAbove(userId);
   if (!hasPro) {
     return { success: false, error: '此功能僅限 Pro 方案使用', upgradeRequired: true };
   }
 
   // 檢查 AI 出題 quota（Free 用戶每月 10 次）
-  const quotaCheck = await checkAndIncrementAiUsage(orgId);
+  const quotaCheck = await checkAndIncrementAiUsage(userId);
   if (!quotaCheck.allowed) {
     return { success: false, error: quotaCheck.reason, upgradeRequired: true };
   }

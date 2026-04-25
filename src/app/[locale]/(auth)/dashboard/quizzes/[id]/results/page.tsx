@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
 
 export default async function QuizResultsPage({ params }: { params: { id: string } }) {
   const t = await getTranslations('QuizResults');
-  const { orgId } = await auth();
-  if (!orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return notFound();
   }
 
@@ -36,7 +36,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
   const [quiz] = await db
     .select({ id: quizSchema.id, title: quizSchema.title })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, orgId)))
+    .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
 
   if (!quiz) {

@@ -30,12 +30,12 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const { userId, orgId } = await auth();
-  if (!userId || !orgId) {
+  const { userId } = await auth();
+  if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
-  const quota = await checkAndIncrementAiUsage(orgId);
+  const quota = await checkAndIncrementAiUsage(userId);
   if (!quota.allowed) {
     return NextResponse.json(
       { error: quota.reason, upgradeRequired: true, remaining: 0 },

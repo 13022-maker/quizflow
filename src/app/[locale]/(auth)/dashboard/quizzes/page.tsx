@@ -22,7 +22,7 @@ export async function generateMetadata(props: { params: { locale: string } }) {
 }
 
 export default async function QuizzesPage() {
-  const { orgId } = await auth();
+  const { userId } = await auth();
   const t = await getTranslations('Quizzes');
 
   let quizzes: (typeof quizSchema.$inferSelect)[] = [];
@@ -31,11 +31,11 @@ export default async function QuizzesPage() {
   let planId = 'free';
 
   try {
-    if (orgId) {
+    if (userId) {
       // 並行查詢：測驗清單、方案資訊
       // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
       [planId, quizzes] = await Promise.all([
-        getOrgPlanId(orgId),
+        getOrgPlanId(userId),
         db.select({
           id: quizSchema.id,
           ownerId: quizSchema.ownerId,
@@ -55,7 +55,7 @@ export default async function QuizzesPage() {
           expiresAt: quizSchema.expiresAt,
           updatedAt: quizSchema.updatedAt,
           createdAt: quizSchema.createdAt,
-        }).from(quizSchema).where(eq(quizSchema.ownerId, orgId)).orderBy(quizSchema.createdAt) as any,
+        }).from(quizSchema).where(eq(quizSchema.ownerId, userId)).orderBy(quizSchema.createdAt) as any,
       ]);
       quizLimit = PricingPlanList[planId]?.features.website ?? 10;
       quizCount = quizzes.length;
