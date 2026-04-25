@@ -77,7 +77,7 @@ export async function getOrgPlanId(_orgId: string): Promise<string> {
  *
  * 判斷順序：
  *   1. subscription 表有 active / trialing / past_due → Pro
- *   2. user_trial 表在試用期內（30 天） → Pro
+ *   2. user_trial 表在試用期內（21 天） → Pro
  *      lazy init：新用戶首次呼叫時會自動建立試用紀錄
  *   3. 都沒有 → Free
  */

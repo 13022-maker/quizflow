@@ -1,5 +1,5 @@
 /**
- * 30 天 Pro 試用機制
+ * 21 天 Pro 試用機制
  *
  * 策略：lazy init — 新用戶首次需要 Pro 資格時才建立試用紀錄，避免額外 Clerk webhook
  * 試用期結束自動降級為免費（無付費訂閱時）
@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { userTrialSchema } from '@/models/Schema';
 
-const TRIAL_DAYS = 30;
+const TRIAL_DAYS = 21;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type TrialStatus = {
@@ -32,7 +32,7 @@ export async function ensureTrialRecord(clerkUserId: string): Promise<TrialStatu
     return computeStatus(existing.startedAt, existing.endsAt);
   }
 
-  // 建立新試用紀錄：30 天後到期
+  // 建立新試用紀錄：21 天後到期
   const now = new Date();
   const endsAt = new Date(now.getTime() + TRIAL_DAYS * MS_PER_DAY);
 
