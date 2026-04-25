@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { topic, types = ['mc'], difficulty = 'medium' } = body;
+  const { topic, types = ['mc'], difficulty = 'medium', framework } = body;
   const hasListening = (types as string[]).includes('listening');
   const count = Math.min(Number(body.count) || 5, hasListening ? 5 : 20);
 
@@ -52,12 +52,101 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '請輸入主題或內容' }, { status: 400 });
   }
 
+  // 命題框架白名單 + prompt prefix 對應表（key → prefix）
+  // 用 key 機制，避免 client 直接傳中文字串到 prompt 形成 injection
+  const make108Prefix = (subject: string) => `你正在為台灣 108 課綱「${subject}」科目命題。
+請依 108 課綱核心素養精神出題，強調：
+- 情境化（題目連結真實生活或學科應用情境）
+- 跨領域思考（鼓勵整合運用知識）
+- 素養導向（避免單純背誦記憶）
+
+`;
+  const FRAMEWORK_PROMPTS: Record<string, string> = {
+    // 108 課綱素養 — 國中
+    '108-jhs-math': make108Prefix('國中數學'),
+    '108-jhs-chinese': make108Prefix('國中國文'),
+    '108-jhs-social': make108Prefix('國中社會'),
+    '108-jhs-science': make108Prefix('國中自然'),
+    '108-jhs-english': make108Prefix('國中英文'),
+    '108-jhs-history': make108Prefix('國中歷史'),
+    // 108 課綱素養 — 高中
+    '108-shs-math': make108Prefix('高中數學'),
+    '108-shs-chinese': make108Prefix('高中國文'),
+    '108-shs-english': make108Prefix('高中英文'),
+    '108-shs-history': make108Prefix('高中歷史'),
+    '108-shs-geography': make108Prefix('高中地理'),
+    '108-shs-science': make108Prefix('高中自然'),
+    // PISA 國際素養
+    pisa: `請以 PISA 國際學生能力評量風格出題：
+- 題幹必須連結真實生活情境（社會議題、科學現象、數據資料）
+- 強調閱讀理解、資料判讀、推理應用
+- 跨領域整合，不限單一學科知識
+- 鼓勵題幹提供圖表、文章、對話片段作為資訊源（用文字清楚描述）
+
+`,
+    // 國中教育會考
+    'jhs-exam': `請以台灣國中教育會考題型風格出題：
+- 以五選一單選題為主，題幹簡短清楚
+- 避免艱澀字詞與冷僻知識點
+- 難度均勻分佈（基礎、中等、進階各約 1/3）
+- 重視基礎概念辨析與應用，貼近 108 課綱範圍
+
+`,
+    // Bloom 認知層次
+    'bloom-remember': `請依 Bloom 認知層次「記憶」（Remember）出題：聚焦事實回憶、定義辨識、基本術語回想，題幹常以「下列何者為...」「...的定義是」等形式為主。
+
+`,
+    'bloom-understand': `請依 Bloom 認知層次「理解」（Understand）出題：聚焦概念解釋、舉例說明、分類比較、用自己的話複述意義，避免單純背誦。
+
+`,
+    'bloom-apply': `請依 Bloom 認知層次「應用」（Apply）出題：聚焦在新情境中運用學過的規則、方法、技巧解題，題幹常給「給定情境，請用 X 方法計算 / 解決」。
+
+`,
+    'bloom-analyze': `請依 Bloom 認知層次「分析」（Analyze）出題：聚焦拆解結構、辨別組成元素間關係、區分論點與證據、找出隱含假設。
+
+`,
+    'bloom-evaluate': `請依 Bloom 認知層次「評鑑」（Evaluate）出題：聚焦判斷優劣、批判論證、比較不同方案，要求學生支持立場並提供理由。
+
+`,
+    'bloom-create': `請依 Bloom 認知層次「創造」（Create）出題：聚焦組合元素產出新方案、設計、計畫；題型優先使用簡答題（short）讓學生開放回答。
+
+`,
+    // CEFR 英文分級
+    'cefr-a1': `請以 CEFR A1（入門）等級出英文題：
+- 字彙限基礎日常（家庭、學校、食物、數字、顏色）
+- 文法限現在簡單式、be 動詞、簡單問答（who/what/where）
+- 題幹與選項使用最簡單英文，避免複雜句構
+
+`,
+    'cefr-a2': `請以 CEFR A2（基礎）等級出英文題：
+- 字彙為日常生活範圍（旅行、購物、興趣、時間）
+- 文法包含現在簡單 / 進行式、過去簡單式、簡單未來式
+- 短文 / 對話形式，題幹中等長度
+
+`,
+    'cefr-b1': `請以 CEFR B1（中級）等級出英文題：
+- 主題：個人經驗、工作學業、旅遊計畫、簡單議題
+- 文法：現在完成式、條件句（if）、被動語態入門
+- 中等長度文章閱讀，學測模擬難度
+
+`,
+    'cefr-b2': `請以 CEFR B2（中高級）等級出英文題：
+- 主題：抽象概念、新聞時事、專業議題
+- 文法：複雜時態、被動語態、各類子句、虛擬語氣
+- 長句與長篇閱讀，接近學測 / 分科測驗難度
+
+`,
+  };
+
+  // 白名單檢查：找不到 key 視為未指定，prompt 完全不變
+  const frameworkPrefix = (typeof framework === 'string' && FRAMEWORK_PROMPTS[framework]) || '';
+
   const diffLabel = DIFF_LABELS[difficulty] ?? '中等';
   const typesPrompt = (types as string[])
     .map(t => `- ${TYPE_LABELS[t] ?? t}，共 ${count} 題`)
     .join('\n');
 
-  const prompt = `你是台灣高中的出題專家，請根據以下主題或課文內容出題。
+  const prompt = `${frameworkPrefix}你是台灣高中的出題專家，請根據以下主題或課文內容出題。
 
 主題／內容：
 ${topic}

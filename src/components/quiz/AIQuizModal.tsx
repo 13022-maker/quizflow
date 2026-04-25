@@ -114,6 +114,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   // Text mode
   const [topic, setTopic] = useState(defaultTopic ?? '');
 
+  // 命題框架（108 課綱 / PISA / 會考 / Bloom / CEFR）：空字串 = 不指定（預設行為，prompt 不變）
+  const [framework, setFramework] = useState<string>('');
+
   // URL mode（YouTube / Google Docs）
   const [sourceUrl, setSourceUrl] = useState('');
 
@@ -301,7 +304,14 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ topic, types, count: effectiveCount, difficulty }),
+          body: JSON.stringify({
+            topic,
+            types,
+            count: effectiveCount,
+            difficulty,
+            // 命題框架選填：空字串時不送（server 端會視為未指定）
+            framework: framework || undefined,
+          }),
         });
         if (!res.ok) {
           let errMsg = '命題失敗';
@@ -596,6 +606,56 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 </p>
                 {/* 改 flex-wrap：手機自動換行，避免最後一個 chip 被橫向截斷 */}
                 <div className="flex flex-wrap gap-2">
+                  {/* 命題框架（108 課綱 / PISA / 會考 / Bloom / CEFR）：選後 server 端 prompt prepend 對應指令；非空時 chip 加深底色 */}
+                  <select
+                    value={framework}
+                    onChange={e => setFramework(e.target.value)}
+                    className={`flex shrink-0 cursor-pointer items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 ${
+                      framework
+                        ? 'border-amber-500 bg-amber-200 text-amber-900'
+                        : 'border-amber-200 bg-amber-50 text-amber-800 hover:border-amber-400 hover:bg-amber-100'
+                    }`}
+                    title="命題框架（選填）：套用 108 課綱、PISA、會考、Bloom 認知層次、CEFR 英文分級等出題風格"
+                  >
+                    <option value="">📚 命題框架</option>
+                    <optgroup label="108 課綱素養 — 國中">
+                      <option value="108-jhs-math">國中數學（素養）</option>
+                      <option value="108-jhs-chinese">國中國文（素養）</option>
+                      <option value="108-jhs-social">國中社會（素養）</option>
+                      <option value="108-jhs-science">國中自然（素養）</option>
+                      <option value="108-jhs-english">國中英文（素養）</option>
+                      <option value="108-jhs-history">國中歷史（素養）</option>
+                    </optgroup>
+                    <optgroup label="108 課綱素養 — 高中">
+                      <option value="108-shs-math">高中數學（素養）</option>
+                      <option value="108-shs-chinese">高中國文（素養）</option>
+                      <option value="108-shs-english">高中英文（素養）</option>
+                      <option value="108-shs-history">高中歷史（素養）</option>
+                      <option value="108-shs-geography">高中地理（素養）</option>
+                      <option value="108-shs-science">高中自然（素養）</option>
+                    </optgroup>
+                    <optgroup label="PISA 國際素養">
+                      <option value="pisa">PISA 風格（情境化、跨領域）</option>
+                    </optgroup>
+                    <optgroup label="國中教育會考">
+                      <option value="jhs-exam">會考風格（五選一、難度均勻）</option>
+                    </optgroup>
+                    <optgroup label="Bloom 認知層次">
+                      <option value="bloom-remember">記憶 Remember（事實回憶）</option>
+                      <option value="bloom-understand">理解 Understand（概念解釋）</option>
+                      <option value="bloom-apply">應用 Apply（情境運用）</option>
+                      <option value="bloom-analyze">分析 Analyze（拆解結構）</option>
+                      <option value="bloom-evaluate">評鑑 Evaluate（判斷批判）</option>
+                      <option value="bloom-create">創造 Create（產出新方案）</option>
+                    </optgroup>
+                    <optgroup label="CEFR 英文分級">
+                      <option value="cefr-a1">A1 入門</option>
+                      <option value="cefr-a2">A2 基礎</option>
+                      <option value="cefr-b1">B1 中級</option>
+                      <option value="cefr-b2">B2 中高級</option>
+                    </optgroup>
+                  </select>
+
                   {TEMPLATES.map(tpl => (
                     <button
                       key={tpl.label}
