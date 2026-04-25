@@ -170,7 +170,9 @@ function SubmissionCard({ submission }: { submission: SpeechSubmission }) {
                 <div>
                   <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">AI 回饋</p>
                   <p className="mt-0.5 rounded bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                    💬 {assessment.feedback}
+                    💬
+                    {' '}
+                    {assessment.feedback}
                   </p>
                 </div>
               )}
