@@ -9,8 +9,10 @@
 import { useRef, useState, useTransition } from 'react';
 import QRCode from 'react-qr-code';
 
-import { updateQuizSettings } from '@/actions/quizActions';
+import { setQuizVisibility, updateQuizSettings } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
+
+type Visibility = 'private' | 'unlisted' | 'public';
 
 type Props = {
   quizId: number;
@@ -18,6 +20,9 @@ type Props = {
   accessCode: string;
   roomCode: string | null;
   expiresAt: string | null; // ISO string 或 null
+  // 社群化 Phase 1 commit 2:visibility 切換
+  currentVisibility?: Visibility;
+  currentSlug?: string | null;
   onClose: () => void;
 };
 
@@ -27,6 +32,8 @@ export default function ShareModal({
   accessCode,
   roomCode,
   expiresAt: initialExpiresAt,
+  currentVisibility = 'private',
+  currentSlug = null,
   onClose,
 }: Props) {
   const qrRef = useRef<HTMLDivElement>(null);
@@ -37,6 +44,30 @@ export default function ShareModal({
   // 到期時間狀態
   const [expiresAt, setExpiresAt] = useState<string | null>(initialExpiresAt);
   const [expiryPreset, setExpiryPreset] = useState<string>('none');
+
+  // 社群化 Phase 1 commit 2:visibility 切換 + slug 顯示
+  const [visibility, setVisibility] = useState<Visibility>(currentVisibility);
+  const [slug, setSlug] = useState<string | null>(currentSlug);
+  const [isVisibilityPending, startVisibilityTransition] = useTransition();
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
+
+  const handleVisibilityChange = (next: Visibility) => {
+    if (next === visibility) {
+      return;
+    }
+    setVisibilityError(null);
+    startVisibilityTransition(async () => {
+      const result = await setQuizVisibility({ quizId, visibility: next });
+      if ('error' in result && result.error) {
+        setVisibilityError(result.error);
+        return;
+      }
+      setVisibility(next);
+      if ('slug' in result) {
+        setSlug(result.slug);
+      }
+    });
+  };
 
   const quizUrl = `${window.location.origin}/quiz/${accessCode}`;
   // LINE 內建瀏覽器 block 登入、檔案上傳等功能，分享時加上 ?openExternalBrowser=1
@@ -156,6 +187,43 @@ export default function ShareModal({
 
         <h2 className="mb-1 text-center text-lg font-semibold">分享測驗</h2>
         <p className="mb-4 text-center text-sm text-muted-foreground">{quizTitle}</p>
+
+        {/* ── 可見度（社群化 Phase 1 commit 2）── */}
+        <div className="mb-4 rounded-lg border border-input bg-background p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">誰可以看到這個測驗</p>
+          <div className="grid grid-cols-3 gap-1.5">
+            {([
+              { value: 'private', label: '🔒 私有', desc: '只有我' },
+              { value: 'unlisted', label: '🔗 連結', desc: '有連結就能看' },
+              { value: 'public', label: '🌐 公開', desc: '在市集列出' },
+            ] as const).map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleVisibilityChange(opt.value)}
+                disabled={isVisibilityPending}
+                className={`rounded-md border p-2 text-center text-xs transition-colors disabled:opacity-50 ${
+                  visibility === opt.value
+                    ? 'border-gray-900 bg-gray-900 text-white'
+                    : 'border-input bg-background text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <div className="font-semibold">{opt.label}</div>
+                <div className="mt-0.5 text-[10px] opacity-80">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+          {visibilityError && (
+            <p className="mt-2 text-xs text-red-600">{visibilityError}</p>
+          )}
+          {slug && visibility !== 'private' && (
+            <p className="mt-2 break-all text-[11px] text-muted-foreground">
+              友善連結（即將推出）:
+              {' '}
+              <code className="font-mono">{`/q/${slug}`}</code>
+            </p>
+          )}
+        </div>
 
         {/* ── 房間碼 ── */}
         {roomCode && (

@@ -113,7 +113,7 @@ export const quizSchema = pgTable(
     chapter: text('chapter'), // 例：「第三課 光合作用」
     bookTitle: text('book_title'),
     // ---------- 社群化 Phase 1（commit 1）----------
-    visibility: text('visibility').default('private').notNull(), // private / unlisted / public（CHECK 約束於 table builder 第二參數）
+    visibility: text('visibility').$type<'private' | 'unlisted' | 'public'>().default('private').notNull(), // private / unlisted / public（CHECK 約束於 table builder 第二參數;commit 2 加 $type narrow 給 caller）
     slug: text('slug'), // 全域唯一（僅當非 NULL，partial unique index），供 public quiz 友善 URL
     publishedAt: timestamp('published_at', { mode: 'date' }), // 首次發佈時間（visibility 從 private 切換時填入）
     updatedAt: timestamp('updated_at', { mode: 'date' })

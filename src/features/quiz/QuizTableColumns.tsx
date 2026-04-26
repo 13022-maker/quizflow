@@ -136,6 +136,8 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
           accessCode={quiz.accessCode}
           roomCode={quiz.roomCode}
           expiresAt={quiz.expiresAt instanceof Date ? quiz.expiresAt.toISOString() : (quiz.expiresAt ?? null)}
+          currentVisibility={quiz.visibility}
+          currentSlug={quiz.slug}
           onClose={() => setShowQR(false)}
         />
       )}
