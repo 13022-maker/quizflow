@@ -15,6 +15,21 @@ export const TEMPLATE_SUBJECTS: TemplateSubject[] = [
   '社會',
 ];
 
+// 學制分組：把 gradeLevel string（國小五年級／高中二年級…）歸類到 5 大學制 bucket
+export type TemplateGrade = '國小' | '國中' | '高中' | '高職' | '大學';
+
+export const TEMPLATE_GRADES: TemplateGrade[] = [
+  '國小',
+  '國中',
+  '高中',
+  '高職',
+  '大學',
+];
+
+export function getTemplateGrade(template: QuizTemplate): TemplateGrade | undefined {
+  return TEMPLATE_GRADES.find(g => template.gradeLevel.startsWith(g));
+}
+
 export const quizTemplates: QuizTemplate[] = [
   ...chineseTemplates,
   ...englishTemplates,
@@ -29,6 +44,10 @@ export function getTemplateBySlug(slug: string): QuizTemplate | undefined {
 
 export function getTemplatesBySubject(subject: TemplateSubject): QuizTemplate[] {
   return quizTemplates.filter(t => t.subject === subject);
+}
+
+export function getTemplatesByGrade(grade: TemplateGrade): QuizTemplate[] {
+  return quizTemplates.filter(t => getTemplateGrade(t) === grade);
 }
 
 export function getRelatedTemplates(slug: string, limit = 3): QuizTemplate[] {
