@@ -67,7 +67,7 @@ export default async function EditQuizPage({
       category: quizSchema.category,
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,
-      copyCount: quizSchema.copyCount,
+      forkCount: quizSchema.forkCount,
       forkedFromId: quizSchema.forkedFromId,
       updatedAt: quizSchema.updatedAt,
       createdAt: quizSchema.createdAt,

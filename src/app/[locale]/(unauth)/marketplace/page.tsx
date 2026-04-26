@@ -40,7 +40,7 @@ export default async function MarketplacePage({
     .select()
     .from(quizSchema)
     .where(and(...conditions))
-    .orderBy(desc(quizSchema.copyCount), desc(quizSchema.createdAt))
+    .orderBy(desc(quizSchema.forkCount), desc(quizSchema.createdAt))
     .limit(50);
 
   const quizIds = quizzes.map(q => q.id);
@@ -134,7 +134,7 @@ export default async function MarketplacePage({
                     category: quiz.category,
                     gradeLevel: quiz.gradeLevel,
                     tags: quiz.tags,
-                    copyCount: quiz.copyCount,
+                    forkCount: quiz.forkCount,
                     createdAt: quiz.createdAt.toISOString(),
                   }}
                   questionCount={questionCounts.get(quiz.id) ?? 0}

@@ -101,7 +101,7 @@ export const quizSchema = pgTable(
     category: text('category'),
     gradeLevel: text('grade_level'),
     tags: jsonb('tags').$type<string[]>(),
-    copyCount: integer('copy_count').default(0).notNull(),
+    forkCount: integer('fork_count').default(0).notNull(),
     // 自參照:fork 來源 quiz id（Phase 2 commit 5A:original_quiz_id → forked_from_id 命名統一）
     forkedFromId: integer('forked_from_id').references(
       (): AnyPgColumn => quizSchema.id,

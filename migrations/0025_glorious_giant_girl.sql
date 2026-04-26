@@ -1,0 +1,1 @@
+ALTER TABLE "quiz" RENAME COLUMN "copy_count" TO "fork_count";
