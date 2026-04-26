@@ -89,7 +89,7 @@ export default async function QuizBySlugPage({ params }: { params: { slug: strin
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,
       copyCount: quizSchema.copyCount,
-      originalQuizId: quizSchema.originalQuizId,
+      forkedFromId: quizSchema.forkedFromId,
       publisherId: quizSchema.publisherId,
       isbn: quizSchema.isbn,
       chapter: quizSchema.chapter,
