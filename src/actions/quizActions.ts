@@ -7,8 +7,8 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
+import { db } from '@/libs/DB';
 import { getUserPlanId } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
