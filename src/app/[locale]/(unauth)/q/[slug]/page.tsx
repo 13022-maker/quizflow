@@ -1,6 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
-import { getTranslations } from 'next-intl/server';
 import { notFound } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { VocabTaker } from '@/features/quiz/VocabTaker';
