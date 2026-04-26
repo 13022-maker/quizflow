@@ -176,6 +176,13 @@
       "when": 1777209272586,
       "tag": "0024_reflective_captain_america",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1777209876610,
+      "tag": "0025_glorious_giant_girl",
+      "breakpoints": true
     }
   ]
 }

@@ -13,7 +13,7 @@ type Props = {
     category: string | null;
     gradeLevel: string | null;
     tags: string[] | null;
-    copyCount: number;
+    forkCount: number;
     createdAt: string;
   };
   questionCount: number;
@@ -88,7 +88,7 @@ export function MarketplaceCard({ quiz, questionCount }: Props) {
         </span>
         <span>·</span>
         <span>
-          {quiz.copyCount}
+          {quiz.forkCount}
           {' '}
           人使用
         </span>

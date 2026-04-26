@@ -173,7 +173,7 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
 
   await db
     .update(quizSchema)
-    .set({ copyCount: sql`${quizSchema.copyCount} + 1` })
+    .set({ forkCount: sql`${quizSchema.forkCount} + 1` })
     .where(eq(quizSchema.id, sourceQuizId));
 
   revalidatePath('/marketplace');
