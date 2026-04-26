@@ -8,7 +8,7 @@ import { GRADE_LEVELS, MARKETPLACE_CATEGORIES } from '@/utils/MarketplaceConfig'
 
 type Props = {
   quizId: number;
-  isMarketplace: boolean;
+  isPublic: boolean;
   initialCategory?: string | null;
   initialGradeLevel?: string | null;
   initialTags?: string[] | null;
@@ -17,7 +17,7 @@ type Props = {
 
 export function PublishMarketplaceDialog({
   quizId,
-  isMarketplace,
+  isPublic,
   initialCategory,
   initialGradeLevel,
   initialTags,
@@ -60,12 +60,12 @@ export function PublishMarketplaceDialog({
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="text-lg font-bold">
-            {isMarketplace ? '管理市集上架' : '分享到題庫市集'}
+            {isPublic ? '管理市集上架' : '分享到題庫市集'}
           </h2>
           <button type="button" onClick={onClose} className="text-2xl text-gray-400 hover:text-gray-600">×</button>
         </div>
 
-        {isMarketplace
+        {isPublic
           ? (
               <div className="space-y-4">
                 <div className="rounded-lg bg-green-50 p-4 text-sm text-green-700">

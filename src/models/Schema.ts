@@ -96,10 +96,7 @@ export const quizSchema = pgTable(
     attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
     expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
     quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
-    // 題庫市集
-    // @deprecated Phase 2 commit 5D 起改用 visibility='public' 過濾;此欄位過渡期保留以維持寫入相容,
-    //              預計 Phase 3 commit 6+ DROP COLUMN(待確認 0 引用)。
-    isMarketplace: boolean('is_marketplace').default(false).notNull(),
+    // 題庫市集（Phase 3:isMarketplace 已 DROP COLUMN,改用 visibility='public' 判斷）
     category: text('category'),
     gradeLevel: text('grade_level'),
     tags: text('tags').array().$type<string[]>(), // Phase 2 commit 5C:jsonb → text[] 命名統一(對 TS 端透明,USING cast 處理既有 jsonb row)

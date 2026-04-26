@@ -84,7 +84,6 @@ export default async function QuizBySlugPage({ params }: { params: { slug: strin
       scoringMode: quizSchema.scoringMode,
       attemptDecayRate: quizSchema.attemptDecayRate,
       quizMode: quizSchema.quizMode,
-      isMarketplace: quizSchema.isMarketplace,
       category: quizSchema.category,
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,

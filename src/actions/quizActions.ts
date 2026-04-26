@@ -180,8 +180,7 @@ const VisibilitySchema = z.object({
  * 行為(Phase 1 commit 2 設計決定):
  * - 切到 unlisted 或 public:slug 若空則自動產 + publishedAt 若空則設 now
  * - 切回 private:slug 跟 publishedAt 保留(避免 break 既有分享連結 → 已分享出去的 URL 不會 404)
- * - 漸進整合 isMarketplace:public → true,其他 → false
- *   (Phase 2 commit 3+ 才把 isMarketplace 完全 deprecated)
+ * - Phase 3:isMarketplace 已 DROP COLUMN,不再寫入此欄位
  */
 export async function setQuizVisibility(input: {
   quizId: number;
@@ -218,10 +217,8 @@ export async function setQuizVisibility(input: {
     visibility: 'private' | 'unlisted' | 'public';
     slug?: string;
     publishedAt?: Date;
-    isMarketplace: boolean;
   } = {
     visibility,
-    isMarketplace: visibility === 'public',
   };
 
   // 切到 unlisted/public 且 slug 還沒產 → 自動產(nanoid 8 碼,collision retry 5 次)
