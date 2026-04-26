@@ -183,6 +183,13 @@
       "when": 1777209876610,
       "tag": "0025_glorious_giant_girl",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1777210652007,
+      "tag": "0026_robust_bishop",
+      "breakpoints": true
     }
   ]
 }

@@ -100,7 +100,7 @@ export const quizSchema = pgTable(
     isMarketplace: boolean('is_marketplace').default(false).notNull(),
     category: text('category'),
     gradeLevel: text('grade_level'),
-    tags: jsonb('tags').$type<string[]>(),
+    tags: text('tags').array().$type<string[]>(), // Phase 2 commit 5C:jsonb → text[] 命名統一(對 TS 端透明,USING cast 處理既有 jsonb row)
     forkCount: integer('fork_count').default(0).notNull(),
     // 自參照:fork 來源 quiz id（Phase 2 commit 5A:original_quiz_id → forked_from_id 命名統一）
     forkedFromId: integer('forked_from_id').references(
