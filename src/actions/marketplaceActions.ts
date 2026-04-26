@@ -146,7 +146,7 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
       category: source.category,
       gradeLevel: source.gradeLevel,
       tags: source.tags,
-      originalQuizId: sourceQuizId,
+      forkedFromId: sourceQuizId,
     })
     .returning();
 

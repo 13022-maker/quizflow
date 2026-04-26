@@ -102,8 +102,8 @@ export const quizSchema = pgTable(
     gradeLevel: text('grade_level'),
     tags: jsonb('tags').$type<string[]>(),
     copyCount: integer('copy_count').default(0).notNull(),
-    // 自參照:fork 來源 quiz id（社群化 Phase 1 commit 1 補 FK + ON DELETE SET NULL）
-    originalQuizId: integer('original_quiz_id').references(
+    // 自參照:fork 來源 quiz id（Phase 2 commit 5A:original_quiz_id → forked_from_id 命名統一）
+    forkedFromId: integer('forked_from_id').references(
       (): AnyPgColumn => quizSchema.id,
       { onDelete: 'set null' },
     ),

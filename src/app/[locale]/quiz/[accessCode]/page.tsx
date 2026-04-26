@@ -44,7 +44,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,
       copyCount: quizSchema.copyCount,
-      originalQuizId: quizSchema.originalQuizId,
+      forkedFromId: quizSchema.forkedFromId,
       publisherId: quizSchema.publisherId,
       isbn: quizSchema.isbn,
       chapter: quizSchema.chapter,
