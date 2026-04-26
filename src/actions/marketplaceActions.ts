@@ -121,7 +121,7 @@ export async function copyQuizFromMarketplace(sourceQuizId: number) {
       tags: quizSchema.tags,
     })
     .from(quizSchema)
-    .where(and(eq(quizSchema.id, sourceQuizId), eq(quizSchema.isMarketplace, true)))
+    .where(and(eq(quizSchema.id, sourceQuizId), eq(quizSchema.visibility, 'public')))
     .limit(1);
 
   if (!source) {

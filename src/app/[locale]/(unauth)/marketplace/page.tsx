@@ -20,7 +20,8 @@ export default async function MarketplacePage({
 }) {
   const { category, grade, q } = searchParams;
 
-  const conditions = [eq(quizSchema.isMarketplace, true)];
+  // Phase 2 commit 5D: 過濾改用 visibility='public'（isMarketplace 標 deprecated,過渡期保留欄位）
+  const conditions = [eq(quizSchema.visibility, 'public')];
   if (category) {
     conditions.push(eq(quizSchema.category, category));
   }
