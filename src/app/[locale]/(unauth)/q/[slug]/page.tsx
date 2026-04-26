@@ -1,4 +1,5 @@
 import { asc, eq } from 'drizzle-orm';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
@@ -6,6 +7,7 @@ import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { VocabTaker } from '@/features/quiz/VocabTaker';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
+import { getBaseUrl } from '@/utils/Helpers';
 
 /**
  * 公開測驗友善 URL — 由 visibility=unlisted/public 的 quiz 自動產生 slug
@@ -16,12 +18,15 @@ import { questionSchema, quizSchema } from '@/models/Schema';
  * - Q4: 跟既有 /quiz/[accessCode] 並存（向後相容,已分享出去的舊 URL 不會 break）
  */
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const [quiz] = await db
     .select({
       title: quizSchema.title,
       description: quizSchema.description,
       visibility: quizSchema.visibility,
+      publishedAt: quizSchema.publishedAt,
+      updatedAt: quizSchema.updatedAt,
+      tags: quizSchema.tags,
     })
     .from(quizSchema)
     .where(eq(quizSchema.slug, params.slug))
@@ -31,9 +36,29 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   if (!quiz || quiz.visibility === 'private') {
     return { title: '測驗不存在' };
   }
+
+  const url = `${getBaseUrl()}/q/${params.slug}`;
+  const title = quiz.title;
+  const description = quiz.description ?? `${quiz.title} — 來自 QuizFlow 老師社群`;
+
   return {
-    title: quiz.title,
-    description: quiz.description ?? undefined,
+    title,
+    description,
+    alternates: { canonical: `/q/${params.slug}` },
+    openGraph: {
+      type: 'article',
+      url,
+      title,
+      description,
+      publishedTime: quiz.publishedAt?.toISOString(),
+      modifiedTime: quiz.updatedAt?.toISOString(),
+      tags: quiz.tags ?? undefined,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   };
 }
 
