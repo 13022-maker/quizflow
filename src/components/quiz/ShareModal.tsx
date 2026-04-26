@@ -218,9 +218,16 @@ export default function ShareModal({
           )}
           {slug && visibility !== 'private' && (
             <p className="mt-2 break-all text-[11px] text-muted-foreground">
-              友善連結（即將推出）:
+              友善連結:
               {' '}
-              <code className="font-mono">{`/q/${slug}`}</code>
+              <a
+                href={`/q/${slug}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-blue-600 underline hover:text-blue-800"
+              >
+                {`/q/${slug}`}
+              </a>
             </p>
           )}
         </div>
