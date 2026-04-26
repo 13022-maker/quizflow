@@ -6,8 +6,8 @@ import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
+import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 const PublishSchema = z.object({
