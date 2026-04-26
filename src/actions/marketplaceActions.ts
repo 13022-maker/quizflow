@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
+import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 const PublishSchema = z.object({
@@ -28,7 +29,13 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
   }
 
   const [quiz] = await db
-    .select({ id: quizSchema.id, status: quizSchema.status, ownerId: quizSchema.ownerId })
+    .select({
+      id: quizSchema.id,
+      status: quizSchema.status,
+      ownerId: quizSchema.ownerId,
+      slug: quizSchema.slug,
+      publishedAt: quizSchema.publishedAt,
+    })
     .from(quizSchema)
     .where(and(eq(quizSchema.id, parsed.data.quizId), eq(quizSchema.ownerId, userId)))
     .limit(1);
@@ -49,10 +56,18 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
     return { error: '測驗沒有題目，無法分享' };
   }
 
+  // 漸進整合 visibility(Phase 1 commit 2):marketplace 上架 = visibility='public'
+  // slug / publishedAt 若空則自動產(跟 setQuizVisibility 行為一致)
+  const slug = quiz.slug ?? (await ensureUniqueSlug(generateSlug(), parsed.data.quizId));
+  const publishedAt = quiz.publishedAt ?? new Date();
+
   await db
     .update(quizSchema)
     .set({
       isMarketplace: true,
+      visibility: 'public',
+      slug,
+      publishedAt,
       category: parsed.data.category,
       gradeLevel: parsed.data.gradeLevel,
       tags: parsed.data.tags,
@@ -70,9 +85,11 @@ export async function unpublishFromMarketplace(quizId: number) {
     throw new Error('未登入');
   }
 
+  // 漸進整合 visibility(Phase 1 commit 2):下架 = visibility='private'
+  // slug / publishedAt 保留(避免 break 既有分享連結)
   await db
     .update(quizSchema)
-    .set({ isMarketplace: false })
+    .set({ isMarketplace: false, visibility: 'private' })
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)));
 
   revalidatePath('/marketplace');
