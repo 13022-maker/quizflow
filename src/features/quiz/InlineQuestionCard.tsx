@@ -16,6 +16,7 @@ type Props = {
   question: Question;
   index: number;
   quizId: number;
+  onEdit: () => void; // 切換到完整編輯表單（包含圖片、解析、配分等進階欄位）
   onDelete: () => void;
   isDeleting: boolean;
   isPro: boolean; // 重生題目為 Pro 限定功能
@@ -29,6 +30,7 @@ export function InlineQuestionCard({
   question,
   index,
   quizId,
+  onEdit,
   onDelete,
   isDeleting,
   isPro,
@@ -236,8 +238,18 @@ export function InlineQuestionCard({
         </div>
       </div>
 
-      {/* 操作按鈕：重生 + 刪除 */}
+      {/* 操作按鈕：進階編輯 + 重生 + 刪除 */}
       <div className="flex shrink-0 gap-1">
+        <button
+          type="button"
+          onClick={onEdit}
+          disabled={isRegenerating || isDeleting}
+          className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-primary disabled:opacity-50"
+          aria-label="進階編輯（含圖片、解析、配分）"
+          title="進階編輯（含圖片、解析、配分）"
+        >
+          ✏️
+        </button>
         <button
           type="button"
           onClick={handleRegenerate}

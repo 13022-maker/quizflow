@@ -7,6 +7,7 @@ import {
   getRelatedTemplates,
   getTemplateBySlug,
   quizTemplates,
+  type TemplateQuestion,
 } from '@/data/templates';
 import { TemplateCard } from '@/features/templates/TemplateCard';
 import { Footer } from '@/templates/Footer';
@@ -55,6 +56,46 @@ function renderAnswer(q: { type: string; options?: string[]; answer: unknown }):
   return String(q.answer);
 }
 
+// 把單題轉成 schema.org Question 結構化資料（含 acceptedAnswer / suggestedAnswer）
+function buildQuestionLd(q: TemplateQuestion): Record<string, unknown> {
+  // acceptedAnswer 純文字（不含 A./B. 字母前綴，給 Google 更乾淨）
+  let acceptedText: string;
+  if (q.type === 'true_false') {
+    acceptedText = q.answer === true ? '正確' : '錯誤';
+  } else if (q.type === 'single_choice' && typeof q.answer === 'number' && q.options) {
+    acceptedText = q.options[q.answer] ?? '';
+  } else if (q.type === 'multiple_choice' && Array.isArray(q.answer) && q.options) {
+    acceptedText = (q.answer as number[])
+      .map(i => q.options?.[i] ?? '')
+      .filter(Boolean)
+      .join('、');
+  } else {
+    acceptedText = String(q.answer);
+  }
+
+  const ld: Record<string, unknown> = {
+    '@type': 'Question',
+    'name': q.question,
+    'text': q.question,
+    'acceptedAnswer': {
+      '@type': 'Answer',
+      'text': acceptedText,
+    },
+  };
+
+  // 選項題的 suggestedAnswer 列出所有候選答案
+  if (q.options && q.options.length > 0) {
+    ld.suggestedAnswer = q.options.map(o => ({ '@type': 'Answer', 'text': o }));
+  } else if (q.type === 'true_false') {
+    ld.suggestedAnswer = [
+      { '@type': 'Answer', 'text': '正確' },
+      { '@type': 'Answer', 'text': '錯誤' },
+    ];
+  }
+
+  return ld;
+}
+
 export default function TemplateDetailPage({ params }: Props) {
   unstable_setRequestLocale(params.locale);
 
@@ -65,18 +106,49 @@ export default function TemplateDetailPage({ params }: Props) {
 
   const related = getRelatedTemplates(t.slug, 3);
 
-  // JSON-LD：Quiz 結構化資料
-  const jsonLd = {
+  // JSON-LD：BreadcrumbList + Quiz（含子題目 hasPart）
+  const baseUrl = getBaseUrl();
+  const pageUrl = `${baseUrl}/templates/${t.slug}`;
+
+  const breadcrumbLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': '首頁', 'item': baseUrl },
+      { '@type': 'ListItem', 'position': 2, 'name': '免費測驗範本庫', 'item': `${baseUrl}/templates` },
+      {
+        '@type': 'ListItem',
+        'position': 3,
+        'name': t.subject,
+        'item': `${baseUrl}/templates?subject=${encodeURIComponent(t.subject)}`,
+      },
+      { '@type': 'ListItem', 'position': 4, 'name': t.title, 'item': pageUrl },
+    ],
+  };
+
+  const quizLd = {
     '@context': 'https://schema.org',
     '@type': 'Quiz',
     'name': t.title,
     'description': t.description,
+    'url': pageUrl,
     'educationalLevel': t.gradeLevel,
     'about': t.subject,
     'keywords': t.keywords.join(', '),
+    'inLanguage': 'zh-Hant',
     'numberOfQuestions': t.questions.length,
     'timeRequired': `PT${t.estimatedMinutes}M`,
+    'learningResourceType': 'Quiz',
+    'isAccessibleForFree': true,
+    'publisher': {
+      '@type': 'Organization',
+      'name': 'QuizFlow',
+      'url': baseUrl,
+    },
+    'hasPart': t.questions.map(buildQuestionLd),
   };
+
+  const jsonLd = [breadcrumbLd, quizLd];
 
   return (
     <>
