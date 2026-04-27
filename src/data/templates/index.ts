@@ -30,6 +30,15 @@ export function getTemplateGrade(template: QuizTemplate): TemplateGrade | undefi
   return TEMPLATE_GRADES.find(g => template.gradeLevel.startsWith(g));
 }
 
+// 學制 → 該學制下的細年級陣列（依年級順序）
+export const TEMPLATE_GRADE_LEVELS_BY_GRADE: Record<TemplateGrade, string[]> = {
+  國小: ['國小四年級', '國小五年級', '國小六年級'],
+  國中: ['國中一年級', '國中二年級', '國中三年級'],
+  高中: ['高中一年級', '高中二年級', '高中三年級'],
+  高職: ['高職二年級', '高職三年級'],
+  大學: ['大學'],
+};
+
 export const quizTemplates: QuizTemplate[] = [
   ...chineseTemplates,
   ...englishTemplates,
