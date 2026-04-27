@@ -179,6 +179,13 @@ STRIPE_SECRET_KEY=any_fake_value
 - 測驗 CRUD + 拖曳排序 + 平均配分（總分 100）
 - 學生公開作答頁面（`/quiz/[accessCode]`）與自動批改
 - AI 出題（文字提示 + PDF/圖片上傳，使用 Claude API，支援 5 種題型含排序題）
+- AI 出題完成後自動把試卷主題接到預設標題後面（「AI 出題 4/26 - 光合作用」，≤7 字，僅當標題仍是預設 pattern 才覆寫，PR #49）
+- AI 出題命題框架下拉選單（`src/components/quiz/AIQuizModal.tsx` select + `src/app/api/ai/generate-questions/route.ts` `FRAMEWORK_PROMPTS`），分組：
+  - 108 課綱素養（國中／高中各 6 科）
+  - PISA 國際素養、國中教育會考、Bloom 認知層次（記憶/理解/應用/分析/評鑑/創造）
+  - CEFR 英文分級 A1-B2
+  - **TOCFL 華語文（國家華語測驗推動工作委員會 SC-TOP）**：A1 萌芽 / A2 基礎 / B1 進階 / B2 高階 / C1 流利 / C2 精通，外加「TOCFL 8,000 詞表」全集詞彙運用題（PR #53）
+  - 白名單 fallback：`FRAMEWORK_PROMPTS[framework] || ''`，未知 key 視為未指定，prompt 不變
 - Dashboard 智慧首頁（統計卡片 + 最近測驗列表）
 - 新手引導步驟（OnboardingSteps，localStorage 記錄）
 - 學生成績頁 AI 弱點分析（`/api/ai/analyze-weak-points`）
@@ -194,6 +201,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 測驗快速方案（考試/練習/複習 一鍵套用，各色按鈕）
 - 大 PDF 前端裁切上傳（pdf-lib client-side page trimming）
 - 分享頁面強化（6 碼房間碼 + LINE + Google Classroom + 到期時間 + QR Code）
+- 題庫市集科目／年級擴充（`src/utils/MarketplaceConfig.ts`，PR #54）：科目加「華語檢測」（配合 TOCFL 命題框架，給教華語的老師對應分類）、年級末尾加「不分級」（語言檢定／通識題庫不限學制用）；上架對話框與 `/marketplace` 篩選頁兩處 consumer 都動態 `.map()`，加常數即同步生效
 - Paddle Billing 整合（sandbox smoke test 全通過）：
   - `/zh/pricing` 頁用 `components/pricing/PricingSection`，三方案 + 月/年切換
   - `POST /api/paddle/checkout` 建立 customer（含 try/catch），`useCheckout` hook 開 overlay
