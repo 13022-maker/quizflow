@@ -154,7 +154,7 @@ export const socialTemplates: QuizTemplate[] = [
   {
     slug: 'social-economics-basics',
     title: '高中經濟學入門：供需與價格',
-    subject: '社會',
+    subject: '公民',
     gradeLevel: '高中一年級',
     description: '供給、需求、均衡價格與市場機制的基礎概念，適合高中經濟入門。',
     keywords: ['經濟學', '供需', '高中'],
@@ -204,7 +204,7 @@ export const socialTemplates: QuizTemplate[] = [
   {
     slug: 'social-world-history-wwii',
     title: '高中世界史：第二次世界大戰',
-    subject: '社會',
+    subject: '歷史',
     gradeLevel: '高中二年級',
     description: '二戰爆發背景、主要戰役、結束與影響，涵蓋歐亞戰場重要事件。',
     keywords: ['第二次世界大戰', '世界史', '高中歷史'],
@@ -254,7 +254,7 @@ export const socialTemplates: QuizTemplate[] = [
   {
     slug: 'social-modern-china-history',
     title: '高中歷史：中國近現代史重要事件（1840–1949）',
-    subject: '社會',
+    subject: '歷史',
     gradeLevel: '高中三年級',
     description: '針對學測社會科必考的中國近代史設計：鴉片戰爭、辛亥革命、五四運動、國共內戰等關鍵事件與時代意義。',
     keywords: ['高中歷史', '中國近代史', '辛亥革命', '五四運動', '學測歷史'],
@@ -457,7 +457,7 @@ export const socialTemplates: QuizTemplate[] = [
   {
     slug: 'social-modern-taiwan-history',
     title: '高中歷史：戰後台灣（1945–2000）重要事件',
-    subject: '社會',
+    subject: '歷史',
     gradeLevel: '高中三年級',
     description: '針對學測歷史必考的戰後台灣設計：政治民主化、經濟起飛、社會運動與兩岸關係重要轉折。',
     keywords: ['高中歷史', '戰後台灣', '台灣史', '學測歷史'],
@@ -659,7 +659,7 @@ export const socialTemplates: QuizTemplate[] = [
   {
     slug: 'social-economics-macro-college',
     title: '大學社會：個體經濟學 vs. 總體經濟學',
-    subject: '社會',
+    subject: '公民',
     gradeLevel: '大學',
     description: '大學經濟學入門：個體經濟學（消費者、廠商行為）與總體經濟學（GDP、通膨、失業）的核心差異。',
     keywords: ['大學經濟', '個體經濟學', '總體經濟學', 'GDP'],

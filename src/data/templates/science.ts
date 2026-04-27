@@ -155,7 +155,7 @@ export const scienceTemplates: QuizTemplate[] = [
   {
     slug: 'science-periodic-table-intro',
     title: '高中化學：元素週期表入門',
-    subject: '自然',
+    subject: '化學',
     gradeLevel: '高中一年級',
     description: '元素分族、週期律、金屬與非金屬辨識，是高中化學基礎。',
     keywords: ['週期表', '高中化學', '元素'],
@@ -255,7 +255,7 @@ export const scienceTemplates: QuizTemplate[] = [
   {
     slug: 'science-genetics-high-school',
     title: '高中生物：遺傳學與孟德爾定律',
-    subject: '自然',
+    subject: '生物',
     gradeLevel: '高中三年級',
     description: '針對學測自然科生物必考的孟德爾遺傳定律設計：顯隱性、分離律、自由組合律與基因型推算。',
     keywords: ['高中生物', '遺傳學', '孟德爾定律', '學測自然', '基因型'],
@@ -457,7 +457,7 @@ export const scienceTemplates: QuizTemplate[] = [
   {
     slug: 'science-energy-conservation',
     title: '高中物理：能量守恆與動能定理',
-    subject: '自然',
+    subject: '物理',
     gradeLevel: '高中二年級',
     description: '針對學測物理必考的能量守恆律設計：動能、位能換算、機械能守恆與工作－能定理基本應用。',
     keywords: ['高中物理', '能量守恆', '動能', '位能', '學測物理'],
@@ -659,7 +659,7 @@ export const scienceTemplates: QuizTemplate[] = [
   {
     slug: 'science-biostatistics-college',
     title: '大學自然：生物統計學基礎',
-    subject: '自然',
+    subject: '生物',
     gradeLevel: '大學',
     description: '大學生物統計入門：平均值、標準差、常態分布與 p 值的基本概念，是生命科學科系必備工具。',
     keywords: ['大學自然', '生物統計', '統計', '常態分布'],

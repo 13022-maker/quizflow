@@ -7,12 +7,20 @@ import type { QuizTemplate, TemplateExam, TemplateSubject } from './types';
 
 export type { QuizTemplate, TemplateExam, TemplateQuestion, TemplateSubject } from './types';
 
+// 科目顯示順序：基礎 5 科 → 自然分科 → 社會分科
 export const TEMPLATE_SUBJECTS: TemplateSubject[] = [
   '國文',
   '英語',
   '數學',
   '自然',
+  '物理',
+  '化學',
+  '生物',
+  '地科',
   '社會',
+  '歷史',
+  '地理',
+  '公民',
 ];
 
 // 考試類型（依台灣升學體系排序）
@@ -63,6 +71,11 @@ export function getTemplateBySlug(slug: string): QuizTemplate | undefined {
 
 export function getTemplatesBySubject(subject: TemplateSubject): QuizTemplate[] {
   return quizTemplates.filter(t => t.subject === subject);
+}
+
+// 只回傳實際有範本的科目（避免 UI 出現空 chip，例如還沒補的「地科」「地理」）
+export function getAvailableSubjects(): TemplateSubject[] {
+  return TEMPLATE_SUBJECTS.filter(s => quizTemplates.some(t => t.subject === s));
 }
 
 export function getTemplatesByGrade(grade: TemplateGrade): QuizTemplate[] {
