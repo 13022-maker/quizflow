@@ -3,11 +3,11 @@ import { unstable_setRequestLocale } from 'next-intl/server';
 
 import {
   getAvailableExams,
+  getAvailableSubjects,
   getTemplateGrade,
   quizTemplates,
   TEMPLATE_GRADE_LEVELS_BY_GRADE,
   TEMPLATE_GRADES,
-  TEMPLATE_SUBJECTS,
   type TemplateExam,
   type TemplateGrade,
   type TemplateSubject,
@@ -85,6 +85,8 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
 
   // 動態取得實際存在範本的考試類型（避免 chip 沒對應內容）
   const availableExams = getAvailableExams();
+  // 動態取得實際存在範本的科目（避免顯示尚未補範本的「地科」「地理」）
+  const availableSubjects = getAvailableSubjects();
 
   // chip 樣式 helper
   const chipClass = (active: boolean) =>
@@ -119,7 +121,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
             >
               全部
             </Link>
-            {TEMPLATE_SUBJECTS.map(s => (
+            {availableSubjects.map(s => (
               <Link
                 key={s}
                 href={buildHref({ subject: s, grade: selectedGrade, gradeLevel: selectedGradeLevel, exam: selectedExam })}
