@@ -3,9 +3,9 @@ import { englishTemplates } from './english';
 import { mathTemplates } from './math';
 import { scienceTemplates } from './science';
 import { socialTemplates } from './social';
-import type { QuizTemplate, TemplateSubject } from './types';
+import type { QuizTemplate, TemplateExam, TemplateSubject } from './types';
 
-export type { QuizTemplate, TemplateQuestion, TemplateSubject } from './types';
+export type { QuizTemplate, TemplateExam, TemplateQuestion, TemplateSubject } from './types';
 
 export const TEMPLATE_SUBJECTS: TemplateSubject[] = [
   '國文',
@@ -13,6 +13,16 @@ export const TEMPLATE_SUBJECTS: TemplateSubject[] = [
   '數學',
   '自然',
   '社會',
+];
+
+// 考試類型（依台灣升學體系排序）
+export const TEMPLATE_EXAMS: TemplateExam[] = [
+  '會考',
+  '學測',
+  '指考',
+  '統測',
+  '英檢',
+  '證照',
 ];
 
 // 學制分組：把 gradeLevel string（國小五年級／高中二年級…）歸類到 5 大學制 bucket
@@ -57,6 +67,15 @@ export function getTemplatesBySubject(subject: TemplateSubject): QuizTemplate[] 
 
 export function getTemplatesByGrade(grade: TemplateGrade): QuizTemplate[] {
   return quizTemplates.filter(t => getTemplateGrade(t) === grade);
+}
+
+export function getTemplatesByExam(exam: TemplateExam): QuizTemplate[] {
+  return quizTemplates.filter(t => t.exam?.includes(exam));
+}
+
+// 只回傳目前有對應範本的考試類型（避免 UI 出現空 chip）
+export function getAvailableExams(): TemplateExam[] {
+  return TEMPLATE_EXAMS.filter(e => quizTemplates.some(t => t.exam?.includes(e)));
 }
 
 export function getRelatedTemplates(slug: string, limit = 3): QuizTemplate[] {

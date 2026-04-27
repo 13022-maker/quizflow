@@ -260,6 +260,7 @@ export const mathTemplates: QuizTemplate[] = [
     description: '針對高二三角函數單元設計：sin、cos、tan 定義、特殊角函數值、畢氏恆等式，是學測數 A 必考重點。',
     keywords: ['高中數學', '三角函數', 'sin cos tan', '學測數學', '畢氏恆等式'],
     tags: ['三角函數', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -311,6 +312,7 @@ export const mathTemplates: QuizTemplate[] = [
     description: '高職商管群統測必考：單利、複利、折扣、本利和等商業數學基礎，貼近實際生活與職場應用。',
     keywords: ['高職數學', '統測數學B', '商業數學', '利息', '折扣計算'],
     tags: ['商業數學', '高職', '統測'],
+    exam: ['統測'],
     estimatedMinutes: 10,
     questions: [
       {
@@ -461,6 +463,7 @@ export const mathTemplates: QuizTemplate[] = [
     description: '針對學測數 A 機率單元設計：古典機率、互斥事件、獨立事件與條件機率基本計算。',
     keywords: ['高中數學', '機率', '學測數學', '條件機率'],
     tags: ['機率', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -562,6 +565,7 @@ export const mathTemplates: QuizTemplate[] = [
     description: '高職統測數學B 必考：一次函數圖形、斜率、截距與線性方程組求解，貼近商業應用情境。',
     keywords: ['高職數學', '統測數學B', '函數', '線性方程'],
     tags: ['函數', '高職', '統測'],
+    exam: ['統測'],
     estimatedMinutes: 12,
     questions: [
       {

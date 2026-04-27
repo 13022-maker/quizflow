@@ -260,6 +260,7 @@ export const scienceTemplates: QuizTemplate[] = [
     description: '針對學測自然科生物必考的孟德爾遺傳定律設計：顯隱性、分離律、自由組合律與基因型推算。',
     keywords: ['高中生物', '遺傳學', '孟德爾定律', '學測自然', '基因型'],
     tags: ['遺傳', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {

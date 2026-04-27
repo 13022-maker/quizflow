@@ -162,6 +162,7 @@ export const chineseTemplates: QuizTemplate[] = [
     description: '取材高中常見論說文段落，測驗主旨掌握、論證結構與作者立場，是學測複習好題。',
     keywords: ['高中國文', '閱讀測驗', '論說文', '學測國文'],
     tags: ['閱讀測驗', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -212,6 +213,7 @@ export const chineseTemplates: QuizTemplate[] = [
     description: '精選李白、杜甫、蘇軾等大家名句，測驗詩詞意境、用字與作者辨識，適合國中會考前複習。',
     keywords: ['唐詩', '宋詞', '李白', '杜甫', '詩詞測驗'],
     tags: ['詩詞', '國中', '會考'],
+    exam: ['會考'],
     estimatedMinutes: 10,
     questions: [
       {
@@ -263,6 +265,7 @@ export const chineseTemplates: QuizTemplate[] = [
     description: '針對學測常考的詩詞流派（唐詩四派、宋詞婉約豪放）設計，比較李白、杜甫、王維、蘇軾、李清照等大家風格特色。',
     keywords: ['高中國文', '古典詩詞', '學測國文', '唐詩宋詞', '詞派'],
     tags: ['詩詞', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -313,6 +316,7 @@ export const chineseTemplates: QuizTemplate[] = [
     description: '針對高職統測必考應用文設計：書信稱謂、提稱語、公文用語與便條格式，是統測國文得分關鍵。',
     keywords: ['高職國文', '統測國文', '應用文', '書信格式', '公文'],
     tags: ['應用文', '高職', '統測'],
+    exam: ['統測'],
     estimatedMinutes: 10,
     questions: [
       {
@@ -413,6 +417,7 @@ export const chineseTemplates: QuizTemplate[] = [
     description: '針對國中會考必考題型設計：短文閱讀的主旨歸納、字詞推測、作者意圖判斷，是會考國文得分關鍵。',
     keywords: ['國中會考', '國文閱讀', '文意推論', '會考國文'],
     tags: ['閱讀', '國中', '會考'],
+    exam: ['會考'],
     estimatedMinutes: 12,
     questions: [
       {

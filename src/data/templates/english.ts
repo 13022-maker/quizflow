@@ -263,6 +263,7 @@ export const englishTemplates: QuizTemplate[] = [
     description: '精選學測英文作文必備的轉折語（however、moreover、in contrast）與進階句型，幫助學生在引導寫作中拿到高分。',
     keywords: ['高中英文', '學測英文', '英文寫作', '轉折語', '英文作文'],
     tags: ['寫作', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -313,6 +314,7 @@ export const englishTemplates: QuizTemplate[] = [
     description: '針對高職餐旅群與商管群統測設計，涵蓋餐廳點餐、旅館 check-in、客訴處理等職場常用英語。',
     keywords: ['高職英文', '統測英文', '餐旅英文', '職場英文', '商用英文'],
     tags: ['餐旅', '高職', '統測'],
+    exam: ['統測'],
     estimatedMinutes: 10,
     questions: [
       {
@@ -463,6 +465,7 @@ export const englishTemplates: QuizTemplate[] = [
     description: '針對學測英文克漏字題型設計：高頻動詞搭配（make / take / do / have）、介系詞片語與固定用法。',
     keywords: ['高中英文', '學測英文', '克漏字', '英文搭配詞'],
     tags: ['克漏字', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
