@@ -112,6 +112,30 @@ function buildDefaultTopic(description?: string | null): string {
   return desc;
 }
 
+// CreateQuizWithAIButton 預設標題格式「AI 出題 M/D」;符合此 pattern 才允許自動覆寫,
+// 已被用戶手動改過的標題不動。月日為 1-2 位數字。
+const DEFAULT_AI_TITLE_RE = /^AI 出題 \d{1,2}\/\d{1,2}$/;
+
+// 從 AI 回傳的試卷標題抽出主題後綴(≤7 字),拼回預設標題後面變成
+// 「AI 出題 4/26 - 光合作用」這種有辨識度的命名
+function deriveTopicSuffix(aiTitle: string): string {
+  if (!aiTitle) {
+    return '';
+  }
+  // 去掉頭尾常見的引號 / 破折號 / 冒號 / 空白,只留主題本身
+  const cleaned = aiTitle
+    .trim()
+    .replace(/^[—\-:：「『（(\s]+/, '')
+    .replace(/[—\-:：」』）)\s]+$/, '')
+    .trim();
+  if (!cleaned) {
+    return '';
+  }
+  // Array.from 確保 emoji / surrogate pair 一個 code point 算一字
+  const chars = Array.from(cleaned);
+  return chars.slice(0, 7).join('');
+}
+
 // 狀態樣式：小色點 + 文字（與 Dashboard 一致）
 const STATUS_MAP: Record<Quiz['status'], { label: string; dot: string }> = {
   draft: { label: '草稿', dot: 'bg-muted-foreground/60' },
@@ -365,7 +389,7 @@ export function QuizEditor({
   }, [autoOpenAI, isPro]);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
-  const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], _title: string) => {
+  const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], aiTitle: string) => {
     setIsSubmitting(true);
     setShowAIModal(false);
 
@@ -405,6 +429,21 @@ export function QuizEditor({
     if (allDefault) {
       await distributePoints(initialQuiz.id);
     }
+
+    // 預設標題「AI 出題 M/D」太空泛,把 AI 回傳的試卷標題擷取 ≤7 字接在後面;
+    // 若用戶已手動改過標題就不覆蓋(避免改掉 user 的命名)
+    const topicSuffix = deriveTopicSuffix(aiTitle);
+    if (topicSuffix && DEFAULT_AI_TITLE_RE.test(title)) {
+      const newTitle = `${title} - ${topicSuffix}`;
+      setTitle(newTitle);
+      try {
+        await updateQuiz(initialQuiz.id, { title: newTitle, status });
+      } catch (err) {
+        // 更新標題失敗不阻擋題目匯入(題目已成功)
+        console.error('[handleAIImport] 更新標題失敗', err);
+      }
+    }
+
     setIsSubmitting(false);
     setImportSuccess(true);
     router.refresh(); // pending 由 useEffect 監聽 initialQuestions 變化後清
