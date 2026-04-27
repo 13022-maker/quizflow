@@ -1105,11 +1105,16 @@ export function QuizEditor({
                   : question.type === 'single_choice' || question.type === 'multiple_choice'
                     ? (
                         // 選擇題用 inline 編輯卡片（題目 + 選項 + 正解勾選皆可直接改）
+                        // onEdit 觸發後切到 QuestionForm 完整編輯模式（圖片、解析、配分）
                         <InlineQuestionCard
                           key={question.id}
                           question={question}
                           index={index}
                           quizId={initialQuiz.id}
+                          onEdit={() => {
+                            setAddingNew(false);
+                            setEditingId(question.id);
+                          }}
                           onDelete={() => handleDeleteQuestion(question.id)}
                           isDeleting={deletingId === question.id}
                           isPro={isPro}
