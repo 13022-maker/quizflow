@@ -1,6 +1,7 @@
 export const MARKETPLACE_CATEGORIES = [
   '國文',
   '英語',
+  '華語檢測',
   '數學',
   '自然',
   '社會',
@@ -26,6 +27,7 @@ export const GRADE_LEVELS = [
   '高中三年級',
   '大學',
   '社會人士',
+  '不分級',
 ] as const;
 
 // 書商認證狀態（Phase 2）：新申請預設 pending，管理員（VIP_EMAILS）到後台審核
