@@ -64,7 +64,6 @@ export async function publishToMarketplace(data: z.infer<typeof PublishSchema>) 
   await db
     .update(quizSchema)
     .set({
-      isMarketplace: true,
       visibility: 'public',
       slug,
       publishedAt,
@@ -89,7 +88,7 @@ export async function unpublishFromMarketplace(quizId: number) {
   // slug / publishedAt 保留(避免 break 既有分享連結)
   await db
     .update(quizSchema)
-    .set({ isMarketplace: false, visibility: 'private' })
+    .set({ visibility: 'private' })
     .where(and(eq(quizSchema.id, quizId), eq(quizSchema.ownerId, userId)));
 
   revalidatePath('/marketplace');

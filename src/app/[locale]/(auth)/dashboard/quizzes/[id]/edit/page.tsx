@@ -63,7 +63,6 @@ export default async function EditQuizPage({
       scoringMode: quizSchema.scoringMode,
       attemptDecayRate: quizSchema.attemptDecayRate,
       expiresAt: quizSchema.expiresAt,
-      isMarketplace: quizSchema.isMarketplace,
       category: quizSchema.category,
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,

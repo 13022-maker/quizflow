@@ -688,7 +688,7 @@ export function QuizEditor({
               try {
                 const res = await createLiveGame({ quizId: initialQuiz.id });
                 // DEBUG：把完整 res 印到 console，定位後會拔掉
-                // eslint-disable-next-line no-console
+
                 console.warn('[QuizEditor createLiveGame result]', res);
                 if (!res || typeof res !== 'object') {
                   // server action 回 undefined：常見原因為 Clerk session 中斷、Next.js RSC flight 解析失敗
@@ -705,7 +705,6 @@ export function QuizEditor({
                 }
                 router.push(`/dashboard/live/host/${res.gameId}`);
               } catch (err) {
-                // eslint-disable-next-line no-console
                 console.error('[QuizEditor createLiveGame catch]', err);
                 setLiveError(
                   err instanceof Error
@@ -744,7 +743,7 @@ export function QuizEditor({
               </>
             )}
             <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
-              {initialQuiz.isMarketplace ? '✅ 管理市集上架' : '📤 分享到市集'}
+              {initialQuiz.visibility === 'public' ? '✅ 管理市集上架' : '📤 分享到市集'}
             </DropdownMenuItem>
             {questions.length > 0 && (
               <>
@@ -825,7 +824,7 @@ export function QuizEditor({
       {showMarketplace && (
         <PublishMarketplaceDialog
           quizId={initialQuiz.id}
-          isMarketplace={initialQuiz.isMarketplace}
+          isPublic={initialQuiz.visibility === 'public'}
           initialCategory={initialQuiz.category}
           initialGradeLevel={initialQuiz.gradeLevel}
           initialTags={initialQuiz.tags}
@@ -1154,7 +1153,7 @@ export function QuizEditor({
                   className="rounded-lg border border-dashed border-primary/40 bg-primary/5 p-4"
                 >
                   <div className="mb-2 flex items-center gap-2">
-                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    <div className="size-3.5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                     <span className="text-xs font-medium text-primary">
                       匯入中 Q
                       {questions.length + i + 1}
