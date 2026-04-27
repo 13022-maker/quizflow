@@ -97,6 +97,48 @@ function fmtSize(b: number) {
   return `${(b / 1048576).toFixed(1)} MB`;
 }
 
+// 命題框架對應的文字標籤：選擇後自動以「【命題框架：xxx】\n\n」前綴塞進主題框
+// 注意：server 端 (api/ai/generate-questions/route.ts) 已根據 framework key 自動 prepend prompt 指令，
+// 這裡的 label 純粹給使用者「看見自己選了什麼」，不會送給 AI。
+const FRAMEWORK_LABELS: Record<string, string> = {
+  '108-jhs-math': '國中數學（108 課綱素養）',
+  '108-jhs-chinese': '國中國文（108 課綱素養）',
+  '108-jhs-social': '國中社會（108 課綱素養）',
+  '108-jhs-science': '國中自然（108 課綱素養）',
+  '108-jhs-english': '國中英文（108 課綱素養）',
+  '108-jhs-history': '國中歷史（108 課綱素養）',
+  '108-shs-math': '高中數學（108 課綱素養）',
+  '108-shs-chinese': '高中國文（108 課綱素養）',
+  '108-shs-english': '高中英文（108 課綱素養）',
+  '108-shs-history': '高中歷史（108 課綱素養）',
+  '108-shs-geography': '高中地理（108 課綱素養）',
+  '108-shs-science': '高中自然（108 課綱素養）',
+  'pisa': 'PISA 風格（情境化、跨領域）',
+  'jhs-exam': '國中教育會考風格（五選一、難度均勻）',
+  'bloom-remember': 'Bloom 認知層次：記憶 Remember（事實回憶）',
+  'bloom-understand': 'Bloom 認知層次：理解 Understand（概念解釋）',
+  'bloom-apply': 'Bloom 認知層次：應用 Apply（情境運用）',
+  'bloom-analyze': 'Bloom 認知層次：分析 Analyze（拆解結構）',
+  'bloom-evaluate': 'Bloom 認知層次：評鑑 Evaluate（判斷批判）',
+  'bloom-create': 'Bloom 認知層次：創造 Create（產出新方案）',
+  'cefr-a1': 'CEFR A1 入門（英文分級）',
+  'cefr-a2': 'CEFR A2 基礎（英文分級）',
+  'cefr-b1': 'CEFR B1 中級（英文分級）',
+  'cefr-b2': 'CEFR B2 中高級（英文分級）',
+  'tocfl-a1': 'TOCFL A1 萌芽級（約 480 詞）',
+  'tocfl-a2': 'TOCFL A2 基礎級（約 1,000 詞）',
+  'tocfl-b1': 'TOCFL B1 進階級（約 2,600 詞）',
+  'tocfl-b2': 'TOCFL B2 高階級（約 4,000 詞）',
+  'tocfl-c1': 'TOCFL C1 流利級（約 6,000 詞）',
+  'tocfl-c2': 'TOCFL C2 精通級（約 8,000 詞）',
+  'tocfl-8000': 'TOCFL 8,000 詞表（全集詞彙運用題）',
+};
+
+function buildFrameworkPrefix(value: string) {
+  const label = FRAMEWORK_LABELS[value];
+  return label ? `【命題框架：${label}】\n\n` : '';
+}
+
 // ─── Component ────────────────────────────────────────────
 export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) {
   // Mode
@@ -116,6 +158,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   // 命題框架（108 課綱 / PISA / 會考 / Bloom / CEFR）：空字串 = 不指定（預設行為，prompt 不變）
   const [framework, setFramework] = useState<string>('');
+  // 紀錄目前自動塞進 topic 開頭的框架前綴文字，切換框架時用來把舊前綴拿掉再換新的
+  const [frameworkPrefix, setFrameworkPrefix] = useState<string>('');
 
   // URL mode（YouTube / Google Docs）
   const [sourceUrl, setSourceUrl] = useState('');
@@ -183,8 +227,26 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     setTypes(tpl.types);
     setCount(tpl.count);
     setDifficulty(tpl.difficulty);
+    // 套快速範本時，框架重置；避免下次切框架找不到舊前綴而錯誤地疊加
+    setFramework('');
+    setFrameworkPrefix('');
     setError('');
     setResult(null);
+  }
+
+  // 切換命題框架：把對應的中文標籤以「【命題框架：xxx】\n\n」前綴自動塞進主題文字方塊。
+  // 若使用者沒手動改掉舊前綴，切框架時會用新前綴替換；選「不指定」則把前綴拿掉。
+  function handleFrameworkChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const next = e.target.value;
+    const newPrefix = buildFrameworkPrefix(next);
+    setTopic((prev) => {
+      const stripped = frameworkPrefix && prev.startsWith(frameworkPrefix)
+        ? prev.slice(frameworkPrefix.length)
+        : prev;
+      return newPrefix + stripped;
+    });
+    setFrameworkPrefix(newPrefix);
+    setFramework(next);
   }
 
   function toggleType(t: QuestionType) {
@@ -609,7 +671,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   {/* 命題框架（108 課綱 / PISA / 會考 / Bloom / CEFR）：選後 server 端 prompt prepend 對應指令；非空時 chip 加深底色 */}
                   <select
                     value={framework}
-                    onChange={e => setFramework(e.target.value)}
+                    onChange={handleFrameworkChange}
                     className={`flex shrink-0 cursor-pointer items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition-all hover:-translate-y-0.5 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-amber-300 ${
                       framework
                         ? 'border-amber-500 bg-amber-200 text-amber-900'
