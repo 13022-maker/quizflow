@@ -259,6 +259,7 @@ export const socialTemplates: QuizTemplate[] = [
     description: '針對學測社會科必考的中國近代史設計：鴉片戰爭、辛亥革命、五四運動、國共內戰等關鍵事件與時代意義。',
     keywords: ['高中歷史', '中國近代史', '辛亥革命', '五四運動', '學測歷史'],
     tags: ['歷史', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {
@@ -410,6 +411,7 @@ export const socialTemplates: QuizTemplate[] = [
     description: '針對國中會考公民必考設計：憲法保障的基本人權（自由權、平等權、受益權）與兒少權益保護。',
     keywords: ['國中公民', '基本人權', '憲法', '會考公民'],
     tags: ['公民', '人權', '國中', '會考'],
+    exam: ['會考'],
     estimatedMinutes: 10,
     questions: [
       {
@@ -460,6 +462,7 @@ export const socialTemplates: QuizTemplate[] = [
     description: '針對學測歷史必考的戰後台灣設計：政治民主化、經濟起飛、社會運動與兩岸關係重要轉折。',
     keywords: ['高中歷史', '戰後台灣', '台灣史', '學測歷史'],
     tags: ['歷史', '台灣史', '高中', '學測'],
+    exam: ['學測'],
     estimatedMinutes: 12,
     questions: [
       {

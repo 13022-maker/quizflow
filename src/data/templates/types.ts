@@ -26,6 +26,15 @@ export type TemplateSubject =
   | '自然'
   | '社會';
 
+// 範本對應的考試類型（一個範本可標多個）
+export type TemplateExam =
+  | '會考'
+  | '學測'
+  | '指考'
+  | '統測'
+  | '英檢'
+  | '證照';
+
 export type QuizTemplate = {
   slug: string;
   title: string;
@@ -36,4 +45,5 @@ export type QuizTemplate = {
   tags: string[];
   estimatedMinutes: number;
   questions: TemplateQuestion[];
+  exam?: TemplateExam[];
 };

@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
 import {
+  getAvailableExams,
   getTemplateGrade,
   quizTemplates,
   TEMPLATE_GRADE_LEVELS_BY_GRADE,
   TEMPLATE_GRADES,
   TEMPLATE_SUBJECTS,
+  type TemplateExam,
   type TemplateGrade,
   type TemplateSubject,
 } from '@/data/templates';
@@ -21,13 +23,20 @@ export const metadata = {
   alternates: { canonical: '/templates' },
 };
 
-type Props = {
-  params: { locale: string };
-  searchParams: { subject?: string; grade?: string; gradeLevel?: string };
+type FilterParams = {
+  subject?: string;
+  grade?: string;
+  gradeLevel?: string;
+  exam?: string;
 };
 
-// 構建保留其他維度的 URL（避免點科目時清掉學制、反之亦然）
-function buildHref(params: { subject?: string; grade?: string; gradeLevel?: string }): string {
+type Props = {
+  params: { locale: string };
+  searchParams: FilterParams;
+};
+
+// 構建保留其他維度的 URL（避免點某維度時清掉其他已選的維度）
+function buildHref(params: FilterParams): string {
   const qs = new URLSearchParams();
   if (params.subject) {
     qs.set('subject', params.subject);
@@ -37,6 +46,9 @@ function buildHref(params: { subject?: string; grade?: string; gradeLevel?: stri
   }
   if (params.gradeLevel) {
     qs.set('gradeLevel', params.gradeLevel);
+  }
+  if (params.exam) {
+    qs.set('exam', params.exam);
   }
   const s = qs.toString();
   return s ? `/templates?${s}` : '/templates';
@@ -48,6 +60,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
   const selectedSubject = searchParams.subject as TemplateSubject | undefined;
   const selectedGrade = searchParams.grade as TemplateGrade | undefined;
   const selectedGradeLevel = searchParams.gradeLevel;
+  const selectedExam = searchParams.exam as TemplateExam | undefined;
 
   const list = quizTemplates.filter((t) => {
     if (selectedSubject && t.subject !== selectedSubject) {
@@ -59,6 +72,9 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
     if (selectedGradeLevel && t.gradeLevel !== selectedGradeLevel) {
       return false;
     }
+    if (selectedExam && !t.exam?.includes(selectedExam)) {
+      return false;
+    }
     return true;
   });
 
@@ -66,6 +82,9 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
   const gradeLevelOptions = selectedGrade
     ? TEMPLATE_GRADE_LEVELS_BY_GRADE[selectedGrade]
     : [];
+
+  // 動態取得實際存在範本的考試類型（避免 chip 沒對應內容）
+  const availableExams = getAvailableExams();
 
   // chip 樣式 helper
   const chipClass = (active: boolean) =>
@@ -95,7 +114,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
           <p className="mb-2 text-xs font-medium text-muted-foreground">依科目</p>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={buildHref({ grade: selectedGrade, gradeLevel: selectedGradeLevel })}
+              href={buildHref({ grade: selectedGrade, gradeLevel: selectedGradeLevel, exam: selectedExam })}
               className={chipClass(!selectedSubject)}
             >
               全部
@@ -103,7 +122,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
             {TEMPLATE_SUBJECTS.map(s => (
               <Link
                 key={s}
-                href={buildHref({ subject: s, grade: selectedGrade, gradeLevel: selectedGradeLevel })}
+                href={buildHref({ subject: s, grade: selectedGrade, gradeLevel: selectedGradeLevel, exam: selectedExam })}
                 className={chipClass(selectedSubject === s)}
               >
                 {s}
@@ -117,7 +136,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
           <p className="mb-2 text-xs font-medium text-muted-foreground">依學制</p>
           <div className="flex flex-wrap gap-2">
             <Link
-              href={buildHref({ subject: selectedSubject })}
+              href={buildHref({ subject: selectedSubject, exam: selectedExam })}
               className={chipClass(!selectedGrade)}
             >
               全部
@@ -125,7 +144,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
             {TEMPLATE_GRADES.map(g => (
               <Link
                 key={g}
-                href={buildHref({ subject: selectedSubject, grade: g })}
+                href={buildHref({ subject: selectedSubject, grade: g, exam: selectedExam })}
                 className={chipClass(selectedGrade === g)}
               >
                 {g}
@@ -140,7 +159,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
             <p className="mb-2 text-xs font-medium text-muted-foreground">{`依年級（${selectedGrade}）`}</p>
             <div className="flex flex-wrap gap-2">
               <Link
-                href={buildHref({ subject: selectedSubject, grade: selectedGrade })}
+                href={buildHref({ subject: selectedSubject, grade: selectedGrade, exam: selectedExam })}
                 className={chipClass(!selectedGradeLevel)}
               >
                 全部
@@ -148,7 +167,7 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
               {gradeLevelOptions.map(gl => (
                 <Link
                   key={gl}
-                  href={buildHref({ subject: selectedSubject, grade: selectedGrade, gradeLevel: gl })}
+                  href={buildHref({ subject: selectedSubject, grade: selectedGrade, gradeLevel: gl, exam: selectedExam })}
                   className={chipClass(selectedGradeLevel === gl)}
                 >
                   {gl}
@@ -158,9 +177,33 @@ export default function TemplatesIndexPage({ params, searchParams }: Props) {
           </div>
         )}
 
+        {/* 考試類型篩選（會考／學測／統測等，獨立維度可與其他維度同時篩） */}
+        {availableExams.length > 0 && (
+          <div className="mt-4">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">依考試</p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={buildHref({ subject: selectedSubject, grade: selectedGrade, gradeLevel: selectedGradeLevel })}
+                className={chipClass(!selectedExam)}
+              >
+                全部
+              </Link>
+              {availableExams.map(e => (
+                <Link
+                  key={e}
+                  href={buildHref({ subject: selectedSubject, grade: selectedGrade, gradeLevel: selectedGradeLevel, exam: e })}
+                  className={chipClass(selectedExam === e)}
+                >
+                  {e}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* 篩選結果計數 */}
         <p className="mt-6 text-sm text-muted-foreground">
-          {`共 ${list.length} 份範本${selectedSubject ? `・${selectedSubject}` : ''}${selectedGradeLevel ? `・${selectedGradeLevel}` : selectedGrade ? `・${selectedGrade}` : ''}`}
+          {`共 ${list.length} 份範本${selectedSubject ? `・${selectedSubject}` : ''}${selectedGradeLevel ? `・${selectedGradeLevel}` : selectedGrade ? `・${selectedGrade}` : ''}${selectedExam ? `・${selectedExam}` : ''}`}
         </p>
 
         <section className="mt-3 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
