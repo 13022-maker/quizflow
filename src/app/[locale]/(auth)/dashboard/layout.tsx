@@ -41,6 +41,18 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
                 href: '/marketplace',
                 label: '市集',
               },
+              {
+                href: '/pricing',
+                label: '定價',
+              },
+              {
+                href: '/blog',
+                label: '部落格',
+              },
+              {
+                href: '/templates',
+                label: '範本',
+              },
             ]}
           />
         </div>
