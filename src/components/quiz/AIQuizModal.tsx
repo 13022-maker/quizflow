@@ -654,6 +654,15 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       <option value="cefr-b1">B1 中級</option>
                       <option value="cefr-b2">B2 中高級</option>
                     </optgroup>
+                    <optgroup label="TOCFL 華語文（國家華語測驗推動工作委員會）">
+                      <option value="tocfl-a1">A1 萌芽級（約 480 詞）</option>
+                      <option value="tocfl-a2">A2 基礎級（約 1,000 詞）</option>
+                      <option value="tocfl-b1">B1 進階級（約 2,600 詞）</option>
+                      <option value="tocfl-b2">B2 高階級（約 4,000 詞）</option>
+                      <option value="tocfl-c1">C1 流利級（約 6,000 詞）</option>
+                      <option value="tocfl-c2">C2 精通級（約 8,000 詞）</option>
+                      <option value="tocfl-8000">📚 TOCFL 8,000 詞表（全集詞彙運用題）</option>
+                    </optgroup>
                   </select>
 
                   {TEMPLATES.map(tpl => (
