@@ -72,7 +72,8 @@ export function SwipeableFlashcard({
     known: number;
     again: number;
   }>>([]);
-  const [mode, setMode] = useState<'swipe' | 'button'>('swipe');
+  // 預設按鈕模式（多數使用者一開始較不熟悉滑動）；可在卡片下方切換到滑動模式
+  const [mode, setMode] = useState<'swipe' | 'button'>('button');
 
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
   const movedRef = useRef(false);
@@ -141,8 +142,9 @@ export function SwipeableFlashcard({
   }, [current, idx, known, again, onRate]);
 
   // ---------- 指標事件 ----------
+  // mode='swipe' 與 mode='button' 都接受點擊翻牌；button 模式只是不啟用拖曳位移視覺與評分判定
   const onPointerDown = (clientX: number, clientY: number) => {
-    if (mode !== 'swipe' || done) {
+    if (done) {
       return;
     }
     startRef.current = { x: clientX, y: clientY, t: Date.now() };
@@ -152,6 +154,10 @@ export function SwipeableFlashcard({
 
   const onPointerMove = (clientX: number, clientY: number) => {
     if (!startRef.current) {
+      return;
+    }
+    // button 模式不顯示拖曳位移、不更新 movedRef → onPointerUp 會視為點擊翻牌
+    if (mode === 'button') {
       return;
     }
     const dx = clientX - startRef.current.x;
