@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { db } from '@/libs/DB';
 import { vocabCardSchema, vocabSetSchema } from '@/models/Schema';
 
-import { VocabPractice } from './VocabPractice';
+import { SwipeableVocabPractice } from './SwipeableVocabPractice';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +54,7 @@ export default async function VocabPublicPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50/60 to-violet-50/40">
-      <VocabPractice title={vocabSet.title} cards={cards} />
+      <SwipeableVocabPractice title={vocabSet.title} cards={cards} />
     </div>
   );
 }
