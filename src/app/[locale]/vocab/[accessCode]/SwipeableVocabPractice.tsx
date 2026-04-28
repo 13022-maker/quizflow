@@ -14,7 +14,7 @@ type Props = {
   cards: VocabCardRow[];
 };
 
-// 三語 → 既有 /api/ai/tts 的 voice 對應
+// 語言 → 既有 /api/ai/tts 的 voice 對應（客語暫時不開放，等之後跟閩南語一起做）
 const VOICE_MAP: Record<FlashcardLang, string> = {
   zh: 'zh-tw-female',
   en: 'en-female',
@@ -60,6 +60,7 @@ export function SwipeableVocabPractice({ title, cards }: Props) {
     <SwipeableFlashcard
       cards={flashcards}
       title={title}
+      langs={['zh', 'en']}
       onPlayAudio={playAudio}
       onRate={handleRate}
     />

@@ -30,6 +30,8 @@ export type FlashcardData = {
 type SwipeableFlashcardProps = {
   cards: FlashcardData[];
   initialLang?: FlashcardLang;
+  // 要顯示的語言 tab；預設 zh + en（客語暫時隱藏，等之後跟閩南語一起做）
+  langs?: FlashcardLang[];
   onRate?: (cardId: string, action: RatingAction) => void;
   onComplete?: (stats: { known: number; again: number }) => void;
   onPlayAudio?: (text: string, lang: FlashcardLang) => void;
@@ -41,17 +43,24 @@ type SwipeableFlashcardProps = {
 const SWIPE_THRESHOLD = 90;
 const VELOCITY_THRESHOLD = 0.5;
 
+// 預設要顯示的語言 tab；客語暫時隱藏，等之後跟閩南語一起做
+const DEFAULT_LANGS: FlashcardLang[] = ['zh', 'en'];
+
 // ---------- 主元件 ----------
 export function SwipeableFlashcard({
   cards,
   initialLang = 'zh',
+  langs = DEFAULT_LANGS,
   onRate,
   onComplete,
   onPlayAudio,
   trial = false,
   title = '單字卡',
 }: SwipeableFlashcardProps) {
-  const [lang, setLang] = useState<FlashcardLang>(initialLang);
+  // initialLang 如果不在 langs 內，fallback 到 langs[0]
+  const [lang, setLang] = useState<FlashcardLang>(
+    langs.includes(initialLang) ? initialLang : (langs[0] ?? 'zh'),
+  );
   const [idx, setIdx] = useState(0);
   const [known, setKnown] = useState(0);
   const [again, setAgain] = useState(0);
@@ -278,7 +287,7 @@ export function SwipeableFlashcard({
 
       {/* Tabs */}
       <div className="mb-3.5 flex gap-1.5 rounded-2xl border border-slate-200 bg-white p-1">
-        {(['zh', 'en', 'hak'] as FlashcardLang[]).map((l) => {
+        {langs.map((l) => {
           const labels = { zh: '國語', en: 'English', hak: '客語' };
           const hasTTS = current ? current[l].tts : true;
           return (
@@ -391,6 +400,7 @@ export function SwipeableFlashcard({
               <CardFace
                 card={next2}
                 lang={lang}
+                langs={langs}
                 flipped={false}
                 style={{
                   transform: 'scale(0.88) translateY(22px)',
@@ -403,6 +413,7 @@ export function SwipeableFlashcard({
               <CardFace
                 card={next1}
                 lang={lang}
+                langs={langs}
                 flipped={false}
                 style={{
                   transform: 'scale(0.94) translateY(12px)',
@@ -463,6 +474,7 @@ export function SwipeableFlashcard({
                 <CardFace
                   card={current}
                   lang={lang}
+                  langs={langs}
                   flipped={flipped}
                   onPlayAudio={onPlayAudio}
                 />
@@ -519,11 +531,13 @@ type CardFaceProps = {
   card: FlashcardData;
   lang: FlashcardLang;
   flipped: boolean;
+  // 哪些語言需要顯示（控制背面「其他語言」對照行的顯示）
+  langs?: FlashcardLang[];
   onPlayAudio?: (text: string, lang: FlashcardLang) => void;
   style?: React.CSSProperties;
 };
 
-function CardFace({ card, lang, flipped, onPlayAudio, style }: CardFaceProps) {
+function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, style }: CardFaceProps) {
   const content = card[lang];
   const wordSizeClass = lang === 'en' ? 'text-[44px] tracking-tight' : 'text-[56px] tracking-wider';
   const pronClass = content.pronClass === 'poj' ? 'italic tracking-wider' : 'tracking-[0.15em]';
@@ -579,17 +593,25 @@ function CardFace({ card, lang, flipped, onPlayAudio, style }: CardFaceProps) {
           <div className="mb-3.5 font-serif text-[20px] font-medium leading-snug text-slate-900">
             {card.meaning}
           </div>
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">其他語言</div>
-          <div className="mb-3 flex flex-col gap-2">
-            <div className="flex items-baseline gap-2.5 text-[13px]">
-              <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">EN</span>
-              <span className="flex-1 text-slate-900">{card.cross.en}</span>
-            </div>
-            <div className="flex items-baseline gap-2.5 text-[13px]">
-              <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">客</span>
-              <span className="flex-1 text-slate-900">{card.cross.hak}</span>
-            </div>
-          </div>
+          {(langs.includes('en') || langs.includes('hak')) && (
+            <>
+              <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">其他語言</div>
+              <div className="mb-3 flex flex-col gap-2">
+                {langs.includes('en') && (
+                  <div className="flex items-baseline gap-2.5 text-[13px]">
+                    <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">EN</span>
+                    <span className="flex-1 text-slate-900">{card.cross.en}</span>
+                  </div>
+                )}
+                {langs.includes('hak') && (
+                  <div className="flex items-baseline gap-2.5 text-[13px]">
+                    <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">客</span>
+                    <span className="flex-1 text-slate-900">{card.cross.hak}</span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
           <div className="mt-auto rounded-xl border-l-[3px] border-blue-600 bg-slate-50 p-3 text-[12px] leading-relaxed text-slate-600">
             <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400">例句</span>
             {card.example}
