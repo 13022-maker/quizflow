@@ -352,6 +352,12 @@ export const vocabSetSchema = pgTable('vocabulary_set', {
   title: text('title').notNull(),
   accessCode: text('access_code').unique(),
   status: text('status').default('draft').notNull(),
+  // ---------- 題庫市集（vocab marketplace） ----------
+  // 與 quizSchema 對齊：visibility='public' 才會列在 /marketplace?type=vocab；category/gradeLevel 用於篩選；forkCount 排序與顯示
+  visibility: text('visibility').$type<'private' | 'public'>().default('private').notNull(),
+  category: text('category'),
+  gradeLevel: text('grade_level'),
+  forkCount: integer('fork_count').default(0).notNull(),
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())

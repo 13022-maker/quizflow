@@ -2,10 +2,9 @@ import { auth } from '@clerk/nextjs/server';
 import { desc, eq, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
+import { VocabActionsMenu } from '@/components/vocab/VocabActionsMenu';
 import { db } from '@/libs/DB';
 import { vocabCardSchema, vocabSetSchema } from '@/models/Schema';
-
-import { DeleteVocabButton } from './DeleteButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +20,10 @@ export default async function VocabListPage() {
       id: vocabSetSchema.id,
       title: vocabSetSchema.title,
       accessCode: vocabSetSchema.accessCode,
+      visibility: vocabSetSchema.visibility,
+      category: vocabSetSchema.category,
+      gradeLevel: vocabSetSchema.gradeLevel,
+      forkCount: vocabSetSchema.forkCount,
       createdAt: vocabSetSchema.createdAt,
       lastCardAt: sql<Date | null>`MAX(${vocabCardSchema.createdAt})`,
     })
@@ -57,29 +60,45 @@ export default async function VocabListPage() {
                   minute: '2-digit',
                 });
                 const hasCards = set.lastCardAt !== null;
+                const isPublic = set.visibility === 'public';
                 return (
                   <div key={set.id} className="rounded-xl border bg-card p-5 shadow-sm">
-                    <h3 className="mb-2 text-base font-semibold">{set.title}</h3>
+                    <div className="mb-2 flex items-start justify-between gap-2">
+                      <h3 className="flex-1 text-base font-semibold">{set.title}</h3>
+                      <VocabActionsMenu
+                        set={{
+                          id: set.id,
+                          accessCode: set.accessCode,
+                          visibility: set.visibility as 'private' | 'public',
+                          category: set.category,
+                          gradeLevel: set.gradeLevel,
+                        }}
+                      />
+                    </div>
+                    {/* 上架徽章 */}
+                    {isPublic && (
+                      <div className="mb-2 inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                        ✅ 已上架市集
+                        {set.forkCount > 0 && (
+                          <span className="text-green-600">
+                            ·
+                            {set.forkCount}
+                            {' '}
+                            人複製
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <p className="mb-4 text-xs text-muted-foreground">
                       {hasCards ? '最近加入：' : '建立於：'}
                       {lastAtLabel}
                     </p>
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/vocab/${set.accessCode}`}
-                        className="flex-1 rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
-                      >
-                        預覽
-                      </Link>
-                      <button
-                        type="button"
-                        className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-100"
-                        onClick={undefined}
-                      >
-                        複製連結
-                      </button>
-                      <DeleteVocabButton id={set.id} />
-                    </div>
+                    <Link
+                      href={`/vocab/${set.accessCode}`}
+                      className="block rounded-lg border px-3 py-2 text-center text-sm font-medium transition-colors hover:bg-muted"
+                    >
+                      預覽
+                    </Link>
                   </div>
                 );
               })}
