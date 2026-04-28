@@ -218,6 +218,22 @@ STRIPE_SECRET_KEY=any_fake_value
   - 路由：`/dashboard/live/host/[gameId]`（老師）、`/live/join` + `/live/play/[gameId]`（學生）
   - 入口：QuizEditor 頂部按鈕、QuizTableColumns 下拉選單
   - 本次 MVP 只支援 `single_choice` / `multiple_choice` / `true_false`；ranking / short_answer / listening 待後續
+- **SwipeableFlashcard**（滑動式單字卡 UI）：
+  - 元件 `src/components/flashcard/SwipeableFlashcard.tsx` + DB row → FlashcardData mapper（`src/lib/flashcard.ts`）
+  - 三向滑動評分（左 = 重來、右 = 良好、上 = 簡單）+ 點擊翻牌 + 動畫飛出 + Undo 上一張
+  - 預設按鈕模式（多數使用者較不熟滑動）；卡片下方可切到滑動模式
+  - 字體隨字長動態縮放（英文 >10 字母縮 34px、>14 縮 26px、>18 縮 20px；中文同分級）+ `overflow-wrap:anywhere` 保險，避免長單字被卡片 `overflow-hidden` 裁掉
+  - `langs` prop 控制要顯示的語言 tab；目前帶 `['zh', 'en']`，客語暫時隱藏，等之後跟閩南語一起做
+  - TTS 串既有 `/api/ai/tts`（zh-tw-female / en-female / hak voice）；學生端 wrapper `SwipeableVocabPractice.tsx` 把 vocab DB row 轉接過去
+  - SRS 寫回先 console.log（vocab_attempts 表尚未建，等之後 schema 擴充再串 server action）
+- **題庫市集加入單字卡集**（migration 0029）：
+  - `vocabSetSchema` 加 `visibility` / `category` / `gradeLevel` / `forkCount` 4 欄位（與 quiz 對齊）
+  - 3 個 server actions：`publishVocabToMarketplace` / `unpublishVocabFromMarketplace` / `copyVocabFromMarketplace`（`src/actions/marketplaceActions.ts`）
+  - `/marketplace` 頁首加 tab 切換「測驗」/ 「單字卡」（searchParams 加 `type=quiz|vocab`，預設 quiz 向後相容）
+  - `MarketplaceVocabCard.tsx`：兩顆按鈕 — 「開始練習」（→ /vocab/[accessCode]，學生不用登入）+ 「複製到我的單字卡集」（fork → 跳 dashboard/vocab）
+  - dashboard/vocab 列表卡片右上「⋯」menu（`VocabActionsMenu.tsx`）：上架/下架（`PublishVocabDialog.tsx` 選 category/grade）、複製公開連結、刪除
+  - 卡片顯示「✅ 已上架市集 · N 人複製」徽章；forkCount 用原子 SQL increment 跟 quiz 對齊
+  - **不**做 description / tags / slug / publishedAt（scope 簡化，未來需要再補）
 
 ### 🔥 下一步優先順序（依序開發）
 1. **Paddle production 上線**（階段 2）：production env 補上 PADDLE_* 變數、webhook destination 改回 `https://quizflow-psi.vercel.app/api/webhook`、merge `feature/paddle-sandbox` → main
