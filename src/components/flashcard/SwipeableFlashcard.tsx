@@ -545,7 +545,25 @@ type CardFaceProps = {
 
 function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, style }: CardFaceProps) {
   const content = card[lang];
-  const wordSizeClass = lang === 'en' ? 'text-[44px] tracking-tight' : 'text-[56px] tracking-wider';
+  // 字體尺寸隨字長動態縮：避免英文長單字（>9 字母）被卡片 overflow-hidden 裁掉
+  const wordLen = content.word.length;
+  let wordSizeClass: string;
+  if (lang === 'en') {
+    wordSizeClass = wordLen > 18
+      ? 'text-[20px] tracking-tight'
+      : wordLen > 14
+        ? 'text-[26px] tracking-tight'
+        : wordLen > 10
+          ? 'text-[34px] tracking-tight'
+          : 'text-[44px] tracking-tight';
+  } else {
+    // 中文以字數判斷（單一漢字寬度大）
+    wordSizeClass = wordLen > 8
+      ? 'text-[28px] tracking-wide'
+      : wordLen > 5
+        ? 'text-[40px] tracking-wider'
+        : 'text-[56px] tracking-wider';
+  }
   const pronClass = content.pronClass === 'poj' ? 'italic tracking-wider' : 'tracking-[0.15em]';
 
   return (
@@ -562,8 +580,8 @@ function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, sty
           <div className="self-start rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400">
             {content.pill}
           </div>
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <div className={`font-serif font-bold leading-tight text-slate-900 ${wordSizeClass}`}>
+          <div className="flex w-full flex-1 flex-col items-center justify-center gap-3 px-2 text-center">
+            <div className={`max-w-full font-serif font-bold leading-tight text-slate-900 [overflow-wrap:anywhere] ${wordSizeClass}`}>
               {content.word}
             </div>
             <div className={`text-[18px] font-medium text-slate-500 ${pronClass}`}>
