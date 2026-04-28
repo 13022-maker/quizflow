@@ -240,3 +240,34 @@ export async function setQuizVisibility(input: {
     slug: updates.slug ?? quiz.slug ?? null,
   };
 }
+
+// 切換 quiz 發佈狀態（draft / published / closed）— 給 ShareModal 直接快速切換用
+export async function setQuizStatus(input: {
+  quizId: number;
+  status: 'draft' | 'published' | 'closed';
+}) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('未登入');
+  }
+
+  // 先驗 ownership，避免 update 0 row 沒回饋
+  const [own] = await db
+    .select({ id: quizSchema.id })
+    .from(quizSchema)
+    .where(and(eq(quizSchema.id, input.quizId), eq(quizSchema.ownerId, userId)))
+    .limit(1);
+
+  if (!own) {
+    return { error: '找不到測驗或無權限' as const };
+  }
+
+  await db
+    .update(quizSchema)
+    .set({ status: input.status })
+    .where(eq(quizSchema.id, input.quizId));
+
+  revalidatePath(`/dashboard/quizzes/${input.quizId}/edit`);
+  revalidatePath('/dashboard/quizzes');
+  return { success: true as const };
+}

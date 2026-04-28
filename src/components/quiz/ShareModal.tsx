@@ -9,7 +9,7 @@
 import { useRef, useState, useTransition } from 'react';
 import QRCode from 'react-qr-code';
 
-import { setQuizVisibility, updateQuizSettings } from '@/actions/quizActions';
+import { setQuizStatus, setQuizVisibility, updateQuizSettings } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
 
 type Visibility = 'private' | 'unlisted' | 'public';
@@ -54,6 +54,24 @@ export default function ShareModal({
   const [slug, setSlug] = useState<string | null>(currentSlug);
   const [isVisibilityPending, startVisibilityTransition] = useTransition();
   const [visibilityError, setVisibilityError] = useState<string | null>(null);
+
+  // 試卷發佈狀態切換（draft <-> published）；closed 視同未發佈，按發佈會切到 published
+  const [localStatus, setLocalStatus] = useState<QuizStatus>(status);
+  const [isStatusPending, startStatusTransition] = useTransition();
+  const [statusError, setStatusError] = useState<string | null>(null);
+
+  const handleToggleStatus = () => {
+    const next: QuizStatus = localStatus === 'published' ? 'draft' : 'published';
+    setStatusError(null);
+    startStatusTransition(async () => {
+      const res = await setQuizStatus({ quizId, status: next });
+      if ('error' in res && res.error) {
+        setStatusError(res.error);
+        return;
+      }
+      setLocalStatus(next);
+    });
+  };
 
   const handleVisibilityChange = (next: Visibility) => {
     if (next === visibility) {
@@ -264,29 +282,48 @@ export default function ShareModal({
           <QRCode value={shareUrl} size={156} bgColor="#ffffff" fgColor="#000000" />
         </div>
 
-        {/* 連結與發佈狀態：可點擊新分頁預覽試卷，未發佈時警示提醒 */}
+        {/* 連結與發佈狀態：可點擊新分頁預覽試卷，未發佈時警示提醒 + 一鍵切換發佈狀態 */}
         <div className={`mb-4 rounded-md border p-3 ${
-          status === 'published'
+          localStatus === 'published'
             ? 'border-emerald-200 bg-emerald-50/40'
-            : status === 'closed'
+            : localStatus === 'closed'
               ? 'border-gray-200 bg-gray-50'
               : 'border-amber-200 bg-amber-50/60'
         }`}
         >
-          {/* 狀態 badge */}
+          {/* 狀態 badge + 發佈/取消發佈按鈕 */}
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-              status === 'published'
+              localStatus === 'published'
                 ? 'bg-emerald-100 text-emerald-700'
-                : status === 'closed'
+                : localStatus === 'closed'
                   ? 'bg-gray-200 text-gray-600'
                   : 'bg-amber-100 text-amber-800'
             }`}
             >
-              {status === 'published' ? '✅ 已發佈' : status === 'closed' ? '🔒 已關閉' : '⚠️ 草稿（未發佈）'}
+              {localStatus === 'published' ? '✅ 已發佈' : localStatus === 'closed' ? '🔒 已關閉' : '⚠️ 草稿（未發佈）'}
             </span>
-            <span className="text-[10px] text-muted-foreground">點下方連結預覽</span>
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              disabled={isStatusPending}
+              className={`shrink-0 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors disabled:opacity-50 ${
+                localStatus === 'published'
+                  ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              {isStatusPending
+                ? '處理中…'
+                : localStatus === 'published'
+                  ? '↩️ 取消發佈'
+                  : '📤 發佈試卷'}
+            </button>
           </div>
+
+          {statusError && (
+            <p className="mb-1.5 text-[11px] text-red-600">{statusError}</p>
+          )}
 
           {/* 可點擊新分頁預覽 */}
           <a
@@ -300,11 +337,11 @@ export default function ShareModal({
           </a>
 
           {/* 未發佈警示 */}
-          {status !== 'published' && (
+          {localStatus !== 'published' && (
             <p className="mt-1.5 text-[11px] text-amber-700">
-              {status === 'closed'
-                ? '此測驗已關閉，學生點連結會看到「測驗已結束」。'
-                : '此測驗尚未發佈，學生點連結會看不到內容。請先在試卷頁切換為「已發佈」。'}
+              {localStatus === 'closed'
+                ? '此測驗已關閉，學生點連結會看到「測驗已結束」。可按右上「📤 發佈試卷」重新開放。'
+                : '此測驗尚未發佈，學生點連結會看不到內容。可按右上「📤 發佈試卷」一鍵發佈。'}
             </p>
           )}
         </div>
