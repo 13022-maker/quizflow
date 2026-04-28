@@ -144,11 +144,11 @@ export default function ShareModal({
     });
   };
 
-  // LINE 分享：用 /R/msg/text/ 開 LINE 並預填訊息（使用者選聊天室即可送出）
-  // 跟舊的 /R/share?text= 差在那個會先跳「分享給朋友」面板，多一步操作
+  // LINE 分享：用 line:// 自訂 scheme 直接 deep link 開 App，不經 web 中介頁
+  // 桌機沒裝 LINE 會顯示「無法打開連結」，旁邊「複製連結」按鈕可作備援
   const handleShareLine = () => {
     const text = `加入測驗「${quizTitle}」${roomCode ? `\n房間碼：${roomCode}` : ''}\n點擊加入：${shareUrl}`;
-    window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+    window.location.href = `line://msg/text/?${encodeURIComponent(text)}`;
   };
 
   // Google Classroom 分享
