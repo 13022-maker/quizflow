@@ -4,6 +4,7 @@ import {
   bigint,
   boolean,
   check,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -99,7 +100,7 @@ export const quizSchema = pgTable(
     // 題庫市集（Phase 3:isMarketplace 已 DROP COLUMN,改用 visibility='public' 判斷）
     category: text('category'),
     gradeLevel: text('grade_level'),
-    tags: text('tags').array().$type<string[]>(), // Phase 2 commit 5C:jsonb → text[] 命名統一(對 TS 端透明,USING cast 處理既有 jsonb row)
+    tags: text('tags').array().$type<string[]>().notNull().default(sql`'{}'::text[]`), // Phase 2 commit 5C:jsonb → text[] 命名統一(對 TS 端透明,USING cast 處理既有 jsonb row)
     forkCount: integer('fork_count').default(0).notNull(),
     // 自參照:fork 來源 quiz id（Phase 2 commit 5A:original_quiz_id → forked_from_id 命名統一）
     forkedFromId: integer('forked_from_id').references(
@@ -132,6 +133,14 @@ export const quizSchema = pgTable(
       slugUniqueIdx: uniqueIndex('quiz_slug_unique_idx')
         .on(table.slug)
         .where(sql`${table.slug} IS NOT NULL`),
+      // 公開題庫按發佈時間倒序(/explore 主查詢)
+      publicRecentIdx: index('quiz_public_recent_idx')
+        .on(table.publishedAt.desc())
+        .where(sql`${table.visibility} = 'public'`),
+      // Fork 反向查詢:找誰 fork 了某 quiz
+      forkedFromIdx: index('quiz_forked_from_idx')
+        .on(table.forkedFromId)
+        .where(sql`${table.forkedFromId} IS NOT NULL`),
     };
   },
 );
