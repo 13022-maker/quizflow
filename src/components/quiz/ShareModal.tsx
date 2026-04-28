@@ -126,10 +126,11 @@ export default function ShareModal({
     });
   };
 
-  // LINE 分享（直接開 LINE App）
+  // LINE 分享：用 /R/msg/text/ 開 LINE 並預填訊息（使用者選聊天室即可送出）
+  // 跟舊的 /R/share?text= 差在那個會先跳「分享給朋友」面板，多一步操作
   const handleShareLine = () => {
     const text = `加入測驗「${quizTitle}」${roomCode ? `\n房間碼：${roomCode}` : ''}\n點擊加入：${shareUrl}`;
-    window.location.href = `https://line.me/R/share?text=${encodeURIComponent(text)}`;
+    window.location.href = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
   };
 
   // Google Classroom 分享
