@@ -13,6 +13,7 @@ import { setQuizVisibility, updateQuizSettings } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
 
 type Visibility = 'private' | 'unlisted' | 'public';
+type QuizStatus = 'draft' | 'published' | 'closed';
 
 type Props = {
   quizId: number;
@@ -23,6 +24,8 @@ type Props = {
   // 社群化 Phase 1 commit 2:visibility 切換
   currentVisibility?: Visibility;
   currentSlug?: string | null;
+  // 試卷發佈狀態（draft / published / closed）— 影響預覽連結的提示
+  status?: QuizStatus;
   onClose: () => void;
 };
 
@@ -34,6 +37,7 @@ export default function ShareModal({
   expiresAt: initialExpiresAt,
   currentVisibility = 'private',
   currentSlug = null,
+  status = 'draft',
   onClose,
 }: Props) {
   const qrRef = useRef<HTMLDivElement>(null);
@@ -259,10 +263,50 @@ export default function ShareModal({
           <QRCode value={shareUrl} size={156} bgColor="#ffffff" fgColor="#000000" />
         </div>
 
-        {/* 連結 */}
-        <p className="mb-4 break-all rounded-md bg-muted px-3 py-2 text-center text-xs text-muted-foreground">
-          {quizUrl}
-        </p>
+        {/* 連結與發佈狀態：可點擊新分頁預覽試卷，未發佈時警示提醒 */}
+        <div className={`mb-4 rounded-md border p-3 ${
+          status === 'published'
+            ? 'border-emerald-200 bg-emerald-50/40'
+            : status === 'closed'
+              ? 'border-gray-200 bg-gray-50'
+              : 'border-amber-200 bg-amber-50/60'
+        }`}
+        >
+          {/* 狀態 badge */}
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+              status === 'published'
+                ? 'bg-emerald-100 text-emerald-700'
+                : status === 'closed'
+                  ? 'bg-gray-200 text-gray-600'
+                  : 'bg-amber-100 text-amber-800'
+            }`}
+            >
+              {status === 'published' ? '✅ 已發佈' : status === 'closed' ? '🔒 已關閉' : '⚠️ 草稿（未發佈）'}
+            </span>
+            <span className="text-[10px] text-muted-foreground">點下方連結預覽</span>
+          </div>
+
+          {/* 可點擊新分頁預覽 */}
+          <a
+            href={quizUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block break-all text-xs text-blue-600 underline decoration-dotted underline-offset-2 hover:text-blue-800"
+          >
+            {quizUrl}
+            <span className="ml-1" aria-hidden="true">↗</span>
+          </a>
+
+          {/* 未發佈警示 */}
+          {status !== 'published' && (
+            <p className="mt-1.5 text-[11px] text-amber-700">
+              {status === 'closed'
+                ? '此測驗已關閉，學生點連結會看到「測驗已結束」。'
+                : '此測驗尚未發佈，學生點連結會看不到內容。請先在試卷頁切換為「已發佈」。'}
+            </p>
+          )}
+        </div>
 
         {/* ── 操作按鈕 ── */}
         <div className="mb-4 grid grid-cols-2 gap-2">

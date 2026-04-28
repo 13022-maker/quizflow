@@ -175,6 +175,7 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
           expiresAt={quiz.expiresAt instanceof Date ? quiz.expiresAt.toISOString() : (quiz.expiresAt ?? null)}
           currentVisibility={quiz.visibility}
           currentSlug={quiz.slug}
+          status={quiz.status}
           onClose={() => setShowShare(false)}
         />
       )}
