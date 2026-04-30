@@ -3,7 +3,7 @@
 import { and, eq } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
-import { getUserPlanId } from '@/libs/Plan';
+import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { aiUsageSchema } from '@/models/Schema';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
@@ -31,9 +31,8 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
     return { allowed: true, remaining: 999 };
   }
 
-  // 2026 年 4 月試用期：不限制 AI 出題次數（5 月起恢復正式 quota）
-  const now = new Date();
-  if (now.getFullYear() === 2026 && now.getMonth() === 3) { // 0-based: 3 = 四月
+  // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
+  if (await isProOrAbove(userId)) {
     return { allowed: true, remaining: 999 };
   }
 
@@ -98,6 +97,11 @@ export async function getAiUsageRemaining(userId: string): Promise<{
   used: number;
   remaining: number;
 }> {
+  // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
+  if (await isProOrAbove(userId)) {
+    return { quota: 999, used: 0, remaining: 999 };
+  }
+
   const planId = await getUserPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
   const quota = plan.features.aiQuota;
