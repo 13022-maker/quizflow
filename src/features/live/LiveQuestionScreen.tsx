@@ -20,6 +20,7 @@ export function LiveQuestionScreen({
   pending,
 }: Props) {
   const { currentQuestion, game, answerStats, answeredCount, players } = state;
+  const disconnectedCount = players.filter(p => p.disconnected).length;
   const { remaining, percent } = useCountdown(
     game.questionStartedAt,
     game.questionDuration,
@@ -58,6 +59,13 @@ export function LiveQuestionScreen({
           {players.length}
           {' '}
           人已答
+          {disconnectedCount > 0 && (
+            <span className="ml-1 text-red-500">
+              · 斷線
+              {' '}
+              {disconnectedCount}
+            </span>
+          )}
         </span>
       </div>
 
