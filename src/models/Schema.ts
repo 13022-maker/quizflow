@@ -427,6 +427,7 @@ export const livePlayerSchema = pgTable(
     score: integer('score').default(0).notNull(),
     correctCount: integer('correct_count').default(0).notNull(),
     joinedAt: timestamp('joined_at', { mode: 'date' }).defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (table) => {
     return {

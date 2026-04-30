@@ -1,0 +1,1 @@
+ALTER TABLE "live_player" ADD COLUMN "last_seen_at" timestamp DEFAULT now() NOT NULL;
