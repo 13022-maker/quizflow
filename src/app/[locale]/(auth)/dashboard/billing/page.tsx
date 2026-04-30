@@ -91,10 +91,12 @@ export default async function BillingPage() {
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">使用狀況</h2>
           <div className="space-y-4">
-            {/* 測驗數量 */}
+            {/* 測驗數量（試用中也視為無限，與 quizActions 的 isProOrAbove 待遇一致） */}
             <UsageRow
               label="測驗數量上限"
-              value={plan.features.website >= 999 ? '無限制' : `${plan.features.website} 份`}
+              value={(isPaidPro || isTrialing) || plan.features.website >= 999
+                ? '無限制'
+                : `${plan.features.website} 份`}
             />
             {/* AI 出題次數 */}
             <div>

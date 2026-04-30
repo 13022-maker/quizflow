@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
 import { db } from '@/libs/DB';
-import { getUserPlanId } from '@/libs/Plan';
+import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
@@ -64,6 +64,8 @@ export async function createQuiz(data: CreateQuizInput) {
   const { isVipUser } = await import('@/libs/vip');
   if (await isVipUser()) {
     // VIP 直接跳過 quota 檢查
+  } else if (await isProOrAbove(userId)) {
+    // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
   } else {
   // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
     const planId = await getUserPlanId(userId);
