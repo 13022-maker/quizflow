@@ -236,7 +236,7 @@ STRIPE_SECRET_KEY=any_fake_value
   - **不**做 description / tags / slug / publishedAt（scope 簡化，未來需要再補）
 
 ### 🔥 下一步優先順序（依序開發）
-1. **Paddle production 上線**（階段 2）：production env 補上 PADDLE_* 變數、webhook destination 改回 `https://quizflow-psi.vercel.app/api/webhook`、merge `feature/paddle-sandbox` → main
+1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補
 2. 免費試用機制（Pro 功能 30 天體驗，到期自動降級）
 3. 多語系擴展（日語、韓語、英語、簡體中文）
 4. Live Mode v2：斷線重連（Ably Presence + Reactor Webhook + localStorage 身份恢復 + 老師端斷線狀態 UI）、支援 ranking / short_answer / listening 題型、UI 完整 i18n（目前中文硬寫在 components 裡）
@@ -282,14 +282,16 @@ STRIPE_SECRET_KEY=any_fake_value
 ### GitHub Actions CI 紅燈
 `.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
 
-### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15）
+### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15，分支已刪 2026-04-30）
 `feature/paddle-sandbox` 分支綁 Paddle Sandbox 環境，完整 flow 驗證：訂閱 → webhook → DB upsert → 取消 → status=canceled。
+**2026-04-30 更新**：分支已 `git push origin --delete feature/paddle-sandbox` 刪除。原因：sandbox 程式碼早已陸續合進 main（paddle/checkout、webhook、PaddleProvider、libs/paddle 都在），分支落後 main 218 commits、領先 0 commits，硬 merge 反而會 revert 後續所有功能（Live Mode、Vocab、Marketplace 等）。
 - Vercel preview env（已設）：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`NEXT_PUBLIC_PADDLE_ENV=sandbox`、4 個 sandbox Price ID、`PADDLE_WEBHOOK_SECRET`、`DATABASE_URL`（指 Neon preview branch `preview-paddle-sandbox` = `br-mute-darkness-a1i746p8`，舊的 `br-sparkling-hat-a1j73ctc` 24h TTL 過期已被刪）
 - Paddle Sandbox webhook destination：`ntfset_01kp66qw6wj7f3z0htq5ktg2qy`（目前指到 preview URL）
 - production merge 前要處理：移除 Vercel preview 的 sandbox env（或窄化成只綁該分支）、刪 Neon preview branch、Paddle sandbox webhook destination 移除或獨立
 
 ### Paddle production 上線清單（階段 2，未做）
-production Vercel env 目前**完全沒有 PADDLE_*** 變數，merge `feature/paddle-sandbox` → main 前必補：
+**Trigger 條件**：用戶數破 100 **且** 命題人數超過 10 人（避免 production webhook 過早啟用導致誤觸發訂閱）。
+production Vercel env 目前**完全沒有 PADDLE_*** 變數，正式上線當天再一次性補齊：
 1. `vercel env add PADDLE_API_KEY production`（production key `pdl_apikey_*`）
 2. `vercel env add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN production`（live_*）
 3. `vercel env add NEXT_PUBLIC_PADDLE_ENV production` value=`production`
