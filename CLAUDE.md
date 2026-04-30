@@ -239,7 +239,10 @@ STRIPE_SECRET_KEY=any_fake_value
 1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補
 2. ~~免費試用機制（Pro 功能 30 天體驗，到期自動降級）~~ ✅ 2026-04-30 完成 4 缺口修補（Fix 1: AI quota 走 isProOrAbove；Fix 2: billing 頁試用狀態四分支；Fix 3: 到期 banner 限期 7 天；Fix 4: dashboard layout eager trigger，30 天從進 dashboard 起算）。spec: `docs/superpowers/specs/2026-04-30-pro-trial-fixes-design.md`、plan: `docs/superpowers/plans/2026-04-30-pro-trial-fixes.md`
 3. 多語系擴展（日語、韓語、英語、簡體中文）
-4. Live Mode v2：斷線重連（Ably Presence + Reactor Webhook + localStorage 身份恢復 + 老師端斷線狀態 UI）、支援 ranking / short_answer / listening 題型、UI 完整 i18n（目前中文硬寫在 components 裡）
+4. Live Mode v2（拆 3 子專案）：
+   - **Sub-A 斷線偵測 + 重連 UI** ✅ 2026-04-30 完成（純 heartbeat 架構，spec: `docs/superpowers/specs/2026-04-30-live-mode-disconnect-detection-design.md`、plan: `docs/superpowers/plans/2026-04-30-live-mode-disconnect-detection.md`）
+   - **Sub-B 新題型支援**（ranking / short_answer / listening）— 未開
+   - **Sub-C UI i18n migration** — 未開（與 #3 多語系擴展綁一起做）
 5. Playwright E2E 測試覆蓋核心流程
 
 ## 技術債與技術決策
