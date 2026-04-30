@@ -197,7 +197,9 @@ export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForH
     }));
 }
 
-// 取得玩家清單（照分數高→低）
+const DISCONNECT_THRESHOLD_MS = 15 * 1000;
+
+// 取得玩家清單（照分數高→低，附 disconnected flag）
 async function getPlayers(gameId: number): Promise<LivePlayerSummary[]> {
   const rows = await db
     .select({
@@ -205,11 +207,19 @@ async function getPlayers(gameId: number): Promise<LivePlayerSummary[]> {
       nickname: livePlayerSchema.nickname,
       score: livePlayerSchema.score,
       correctCount: livePlayerSchema.correctCount,
+      lastSeenAt: livePlayerSchema.lastSeenAt,
     })
     .from(livePlayerSchema)
     .where(eq(livePlayerSchema.gameId, gameId))
     .orderBy(desc(livePlayerSchema.score));
-  return rows;
+  const now = Date.now();
+  return rows.map(r => ({
+    id: r.id,
+    nickname: r.nickname,
+    score: r.score,
+    correctCount: r.correctCount,
+    disconnected: now - r.lastSeenAt.getTime() > DISCONNECT_THRESHOLD_MS,
+  }));
 }
 
 // 當前題目的答題統計（每個選項被選次數；複選題每個 id 各計一次）

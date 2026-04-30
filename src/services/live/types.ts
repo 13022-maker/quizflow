@@ -30,6 +30,7 @@ export type LivePlayerSummary = {
   nickname: string;
   score: number;
   correctCount: number;
+  disconnected: boolean; // 新增：(NOW() - last_seen_at) > 15s
 };
 
 // 單題答題統計
