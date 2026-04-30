@@ -17,6 +17,8 @@ export function useLivePlayerGame(
   const [state, setState] = useState<LivePlayerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [, setConsecutiveFailures] = useState(0);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   useEffect(() => {
     if (!gameId || !playerId || !playerToken) {
@@ -29,11 +31,20 @@ export function useLivePlayerGame(
       (s) => {
         setState(s);
         setError(null);
+        setConsecutiveFailures(0);
+        setIsReconnecting(false);
       },
       {
         intervalMs: 2000,
         onError: (err) => {
           setError(err instanceof Error ? err.message : 'network error');
+          setConsecutiveFailures((c) => {
+            const next = c + 1;
+            if (next >= 2) {
+              setIsReconnecting(true);
+            }
+            return next;
+          });
         },
       },
     );
@@ -72,5 +83,5 @@ export function useLivePlayerGame(
     [gameId, playerId, playerToken],
   );
 
-  return { state, error, submit, submitting };
+  return { state, error, submit, submitting, isReconnecting };
 }
