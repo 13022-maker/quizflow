@@ -9,7 +9,7 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
-import { getUserPlanId } from '@/libs/Plan';
+import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { quizSchema, responseSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -58,6 +58,10 @@ export default async function QuizzesPage() {
         }).from(quizSchema).where(eq(quizSchema.ownerId, userId)).orderBy(quizSchema.createdAt) as any,
       ]);
       quizLimit = PricingPlanList[planId]?.features.website ?? 10;
+      // 試用中老師享 Pro 待遇（與 quizActions 的 isProOrAbove 待遇一致）
+      if (await isProOrAbove(userId)) {
+        quizLimit = 999;
+      }
       quizCount = quizzes.length;
     }
   } catch (err) {

@@ -66,7 +66,15 @@ export async function TrialBanner({ clerkUserId }: Props) {
     );
   }
 
-  // 試用已到期
+  // 試用已到期：限期 7 天顯示，之後讓 AiQuotaBanner 接手提醒
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
+  const daysSinceEnd = trial.endsAt
+    ? Math.floor((Date.now() - trial.endsAt.getTime()) / MS_PER_DAY)
+    : 0;
+  if (daysSinceEnd > 7) {
+    return null;
+  }
+
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-muted bg-muted/40 p-4">
       <div className="flex items-center gap-3">

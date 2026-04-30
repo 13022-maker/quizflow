@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { getUserPlanId } from '@/libs/Plan';
+import { getTrialStatus } from '@/libs/trial';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
 export const dynamic = 'force-dynamic';
@@ -21,8 +22,16 @@ export default async function BillingPage() {
 
   const planId = await getUserPlanId(userId);
   const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
-  const isPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER;
+  const isPaidPro = planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER;
+  const trial = await getTrialStatus(userId);
+  const isTrialing = !isPaidPro && trial?.inTrial === true;
+  const trialExpired = !isPaidPro && trial !== null && trial.inTrial === false;
   const aiUsage = await getAiUsageRemaining(userId);
+
+  // 副標日期 format
+  const trialEndsAtLabel = trial?.endsAt
+    ? trial.endsAt.toLocaleDateString('zh-TW')
+    : '';
 
   return (
     <>
@@ -35,14 +44,38 @@ export default async function BillingPage() {
             <div>
               <p className="text-sm text-muted-foreground">目前方案</p>
               <p className="mt-1 text-2xl font-bold">
-                {planId === PLAN_ID.ENTERPRISE
-                  ? '學校方案'
-                  : planId === PLAN_ID.PUBLISHER
-                    ? '書商方案'
-                    : isPro
-                      ? 'Pro 老師'
-                      : '免費版'}
+                {isPaidPro
+                  ? planId === PLAN_ID.ENTERPRISE
+                    ? '學校方案'
+                    : planId === PLAN_ID.PUBLISHER
+                      ? '書商方案'
+                      : 'Pro 老師'
+                  : isTrialing
+                    ? 'Pro 老師（試用中）'
+                    : '免費版'}
               </p>
+              {isTrialing && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  試用剩
+                  {' '}
+                  {trial!.daysLeft}
+                  {' '}
+                  天 ·
+                  {' '}
+                  {trialEndsAtLabel}
+                  {' '}
+                  結束
+                </p>
+              )}
+              {trialExpired && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Pro 試用已於
+                  {' '}
+                  {trialEndsAtLabel}
+                  {' '}
+                  結束
+                </p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-3xl font-bold tabular-nums">
@@ -58,10 +91,12 @@ export default async function BillingPage() {
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">使用狀況</h2>
           <div className="space-y-4">
-            {/* 測驗數量 */}
+            {/* 測驗數量（試用中也視為無限，與 quizActions 的 isProOrAbove 待遇一致） */}
             <UsageRow
               label="測驗數量上限"
-              value={plan.features.website >= 999 ? '無限制' : `${plan.features.website} 份`}
+              value={(isPaidPro || isTrialing) || plan.features.website >= 999
+                ? '無限制'
+                : `${plan.features.website} 份`}
             />
             {/* AI 出題次數 */}
             <div>
@@ -93,33 +128,8 @@ export default async function BillingPage() {
         </div>
 
         {/* 升級 / 管理訂閱 */}
-        {!isPro
+        {isPaidPro
           ? (
-              <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
-                <h2 className="mb-2 text-lg font-semibold">升級至 Pro 方案</h2>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  解鎖無限 AI 出題、無限測驗數量，以及更多進階功能。
-                </p>
-                <ul className="mb-5 space-y-2 text-sm">
-                  <FeatureItem text="無限 AI 出題（每月不限次數）" />
-                  <FeatureItem text="無限測驗數量" />
-                  <FeatureItem text="班級 AI 分析報表" />
-                  <FeatureItem text="CSV 成績匯出" />
-                </ul>
-                {/* TODO: 串接 Paddle Checkout overlay（hooks/useCheckout） */}
-                <button
-                  type="button"
-                  disabled
-                  className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60"
-                >
-                  即將推出 — NT$299/月
-                </button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  付款功能開發中，敬請期待
-                </p>
-              </div>
-            )
-          : (
               <div className="rounded-lg border bg-card p-6">
                 <h2 className="mb-2 text-lg font-semibold">訂閱管理</h2>
                 <p className="mb-4 text-sm text-muted-foreground">
@@ -143,6 +153,33 @@ export default async function BillingPage() {
                 >
                   管理訂閱（開發中）
                 </button>
+              </div>
+            )
+          : (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-6">
+                <h2 className="mb-2 text-lg font-semibold">
+                  {isTrialing ? '升級正式 Pro' : '升級至 Pro 方案'}
+                </h2>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  解鎖無限 AI 出題、無限測驗數量，以及更多進階功能。
+                </p>
+                <ul className="mb-5 space-y-2 text-sm">
+                  <FeatureItem text="無限 AI 出題（每月不限次數）" />
+                  <FeatureItem text="無限測驗數量" />
+                  <FeatureItem text="班級 AI 分析報表" />
+                  <FeatureItem text="CSV 成績匯出" />
+                </ul>
+                {/* TODO: 串接 Paddle Checkout overlay（hooks/useCheckout） */}
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60"
+                >
+                  即將推出 — NT$299/月
+                </button>
+                <p className="mt-2 text-center text-xs text-muted-foreground">
+                  付款功能開發中，敬請期待
+                </p>
               </div>
             )}
 
