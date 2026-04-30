@@ -7,7 +7,7 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { QuizForm } from '@/features/quiz/QuizForm';
 import { QuizLimitWall } from '@/features/quiz/QuizLimitWall';
 import { db } from '@/libs/DB';
-import { getUserPlanId } from '@/libs/Plan';
+import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -26,7 +26,8 @@ export default async function NewQuizPage() {
   const { userId } = await auth();
 
   // 伺服器端先查方案與測驗數量，超過上限就顯示升級牆
-  if (userId) {
+  // 試用中老師走 isProOrAbove 短路，與 quizActions / dashboard quizzes 待遇一致
+  if (userId && !(await isProOrAbove(userId))) {
     const planId = await getUserPlanId(userId);
     const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
 
