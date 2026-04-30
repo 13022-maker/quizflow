@@ -1,8 +1,9 @@
-import { useTranslations } from 'next-intl';
+import { auth } from '@clerk/nextjs/server';
 import { getTranslations } from 'next-intl/server';
 
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
+import { ensureTrialRecord } from '@/libs/trial';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
   const t = await getTranslations({
@@ -16,8 +17,14 @@ export async function generateMetadata(props: { params: { locale: string } }) {
   };
 }
 
-export default function DashboardLayout(props: { children: React.ReactNode }) {
-  const t = useTranslations('DashboardLayout');
+export default async function DashboardLayout(props: { children: React.ReactNode }) {
+  const t = await getTranslations('DashboardLayout');
+
+  // 進入 dashboard 即起算 30 天 Pro 試用（idempotent，第 2 次以後純 SELECT）
+  const { userId } = await auth();
+  if (userId) {
+    await ensureTrialRecord(userId);
+  }
 
   return (
     <>
