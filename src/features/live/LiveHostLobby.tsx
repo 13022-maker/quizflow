@@ -80,6 +80,20 @@ export function LiveHostLobby({ state, onStart, onEnd, pending }: Props) {
               {state.players.length}
               ）
             </span>
+            {(() => {
+              const disconnectedCount = state.players.filter(p => p.disconnected).length;
+              return disconnectedCount > 0
+                ? (
+                    <span className="ml-2 text-xs text-red-500">
+                      其中
+                      {' '}
+                      {disconnectedCount}
+                      {' '}
+                      人離線
+                    </span>
+                  )
+                : null;
+            })()}
           </h2>
         </div>
         {state.players.length === 0
@@ -93,9 +107,14 @@ export function LiveHostLobby({ state, onStart, onEnd, pending }: Props) {
                 {state.players.map(p => (
                   <span
                     key={p.id}
-                    className="rounded-full bg-muted px-3 py-1.5 text-sm"
+                    className={p.disconnected
+                      ? 'rounded-full bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground line-through'
+                      : 'rounded-full bg-muted px-3 py-1.5 text-sm'}
                   >
                     {p.nickname}
+                    {p.disconnected && (
+                      <span className="ml-1 text-xs text-red-500">（離線）</span>
+                    )}
                   </span>
                 ))}
               </div>
