@@ -8,6 +8,12 @@ import { z } from 'zod';
 
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
 import { db } from '@/libs/DB';
+import {
+  assertCanFork,
+  ForkError,
+  generateRoomCode,
+} from '@/libs/fork';
+import { insertForkedQuiz, loadSourceQuiz } from '@/libs/fork-dao';
 import { questionSchema, quizSchema, vocabCardSchema, vocabSetSchema } from '@/models/Schema';
 
 const PublishSchema = z.object({
@@ -95,89 +101,47 @@ export async function unpublishFromMarketplace(quizId: number) {
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 }
 
-function generateRoomCode(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
-  return code;
-}
-
+/**
+ * 從 marketplace 複製測驗（Server Action,給 /marketplace 頁面用）。
+ *
+ * 共用 fork.ts / fork-dao.ts 核心，與 /api/quizzes/[id]/fork API route 行為一致：
+ *   - aiHint 拷貝（修既有漏拷 bug）
+ *   - 全程 db.transaction（修既有 orphan quiz bug）
+ *   - 不繼承 publisherId / isbn / chapter / bookTitle
+ *   - title 加「（副本）」後綴
+ *   - 公開連結 visibility='unlisted' 也允許複製（Phase 1 commit 2 Q2）
+ *
+ * 與 API route 唯一差異：**plan check 不啟用**（傳 isPro=true 跳過）
+ *   → 保留 Free 用戶的「市集免費複製範本」成長路徑
+ *   → Pro only 限制只在 API route 啟用（給 mobile / 第三方用）
+ */
 export async function copyQuizFromMarketplace(sourceQuizId: number) {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('請先登入再複製');
   }
 
-  const [source] = await db
-    .select({
-      id: quizSchema.id,
-      title: quizSchema.title,
-      description: quizSchema.description,
-      category: quizSchema.category,
-      gradeLevel: quizSchema.gradeLevel,
-      tags: quizSchema.tags,
-    })
-    .from(quizSchema)
-    .where(and(eq(quizSchema.id, sourceQuizId), eq(quizSchema.visibility, 'public')))
-    .limit(1);
+  const source = await loadSourceQuiz(sourceQuizId);
 
-  if (!source) {
-    return { error: '找不到此市集測驗' };
-  }
+  try {
+    // isPro=true 跳過 plan gate;其他規則(not-found / self-fork / visibility)照常
+    assertCanFork(source, userId, true);
 
-  const questions = await db
-    .select()
-    .from(questionSchema)
-    .where(eq(questionSchema.quizId, sourceQuizId))
-    .orderBy(questionSchema.position);
-
-  const [newQuiz] = await db
-    .insert(quizSchema)
-    .values({
+    const { newQuizId } = await insertForkedQuiz({
+      source,
       ownerId: userId,
-      title: `${source.title}（複製）`,
-      description: source.description,
-      accessCode: nanoid(8),
-      roomCode: generateRoomCode(),
-      status: 'draft',
-      category: source.category,
-      gradeLevel: source.gradeLevel,
-      tags: source.tags,
-      forkedFromId: sourceQuizId,
-    })
-    .returning();
+      codes: { accessCode: nanoid(8), roomCode: generateRoomCode() },
+    });
 
-  if (!newQuiz) {
-    return { error: '複製失敗' };
+    revalidatePath('/marketplace');
+    revalidatePath('/dashboard/quizzes');
+    return { success: true, newQuizId };
+  } catch (e) {
+    if (e instanceof ForkError) {
+      return { error: e.message };
+    }
+    throw e;
   }
-
-  if (questions.length > 0) {
-    await db.insert(questionSchema).values(
-      questions.map((q, i) => ({
-        quizId: newQuiz.id,
-        type: q.type,
-        body: q.body,
-        imageUrl: q.imageUrl,
-        audioUrl: q.audioUrl,
-        audioTranscript: q.audioTranscript,
-        options: q.options,
-        correctAnswers: q.correctAnswers,
-        points: q.points,
-        position: i + 1,
-      })),
-    );
-  }
-
-  await db
-    .update(quizSchema)
-    .set({ forkCount: sql`${quizSchema.forkCount} + 1` })
-    .where(eq(quizSchema.id, sourceQuizId));
-
-  revalidatePath('/marketplace');
-  revalidatePath('/dashboard/quizzes');
-  return { success: true, newQuizId: newQuiz.id };
 }
 
 // ===== 單字卡集（vocab）市集 actions =====
