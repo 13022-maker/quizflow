@@ -43,6 +43,7 @@ export default function ShareModal({
   const qrRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [forkLinkCopied, setForkLinkCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   // 到期時間狀態
@@ -95,6 +96,8 @@ export default function ShareModal({
   // LINE 內建瀏覽器 block 登入、檔案上傳等功能，分享時加上 ?openExternalBrowser=1
   // LINE 會辨識此官方參數並強制用系統預設瀏覽器（Safari / Chrome）開啟
   const shareUrl = `${quizUrl}?openExternalBrowser=1`;
+  // Fork 連結：對方點開看到 preview + 一鍵複製到自己的儀表板（visibility 必須非 private）
+  const forkUrl = `${quizUrl}/fork`;
 
   // 下載 QR Code 為 PNG
   const handleDownload = () => {
@@ -130,6 +133,14 @@ export default function ShareModal({
     navigator.clipboard.writeText(shareUrl).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  // 複製 Fork 連結
+  const handleCopyForkLink = () => {
+    navigator.clipboard.writeText(forkUrl).then(() => {
+      setForkLinkCopied(true);
+      setTimeout(() => setForkLinkCopied(false), 2000);
     });
   };
 
@@ -253,6 +264,42 @@ export default function ShareModal({
               </a>
             </p>
           )}
+        </div>
+
+        {/* ── 分享 Fork 連結（社群化 Phase 1 commit 2 收口）── */}
+        <div className="mb-4 rounded-lg border border-input bg-background p-3">
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">📋 分享 Fork 連結</p>
+          {visibility === 'private'
+            ? (
+                <p className="text-xs text-muted-foreground">
+                  將可見度切到「🔗 連結」或「🌐 公開」即可產生 Fork 連結,
+                  讓其他老師預覽後一鍵複製這份測驗到自己的儀表板。
+                </p>
+              )
+            : (
+                <>
+                  <p className="mb-2 text-xs text-muted-foreground">
+                    對方點連結後可預覽並一鍵複製到自己的測驗(會以草稿形式進入對方儀表板)。
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      readOnly
+                      value={forkUrl}
+                      onClick={e => e.currentTarget.select()}
+                      className="flex-1 truncate rounded-md border border-input bg-muted/50 px-2 py-1.5 font-mono text-[11px]"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleCopyForkLink}
+                      className="shrink-0 text-xs"
+                    >
+                      {forkLinkCopied ? '✓ 已複製' : '📋 複製'}
+                    </Button>
+                  </div>
+                </>
+              )}
         </div>
 
         {/* ── 房間碼 ── */}

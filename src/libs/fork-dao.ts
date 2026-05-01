@@ -13,34 +13,52 @@ import {
   type SourceQuiz,
 } from './fork';
 
+// SOURCE_QUIZ_FIELDS:loadSourceQuiz / loadSourceQuizByAccessCode 共用同一份 SELECT
+// 與 SourceQuiz 型別保持一致;增刪欄位只改一處
+const SOURCE_QUIZ_FIELDS = {
+  id: quizSchema.id,
+  ownerId: quizSchema.ownerId,
+  title: quizSchema.title,
+  description: quizSchema.description,
+  visibility: quizSchema.visibility,
+  shuffleQuestions: quizSchema.shuffleQuestions,
+  shuffleOptions: quizSchema.shuffleOptions,
+  allowedAttempts: quizSchema.allowedAttempts,
+  showAnswers: quizSchema.showAnswers,
+  timeLimitSeconds: quizSchema.timeLimitSeconds,
+  preventLeave: quizSchema.preventLeave,
+  scoringMode: quizSchema.scoringMode,
+  attemptDecayRate: quizSchema.attemptDecayRate,
+  quizMode: quizSchema.quizMode,
+  category: quizSchema.category,
+  gradeLevel: quizSchema.gradeLevel,
+  tags: quizSchema.tags,
+} as const;
+
 /**
- * 取得 source quiz 的所有可繼承欄位。
+ * 依 quiz id 取得 source quiz 的所有可繼承欄位。
  * 不過濾 visibility（交給 assertCanFork 判斷,避免 404 / 403 邏輯散落兩處）。
  * 找不到時回 null。
  */
 export async function loadSourceQuiz(sourceId: number): Promise<SourceQuiz | null> {
   const [row] = await db
-    .select({
-      id: quizSchema.id,
-      ownerId: quizSchema.ownerId,
-      title: quizSchema.title,
-      description: quizSchema.description,
-      visibility: quizSchema.visibility,
-      shuffleQuestions: quizSchema.shuffleQuestions,
-      shuffleOptions: quizSchema.shuffleOptions,
-      allowedAttempts: quizSchema.allowedAttempts,
-      showAnswers: quizSchema.showAnswers,
-      timeLimitSeconds: quizSchema.timeLimitSeconds,
-      preventLeave: quizSchema.preventLeave,
-      scoringMode: quizSchema.scoringMode,
-      attemptDecayRate: quizSchema.attemptDecayRate,
-      quizMode: quizSchema.quizMode,
-      category: quizSchema.category,
-      gradeLevel: quizSchema.gradeLevel,
-      tags: quizSchema.tags,
-    })
+    .select(SOURCE_QUIZ_FIELDS)
     .from(quizSchema)
     .where(eq(quizSchema.id, sourceId))
+    .limit(1);
+
+  return row ?? null;
+}
+
+/**
+ * 依 accessCode 取得 source quiz（給「分享 Fork 連結」用）。
+ * accessCode 是 8 碼隨機英數字,不洩漏內部 quiz id 順序。
+ */
+export async function loadSourceQuizByAccessCode(accessCode: string): Promise<SourceQuiz | null> {
+  const [row] = await db
+    .select(SOURCE_QUIZ_FIELDS)
+    .from(quizSchema)
+    .where(eq(quizSchema.accessCode, accessCode))
     .limit(1);
 
   return row ?? null;
