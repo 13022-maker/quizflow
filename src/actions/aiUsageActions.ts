@@ -125,3 +125,20 @@ export async function getAiUsageRemaining(userId: string): Promise<{
   const used = usage?.count ?? 0;
   return { quota, used, remaining: Math.max(0, quota - used) };
 }
+
+/**
+ * 從 Clerk auth 取得當前 userId，再查當月剩餘次數
+ * 給 client component 用（它沒 userId 在手），內部複用 getAiUsageRemaining
+ */
+export async function getAiUsageRemainingForCurrentUser(): Promise<{
+  quota: number;
+  used: number;
+  remaining: number;
+} | null> {
+  const { auth } = await import('@clerk/nextjs/server');
+  const { userId } = await auth();
+  if (!userId) {
+    return null;
+  }
+  return getAiUsageRemaining(userId);
+}
