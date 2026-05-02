@@ -592,7 +592,8 @@ export function QuizEditor({
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       {/* ── 新建測驗引導 banner：審完題後點按鈕分享 ─────────────── */}
-      {showJustCreatedBanner && (
+      {/* 只在沒題目時顯示;任何方式匯入題目後(AI/檔案/單字/手動)自動隱藏 */}
+      {showJustCreatedBanner && questions.length === 0 && (
         <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3 shadow-sm">
           <span className="text-xl">✅</span>
           <div className="min-w-0 flex-1">
