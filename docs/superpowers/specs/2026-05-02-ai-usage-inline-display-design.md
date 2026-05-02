@@ -115,7 +115,7 @@ banner、本次 usage 訊息、其他 hardcode 文字一起搬到 `zh.json` / `e
 
 4 個案例對應 4 分支：
 
-1. Pro / VIP（`quota: 999, used: 5, remaining: 999`）→ Pro 文案、`isWarning: false`
+1. Pro / VIP（`quota: 999, used: 0, remaining: 999`）→ Pro 固定文案「Pro 無上限,盡情創作 ✨」、`isWarning: false`（used 用 0 反映 `getAiUsageRemaining` Pro 分支實際回傳值）
 2. Free 充裕（`quota: 10, used: 3, remaining: 7`）→ Free 文案、`isWarning: false`
 3. Free 低額（`quota: 10, used: 8, remaining: 2`）→ Free 警示文案、`isWarning: true`
 4. Free 1 次（`quota: 10, used: 9, remaining: 1`）→ Free 警示文案、`isWarning: true`
@@ -123,7 +123,7 @@ banner、本次 usage 訊息、其他 hardcode 文字一起搬到 `zh.json` / `e
 ### 手動驗證
 
 - Free 帳號：跑一次 AI 出題，確認 banner 多一行「本月 N / 10 次」
-- Pro 帳號：跑一次 AI 出題，確認 banner 多一行「本月第 N 次 · Pro 無上限」
+- Pro 帳號：跑一次 AI 出題，確認 banner 多一行「Pro 無上限,盡情創作 ✨」
 - Free 額度剩 2 次：確認紅字 + 升級提示
 - 故意把 `getAiUsageRemaining` 拋錯：確認題目仍順利匯入、banner 不顯示 usage 行
 
