@@ -1051,7 +1051,7 @@ export function QuizEditor({
                           {' '}
                           <Link
                             href="/dashboard/billing"
-                            className="underline hover:text-red-700"
+                            className="text-red-600 underline hover:text-red-700"
                           >
                             升級 →
                           </Link>
