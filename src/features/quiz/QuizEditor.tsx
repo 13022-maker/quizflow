@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
+import { getAiUsageRemainingForCurrentUser } from '@/actions/aiUsageActions';
 import { createLiveGame } from '@/actions/liveActions';
 import {
   createQuestion,
@@ -43,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -177,6 +179,8 @@ export function QuizEditor({
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [importSuccess, setImportSuccess] = useState(false);
+  // 本月 AI 出題用量（AiUsageInfo），顯示在匯入成功 banner
+  const [aiUsage, setAiUsage] = useState<AiUsageInfo | null>(null);
 
   // 平均配分成功提示
   const [distributeMsg, setDistributeMsg] = useState('');
@@ -442,6 +446,17 @@ export function QuizEditor({
         // 更新標題失敗不阻擋題目匯入(題目已成功)
         console.error('[handleAIImport] 更新標題失敗', err);
       }
+    }
+
+    // 取本月 AI 出題使用次數,塞進 importSuccess banner 顯示
+    // 失敗不影響題目匯入,只是不顯示 usage 那行
+    try {
+      const usage = await getAiUsageRemainingForCurrentUser();
+      if (usage) {
+        setAiUsage(usage);
+      }
+    } catch (err) {
+      console.error('[handleAIImport] 取本月 AI 用量失敗', err);
     }
 
     setIsSubmitting(false);
@@ -995,38 +1010,70 @@ export function QuizEditor({
       </div>
 
       {/* ── 匯入成功引導 ── */}
-      {importSuccess && questions.length > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
-          <span className="mt-0.5 text-lg">✅</span>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">
-              {questions.length}
-              {' '}
-              題已匯入！接下來只要三步：
-            </p>
-            <ol className="mt-2 space-y-1 text-xs text-green-700">
-              <li>1. 往下滑檢查題目，有問題可以點「編輯」修改</li>
-              <li>
-                2. 確認沒問題後，按上方的「
-                <strong>發佈測驗</strong>
-                」
-              </li>
-              <li>
-                3. 點「
-                <strong>分享</strong>
-                」把連結傳給學生
-              </li>
-            </ol>
-            <button
-              type="button"
-              onClick={() => setImportSuccess(false)}
-              className="mt-2 text-xs text-green-600 hover:underline"
-            >
-              知道了，關閉提示
-            </button>
+      {importSuccess && questions.length > 0 && (() => {
+        // 在 render 時從 aiUsage derive 文案,符合 React 最佳實踐
+        // 「rerender-derived-state-no-effect」: 能 derive 就不要存 state
+        const aiUsageMsg = aiUsage ? formatAiUsageMessage(aiUsage) : null;
+        return (
+          <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
+            <span className="mt-0.5 text-lg">✅</span>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-green-800">
+                {questions.length}
+                {' '}
+                題已匯入！接下來只要三步：
+              </p>
+              <ol className="mt-2 space-y-1 text-xs text-green-700">
+                <li>1. 往下滑檢查題目，有問題可以點「編輯」修改</li>
+                <li>
+                  2. 確認沒問題後，按上方的「
+                  <strong>發佈測驗</strong>
+                  」
+                </li>
+                <li>
+                  3. 點「
+                  <strong>分享</strong>
+                  」把連結傳給學生
+                </li>
+              </ol>
+              {aiUsageMsg && (
+                <p
+                  className={`mt-2 text-xs ${
+                    aiUsageMsg.isWarning
+                      ? 'font-medium text-red-600'
+                      : 'text-green-700'
+                  }`}
+                >
+                  {aiUsageMsg.isWarning
+                    ? (
+                        <>
+                          {aiUsageMsg.text}
+                          {' '}
+                          <Link
+                            href="/dashboard/billing"
+                            className="underline hover:text-red-700"
+                          >
+                            升級 →
+                          </Link>
+                        </>
+                      )
+                    : aiUsageMsg.text}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setImportSuccess(false);
+                  setAiUsage(null);
+                }}
+                className="mt-2 text-xs text-green-600 hover:underline"
+              >
+                知道了，關閉提示
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── 題目清單 ────────────────────────────────────────────── */}
       <div>
