@@ -65,7 +65,7 @@ export function formatAiUsageMessage(usage: AiUsageInfo): AiUsageMessage;
 
 | 條件 | text 大致長相 | isWarning |
 |---|---|---|
-| `quota >= 999` | 「本月第 {used} 次 AI 出題 · Pro 無上限 ✨」 | false |
+| `quota >= 999` | 「Pro 無上限,盡情創作 ✨」(不顯示計數,因 `getAiUsageRemaining` Pro 分支不查 DB short-circuit 回 used: 0) | false |
 | `quota < 999` 且 `remaining > 2` | 「本月 {used} / {quota} 次 · 還剩 {remaining} 次」 | false |
 | `quota < 999` 且 `remaining <= 2` | 「本月 {used} / {quota} 次 · 只剩 {remaining} 次，升級 Pro 解鎖無限」（連結指向 `/dashboard/billing`） | true |
 | `quota < 999` 且 `remaining === 0` | 不會走到（route 層已擋下，handleAIImport 不會被呼叫） | — |

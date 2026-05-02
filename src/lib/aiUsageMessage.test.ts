@@ -3,10 +3,12 @@ import { describe, expect, it } from 'vitest';
 import { formatAiUsageMessage } from './aiUsageMessage';
 
 describe('formatAiUsageMessage', () => {
-  it('Pro / VIP（quota 999）回傳 Pro 文案、無警示', () => {
-    const result = formatAiUsageMessage({ quota: 999, used: 5, remaining: 999 });
+  it('Pro / VIP（quota 999）回傳 Pro 固定文案、無警示', () => {
+    // Pro 分支 getAiUsageRemaining 短路不查 DB,used 永遠為 0,
+    // 所以文案不依賴 used 計數
+    const result = formatAiUsageMessage({ quota: 999, used: 0, remaining: 999 });
 
-    expect(result.text).toBe('本月第 5 次 AI 出題 · Pro 無上限 ✨');
+    expect(result.text).toBe('Pro 無上限,盡情創作 ✨');
     expect(result.isWarning).toBe(false);
   });
 

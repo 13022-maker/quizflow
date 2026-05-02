@@ -23,8 +23,10 @@ export function formatAiUsageMessage(usage: AiUsageInfo): AiUsageMessage {
   const { quota, used, remaining } = usage;
 
   if (quota >= PRO_THRESHOLD) {
+    // 註: getAiUsageRemaining 對 Pro 分支 short-circuit 不查 DB(回 used: 0),
+    // 所以這裡不能顯示 used 計數,改用固定文案
     return {
-      text: `本月第 ${used} 次 AI 出題 · Pro 無上限 ✨`,
+      text: 'Pro 無上限,盡情創作 ✨',
       isWarning: false,
     };
   }
