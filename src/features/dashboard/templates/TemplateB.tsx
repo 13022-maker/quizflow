@@ -50,25 +50,6 @@ export function TemplateB({ data }: { data: DashboardData }) {
 
       {/* ── 快速行動卡片 ── */}
       <div className="mx-4 mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {/* 進階建立：副選單入口（手動出題、單字記憶等需要先進 /new 頁的流程） */}
-        <Link
-          href="/dashboard/quizzes/new"
-          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
-        >
-          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
-            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[15px] font-bold text-foreground">進階建立</h3>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">手動出題、單字記憶模式</p>
-          </div>
-          <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
-
         {/* AI 智慧出題：一鍵直達編輯頁 + AI Modal（省略 /new 中間頁） */}
         <QuickCreateAIButton />
 
@@ -112,6 +93,25 @@ export function TemplateB({ data }: { data: DashboardData }) {
             <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">輸入單字，AI 生成卡片與發音練習</p>
           </div>
           <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </Link>
+
+        {/* 進階建立：副選單入口（手動出題、單字記憶等需要先進 /new 頁的流程） */}
+        <Link
+          href="/dashboard/quizzes/new"
+          className="group flex items-start gap-4 rounded-xl border-2 border-transparent bg-card p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-md"
+        >
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-600 transition-colors group-hover:bg-blue-600 group-hover:text-white">
+            <svg className="size-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[15px] font-bold text-foreground">進階建立</h3>
+            <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">手動出題、單字記憶模式</p>
+          </div>
+          <svg className="mt-1 size-4 shrink-0 text-muted-foreground/30 transition-all group-hover:translate-x-0.5 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
         </Link>
