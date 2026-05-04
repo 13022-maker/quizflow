@@ -46,6 +46,35 @@ test.describe('Quiz Take（學生公開作答）', () => {
     ).toBe(true);
   });
 
+  test('學生訪問已過期測驗 → 看到「此測驗已結束」', async ({ page, request, baseURL }) => {
+    // seed 一份 expiresAt = 1 小時前 的測驗
+    const expiredCode = 'e2e-test-expired';
+    const seedRes = await request.post(`${baseURL}/api/test/seed-quiz`, {
+      data: {
+        accessCode: expiredCode,
+        title: '已過期測驗',
+        expiresAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+        questions: [
+          {
+            body: '隨便一題',
+            type: 'true_false',
+            options: null,
+            correctAnswers: ['tf-true'],
+            points: 100,
+          },
+        ],
+      },
+    });
+    expect(seedRes.ok(), `seed expired quiz failed: ${seedRes.status()}`).toBe(true);
+
+    // 訪問已過期測驗
+    await page.goto(`${baseURL}/zh/quiz/${expiredCode}`);
+
+    // 驗證「已結束」提示（page.tsx 寫死的字串，非 i18n）
+    await expect(page.getByText('此測驗已結束')).toBeVisible();
+    await expect(page.getByText('測驗連結已過期，無法作答。')).toBeVisible();
+  });
+
   test('學生用不存在的 accessCode 訪問 → 看到「測驗不可用」提示', async ({ page, baseURL }) => {
     // 訪問一個確定不在 DB 的 accessCode（不需要 seed）
     await page.goto(`${baseURL}/zh/quiz/this-code-does-not-exist-12345`);

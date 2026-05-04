@@ -19,6 +19,7 @@ export const runtime = 'nodejs';
 const seedSchema = z.object({
   accessCode: z.string().min(1).max(64),
   title: z.string().min(1),
+  expiresAt: z.string().datetime().optional(), // ISO 字串，用來測試到期分支
   questions: z
     .array(
       z.object({
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { accessCode, title, questions } = parsed.data;
+  const { accessCode, title, expiresAt, questions } = parsed.data;
 
   // 同 accessCode 的舊資料先清掉（cascade 會帶走 question / response / answer）
   await db.delete(quizSchema).where(eq(quizSchema.accessCode, accessCode));
@@ -84,6 +85,7 @@ export async function POST(req: Request) {
       accessCode,
       status: 'published',
       quizMode: 'standard',
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
     })
     .returning();
 
