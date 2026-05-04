@@ -29,9 +29,17 @@ export default defineConfig({
   // https://playwright.dev/docs/test-advanced#launching-a-development-web-server-during-the-tests
   webServer: {
     command: process.env.CI ? 'npm run start' : 'npm run dev:next',
-    url: baseURL,
+    // 不用 baseURL（首頁 Pricing 元件在 dev mode 會撞 Clerk auth() 錯誤回 500，Playwright 會 timeout）
+    // 改等 sign-in 頁面（Clerk 自己的頁，不依賴 PricingVisibility，穩定 200）
+    url: `${baseURL}/zh/sign-in`,
     timeout: 2 * 60 * 1000,
     reuseExistingServer: !process.env.CI,
+    // ENABLE_TEST_ENDPOINTS：開啟 /api/test/seed-quiz（三重 env 閘 production 永遠 404）
+    // DATABASE_URL：強制清空，覆蓋 .env.local 指向 Neon production，讓 dev server 走 PGlite in-memory
+    env: {
+      ENABLE_TEST_ENDPOINTS: 'true',
+      DATABASE_URL: '',
+    },
   },
 
   // Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions.
