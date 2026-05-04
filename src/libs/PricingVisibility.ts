@@ -8,6 +8,12 @@
  * 對齊 fork.ts 模式，純邏輯獨立可測。
  */
 
+import { auth } from '@clerk/nextjs/server';
+import { count, eq } from 'drizzle-orm';
+
+import { db } from '@/libs/DB';
+import { getUserPlanId } from '@/libs/Plan';
+import { quizSchema } from '@/models/Schema';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 export type PricingVisibilityReason = 'guest' | 'under' | 'reached' | 'paid';
@@ -45,4 +51,37 @@ export function evaluateVisibility(input: {
     return { showPaidPlans: true, reason: 'reached' };
   }
   return { showPaidPlans: false, reason: 'under' };
+}
+
+/**
+ * server helper：拉 auth + planId + quiz count，呼叫 evaluateVisibility
+ *
+ * 注意：呼叫端的 server component 需配合 noStore() 或 dynamic = 'force-dynamic'
+ * 避免 ISR 把單一用戶結果靜態快取給所有訪客。
+ */
+export async function getPricingVisibility(): Promise<PricingVisibility> {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return evaluateVisibility({ isAuthed: false, planId: PLAN_ID.FREE, quizCount: 0 });
+  }
+
+  const planId = await getUserPlanId(userId);
+
+  // 已是付費方案就不用算 quiz 數，直接 paid 分支
+  if (PAID_PLAN_IDS.has(planId)) {
+    return evaluateVisibility({ isAuthed: true, planId, quizCount: 0 });
+  }
+
+  // Free（含試用中，因為 trial 不算 paid 訂閱）→ 算 quiz 數
+  const [row] = await db
+    .select({ total: count() })
+    .from(quizSchema)
+    .where(eq(quizSchema.ownerId, userId));
+
+  return evaluateVisibility({
+    isAuthed: true,
+    planId,
+    quizCount: row?.total ?? 0,
+  });
 }
