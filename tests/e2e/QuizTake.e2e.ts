@@ -46,6 +46,17 @@ test.describe('Quiz Take（學生公開作答）', () => {
     ).toBe(true);
   });
 
+  test('學生用不存在的 accessCode 訪問 → 看到「測驗不可用」提示', async ({ page, baseURL }) => {
+    // 訪問一個確定不在 DB 的 accessCode（不需要 seed）
+    await page.goto(`${baseURL}/zh/quiz/this-code-does-not-exist-12345`);
+
+    // 驗證提示訊息渲染（i18n key: QuizTake.not_available + not_available_description）
+    await expect(page.getByText('這份測驗目前無法作答')).toBeVisible();
+    await expect(
+      page.getByText('測驗可能尚未發佈或已關閉，請聯絡老師確認。'),
+    ).toBeVisible();
+  });
+
   test('學生用 accessCode 進測驗 → 兩題答對 → 看到滿分', async ({ page, baseURL }) => {
     // 1. 訪問學生公開連結
     await page.goto(`${baseURL}/zh/quiz/${ACCESS_CODE}`);
