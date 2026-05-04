@@ -62,8 +62,11 @@ const PLANS: PricingPlan[] = [
   },
 ];
 
-export function PricingSection() {
+export function PricingSection({ showPaidPlans }: { showPaidPlans: boolean }) {
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+
+  // showPaidPlans=false 時只顯示 Free（monthlyPrice === 0），true 時顯示完整 PLANS
+  const visiblePlans = showPaidPlans ? PLANS : PLANS.filter(plan => plan.monthlyPrice === 0);
 
   return (
     <section className="px-4 py-24">
@@ -105,9 +108,12 @@ export function PricingSection() {
           </div>
         </div>
 
-        {/* 三個方案卡片（手機單欄、桌機三欄，正中間 highlighted 放第二張） */}
-        <div className="grid gap-6 md:grid-cols-3 md:items-stretch">
-          {PLANS.map(plan => (
+        {/* 方案卡片：單卡置中、三卡三欄 */}
+        <div className={`grid gap-6 md:items-stretch ${
+          visiblePlans.length === 1 ? 'md:mx-auto md:max-w-md' : 'md:grid-cols-3'
+        }`}
+        >
+          {visiblePlans.map(plan => (
             <PricingCard key={plan.name} plan={plan} billingCycle={billingCycle} />
           ))}
         </div>
