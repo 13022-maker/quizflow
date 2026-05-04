@@ -1,13 +1,19 @@
+import { unstable_noStore as noStore } from 'next/cache';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { getTranslations } from 'next-intl/server';
 
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { PricingInformation } from '@/features/billing/PricingInformation';
 import { Section } from '@/features/landing/Section';
+import { getPricingVisibility } from '@/libs/PricingVisibility';
 import { PLAN_ID } from '@/utils/AppConfig';
 
-export const Pricing = () => {
-  const t = useTranslations('Pricing');
+export const Pricing = async () => {
+  // 避免 ISR 快取單一用戶結果給所有訪客
+  noStore();
+
+  const t = await getTranslations('Pricing');
+  const { showPaidPlans } = await getPricingVisibility();
 
   return (
     <Section
@@ -16,6 +22,7 @@ export const Pricing = () => {
       description={t('section_description')}
     >
       <PricingInformation
+        showPaidPlans={showPaidPlans}
         buttonList={{
           [PLAN_ID.FREE]: (
             <Link
