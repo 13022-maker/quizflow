@@ -13,6 +13,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.FREE,
       quizCount: 0,
     });
+
     expect(result).toEqual({ showPaidPlans: false, reason: 'guest' });
   });
 
@@ -22,6 +23,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.PREMIUM,
       quizCount: 0,
     });
+
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
   });
 
@@ -31,6 +33,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.ENTERPRISE,
       quizCount: 0,
     });
+
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
   });
 
@@ -40,6 +43,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.PUBLISHER,
       quizCount: 0,
     });
+
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
   });
 
@@ -49,6 +53,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.FREE,
       quizCount: 10,
     });
+
     expect(result).toEqual({ showPaidPlans: true, reason: 'reached' });
   });
 
@@ -58,6 +63,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.FREE,
       quizCount: 11,
     });
+
     expect(result).toEqual({ showPaidPlans: true, reason: 'reached' });
   });
 
@@ -67,6 +73,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.FREE,
       quizCount: 9,
     });
+
     expect(result).toEqual({ showPaidPlans: false, reason: 'under' });
   });
 
@@ -76,6 +83,7 @@ describe('evaluateVisibility', () => {
       planId: PLAN_ID.FREE,
       quizCount: 0,
     });
+
     expect(result).toEqual({ showPaidPlans: false, reason: 'under' });
   });
 });
