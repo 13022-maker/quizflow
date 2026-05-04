@@ -51,6 +51,18 @@ const isOptionalAuthRoute = createRouteMatcher([
   '/:locale/api/live/ably-auth',
 ]);
 
+// 公開頁但需要 Clerk context 讓 server component 內的 auth() 可選擇性讀 session,
+// 例：landing / pricing 頁的 visibility gate（未登入訪客 / Free <10 份只看 Free 卡）
+// 不強制登入,只是讓 getPricingVisibility() 之類的 helper 能拿到 userId
+const isOptionalAuthPageRoute = createRouteMatcher([
+  '/',
+  '/en',
+  '/zh',
+  '/pricing',
+  '/en/pricing',
+  '/zh/pricing',
+]);
+
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/:locale/dashboard(.*)',
@@ -71,6 +83,7 @@ export default function middleware(
     request.nextUrl.pathname.includes('/sign-in')
     || request.nextUrl.pathname.includes('/sign-up')
     || isProtectedRoute(request)
+    || isOptionalAuthPageRoute(request)
   ) {
     return clerkMiddleware(async (auth, req) => {
       // optional-auth route：要 Clerk context 讓 route 內的 auth() 能讀 session，但不強制登入
