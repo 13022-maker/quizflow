@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { DashboardSection } from '@/features/dashboard/DashboardSection';
 import { TitleBar } from '@/features/dashboard/TitleBar';
+import { AiPrefillTrigger } from '@/features/quiz/AiPrefillTrigger';
 import { QuizForm } from '@/features/quiz/QuizForm';
 import { QuizLimitWall } from '@/features/quiz/QuizLimitWall';
 import { db } from '@/libs/DB';
@@ -21,7 +22,11 @@ export async function generateMetadata(props: { params: { locale: string } }) {
   return { title: t('title_bar') };
 }
 
-export default async function NewQuizPage() {
+export default async function NewQuizPage({
+  searchParams,
+}: {
+  searchParams: { ai?: string; prefill?: string };
+}) {
   const t = await getTranslations('AddQuiz');
   const { userId } = await auth();
 
@@ -42,6 +47,11 @@ export default async function NewQuizPage() {
         return <QuizLimitWall current={current} limit={quizLimit} />;
       }
     }
+  }
+
+  // 從市集 CTA 進來:?ai=1 觸發 AI 自動建立測驗 + redirect 到 edit 頁;否則保留手動 QuizForm
+  if (searchParams.ai === '1') {
+    return <AiPrefillTrigger prefill={searchParams.prefill ?? ''} />;
   }
 
   return (

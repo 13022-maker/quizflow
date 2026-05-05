@@ -150,11 +150,14 @@ export function QuizEditor({
   questions: initialQuestions,
   isPro,
   autoOpenAI = false,
+  aiPrefill,
 }: {
   quiz: Quiz;
   questions: Question[];
   isPro: boolean;
   autoOpenAI?: boolean;
+  // 從市集 CTA 帶過來的 AI 主題前置詞;若有則蓋過從 description 推導的 buildDefaultTopic
+  aiPrefill?: string;
 }) {
   const router = useRouter();
   const [questions, setQuestions] = useState(initialQuestions);
@@ -808,14 +811,14 @@ export function QuizEditor({
       {/* AI 出題 Modal（vocab 模式用專屬單字生成器） */}
       {showAIModal && initialQuiz.quizMode === 'vocab' && (
         <VocabAIModal
-          defaultTopic={buildDefaultTopic(initialQuiz.description)}
+          defaultTopic={aiPrefill || buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
         />
       )}
       {showAIModal && initialQuiz.quizMode !== 'vocab' && (
         <AIQuizModal
-          defaultTopic={buildDefaultTopic(initialQuiz.description)}
+          defaultTopic={aiPrefill || buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
         />

@@ -2,12 +2,24 @@ import { and, count, desc, eq, ilike, or } from 'drizzle-orm';
 import Link from 'next/link';
 
 import { MarketplaceCard } from '@/features/marketplace/MarketplaceCard';
+import { MarketplaceEmptyCTA } from '@/features/marketplace/MarketplaceEmptyCTA';
 import { MarketplaceVocabCard } from '@/features/marketplace/MarketplaceVocabCard';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema, vocabCardSchema, vocabSetSchema } from '@/models/Schema';
 import { GRADE_LEVELS, MARKETPLACE_CATEGORIES } from '@/utils/MarketplaceConfig';
 
 export const dynamic = 'force-dynamic';
+
+// 把目前篩選條件組成 AI 命題主題前置詞:「[grade] [category] — [q]」
+// 缺項自動跳過、三項都缺回空字串(此情境通常不會觸發,因為三項都空 query 沒 filter 不會空集合)
+function buildPrefill(category?: string, grade?: string, q?: string): string {
+  const left = [grade, category].filter(Boolean).join(' ');
+  const right = q?.trim();
+  if (left && right) {
+    return `${left} — ${right}`;
+  }
+  return left || right || '';
+}
 
 export const metadata = {
   title: '題庫市集 — QuizFlow',
@@ -187,12 +199,7 @@ async function QuizList({ category, grade, q }: { category?: string; grade?: str
   }
 
   if (quizzes.length === 0) {
-    return (
-      <div className="rounded-xl border-2 border-dashed py-16 text-center">
-        <p className="text-lg font-medium text-muted-foreground">目前還沒有符合條件的測驗</p>
-        <p className="mt-1 text-sm text-muted-foreground">快來分享你的第一份測驗吧！</p>
-      </div>
-    );
+    return <MarketplaceEmptyCTA type="quiz" prefill={buildPrefill(category, grade, q)} />;
   }
 
   return (
@@ -250,12 +257,7 @@ async function VocabList({ category, grade, q }: { category?: string; grade?: st
   }
 
   if (sets.length === 0) {
-    return (
-      <div className="rounded-xl border-2 border-dashed py-16 text-center">
-        <p className="text-lg font-medium text-muted-foreground">目前還沒有符合條件的單字卡集</p>
-        <p className="mt-1 text-sm text-muted-foreground">快來分享你的第一組單字卡吧！</p>
-      </div>
-    );
+    return <MarketplaceEmptyCTA type="vocab" prefill={buildPrefill(category, grade, q)} />;
   }
 
   return (

@@ -31,7 +31,7 @@ export default async function EditQuizPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { ai?: string };
+  searchParams: { ai?: string; prefill?: string };
 }) {
   const { userId } = await auth();
   if (!userId) {
@@ -90,8 +90,18 @@ export default async function EditQuizPage({
   const isPro = await isProOrAbove(userId);
 
   const autoOpenAI = searchParams.ai === '1';
+  // 來自市集 CTA → createQuiz redirect 帶過來的主題,優先於 description 推導
+  const aiPrefill = searchParams.prefill;
 
-  return <QuizEditor quiz={quiz as any} questions={questions} isPro={isPro} autoOpenAI={autoOpenAI} />;
+  return (
+    <QuizEditor
+      quiz={quiz as any}
+      questions={questions}
+      isPro={isPro}
+      autoOpenAI={autoOpenAI}
+      aiPrefill={aiPrefill}
+    />
+  );
 }
 
 export const dynamic = 'force-dynamic';

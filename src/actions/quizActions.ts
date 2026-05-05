@@ -45,6 +45,8 @@ const CreateQuizSchema = z.object({
   title: z.string().min(1, '請輸入測驗標題').max(200),
   description: z.string().max(500).optional(),
   quizMode: z.enum(['standard', 'vocab']).optional(),
+  // 從市集 CTA 帶過來的 AI 命題主題；不存進 DB,只在 redirect 時夾帶到 edit 頁
+  prefill: z.string().max(300).optional(),
 });
 
 export type CreateQuizInput = z.infer<typeof CreateQuizSchema>;
@@ -109,7 +111,11 @@ export async function createQuiz(data: CreateQuizInput) {
   }
 
   // 建完直接進編輯頁；ai=1 觸發 AI 出題對話框、just_created=1 顯示審題引導 banner
-  redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1&just_created=1`);
+  // prefill 來自市集 CTA(可選),encodeURIComponent 處理特殊字元;edit 頁傳給 AIQuizModal defaultTopic
+  const prefillParam = parsed.data.prefill
+    ? `&prefill=${encodeURIComponent(parsed.data.prefill)}`
+    : '';
+  redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1&just_created=1${prefillParam}`);
 }
 
 export async function updateQuiz(

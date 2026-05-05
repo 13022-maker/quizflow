@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
@@ -70,7 +71,10 @@ function SpeakerButton({ text }: { text: string }) {
 }
 
 export default function NewVocabPage() {
-  const [title, setTitle] = useState('');
+  // 來自市集 CTA → ?title=... 預填卡集名稱;否則空白
+  const searchParams = useSearchParams();
+  const initialTitle = searchParams.get('title') ?? '';
+  const [title, setTitle] = useState(initialTitle);
   const [words, setWords] = useState('');
   const [cards, setCards] = useState<VocabCard[]>([]);
   const [loading, setLoading] = useState(false);
