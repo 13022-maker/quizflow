@@ -1,11 +1,19 @@
-// Playwright setup project 占位檔
-// playwright.config.ts 的 chromium project 寫死 dependencies: ['setup']，但 setup project
-// 的 testMatch 是 *.setup.ts。原本 boilerplate 預期之後會接 Clerk Test Mode，現在還沒接，
-// 所以放一個 no-op 讓 setup project 至少有檔案 match，不會讓整個 test run 因為「找不到 setup」而 fail。
-// 之後要做老師端 E2E 接 Clerk 時，再把實際 sign-in 邏輯寫進這裡。
+// Playwright setup project 的 placeholder
+//
+// 目前還沒接老師端 E2E。playwright.config.ts 留著 `setup` / `chromium-teacher` project 當基礎建設,
+// 等之後接 Clerk 登入時直接在這裡寫;不刪 project 可避免下次又要重 review config。
+//
+// 原本嘗試用 @clerk/testing 的 clerkSetup + setupClerkTestingToken / clerk.signIn() 走標準流程,
+// 但 Clerk dev instance 在 Playwright Chromium 強制觸發 dev-browser handshake (見
+// node_modules/@clerk/backend/dist/internal.js:3114-3115 的 DevBrowserMissing 邏輯),
+// 而 __clerk_testing_token 只繞 FAPI bot 偵測,不繞 handshake -> 跨域回 localhost 時 cookie 沒落地,
+// 瀏覽器陷入 ERR_TOO_MANY_REDIRECTS。
+//
+// 之後接老師 E2E 較有勝算的做法:用 @clerk/backend createClerkClient().sessions.createSession()
+// 直接造 session token 後 page.context().addCookies() 塞進去,跳過 handshake 整段。
 
 import { test as setup } from '@playwright/test';
 
-setup('e2e placeholder setup', async () => {
-  // 目前學生公開作答測試不需要登入，不做任何事
+setup('placeholder (尚未接老師端 E2E)', async () => {
+  // no-op
 });
