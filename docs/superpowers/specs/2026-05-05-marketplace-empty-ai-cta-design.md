@@ -19,9 +19,11 @@
   ↓ (Quiz tab 點擊)                       ↓ (Vocab tab 點擊)
 /dashboard/quizzes/new?prefill=...       /dashboard/vocab/new?title=...
   ↓ (Clerk 攔未登入 → 登入後 redirect_url 還原 query)
-[Quiz: 新 client page]                    [Vocab: 既有 client page]
-  - useEffect 讀 ?prefill                   - useState 初始值讀 ?title
-  - call createQuiz({ prefill })
+[Quiz: 既有 server page，prefill 分支]    [Vocab: 既有 client page]
+  - 有 prefill → 渲染 AiPrefillTrigger     - useState 初始值讀 ?title
+    無 prefill → 保留現有 QuizForm
+  - AiPrefillTrigger useEffect 呼叫
+    createQuiz({ prefill })
   ↓
 createQuiz server action
   - 加可選參數 prefill
@@ -61,21 +63,27 @@ AIQuizModal 自動開啟、主題框已預填，使用者按「生成」即可
   - 副標：依篩選條件動態變化
     - 有 prefill：「要不要讓 AI 幫你生一份『{prefill}』？」
     - 無 prefill：「換個篩選條件，或讓 AI 幫你生一份新的測驗」
-  - 按鈕：「✨ 用 AI 立即生成」 → `<Link>`，prefill 非空時 `href = /dashboard/quizzes/new?prefill=<encoded>`，prefill 為空時 `href = /dashboard/quizzes/new`（不附 query）
+  - 按鈕：「✨ 用 AI 立即生成」 → `<Link>`，永遠帶 `?ai=1` 旗標：prefill 非空時 `href = /dashboard/quizzes/new?ai=1&prefill=<encoded>`，prefill 為空時 `href = /dashboard/quizzes/new?ai=1`（仍進 AI trigger 模式，主題框留空讓使用者輸入）
 - `VocabList` 空狀態（line 252–259）同上模式：
   - 主標：「目前還沒有符合條件的單字卡集」
   - 副標：「要不要建一份『{prefill}』的單字卡？AI 幫你補釋義」（誠實提示要自己輸入單字）
   - 按鈕：「✨ 開始建立單字卡」 → `<Link>`，prefill 非空時 `href = /dashboard/vocab/new?title=<encoded>`，prefill 為空時 `href = /dashboard/vocab/new`
 
-#### 2. `src/app/[locale]/(auth)/dashboard/quizzes/new/page.tsx`（新建）
+#### 2. `src/app/[locale]/(auth)/dashboard/quizzes/new/page.tsx`（修改：既有檔，含手動 QuizForm 入口）
 
-新檔案，client component。職責：
+該 page 是 **server component**，現況渲染 `<QuizForm />`（手動建立測驗表單）+ quota 牆檢查。本次改動：
 
-- 讀 `useSearchParams().get('prefill')`
-- `useEffect`（mount 一次）呼叫 `createQuiz({ title: getDefaultTitle(), prefill })`，server action 成功時自行 redirect 到 edit page，client 端不會走到後續
-- 顯示 loading 畫面：「準備 AI 命題中⋯」+ spinner
-- 失敗處理：跟 `QuickCreateAIButton` 對齊（quota 超額 → push `/dashboard/billing`，其他錯誤 → `alert`）
-- 為什麼新建一個 page 而不直接 reuse `QuickCreateAIButton`：dashboard 首頁有大量統計，不適合「auto-trigger」副作用；新建專屬入口語意明確（「我來這裡是要建一份測驗」）+ loading 畫面讓使用者知道發生了什麼
+- 讀 `searchParams?.ai === '1'` 與 `searchParams?.prefill`
+- 若 `ai === '1'`：渲染新的 client 元件 `<AiPrefillTrigger prefill={prefill ?? ''} />`（替代 `QuizForm`），quota 牆檢查仍保留在 server 端、超額時直接 return `<QuizLimitWall>`，不進入 trigger
+- 若 `ai !== '1'`：保留現有行為（渲染 `QuizForm`），完全向後相容
+
+新增的 client 元件 `src/features/quiz/AiPrefillTrigger.tsx`：
+
+- `'use client'`
+- props：`{ prefill: string }`
+- `useEffect`（mount 一次，guard 用 `useRef` 避免 Strict Mode dev 雙觸發）：呼叫 `createQuiz({ title: getDefaultTitle(), prefill })`，server action 成功自行 redirect，client 不會跑到後續
+- 顯示 loading 畫面：紫色 spinner + 「準備 AI 命題中⋯」+ 在下方淡化顯示主題字串供使用者確認
+- 失敗處理對齊 `QuickCreateAIButton`：quota → `router.push('/dashboard/billing')`，其他 → `alert(result.error)` + 提供「返回儀表板」連結
 
 #### 3. `src/actions/quizActions.ts`
 
@@ -93,10 +101,18 @@ AIQuizModal 自動開啟、主題框已預填，使用者按「生成」即可
   ```
 - 不影響現有 caller（`QuickCreateAIButton` 不傳 prefill，行為不變）
 
-#### 4. `src/app/[locale]/(auth)/dashboard/quizzes/[id]/edit/page.tsx`
+#### 4. Edit 頁 prefill 串接（兩檔）
 
-- 從 `searchParams` 讀 `prefill`（已 decode）
-- 傳給 `<AIQuizModal defaultTopic={prefill} />`，`AIQuizModal` 既有 `defaultTopic` prop 直接相容（`AIQuizModal.tsx:143, 157`）
+`src/app/[locale]/(auth)/dashboard/quizzes/[id]/edit/page.tsx`
+
+- 擴充 `searchParams` 型別：加 `prefill?: string`
+- 把 `searchParams.prefill`（Next.js 已自動 decode）傳給 `<QuizEditor aiPrefill={...} />`
+
+`src/features/quiz/QuizEditor.tsx`
+
+- props 加可選 `aiPrefill?: string`
+- `AIQuizModal` / `VocabAIModal` 的 `defaultTopic` 改成：`aiPrefill ?? buildDefaultTopic(initialQuiz.description)`（prefill 優先，fallback 現有行為）
+- `AIQuizModal` 既有 `defaultTopic` prop 直接相容（`AIQuizModal.tsx:143, 157`）
 
 #### 5. `src/app/[locale]/(auth)/dashboard/vocab/new/page.tsx`
 
