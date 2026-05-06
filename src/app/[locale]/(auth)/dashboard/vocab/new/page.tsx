@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
 import { Button } from '@/components/ui/button';
+import { VocabPhotoMode } from '@/features/vocab/VocabPhotoMode';
 import { VocabTopicMode } from '@/features/vocab/VocabTopicMode';
 
 type VocabCard = {
@@ -76,7 +77,7 @@ export default function NewVocabPage() {
   const searchParams = useSearchParams();
   const initialTopic = searchParams.get('topic') ?? '';
   const initialTitle = searchParams.get('title') ?? '';
-  const [mode, setMode] = useState<'topic' | 'words'>(initialTopic ? 'topic' : 'words');
+  const [mode, setMode] = useState<'topic' | 'words' | 'photo'>(initialTopic ? 'topic' : 'words');
   const [title, setTitle] = useState(initialTitle);
   const [words, setWords] = useState('');
   const [cards, setCards] = useState<VocabCard[]>([]);
@@ -140,7 +141,7 @@ export default function NewVocabPage() {
         <h1 className="mt-2 text-xl font-bold">AI 生成單字卡</h1>
       </div>
 
-      {/* Tab 切換:主題模式 vs 單字清單模式 */}
+      {/* Tab 切換:主題 / 單字清單 / 拍照 */}
       <div className="mb-6 flex gap-2 border-b">
         <button
           type="button"
@@ -164,10 +165,24 @@ export default function NewVocabPage() {
         >
           ✏️ 單字清單模式
         </button>
+        <button
+          type="button"
+          onClick={() => setMode('photo')}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            mode === 'photo'
+              ? 'border-pink-600 text-pink-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          📷 拍照模式
+        </button>
       </div>
 
       {/* 主題模式 — chained pipeline 由 VocabTopicMode 元件處理 */}
       {mode === 'topic' && <VocabTopicMode initialTopic={initialTopic} />}
+
+      {/* 拍照模式 — 上傳照片 → AI 識物 → cards,VocabPhotoMode 元件處理 */}
+      {mode === 'photo' && <VocabPhotoMode />}
 
       {/* 單字清單模式 — 既有手動輸入流程,僅在 mode='words' 顯示 */}
       {mode === 'words' && (
