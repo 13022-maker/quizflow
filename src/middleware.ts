@@ -21,6 +21,9 @@ const isPublicApiRoute = createRouteMatcher([
   // AI 助教：學生作答前查看 AI 提示，匿名作答所以不需登入
   '/api/ai/generate-hints/(.*)',
   '/:locale/api/ai/generate-hints/(.*)',
+  // 蘇格拉底式錯題重做提示：學生匿名作答所以不需登入
+  '/api/hint/socratic',
+  '/:locale/api/hint/socratic',
   // TTS 發音：學生單字卡練習需要
   '/api/ai/tts',
   '/:locale/api/ai/tts',

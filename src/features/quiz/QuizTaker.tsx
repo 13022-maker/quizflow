@@ -28,7 +28,15 @@ type Question = InferSelectModel<typeof questionSchema>;
 type WeakPoint = { concept: string; suggestion: string };
 
 // 錯題重做結果型別
-type RetryResult = { correct: number; total: number };
+type RetryResult = { correct: number; total: number; stillWrong: Question[] };
+
+// 蘇格拉底式提示：每題獨立的 hint 狀態
+type SocraticHintState = {
+  round: 1 | 2 | 3 | 4; // 4 代表已完成三輪、下次要顯示解析
+  hint: string;
+  showExplanation: boolean;
+  isLoading: boolean;
+};
 
 // 補強題型別
 type RemedialQuestion = {
@@ -906,6 +914,87 @@ function RetryScreen({
   const [retryResult, setRetryResult] = useState<RetryResult | null>(null);
   const [error, setError] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
+  // 蘇格拉底提示：每題獨立的狀態（key = questionId）
+  const [hintStates, setHintStates] = useState<Record<number, SocraticHintState>>({});
+
+  const getHintState = (qid: number): SocraticHintState =>
+    hintStates[qid] ?? { round: 1, hint: '', showExplanation: false, isLoading: false };
+
+  // 呼叫蘇格拉底 API 取得下一輪提示；達上限時切到 showExplanation
+  const fetchSocraticHint = async (q: Question) => {
+    const cur = getHintState(q.id);
+    if (cur.isLoading || cur.showExplanation) {
+      return;
+    }
+    setHintStates(prev => ({ ...prev, [q.id]: { ...cur, isLoading: true } }));
+    try {
+      // 把學生答的 option id 翻成可讀文字，AI 才看得懂
+      const studentAnswerText = answerToText(
+        q,
+        Array.isArray(retryAnswers[q.id])
+          ? (retryAnswers[q.id] as string[])
+          : retryAnswers[q.id]
+            ? [retryAnswers[q.id] as string]
+            : [],
+      );
+      const correctAnswerText = answerToText(q, q.correctAnswers ?? []);
+
+      const res = await fetch('/api/hint/socratic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q.body,
+          correctAnswer: correctAnswerText,
+          studentAnswer: studentAnswerText,
+          roundNumber: cur.round,
+        }),
+      });
+      const data = await res.json();
+
+      if (data.showExplanation) {
+        setHintStates(prev => ({
+          ...prev,
+          [q.id]: { ...cur, showExplanation: true, isLoading: false },
+        }));
+      } else if (typeof data.hint === 'string' && data.hint.length > 0) {
+        setHintStates(prev => ({
+          ...prev,
+          [q.id]: {
+            ...cur,
+            hint: data.hint,
+            // 不夾上限：下次送 roundNumber=cur.round+1，>3 由 API 回 showExplanation
+            round: (cur.round + 1) as 1 | 2 | 3 | 4,
+            isLoading: false,
+          },
+        }));
+      } else {
+        setHintStates(prev => ({ ...prev, [q.id]: { ...cur, isLoading: false } }));
+      }
+    } catch (err) {
+      console.error('[fetchSocraticHint] 失敗：', err);
+      setHintStates(prev => ({ ...prev, [q.id]: { ...cur, isLoading: false } }));
+    }
+  };
+
+  // 本機判題（與 server-side 一致）
+  const isAnswerCorrect = (q: Question, ans: string | string[] | undefined): boolean => {
+    if (!q.correctAnswers || !ans) {
+      return false;
+    }
+    if (q.type === 'single_choice' || q.type === 'true_false') {
+      return q.correctAnswers.includes(ans as string);
+    }
+    if (q.type === 'multiple_choice') {
+      const given = Array.isArray(ans) ? [...ans].sort() : [];
+      const expected = [...q.correctAnswers].sort();
+      return JSON.stringify(given) === JSON.stringify(expected);
+    }
+    if (q.type === 'ranking') {
+      const given = Array.isArray(ans) ? ans : [];
+      return JSON.stringify(given) === JSON.stringify(q.correctAnswers);
+    }
+    return false;
+  };
 
   const handleRetrySubmit = () => {
     // 檢查是否全部作答
@@ -918,32 +1007,16 @@ function RetryScreen({
 
     // 本機批改（不送 server，不計入正式統計）
     let correct = 0;
+    const stillWrong: Question[] = [];
     wrongQuestions.forEach((q) => {
-      const ans = retryAnswers[q.id];
-      if (!q.correctAnswers || !ans) {
-        return;
-      }
-
-      if (q.type === 'single_choice' || q.type === 'true_false') {
-        if (q.correctAnswers.includes(ans as string)) {
-          correct++;
-        }
-      } else if (q.type === 'multiple_choice') {
-        const given = Array.isArray(ans) ? [...ans].sort() : [];
-        const expected = [...q.correctAnswers].sort();
-        if (JSON.stringify(given) === JSON.stringify(expected)) {
-          correct++;
-        }
-      } else if (q.type === 'ranking') {
-        // 排序題：完全相同才算對
-        const given = Array.isArray(ans) ? ans : [];
-        if (JSON.stringify(given) === JSON.stringify(q.correctAnswers)) {
-          correct++;
-        }
+      if (isAnswerCorrect(q, retryAnswers[q.id])) {
+        correct++;
+      } else {
+        stillWrong.push(q);
       }
     });
 
-    setRetryResult({ correct, total: wrongQuestions.length });
+    setRetryResult({ correct, total: wrongQuestions.length, stillWrong });
   };
 
   // 顯示重做結果
@@ -979,6 +1052,89 @@ function RetryScreen({
           )}
           <p className="mt-2 text-xs text-muted-foreground">此次重做成績不計入正式統計</p>
         </div>
+
+        {/* 仍答錯的題目：蘇格拉底式 AI 教練提示 */}
+        {retryResult.stillWrong.length > 0 && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <p className="text-sm font-medium text-blue-900">AI 教練幫你想想</p>
+              <p className="mt-0.5 text-xs text-blue-700">
+                還有
+                {' '}
+                {retryResult.stillWrong.length}
+                {' '}
+                題沒答對，AI 教練會用反問引導你，最多三輪後顯示解析
+              </p>
+            </div>
+
+            {retryResult.stillWrong.map((q) => {
+              const state = getHintState(q.id);
+              const studentAnswerText = answerToText(
+                q,
+                Array.isArray(retryAnswers[q.id])
+                  ? (retryAnswers[q.id] as string[])
+                  : retryAnswers[q.id]
+                    ? [retryAnswers[q.id] as string]
+                    : [],
+              );
+              const correctAnswerText = answerToText(q, q.correctAnswers ?? []);
+              const buttonLabel = state.hint
+                ? state.round > 3 ? '看解析' : `再要一個提示（${state.round - 1}/3 已給）`
+                : '請 AI 教練給提示';
+              return (
+                <div key={q.id} className="rounded-xl border bg-white p-5 shadow-sm">
+                  <p className="text-sm font-medium text-gray-900">{q.body}</p>
+                  <div className="mt-2 space-y-1 text-xs">
+                    <p className="text-red-600">
+                      你的答案：
+                      {studentAnswerText}
+                    </p>
+                    <p className="text-green-700">
+                      正確答案：
+                      {correctAnswerText}
+                    </p>
+                  </div>
+
+                  {/* 提示載入中 */}
+                  {state.isLoading && (
+                    <p className="mt-3 text-sm text-muted-foreground">AI 教練思考中...</p>
+                  )}
+
+                  {/* 蘇格拉底提示（尚未顯示解析時） */}
+                  {state.hint && !state.showExplanation && (
+                    <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">
+                      <span className="font-medium">AI 教練：</span>
+                      {' '}
+                      {state.hint}
+                    </div>
+                  )}
+
+                  {/* 三輪後顯示解析（用 aiHint 當解析來源） */}
+                  {state.showExplanation && (
+                    <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                      <span className="font-medium">解析：</span>
+                      {' '}
+                      {q.aiHint ?? `正確答案是「${correctAnswerText}」，建議回去重新檢視題目關鍵字。`}
+                    </div>
+                  )}
+
+                  {/* 行動按鈕 */}
+                  {!state.showExplanation && (
+                    <button
+                      type="button"
+                      onClick={() => fetchSocraticHint(q)}
+                      disabled={state.isLoading}
+                      className="mt-3 rounded-lg border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    >
+                      {buttonLabel}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <button
           type="button"
           onClick={onBack}
