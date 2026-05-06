@@ -125,7 +125,14 @@ AIQuizModal 自動開啟、主題框已預填，使用者按「生成」即可
   ```
 - `words` state 不動（使用者自己輸入單字）
 
-### Vocab tab 的已知不對稱（接受不修）
+### Vocab tab 的已知不對稱（V2 已解除 — 2026-05-06）
+
+> **更新註記**：本章節原本記錄 V1 的限制 — Vocab CTA 只能 prefill 卡集名稱。V2 已於 2026-05-06 完成,`/dashboard/vocab/new` 加入「主題模式」tab,chained pipeline `generate-vocab → generate-flashcards` 直接從主題生成完整卡集含音標。CTA href 從 `?title=` 改為 `?topic=`,文案與按鈕 label 已對齊 Quiz CTA。
+>
+> 後續 spec / plan:
+> - V2 plan: `/Users/hsiehchinhung/.claude/plans/dapper-plotting-sutherland.md`(暫存,本機 only)
+
+— 以下為原始 V1 限制描述,保留歷史紀錄 —
 
 Quiz tab 體驗完整：prefill 主題 → AI 直接出題。
 

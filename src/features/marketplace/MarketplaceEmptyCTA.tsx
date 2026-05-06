@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 // 市集空狀態 CTA:把「找不到」轉成「自己生」,導使用者到對應 AI 入口
 // type='quiz' → /dashboard/quizzes/new?ai=1[&prefill=...] (走 AiPrefillTrigger 自動建立)
-// type='vocab' → /dashboard/vocab/new[?title=...] (僅 prefill 卡集名稱,單字仍由使用者輸入)
+// type='vocab' → /dashboard/vocab/new[?topic=...] (進主題模式,AI 直接生成完整卡集含音標)
 type Props = {
   type: 'quiz' | 'vocab';
   prefill: string;
@@ -20,8 +20,8 @@ export function MarketplaceEmptyCTA({ type, prefill }: Props) {
         : '換個篩選條件,或讓 AI 幫你生一份新的測驗';
     }
     return prefill
-      ? `要不要建一份「${prefill}」的單字卡？輸入單字後 AI 幫你補釋義`
-      : '換個篩選條件,或自己建一組新的單字卡';
+      ? `要不要讓 AI 幫你生一份「${prefill}」的單字卡集？`
+      : '換個篩選條件,或讓 AI 幫你生一份新的單字卡集';
   })();
 
   // CTA 連結:Quiz 永遠帶 ?ai=1 進 trigger 模式;Vocab 只帶 ?title 預填卡集名稱
@@ -34,11 +34,12 @@ export function MarketplaceEmptyCTA({ type, prefill }: Props) {
       return `/dashboard/quizzes/new?${params.toString()}`;
     }
     return prefill
-      ? `/dashboard/vocab/new?title=${encodeURIComponent(prefill)}`
+      ? `/dashboard/vocab/new?topic=${encodeURIComponent(prefill)}`
       : '/dashboard/vocab/new';
   })();
 
-  const buttonLabel = isQuiz ? '✨ 用 AI 立即生成' : '✨ 開始建立單字卡';
+  // V2 後 vocab CTA 體驗追平 quiz CTA(都是 AI 直接生成),按鈕 label 統一
+  const buttonLabel = '✨ 用 AI 立即生成';
 
   return (
     <div className="rounded-xl border-2 border-dashed border-violet-200 bg-violet-50/40 px-6 py-12 text-center">

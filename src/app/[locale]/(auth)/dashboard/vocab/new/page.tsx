@@ -6,6 +6,7 @@ import { useCallback, useRef, useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
 import { Button } from '@/components/ui/button';
+import { VocabTopicMode } from '@/features/vocab/VocabTopicMode';
 
 type VocabCard = {
   front: string;
@@ -71,9 +72,11 @@ function SpeakerButton({ text }: { text: string }) {
 }
 
 export default function NewVocabPage() {
-  // 來自市集 CTA → ?title=... 預填卡集名稱;否則空白
+  // 來自市集 CTA → ?topic=... 進主題模式;?title=... 進單字清單模式預填卡集名稱(向後相容);無 query → 單字清單模式
   const searchParams = useSearchParams();
+  const initialTopic = searchParams.get('topic') ?? '';
   const initialTitle = searchParams.get('title') ?? '';
+  const [mode, setMode] = useState<'topic' | 'words'>(initialTopic ? 'topic' : 'words');
   const [title, setTitle] = useState(initialTitle);
   const [words, setWords] = useState('');
   const [cards, setCards] = useState<VocabCard[]>([]);
@@ -137,42 +140,76 @@ export default function NewVocabPage() {
         <h1 className="mt-2 text-xl font-bold">AI 生成單字卡</h1>
       </div>
 
-      {/* 標題 */}
-      <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium">
-          卡集名稱
-          <input
-            type="text"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="例如：Unit 3 單字"
-            className="mt-1 w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </label>
+      {/* Tab 切換:主題模式 vs 單字清單模式 */}
+      <div className="mb-6 flex gap-2 border-b">
+        <button
+          type="button"
+          onClick={() => setMode('topic')}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            mode === 'topic'
+              ? 'border-violet-600 text-violet-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          🎯 主題模式
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode('words')}
+          className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+            mode === 'words'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          ✏️ 單字清單模式
+        </button>
       </div>
 
-      {/* 輸入單字 */}
-      <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium">
-          輸入單字清單
-          <textarea
-            value={words}
-            onChange={e => setWords(e.target.value)}
-            placeholder={'每行一個單字，例如：\napple\nbanana\nstrawberry'}
-            rows={5}
-            className="mt-1 w-full resize-none rounded-xl border px-4 py-3 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
-        </label>
-      </div>
+      {/* 主題模式 — chained pipeline 由 VocabTopicMode 元件處理 */}
+      {mode === 'topic' && <VocabTopicMode initialTopic={initialTopic} />}
 
-      {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+      {/* 單字清單模式 — 既有手動輸入流程,僅在 mode='words' 顯示 */}
+      {mode === 'words' && (
+        <>
+          {/* 標題 */}
+          <div className="mb-4">
+            <label className="mb-1 block text-sm font-medium">
+              卡集名稱
+              <input
+                type="text"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="例如：Unit 3 單字"
+                className="mt-1 w-full rounded-xl border px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </label>
+          </div>
 
-      <Button onClick={handleGenerate} disabled={loading || !words.trim()} className="mb-6 w-full">
-        {loading ? '生成中…' : '✨ AI 生成卡片'}
-      </Button>
+          {/* 輸入單字 */}
+          <div className="mb-4">
+            <label className="mb-1 block text-sm font-medium">
+              輸入單字清單
+              <textarea
+                value={words}
+                onChange={e => setWords(e.target.value)}
+                placeholder={'每行一個單字，例如：\napple\nbanana\nstrawberry'}
+                rows={5}
+                className="mt-1 w-full resize-none rounded-xl border px-4 py-3 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              />
+            </label>
+          </div>
 
-      {/* 預覽卡片 */}
-      {cards.length > 0 && card && (
+          {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+
+          <Button onClick={handleGenerate} disabled={loading || !words.trim()} className="mb-6 w-full">
+            {loading ? '生成中…' : '✨ AI 生成卡片'}
+          </Button>
+        </>
+      )}
+
+      {/* 預覽卡片 — 僅單字清單模式生成後顯示;切到主題模式則隱藏(避免兩種 flow 視覺打架) */}
+      {mode === 'words' && cards.length > 0 && card && (
         <>
           <div className="mb-2 text-center text-sm text-muted-foreground">
             {previewIndex + 1}
