@@ -76,12 +76,20 @@ async function generateWithGemini(
           ],
         },
       ],
+      // 關掉 thinking 讓 100% token 給 JSON；上限提到 16384 防長題（含聽力 listeningText）截斷
       config: {
-        maxOutputTokens: 8192,
-        responseMimeType: 'application/json', // 強制 JSON 輸出
+        maxOutputTokens: 16384,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }));
 
+  // finishReason 非 STOP = 輸出被截斷,丟 sentinel error 讓外層 catch 改走 Claude 重出
+  const finishReason = response.candidates?.[0]?.finishReason;
+  if (finishReason && finishReason !== 'STOP') {
+    console.warn(`[generate-from-file] Gemini finishReason=${finishReason}（${(response.text ?? '').length} 字），改走 Claude 重出`);
+    throw new Error('GEMINI_TRUNCATED');
+  }
   return response.text ?? '';
 }
 
@@ -358,9 +366,19 @@ ${typesPrompt}
   }
 
   try {
-    const raw = effectiveModel === 'claude'
-      ? await generateWithClaude(media, prompt)
-      : await generateWithGemini(media, prompt);
+    let raw: string;
+    try {
+      raw = effectiveModel === 'claude'
+        ? await generateWithClaude(media, prompt)
+        : await generateWithGemini(media, prompt);
+    } catch (err) {
+      // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
+      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
+        raw = await generateWithClaude(media, prompt);
+      } else {
+        throw err;
+      }
+    }
 
     // Gemini JSON mode 通常直接回乾淨 JSON；Claude 有時包多餘文字，regex 提取保險
     const match = raw.match(/\{[\s\S]*\}/);

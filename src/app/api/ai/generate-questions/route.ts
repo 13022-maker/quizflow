@@ -247,9 +247,20 @@ ${typesPrompt}
     const response = await gemini.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      // 關掉 thinking 讓 100% token 給 JSON 輸出；上限提到 16384 防長題截斷
+      config: {
+        maxOutputTokens: 16384,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
     raw = response.text ?? '';
+    // finishReason 非 STOP（最常見是 MAX_TOKENS）= 輸出被截斷,JSON 不完整,直接觸發 fallback chain 重出
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      console.warn(`[generate-questions] Gemini finishReason=${finishReason}（${raw.length} 字），改走 fallback chain 重出`);
+      throw new Error('GEMINI_TRUNCATED');
+    }
   } catch (geminiErr) {
     console.warn('[generate-questions] Gemini 失敗，fallback OpenAI：', geminiErr instanceof Error ? geminiErr.message : geminiErr);
 

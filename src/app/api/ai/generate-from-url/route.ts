@@ -269,9 +269,29 @@ ${typesPrompt}
         genAI!.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          config: { maxOutputTokens: 8192, responseMimeType: 'application/json' },
+          // 關掉 thinking 讓 100% token 給 JSON;上限提到 16384 防長題截斷
+          config: {
+            maxOutputTokens: 16384,
+            responseMimeType: 'application/json',
+            thinkingConfig: { thinkingBudget: 0 },
+          },
         }));
       raw = response.text ?? '';
+      // finishReason 非 STOP = 輸出被截斷,改走 Claude 重出（前提:有 ANTHROPIC_API_KEY）
+      const finishReason = response.candidates?.[0]?.finishReason;
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[generate-from-url] Gemini finishReason=${finishReason}（${raw.length} 字），改走 Claude 重出`);
+        if (hasAnthropicKey) {
+          const message = await callWithRetry(() =>
+            anthropic!.messages.create({
+              model: 'claude-sonnet-4-20250514',
+              max_tokens: 4096,
+              messages: [{ role: 'user', content: prompt }],
+            }));
+          raw = (message.content[0] as { type: string; text: string }).text ?? '';
+        }
+        // 沒 Claude key 就把已截斷的 raw 留給 JSON.parse 失敗後回前端錯誤
+      }
     }
 
     const match = raw.match(/\{[\s\S]*\}/);

@@ -92,16 +92,28 @@ export async function POST(request: Request) {
     const response = await gemini.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
-      config: { maxOutputTokens: 8192, responseMimeType: 'application/json' },
+      // 關掉 thinking 讓 100% token 給 JSON;上限提到 16384 防長題截斷
+      config: {
+        maxOutputTokens: 16384,
+        responseMimeType: 'application/json',
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     });
     raw = response.text ?? '';
+    // finishReason 非 STOP = 輸出被截斷,直接觸發 fallback Claude 重出
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      console.warn(`[generate-vocab] Gemini finishReason=${finishReason}（${raw.length} 字），改走 Claude 重出`);
+      throw new Error('GEMINI_TRUNCATED');
+    }
   } catch (geminiErr) {
-    if (!isOverloadError(geminiErr)) {
+    const isTruncated = geminiErr instanceof Error && geminiErr.message === 'GEMINI_TRUNCATED';
+    if (!isTruncated && !isOverloadError(geminiErr)) {
       const msg = geminiErr instanceof Error ? geminiErr.message : '未知錯誤';
-      console.error('[generate-vocab] Gemini 失敗（非過載）：', geminiErr);
+      console.error('[generate-vocab] Gemini 失敗（非過載非截斷）：', geminiErr);
       return NextResponse.json({ error: `AI 生成失敗：${msg}` }, { status: 500 });
     }
-    console.warn('[generate-vocab] Gemini 過載，fallback Claude');
+    console.warn(`[generate-vocab] ${isTruncated ? 'Gemini 截斷' : 'Gemini 過載'}，fallback Claude`);
     usedModel = 'claude';
     try {
       const message = await anthropic.messages.create({
