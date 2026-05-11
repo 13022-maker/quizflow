@@ -1,0 +1,1 @@
+ALTER TABLE "answer" ADD COLUMN "grading_meta" jsonb;

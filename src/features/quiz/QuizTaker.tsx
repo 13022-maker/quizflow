@@ -876,8 +876,43 @@ function ResultScreen({
                     </div>
                   )}
 
+                  {/* 簡答題：AI 已批改 → 顯示判定、得分與評語；未批改 → 待老師批改 */}
                   {isShort && (
-                    <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
+                    detail?.aiReason
+                      ? (
+                          <div className={`mt-2 rounded-md border px-3 py-2 ${
+                            detail.isCorrect === true
+                              ? 'border-green-200 bg-green-50'
+                              : detail.isCorrect === false
+                                ? 'border-red-200 bg-red-50'
+                                : 'border-gray-200 bg-gray-50'
+                          }`}
+                          >
+                            <p className="text-xs font-semibold">
+                              <span className={
+                                detail.isCorrect === true
+                                  ? 'text-green-700'
+                                  : detail.isCorrect === false
+                                    ? 'text-red-700'
+                                    : 'text-gray-600'
+                              }
+                              >
+                                {detail.isCorrect === true ? '✓ AI 判定正確' : detail.isCorrect === false ? '✗ AI 判定錯誤' : '⋯ 待老師批改'}
+                              </span>
+                              <span className="ml-2 text-muted-foreground">
+                                {detail.awardedPoints}
+                                {' / '}
+                                {detail.points}
+                                {' '}
+                                分
+                              </span>
+                            </p>
+                            <p className="mt-1 text-sm text-foreground">{detail.aiReason}</p>
+                          </div>
+                        )
+                      : (
+                          <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
+                        )
                   )}
                 </>
               )}

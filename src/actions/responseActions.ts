@@ -3,7 +3,10 @@
 import { and, count, eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
+import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { db } from '@/libs/DB';
+import { isUserProOrAbove } from '@/libs/Plan';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
 const SubmitSchema = z.object({
@@ -24,8 +27,10 @@ export type SubmitResult = {
   totalPoints: number;
   details: {
     questionId: number;
-    isCorrect: boolean | null; // null = 簡答題
-    points: number;
+    isCorrect: boolean | null; // null = 簡答題待批改（AI 批改失敗 / Free 帳號）
+    points: number; // 該題滿分
+    awardedPoints: number; // 該題實得分（簡答題可為部分分，其他題型為 0 或滿分）
+    aiReason?: string; // 簡答題 AI 評語（只在有評時填）
   }[];
 };
 
@@ -46,9 +51,12 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
 
   const { quizId, studentName, studentEmail, answers, leaveCount } = parsed.data;
 
-  // 取得測驗設定（用於 server-side 驗證作答次數）
+  // 取得測驗設定（用於 server-side 驗證作答次數 + 拿 ownerId 判斷 AI 評分權限）
   const [quiz] = await db
-    .select({ allowedAttempts: quizSchema.allowedAttempts })
+    .select({
+      allowedAttempts: quizSchema.allowedAttempts,
+      ownerId: quizSchema.ownerId,
+    })
     .from(quizSchema)
     .where(eq(quizSchema.id, quizId))
     .limit(1);
@@ -71,18 +79,82 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     throw new Error('找不到題目');
   }
 
-  // 批改
+  // 簡答題 AI 評分：擁有者 Pro 才啟用（學生作答端沒登入，用 quiz.ownerId 查方案）
+  const ownerIsPro = quiz?.ownerId ? await isUserProOrAbove(quiz.ownerId) : false;
+
+  // 並行對所有簡答題呼叫 AI 評分（5 題 × 5 秒 序列 = 25 秒；並行 = 5 秒）
+  // gradingResults: questionId → GradeResult (成功) / null (Free 不批 或 AI 呼叫炸鍋待批改)
+  const gradingResults = new Map<number, GradeResult | null>();
+  if (ownerIsPro) {
+    const shortAnswerQuestions = questions.filter(q => q.type === 'short_answer');
+    const settled = await Promise.allSettled(
+      shortAnswerQuestions.map(async (q) => {
+        const studentAnswer = answers[q.id.toString()];
+        const studentText = typeof studentAnswer === 'string' ? studentAnswer : '';
+        const grade = await gradeShortAnswer({
+          questionBody: q.body,
+          referenceAnswer: q.referenceAnswer ?? null,
+          studentAnswer: studentText,
+          maxPoints: q.points,
+        });
+        return { id: q.id, grade };
+      }),
+    );
+    for (const result of settled) {
+      if (result.status === 'fulfilled') {
+        gradingResults.set(result.value.id, result.value.grade);
+      }
+      // rejected 的不放進 map，下方迴圈會 fallback 成「待批改」
+    }
+  }
+
+  // 批改 + 計分
   let score = 0;
   let totalPoints = 0;
   const details: SubmitResult['details'] = [];
+  // 記錄每題 gradingMeta（給後續寫入 answerSchema 用）
+  const gradingMetaByQuestion = new Map<number, NonNullable<typeof answerSchema.$inferInsert.gradingMeta>>();
 
   for (const question of questions) {
     const studentAnswer = answers[question.id.toString()];
     const isShortAnswer = question.type === 'short_answer';
 
     let isCorrect: boolean | null = null;
+    let awardedPoints = 0;
+    let aiReason: string | undefined;
 
-    if (!isShortAnswer && question.correctAnswers && studentAnswer !== undefined) {
+    if (isShortAnswer) {
+      // Pro：simple answer 滿分加進 totalPoints
+      // Free：保持現狀（不批不計分，連分母也不加）
+      if (ownerIsPro) {
+        totalPoints += question.points;
+        const grade = gradingResults.get(question.id);
+        if (grade) {
+          isCorrect = grade.isCorrect;
+          awardedPoints = grade.score;
+          aiReason = grade.reason;
+          gradingMetaByQuestion.set(question.id, {
+            reason: grade.reason,
+            confidence: grade.confidence,
+            aiScore: grade.score,
+            gradedBy: 'ai',
+            gradedAt: new Date().toISOString(),
+          });
+        } else {
+          // AI 批改失敗 → 標 isCorrect=null（待批改），不計分等老師複核
+          isCorrect = null;
+          aiReason = 'AI 批改失敗，待老師複核';
+          gradingMetaByQuestion.set(question.id, {
+            reason: aiReason,
+            confidence: 0,
+            aiScore: 0,
+            gradedBy: 'ai',
+            gradedAt: new Date().toISOString(),
+          });
+        }
+      }
+    } else if (question.correctAnswers && studentAnswer !== undefined) {
+      // 既有題型批改邏輯
       const correct = question.correctAnswers;
       if (question.type === 'single_choice' || question.type === 'true_false' || question.type === 'listening') {
         isCorrect = correct.includes(studentAnswer as string);
@@ -91,20 +163,26 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
         const expected = [...correct].sort();
         isCorrect = JSON.stringify(given) === JSON.stringify(expected);
       } else if (question.type === 'ranking') {
-        // 排序題：學生答案順序必須與正確順序完全一致才算對
         const given = Array.isArray(studentAnswer) ? studentAnswer : [];
         isCorrect = JSON.stringify(given) === JSON.stringify(correct);
       }
-    }
-
-    if (!isShortAnswer) {
+      totalPoints += question.points;
+      if (isCorrect === true) {
+        awardedPoints = question.points;
+      }
+    } else if (!isShortAnswer) {
+      // 沒設正解或學生沒作答的非簡答題：算進分母但 0 分
       totalPoints += question.points;
     }
-    if (isCorrect === true) {
-      score += question.points;
-    }
 
-    details.push({ questionId: question.id, isCorrect, points: question.points });
+    score += awardedPoints;
+    details.push({
+      questionId: question.id,
+      isCorrect,
+      points: question.points,
+      awardedPoints,
+      ...(aiReason ? { aiReason } : {}),
+    });
   }
 
   // 寫入 response
@@ -124,7 +202,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     throw new Error('儲存失敗');
   }
 
-  // 寫入每題的 answer
+  // 寫入每題的 answer（簡答題附 gradingMeta，其他題型 gradingMeta=null）
   const answerRows = questions
     .filter(q => answers[q.id.toString()] !== undefined)
     .map((q) => {
@@ -134,6 +212,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
         questionId: q.id,
         answer: answers[q.id.toString()] as string | string[],
         isCorrect: detail.isCorrect,
+        gradingMeta: gradingMetaByQuestion.get(q.id) ?? null,
       };
     });
 

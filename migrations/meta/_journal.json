@@ -232,6 +232,13 @@
       "when": 1778476022788,
       "tag": "0032_nosy_dexter_bennett",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778479011876,
+      "tag": "0033_curious_talon",
+      "breakpoints": true
     }
   ]
 }

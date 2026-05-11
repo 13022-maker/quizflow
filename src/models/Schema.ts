@@ -228,6 +228,16 @@ export const answerSchema = pgTable('answer', {
     .references(() => questionSchema.id, { onDelete: 'cascade' }),
   answer: jsonb('answer').$type<string | string[]>().notNull(), // 字串或選項 id 陣列
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
+  // 簡答題 AI 評分 metadata（其他題型 null）
+  // reason: AI 評語、confidence: AI 信心 0-1、aiScore: AI 給分（0~question.points）
+  // gradedBy: 'ai' | 'teacher'（Phase C 老師複核會覆寫成 teacher）
+  gradingMeta: jsonb('grading_meta').$type<{
+    reason: string;
+    confidence: number;
+    aiScore: number;
+    gradedBy: 'ai' | 'teacher';
+    gradedAt: string; // ISO timestamp
+  }>(),
 });
 
 // ---------- quiz_attempts ----------

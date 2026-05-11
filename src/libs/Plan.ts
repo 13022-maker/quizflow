@@ -90,3 +90,37 @@ export async function isProOrAbove(userId: string): Promise<boolean> {
   const trial = await ensureTrialRecord(userId);
   return trial.inTrial;
 }
+
+/**
+ * 直接用 userId 查 Pro 狀態（不依賴 auth() context）
+ *
+ * 用途：學生作答端（公開、不需登入）需要判斷「測驗擁有者」是否為 Pro，
+ * 例如簡答題 AI 自動評分要 gate 在老師 Pro 帳號上。
+ *
+ * 跟 isProOrAbove 的差異：isProOrAbove 內部呼叫 auth() 拿當下登入用戶，
+ * 對學生 flow 拿不到。這裡直接用傳入的 userId 查 subscription / trial。
+ */
+export async function isUserProOrAbove(userId: string): Promise<boolean> {
+  if (!userId) {
+    return false;
+  }
+
+  const [sub] = await db
+    .select({
+      plan: subscriptionSchema.plan,
+      status: subscriptionSchema.status,
+    })
+    .from(subscriptionSchema)
+    .where(eq(subscriptionSchema.clerkUserId, userId))
+    .limit(1);
+
+  if (sub && ACTIVE_STATUSES.has(sub.status)) {
+    const plan = mapPlan(sub.plan);
+    if (plan === PLAN_ID.PREMIUM || plan === PLAN_ID.ENTERPRISE || plan === PLAN_ID.PUBLISHER) {
+      return true;
+    }
+  }
+
+  const trial = await ensureTrialRecord(userId);
+  return trial.inTrial;
+}
