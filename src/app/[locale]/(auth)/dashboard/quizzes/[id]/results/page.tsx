@@ -9,6 +9,7 @@ import type { BreakdownQuestion, BreakdownRow, OptionStats } from '@/features/qu
 import { QuestionBreakdownTable } from '@/features/quiz/QuestionBreakdownTable';
 import type { ResponseRow } from '@/features/quiz/ResultsResponseTable';
 import { ResultsResponseTable } from '@/features/quiz/ResultsResponseTable';
+import { ShortAnswerSummary } from '@/features/quiz/ShortAnswerSummary';
 import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
@@ -126,6 +127,28 @@ export default async function QuizResultsPage({ params }: { params: { id: string
     .filter(qs => qs.question.type !== 'short_answer' && qs.rate !== null)
     .map(qs => ({ question: qs.question.body, correctRate: qs.rate! }));
 
+  // 簡答題答案匯總（按題目分組）：DB 有存學生填寫內容，UI 把它撈出來給老師看
+  const shortAnswerQuestions = questions.filter(q => q.type === 'short_answer');
+  const shortAnswerGroups = shortAnswerQuestions.map((q) => {
+    const qAnswers = answers
+      .filter(a => a.questionId === q.id)
+      .map((a) => {
+        const r = responses.find(x => x.id === a.responseId);
+        // answer 欄位的型別是 string | string[]，簡答題實際只會是 string
+        const answerText = typeof a.answer === 'string' ? a.answer : String(a.answer ?? '');
+        return {
+          answerId: a.answerId,
+          studentName: r?.studentName ?? null,
+          studentEmail: r?.studentEmail ?? null,
+          answer: answerText,
+          submittedAtFormatted: r?.submittedAt
+            ? r.submittedAt.toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })
+            : null,
+        };
+      });
+    return { question: { id: q.id, body: q.body }, answers: qAnswers };
+  });
+
   // 給答對率表格客戶端元件的序列化資料（去掉 Date）
   const breakdownRows: BreakdownRow[] = questionStats.map(qs => ({
     question: {
@@ -219,6 +242,21 @@ export default async function QuizResultsPage({ params }: { params: { id: string
       {aiQuestionStats.length > 0 && (
         <section className="mb-8">
           <ClassAIAnalysis quizTitle={quiz.title} questionStats={aiQuestionStats} />
+        </section>
+      )}
+
+      {/* 簡答題作答匯總（DB 已存學生填寫內容，按題目分組顯示） */}
+      {shortAnswerGroups.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-lg font-semibold">{t('short_answer_summary')}</h2>
+          <ShortAnswerSummary
+            groups={shortAnswerGroups}
+            labels={{
+              empty_placeholder: t('short_answer_empty'),
+              anonymous: t('anonymous_student'),
+              no_answers: t('short_answer_no_answers'),
+            }}
+          />
         </section>
       )}
 
