@@ -31,6 +31,7 @@ const QuestionInputSchema = z.object({
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
   correctAnswers: z.array(z.string()).optional(),
+  referenceAnswer: z.string().optional(), // 簡答題參考答案 / 評分要點
   points: z.coerce.number().min(1).default(1),
 });
 
@@ -68,6 +69,8 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     audioTranscript: parsed.data.audioTranscript || null,
     options: parsed.data.options ?? null,
     correctAnswers: parsed.data.correctAnswers ?? null,
+    // 只有簡答題才存 referenceAnswer，其他題型強制 null 避免誤存
+    referenceAnswer: parsed.data.type === 'short_answer' ? (parsed.data.referenceAnswer || null) : null,
     points: parsed.data.points,
     position: nextPosition,
   });
@@ -98,6 +101,8 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       audioTranscript: parsed.data.audioTranscript || null,
       options: parsed.data.options ?? null,
       correctAnswers: parsed.data.correctAnswers ?? null,
+      // 只有簡答題才存 referenceAnswer，切到其他題型時順手清空
+      referenceAnswer: parsed.data.type === 'short_answer' ? (parsed.data.referenceAnswer || null) : null,
       points: parsed.data.points,
     })
     .where(eq(questionSchema.id, id));

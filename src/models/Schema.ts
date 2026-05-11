@@ -187,6 +187,8 @@ export const questionSchema = pgTable('question', {
   audioTranscript: text('audio_transcript'), // 音檔逐字稿（老師可選填，供 AI 出題 / 輔助）
   options: jsonb('options').$type<{ id: string; text: string }[]>(),
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
+  // 簡答題的參考答案 / 評分要點（老師可選填，AI 自動評分時當 reference；其他題型不用）
+  referenceAnswer: text('reference_answer'),
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
   aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取

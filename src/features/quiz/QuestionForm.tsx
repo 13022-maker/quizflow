@@ -62,6 +62,7 @@ const QuestionSchema = z.object({
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
     .optional(),
   correctAnswers: z.array(z.string()).optional(),
+  referenceAnswer: z.string().optional(), // 簡答題參考答案 / 評分要點（給 AI 評分用）
   points: z.coerce.number().min(1).default(1),
 });
 
@@ -83,7 +84,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(QuestionSchema),
     defaultValues: defaultValues
-      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', ...defaultValues }
+      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', referenceAnswer: '', ...defaultValues }
       : {
           type: 'single_choice',
           body: '',
@@ -95,6 +96,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
             { id: id2, text: '' },
           ],
           correctAnswers: [],
+          referenceAnswer: '',
           points: 1,
         },
   });
@@ -534,11 +536,26 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         </div>
       )}
 
-      {/* 簡答題提示 */}
+      {/* 簡答題：參考答案 / 評分要點（給 AI 評分用，可選填） */}
       {type === 'short_answer' && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-700">
-          簡答題無法自動批改，需老師手動評分。
-        </p>
+        <div>
+          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+          <label className="mb-1 block text-sm font-medium">
+            參考答案
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              （可選填，AI 自動評分時用作評分依據）
+            </span>
+          </label>
+          <textarea
+            {...form.register('referenceAnswer')}
+            rows={3}
+            placeholder="例：光合作用是植物利用陽光、水和二氧化碳製造葡萄糖與氧氣的過程。&#10;或列關鍵字：陽光 / 水 / 二氧化碳 / 葡萄糖 / 氧氣"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <p className="mt-1 text-xs text-muted-foreground">
+            未填則 AI 會依題幹語意自行判斷（準確度較低）。
+          </p>
+        </div>
       )}
 
       {/* 操作按鈕 */}
