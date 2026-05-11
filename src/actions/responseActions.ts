@@ -1,6 +1,8 @@
 'use server';
 
+import { auth } from '@clerk/nextjs/server';
 import { and, count, eq } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
@@ -221,4 +223,135 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
   }
 
   return { responseId: inserted.id, score, totalPoints, details };
+}
+
+// ─── Phase C：老師複核簡答題 ────────────────────────────────────────────
+
+/**
+ * 計算單一 answer 的實得分（給重算 response.score 用）
+ *
+ * 規則：
+ * - 非簡答題：isCorrect=true 給滿分，其餘 0
+ * - 簡答題：
+ *   - gradedBy='teacher' → isCorrect=true 給滿分，false 給 0（老師二元判定）
+ *   - gradedBy='ai' / 沒 gradingMeta → 用 aiScore（允許部分分）
+ */
+function computeAwardedPoints(input: {
+  isCorrect: boolean | null;
+  gradingMeta: typeof answerSchema.$inferSelect.gradingMeta;
+  questionType: string;
+  questionPoints: number;
+}): number {
+  if (input.questionType === 'short_answer') {
+    if (input.gradingMeta?.gradedBy === 'teacher') {
+      return input.isCorrect === true ? input.questionPoints : 0;
+    }
+    return input.gradingMeta?.aiScore ?? 0;
+  }
+  return input.isCorrect === true ? input.questionPoints : 0;
+}
+
+/**
+ * 老師複核簡答題：覆寫 AI 判定為 ✓（全分）或 ✗（0 分），自動重算 response.score
+ *
+ * Phase C MVP：採二元判定（全分 / 0 分），部分分留給 AI；老師若想給部分分，
+ * 未來再加「自訂分數」UI。
+ */
+export async function gradeShortAnswerByTeacher(input: {
+  answerId: number;
+  isCorrect: boolean;
+}): Promise<{ newScore: number; newTotalPoints: number; quizId: number }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('未登入');
+  }
+
+  // 1. 找答案 + 對應 question + 驗 quiz 擁有權
+  const [row] = await db
+    .select({
+      answer: {
+        id: answerSchema.id,
+        responseId: answerSchema.responseId,
+        gradingMeta: answerSchema.gradingMeta,
+      },
+      question: {
+        id: questionSchema.id,
+        type: questionSchema.type,
+        points: questionSchema.points,
+        quizId: questionSchema.quizId,
+      },
+      quiz: {
+        ownerId: quizSchema.ownerId,
+      },
+    })
+    .from(answerSchema)
+    .innerJoin(questionSchema, eq(answerSchema.questionId, questionSchema.id))
+    .innerJoin(quizSchema, eq(questionSchema.quizId, quizSchema.id))
+    .where(eq(answerSchema.id, input.answerId))
+    .limit(1);
+
+  if (!row) {
+    throw new Error('找不到答案');
+  }
+  if (row.question.type !== 'short_answer') {
+    throw new Error('僅簡答題可手動複核');
+  }
+  if (row.quiz.ownerId !== userId) {
+    throw new Error('無權限複核此測驗');
+  }
+
+  // 2. 更新 answer：isCorrect + gradingMeta（保留 AI 原始 reason / confidence，標 gradedBy=teacher）
+  const newGradingMeta = {
+    reason: row.answer.gradingMeta?.reason ?? '',
+    confidence: row.answer.gradingMeta?.confidence ?? 0,
+    aiScore: input.isCorrect ? row.question.points : 0,
+    gradedBy: 'teacher' as const,
+    gradedAt: new Date().toISOString(),
+  };
+
+  await db
+    .update(answerSchema)
+    .set({
+      isCorrect: input.isCorrect,
+      gradingMeta: newGradingMeta,
+    })
+    .where(eq(answerSchema.id, input.answerId));
+
+  // 3. 重算 response.score：拉該 response 所有 answer + question 資料
+  const allAnswers = await db
+    .select({
+      isCorrect: answerSchema.isCorrect,
+      gradingMeta: answerSchema.gradingMeta,
+      qType: questionSchema.type,
+      qPoints: questionSchema.points,
+    })
+    .from(answerSchema)
+    .innerJoin(questionSchema, eq(answerSchema.questionId, questionSchema.id))
+    .where(eq(answerSchema.responseId, row.answer.responseId));
+
+  let newScore = 0;
+  for (const a of allAnswers) {
+    newScore += computeAwardedPoints({
+      isCorrect: a.isCorrect,
+      gradingMeta: a.gradingMeta,
+      questionType: a.qType,
+      questionPoints: a.qPoints,
+    });
+  }
+
+  // 4. UPDATE response.score（totalPoints 不變：簡答題滿分在 submit 已加進去）
+  const [updated] = await db
+    .update(responseSchema)
+    .set({ score: newScore })
+    .where(eq(responseSchema.id, row.answer.responseId))
+    .returning();
+
+  // 5. revalidate 老師成績頁
+  revalidatePath(`/dashboard/quizzes/${row.question.quizId}/results`);
+
+  return {
+    newScore: updated?.score ?? 0,
+    newTotalPoints: updated?.totalPoints ?? 0,
+    quizId: row.question.quizId,
+  };
 }

@@ -67,6 +67,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         questionId: answerSchema.questionId,
         isCorrect: answerSchema.isCorrect,
         answer: answerSchema.answer,
+        gradingMeta: answerSchema.gradingMeta, // Phase B 加：AI 評分 metadata
       })
       .from(answerSchema)
       .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
@@ -144,9 +145,11 @@ export default async function QuizResultsPage({ params }: { params: { id: string
           submittedAtFormatted: r?.submittedAt
             ? r.submittedAt.toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })
             : null,
+          isCorrect: a.isCorrect,
+          gradingMeta: a.gradingMeta, // Phase C：AI 評分 + 老師複核狀態
         };
       });
-    return { question: { id: q.id, body: q.body }, answers: qAnswers };
+    return { question: { id: q.id, body: q.body, points: q.points }, answers: qAnswers };
   });
 
   // 給答對率表格客戶端元件的序列化資料（去掉 Date）
@@ -255,6 +258,12 @@ export default async function QuizResultsPage({ params }: { params: { id: string
               empty_placeholder: t('short_answer_empty'),
               anonymous: t('anonymous_student'),
               no_answers: t('short_answer_no_answers'),
+              ai_graded: t('short_answer_ai_graded'),
+              teacher_graded: t('short_answer_teacher_graded'),
+              pending: t('short_answer_pending'),
+              mark_correct: t('short_answer_mark_correct'),
+              mark_wrong: t('short_answer_mark_wrong'),
+              saving: t('short_answer_saving'),
             }}
           />
         </section>
