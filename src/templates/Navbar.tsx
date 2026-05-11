@@ -32,9 +32,12 @@ export const Navbar = () => {
           </>
         )}
       >
-        <li>
-          <Link href="/pricing">{t('pricing')}</Link>
-        </li>
+        {/* Paddle production 上線前先隱藏定價連結 */}
+        {process.env.NEXT_PUBLIC_PRICING_ENABLED === 'true' && (
+          <li>
+            <Link href="/pricing">{t('pricing')}</Link>
+          </li>
+        )}
         <li>
           <Link href="/blog">{t('blog')}</Link>
         </li>

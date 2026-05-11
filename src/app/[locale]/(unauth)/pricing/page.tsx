@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 
 import { PricingSection } from '@/components/pricing/PricingSection';
@@ -23,6 +24,11 @@ export async function generateMetadata(props: { params: { locale: string } }) {
 }
 
 const PricingPage = async (props: { params: { locale: string } }) => {
+  // Paddle production 上線前 /pricing 一律 404，避免外部連結誤點
+  if (process.env.NEXT_PUBLIC_PRICING_ENABLED !== 'true') {
+    notFound();
+  }
+
   unstable_setRequestLocale(props.params.locale);
   const { showPaidPlans } = await getPricingVisibility();
 

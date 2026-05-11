@@ -30,7 +30,8 @@ const IndexPage = (props: { params: { locale: string } }) => {
       <Navbar />
       <Hero />
       <Features />
-      <Pricing />
+      {/* Paddle production 上線前先隱藏定價（NEXT_PUBLIC_PRICING_ENABLED=true 才顯示） */}
+      {process.env.NEXT_PUBLIC_PRICING_ENABLED === 'true' && <Pricing />}
       <FAQ />
       <CTA />
       <Footer />
