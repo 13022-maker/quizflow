@@ -68,6 +68,9 @@ export default async function QuizResultsPage({ params }: { params: { id: string
         isCorrect: answerSchema.isCorrect,
         answer: answerSchema.answer,
         gradingMeta: answerSchema.gradingMeta, // Phase B 加：AI 評分 metadata
+        appealStatus: answerSchema.appealStatus, // Phase D：學生申訴狀態
+        appealReason: answerSchema.appealReason,
+        appealCreatedAt: answerSchema.appealCreatedAt,
       })
       .from(answerSchema)
       .innerJoin(responseSchema, eq(answerSchema.responseId, responseSchema.id))
@@ -147,6 +150,11 @@ export default async function QuizResultsPage({ params }: { params: { id: string
             : null,
           isCorrect: a.isCorrect,
           gradingMeta: a.gradingMeta, // Phase C：AI 評分 + 老師複核狀態
+          appealStatus: a.appealStatus, // Phase D：學生申訴狀態
+          appealReason: a.appealReason,
+          appealCreatedAtFormatted: a.appealCreatedAt
+            ? a.appealCreatedAt.toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })
+            : null,
         };
       });
     return { question: { id: q.id, body: q.body, points: q.points }, answers: qAnswers };
@@ -269,6 +277,9 @@ export default async function QuizResultsPage({ params }: { params: { id: string
               filter_all: t('short_answer_filter_all'),
               filter_low_confidence: t('short_answer_filter_low_confidence'),
               filter_pending: t('short_answer_filter_pending'),
+              filter_appealed: t('short_answer_filter_appealed'),
+              appeal_badge: t('short_answer_appeal_badge'),
+              appeal_reason_label: t('short_answer_appeal_reason_label'),
               accept_all_ai: t('short_answer_accept_all_ai'),
               accept_all_ai_confirm: t('short_answer_accept_all_ai_confirm'),
               accept_all_ai_none: t('short_answer_accept_all_ai_none'),

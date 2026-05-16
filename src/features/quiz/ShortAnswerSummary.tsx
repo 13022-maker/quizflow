@@ -27,6 +27,9 @@ type AnswerItem = {
   submittedAtFormatted: string | null;
   isCorrect: boolean | null;
   gradingMeta: GradingMeta;
+  appealStatus: string | null;
+  appealReason: string | null;
+  appealCreatedAtFormatted: string | null;
 };
 
 type Group = {
@@ -49,6 +52,9 @@ type Labels = {
   filter_all: string;
   filter_low_confidence: string;
   filter_pending: string;
+  filter_appealed: string;
+  appeal_badge: string;
+  appeal_reason_label: string;
   accept_all_ai: string;
   accept_all_ai_confirm: string;
   accept_all_ai_none: string;
@@ -60,7 +66,7 @@ type Props = {
   labels: Labels;
 };
 
-type FilterMode = 'all' | 'low_confidence' | 'pending_review';
+type FilterMode = 'all' | 'low_confidence' | 'pending_review' | 'appealed';
 
 function isLowConfidence(meta: GradingMeta): boolean {
   return meta?.gradedBy === 'ai' && (meta.confidence ?? 0) < LOW_CONFIDENCE_THRESHOLD;
@@ -77,6 +83,9 @@ function matchesFilter(answer: AnswerItem, mode: FilterMode): boolean {
   if (mode === 'pending_review') {
     // 「待老師複核」= AI 尚未被老師確認過（gradedBy='ai'），含正常信心也算
     return answer.gradingMeta?.gradedBy === 'ai';
+  }
+  if (mode === 'appealed') {
+    return answer.appealStatus === 'pending';
   }
   return true;
 }
@@ -103,6 +112,7 @@ function AnswerRow({ answer, questionPoints, labels }: {
   const isTeacherConfirmed = gradedBy === 'teacher_confirmed';
   const awardedPoints = getAwardedPoints(answer, questionPoints);
   const lowConfidence = isLowConfidence(meta);
+  const isAppealed = answer.appealStatus === 'pending';
 
   const handleGrade = (newIsCorrect: boolean) => {
     startTransition(async () => {
@@ -133,8 +143,12 @@ function AnswerRow({ answer, questionPoints, labels }: {
       ? labels.teacher_confirmed
       : `${labels.ai_graded}（信心 ${Math.round((meta?.confidence ?? 0) * 100)}%）`;
 
-  // 低信心 row 整體背景：淡黃提示老師優先看
-  const rowBg = lowConfidence ? 'bg-amber-50/60' : '';
+  // 視覺優先級：申訴 > 低信心 > 一般
+  const rowBg = isAppealed
+    ? 'bg-blue-50/70 border-l-4 border-l-blue-400'
+    : lowConfidence
+      ? 'bg-amber-50/60'
+      : '';
 
   return (
     <li className={`px-4 py-3 ${rowBg}`}>
@@ -179,6 +193,31 @@ function AnswerRow({ answer, questionPoints, labels }: {
               {meta.reason}
               」
             </span>
+          )}
+        </div>
+      )}
+
+      {/* 學生申訴：藍色 callout 顯示申訴理由（老師複核後自動 resolved 即不顯示） */}
+      {isAppealed && (
+        <div className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2">
+          <p className="text-xs font-semibold text-blue-800">
+            📣
+            {' '}
+            {labels.appeal_badge}
+            {answer.appealCreatedAtFormatted && (
+              <span className="ml-2 font-normal text-blue-600">
+                {answer.appealCreatedAtFormatted}
+              </span>
+            )}
+          </p>
+          {answer.appealReason && (
+            <p className="mt-1 text-sm text-blue-900">
+              <span className="text-blue-600">
+                {labels.appeal_reason_label}
+                ：
+              </span>
+              {answer.appealReason}
+            </p>
           )}
         </div>
       )}
@@ -338,6 +377,7 @@ export function ShortAnswerSummary({ groups, labels }: Props) {
   const counts = useMemo(() => {
     let lowConf = 0;
     let pending = 0;
+    let appealed = 0;
     for (const g of groups) {
       for (const a of g.answers) {
         if (isLowConfidence(a.gradingMeta)) {
@@ -346,9 +386,12 @@ export function ShortAnswerSummary({ groups, labels }: Props) {
         if (a.gradingMeta?.gradedBy === 'ai') {
           pending += 1;
         }
+        if (a.appealStatus === 'pending') {
+          appealed += 1;
+        }
       }
     }
-    return { lowConf, pending };
+    return { lowConf, pending, appealed };
   }, [groups]);
 
   const chipClass = (active: boolean) =>
@@ -389,6 +432,19 @@ export function ShortAnswerSummary({ groups, labels }: Props) {
           {' '}
           (
           {counts.pending}
+          )
+        </button>
+        <button
+          type="button"
+          onClick={() => setFilter('appealed')}
+          className={`${chipClass(filter === 'appealed')} ${counts.appealed > 0 ? 'ring-2 ring-blue-400' : ''}`}
+        >
+          📣
+          {' '}
+          {labels.filter_appealed}
+          {' '}
+          (
+          {counts.appealed}
           )
         </button>
       </div>

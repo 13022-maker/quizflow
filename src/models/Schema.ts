@@ -241,6 +241,11 @@ export const answerSchema = pgTable('answer', {
     gradedBy: 'ai' | 'teacher' | 'teacher_confirmed';
     gradedAt: string; // ISO timestamp
   }>(),
+  // 學生申訴：對 AI 評分結果不服時送出，老師端可看見並複審
+  // appealStatus: null = 從未申訴 / 'pending' = 已申訴待老師處理 / 'resolved' = 老師已複審（gradeShortAnswerByTeacher 自動標記）
+  appealStatus: text('appeal_status'),
+  appealReason: text('appeal_reason'),
+  appealCreatedAt: timestamp('appeal_created_at', { mode: 'date' }),
 });
 
 // ---------- quiz_attempts ----------

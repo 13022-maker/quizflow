@@ -239,6 +239,13 @@
       "when": 1778479011876,
       "tag": "0033_curious_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778975111243,
+      "tag": "0034_short_answer_appeal",
+      "breakpoints": true
     }
   ]
 }

@@ -24,6 +24,9 @@ const isPublicApiRoute = createRouteMatcher([
   // 蘇格拉底式錯題重做提示：學生匿名作答所以不需登入
   '/api/hint/socratic',
   '/:locale/api/hint/socratic',
+  // 簡答題 AI 評分申訴：學生對 AI 判定不服時送出，不需登入（以 responseId+answerId 配對驗證）
+  '/api/quiz/appeal-grade',
+  '/:locale/api/quiz/appeal-grade',
   // TTS 發音：學生單字卡練習需要
   '/api/ai/tts',
   '/:locale/api/ai/tts',

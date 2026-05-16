@@ -29,6 +29,7 @@ export type SubmitResult = {
   totalPoints: number;
   details: {
     questionId: number;
+    answerId?: number; // 已寫入 DB 的 answer.id（簡答題申訴需用）
     isCorrect: boolean | null; // null = 簡答題待批改（AI 批改失敗 / Free 帳號）
     points: number; // 該題滿分
     awardedPoints: number; // 該題實得分（簡答題可為部分分，其他題型為 0 或滿分）
@@ -219,7 +220,18 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     });
 
   if (answerRows.length > 0) {
-    await db.insert(answerSchema).values(answerRows);
+    const insertedAnswers = await db
+      .insert(answerSchema)
+      .values(answerRows)
+      .returning({ id: answerSchema.id, questionId: answerSchema.questionId });
+    // 把 answerId 寫回對應的 detail（給簡答題申訴用）
+    const idByQuestion = new Map(insertedAnswers.map(a => [a.questionId, a.id]));
+    for (const d of details) {
+      const aid = idByQuestion.get(d.questionId);
+      if (aid !== undefined) {
+        d.answerId = aid;
+      }
+    }
   }
 
   return { responseId: inserted.id, score, totalPoints, details };
@@ -274,6 +286,7 @@ export async function gradeShortAnswerByTeacher(input: {
         id: answerSchema.id,
         responseId: answerSchema.responseId,
         gradingMeta: answerSchema.gradingMeta,
+        appealStatus: answerSchema.appealStatus,
       },
       question: {
         id: questionSchema.id,
@@ -310,11 +323,13 @@ export async function gradeShortAnswerByTeacher(input: {
     gradedAt: new Date().toISOString(),
   };
 
+  // 若該答案有 pending 申訴，老師複核完自動結案；否則不動 appealStatus（避免覆寫從未申訴的 null）
   await db
     .update(answerSchema)
     .set({
       isCorrect: input.isCorrect,
       gradingMeta: newGradingMeta,
+      ...(row.answer.appealStatus === 'pending' ? { appealStatus: 'resolved' as const } : {}),
     })
     .where(eq(answerSchema.id, input.answerId));
 

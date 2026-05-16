@@ -84,6 +84,92 @@ function answerToText(question: Question, ids: string[] | null | undefined): str
   return ids.map(id => options.find(o => o.id === id)?.text ?? id).join(sep);
 }
 
+// ── 學生申訴：對 AI 評分不服時的小元件 ─────────────────────────────
+// 顯示 inline「📣 請老師複審」按鈕；點開展開 textarea，送出後變「✓ 已送出」
+function AppealButton({ responseId, answerId }: {
+  responseId: number;
+  answerId: number;
+}) {
+  const [state, setState] = useState<'idle' | 'editing' | 'sending' | 'sent' | 'error'>('idle');
+  const [reason, setReason] = useState('');
+  const [errMsg, setErrMsg] = useState('');
+
+  const handleSubmit = async () => {
+    if (reason.trim().length === 0) {
+      setErrMsg('請填寫複審理由');
+      return;
+    }
+    setState('sending');
+    setErrMsg('');
+    try {
+      const res = await fetch('/api/quiz/appeal-grade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ responseId, answerId, reason: reason.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.error ?? '送出失敗');
+      }
+      setState('sent');
+    } catch (err) {
+      setErrMsg(err instanceof Error ? err.message : '送出失敗');
+      setState('error');
+    }
+  };
+
+  if (state === 'sent') {
+    return (
+      <p className="mt-2 text-xs font-medium text-emerald-700">
+        ✓ 已送出複審申請，老師會儘快處理
+      </p>
+    );
+  }
+
+  if (state === 'idle') {
+    return (
+      <button
+        type="button"
+        onClick={() => setState('editing')}
+        className="mt-2 text-xs font-medium text-blue-600 underline-offset-2 hover:underline"
+      >
+        📣 請老師複審
+      </button>
+    );
+  }
+
+  return (
+    <div className="mt-2 space-y-1">
+      <textarea
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        rows={2}
+        maxLength={500}
+        placeholder="請說明你認為 AI 判定有誤的理由（會送給老師看）"
+        className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={state === 'sending'}
+          className="rounded-md bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {state === 'sending' ? '送出中⋯' : '送出複審申請'}
+        </button>
+        <button
+          type="button"
+          onClick={() => { setState('idle'); setReason(''); setErrMsg(''); }}
+          className="text-xs text-muted-foreground hover:underline"
+        >
+          取消
+        </button>
+        {errMsg && <span className="text-xs text-destructive">{errMsg}</span>}
+      </div>
+    </div>
+  );
+}
+
 // ── 個別題目元件 ─────────────────────────────────────────────────
 
 type TutorState = {
@@ -880,35 +966,44 @@ function ResultScreen({
                   {isShort && (
                     detail?.aiReason
                       ? (
-                          <div className={`mt-2 rounded-md border px-3 py-2 ${
-                            detail.isCorrect === true
-                              ? 'border-green-200 bg-green-50'
-                              : detail.isCorrect === false
-                                ? 'border-red-200 bg-red-50'
-                                : 'border-gray-200 bg-gray-50'
-                          }`}
-                          >
-                            <p className="text-xs font-semibold">
-                              <span className={
-                                detail.isCorrect === true
-                                  ? 'text-green-700'
-                                  : detail.isCorrect === false
-                                    ? 'text-red-700'
-                                    : 'text-gray-600'
-                              }
-                              >
-                                {detail.isCorrect === true ? '✓ AI 判定正確' : detail.isCorrect === false ? '✗ AI 判定錯誤' : '⋯ 待老師批改'}
-                              </span>
-                              <span className="ml-2 text-muted-foreground">
-                                {detail.awardedPoints}
-                                {' / '}
-                                {detail.points}
-                                {' '}
-                                分
-                              </span>
-                            </p>
-                            <p className="mt-1 text-sm text-foreground">{detail.aiReason}</p>
-                          </div>
+                          <>
+                            <div className={`mt-2 rounded-md border px-3 py-2 ${
+                              detail.isCorrect === true
+                                ? 'border-green-200 bg-green-50'
+                                : detail.isCorrect === false
+                                  ? 'border-red-200 bg-red-50'
+                                  : 'border-gray-200 bg-gray-50'
+                            }`}
+                            >
+                              <p className="text-xs font-semibold">
+                                <span className={
+                                  detail.isCorrect === true
+                                    ? 'text-green-700'
+                                    : detail.isCorrect === false
+                                      ? 'text-red-700'
+                                      : 'text-gray-600'
+                                }
+                                >
+                                  {detail.isCorrect === true ? '✓ AI 判定正確' : detail.isCorrect === false ? '✗ AI 判定錯誤' : '⋯ 待老師批改'}
+                                </span>
+                                <span className="ml-2 text-muted-foreground">
+                                  {detail.awardedPoints}
+                                  {' / '}
+                                  {detail.points}
+                                  {' '}
+                                  分
+                                </span>
+                              </p>
+                              <p className="mt-1 text-sm text-foreground">{detail.aiReason}</p>
+                            </div>
+                            {/* 學生申訴：未拿滿分（部分分或 0 分）且有 answerId 時顯示 */}
+                            {detail.answerId !== undefined && detail.isCorrect !== true && (
+                              <AppealButton
+                                responseId={result.responseId}
+                                answerId={detail.answerId}
+                              />
+                            )}
+                          </>
                         )
                       : (
                           <p className="mt-1 text-xs text-muted-foreground">待老師批改</p>
