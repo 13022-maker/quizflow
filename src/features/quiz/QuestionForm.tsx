@@ -1,10 +1,11 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { generateReferenceAnswerDraft } from '@/actions/questionActions';
 import { Button } from '@/components/ui/button';
 
 export const QUESTION_TYPE_LABELS = {
@@ -75,6 +76,74 @@ type Props = {
   isPending?: boolean;
   quizId: number; // 圖片上傳需指定所屬測驗
 };
+
+// 簡答題參考答案欄位（含 AI 草稿按鈕）
+function ReferenceAnswerField({ form }: {
+  form: ReturnType<typeof useForm<QuestionFormValues>>;
+}) {
+  const [isGenerating, startGenerate] = useTransition();
+  const [genError, setGenError] = useState('');
+  const currentRef = form.watch('referenceAnswer') ?? '';
+  const hasContent = currentRef.trim().length > 0;
+
+  const handleGenerate = () => {
+    setGenError('');
+    const body = form.getValues('body').trim();
+    if (body.length < 4) {
+      setGenError('請先輸入題目（至少 4 字）');
+      return;
+    }
+    if (hasContent) {
+      // eslint-disable-next-line no-alert
+      const ok = window.confirm('已有內容，AI 生成會覆寫目前的參考答案，確定繼續？');
+      if (!ok) {
+        return;
+      }
+    }
+    startGenerate(async () => {
+      try {
+        const { draft } = await generateReferenceAnswerDraft({ questionBody: body });
+        form.setValue('referenceAnswer', draft, { shouldDirty: true });
+      } catch (err) {
+        setGenError(err instanceof Error ? err.message : 'AI 生成失敗');
+      }
+    });
+  };
+
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-2">
+        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+        <label className="block text-sm font-medium">
+          參考答案
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            （可選填，AI 自動評分時用作評分依據）
+          </span>
+        </label>
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={isGenerating}
+          className="shrink-0 rounded-md border border-primary/40 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary transition hover:bg-primary/10 disabled:opacity-50"
+        >
+          {isGenerating ? '生成中⋯' : '✨ AI 草稿'}
+        </button>
+      </div>
+      <textarea
+        {...form.register('referenceAnswer')}
+        rows={3}
+        placeholder="例：光合作用是植物利用陽光、水和二氧化碳製造葡萄糖與氧氣的過程。&#10;或列關鍵字：陽光 / 水 / 二氧化碳 / 葡萄糖 / 氧氣"
+        className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+      />
+      {genError && (
+        <p className="mt-1 text-xs text-destructive">{genError}</p>
+      )}
+      <p className="mt-1 text-xs text-muted-foreground">
+        未填則 AI 會依題幹語意自行判斷（準確度較低）。
+      </p>
+    </div>
+  );
+}
 
 export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, quizId }: Props) {
   // useId() 保證 server/client 渲染一致，避免 hydration mismatch
@@ -538,24 +607,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
 
       {/* 簡答題：參考答案 / 評分要點（給 AI 評分用，可選填） */}
       {type === 'short_answer' && (
-        <div>
-          {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-          <label className="mb-1 block text-sm font-medium">
-            參考答案
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              （可選填，AI 自動評分時用作評分依據）
-            </span>
-          </label>
-          <textarea
-            {...form.register('referenceAnswer')}
-            rows={3}
-            placeholder="例：光合作用是植物利用陽光、水和二氧化碳製造葡萄糖與氧氣的過程。&#10;或列關鍵字：陽光 / 水 / 二氧化碳 / 葡萄糖 / 氧氣"
-            className="w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-          />
-          <p className="mt-1 text-xs text-muted-foreground">
-            未填則 AI 會依題幹語意自行判斷（準確度較低）。
-          </p>
-        </div>
+        <ReferenceAnswerField form={form} />
       )}
 
       {/* 操作按鈕 */}

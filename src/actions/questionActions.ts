@@ -5,6 +5,8 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { generateReferenceAnswer } from '@/lib/ai/generateReferenceAnswer';
+import { isUserProOrAbove } from '@/libs/Plan';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -140,6 +142,34 @@ export async function reorderQuestions(quizId: number, orderedIds: number[]) {
   );
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
+}
+
+/**
+ * AI 預生成簡答題參考答案（草稿）
+ * - 僅 Pro 可用（用既有 AI 成本管控邏輯，與 grade short answer 對齊）
+ * - 不直接寫入 DB，回傳草稿讓老師在 UI textarea 看到再決定要不要存
+ * - 用 questionBody 直接打 Claude，不需 questionId（建題流程也可用：未存 DB 也能預生成）
+ */
+export async function generateReferenceAnswerDraft(input: {
+  questionBody: string;
+}): Promise<{ draft: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('未登入');
+  }
+
+  const trimmed = input.questionBody.trim();
+  if (trimmed.length < 4) {
+    throw new Error('請先輸入題目（至少 4 字）再用 AI 預生成');
+  }
+
+  const isPro = await isUserProOrAbove(userId);
+  if (!isPro) {
+    throw new Error('AI 預生成參考答案為 Pro 方案功能，請先升級');
+  }
+
+  const draft = await generateReferenceAnswer({ questionBody: trimmed });
+  return { draft };
 }
 
 // 平均分配總分 100 分到所有題目
