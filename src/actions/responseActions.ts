@@ -233,8 +233,9 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
  * 規則：
  * - 非簡答題：isCorrect=true 給滿分，其餘 0
  * - 簡答題：
- *   - gradedBy='teacher' → isCorrect=true 給滿分，false 給 0（老師二元判定）
- *   - gradedBy='ai' / 沒 gradingMeta → 用 aiScore（允許部分分）
+ *   - gradedBy='teacher' → isCorrect=true 給滿分，false 給 0（老師二元覆寫）
+ *   - gradedBy='teacher_confirmed' → 用 aiScore（老師批次接受 AI 判定，保留部分分）
+ *   - gradedBy='ai' / 沒 gradingMeta → 用 aiScore（AI 自動評分）
  */
 function computeAwardedPoints(input: {
   isCorrect: boolean | null;
@@ -354,4 +355,83 @@ export async function gradeShortAnswerByTeacher(input: {
     newTotalPoints: updated?.totalPoints ?? 0,
     quizId: row.question.quizId,
   };
+}
+
+/**
+ * 批次接受 AI 評分結果：把指定題目所有 gradedBy='ai' 的 answer 標記為 'teacher_confirmed'
+ * 保留 aiScore 與 isCorrect（不重算對錯，等於老師蓋章認證 AI 判定）
+ *
+ * 用途：題目作答數多時，老師快速通過 AI 判定，不用每筆按按鈕
+ */
+export async function acceptAllAiGradesForQuestion(input: {
+  questionId: number;
+}): Promise<{ affected: number; quizId: number }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('未登入');
+  }
+
+  // 1. 驗 question 屬於該老師的 quiz 且為簡答題
+  const [question] = await db
+    .select({
+      id: questionSchema.id,
+      type: questionSchema.type,
+      points: questionSchema.points,
+      quizId: questionSchema.quizId,
+      ownerId: quizSchema.ownerId,
+    })
+    .from(questionSchema)
+    .innerJoin(quizSchema, eq(questionSchema.quizId, quizSchema.id))
+    .where(eq(questionSchema.id, input.questionId))
+    .limit(1);
+
+  if (!question) {
+    throw new Error('找不到題目');
+  }
+  if (question.type !== 'short_answer') {
+    throw new Error('僅簡答題可批次複核');
+  }
+  if (question.ownerId !== userId) {
+    throw new Error('無權限');
+  }
+
+  // 2. 拉該題所有 gradedBy='ai' 的 answer
+  const targets = await db
+    .select({
+      id: answerSchema.id,
+      responseId: answerSchema.responseId,
+      isCorrect: answerSchema.isCorrect,
+      gradingMeta: answerSchema.gradingMeta,
+    })
+    .from(answerSchema)
+    .where(eq(answerSchema.questionId, input.questionId));
+
+  const aiOnly = targets.filter(a => a.gradingMeta?.gradedBy === 'ai');
+  if (aiOnly.length === 0) {
+    return { affected: 0, quizId: question.quizId };
+  }
+
+  // 3. 逐筆 update gradedBy='teacher_confirmed'（保留 aiScore / reason / confidence / isCorrect）
+  //    不重算 response.score（aiScore 不變，總分不變）
+  const nowIso = new Date().toISOString();
+  await Promise.all(
+    aiOnly.map(a =>
+      db
+        .update(answerSchema)
+        .set({
+          gradingMeta: {
+            reason: a.gradingMeta!.reason,
+            confidence: a.gradingMeta!.confidence,
+            aiScore: a.gradingMeta!.aiScore,
+            gradedBy: 'teacher_confirmed' as const,
+            gradedAt: nowIso,
+          },
+        })
+        .where(eq(answerSchema.id, a.id)),
+    ),
+  );
+
+  revalidatePath(`/dashboard/quizzes/${question.quizId}/results`);
+
+  return { affected: aiOnly.length, quizId: question.quizId };
 }

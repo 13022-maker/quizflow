@@ -260,10 +260,19 @@ export default async function QuizResultsPage({ params }: { params: { id: string
               no_answers: t('short_answer_no_answers'),
               ai_graded: t('short_answer_ai_graded'),
               teacher_graded: t('short_answer_teacher_graded'),
+              teacher_confirmed: t('short_answer_teacher_confirmed'),
               pending: t('short_answer_pending'),
               mark_correct: t('short_answer_mark_correct'),
               mark_wrong: t('short_answer_mark_wrong'),
               saving: t('short_answer_saving'),
+              low_confidence: t('short_answer_low_confidence'),
+              filter_all: t('short_answer_filter_all'),
+              filter_low_confidence: t('short_answer_filter_low_confidence'),
+              filter_pending: t('short_answer_filter_pending'),
+              accept_all_ai: t('short_answer_accept_all_ai'),
+              accept_all_ai_confirm: t('short_answer_accept_all_ai_confirm'),
+              accept_all_ai_none: t('short_answer_accept_all_ai_none'),
+              accept_all_ai_done: t('short_answer_accept_all_ai_done'),
             }}
           />
         </section>

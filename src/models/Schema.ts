@@ -230,12 +230,15 @@ export const answerSchema = pgTable('answer', {
   isCorrect: boolean('is_correct'), // null = 簡答題待批改
   // 簡答題 AI 評分 metadata（其他題型 null）
   // reason: AI 評語、confidence: AI 信心 0-1、aiScore: AI 給分（0~question.points）
-  // gradedBy: 'ai' | 'teacher'（Phase C 老師複核會覆寫成 teacher）
+  // gradedBy:
+  //   'ai'                = AI 自動評分（aiScore 計入分數，允許部分分）
+  //   'teacher'           = 老師手動覆寫（二元判定：全分 / 0 分）
+  //   'teacher_confirmed' = 老師批次接受 AI 判定（保留 aiScore，等同於蓋章認證）
   gradingMeta: jsonb('grading_meta').$type<{
     reason: string;
     confidence: number;
     aiScore: number;
-    gradedBy: 'ai' | 'teacher';
+    gradedBy: 'ai' | 'teacher' | 'teacher_confirmed';
     gradedAt: string; // ISO timestamp
   }>(),
 });
