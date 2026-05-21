@@ -9,6 +9,7 @@ export const AppConfig = {
   locales: [
     { id: 'en', name: 'English' },
     { id: 'zh', name: '繁體中文' },
+    { id: 'ja', name: '日本語' },
   ],
   defaultLocale: 'zh',
   localePrefix,

@@ -1,6 +1,6 @@
 'use client';
 
-import { enUS, zhTW } from '@clerk/localizations';
+import { enUS, jaJP, zhTW } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
 
 import { AppConfig } from '@/utils/AppConfig';
@@ -17,6 +17,8 @@ export default function AuthLayout(props: {
 
   if (props.params.locale === 'zh') {
     clerkLocale = zhTW;
+  } else if (props.params.locale === 'ja') {
+    clerkLocale = jaJP;
   }
 
   if (props.params.locale !== AppConfig.defaultLocale) {

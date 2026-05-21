@@ -1,0 +1,296 @@
+{
+  "Index": {
+    "meta_title": "QuizFlow - AI搭載クイズ作成プラットフォーム｜出題・採点・分析をワンストップで",
+    "meta_description": "数分でクイズを作成し、生徒にワンクリックで共有、リアルタイムで解答結果を確認できます。Freeプランではクイズ10件まで利用可能。Proプランへアップグレードすると無制限の出題とAI問題作成機能をご利用いただけます。"
+  },
+  "PricingPage": {
+    "meta_title": "QuizFlow 料金プラン - 無料で始めて、いつでもアップグレード",
+    "meta_description": "Freeプランではクイズを10件まで作成可能。Proプラン（月額$9）にアップグレードすると、無制限のクイズ作成とAI問題作成機能がご利用いただけます。"
+  },
+  "Navbar": {
+    "sign_in": "ログイン",
+    "sign_up": "新規登録",
+    "product": "製品",
+    "pricing": "料金",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社情報"
+  },
+  "Hero": {
+    "follow_twitter": "QuizFlowをTwitterでフォロー",
+    "title": "もっとスマートに、<important>クイズを作成・共有・分析</important>。生徒の学びを見える化。",
+    "description": "魅力的なクイズを数分で作成し、リンク一つで共有、回答状況をリアルタイムで把握。現代の教育者のために設計され、出題・採点・分析をワンストップで実現します。",
+    "primary_button": "無料で始める",
+    "secondary_button": "使い方を見る"
+  },
+  "Sponsors": {
+    "title": "以下の学校の先生方にご利用いただいています"
+  },
+  "Features": {
+    "section_subtitle": "機能紹介",
+    "section_title": "先生のクイズ作成に必要な機能をすべて",
+    "section_description": "QuizFlowは、クイズの作成・共有・分析に必要なツールをシンプルに提供します。複雑な設定は不要です。",
+    "feature1_title": "かんたんクイズ作成",
+    "feature2_title": "ワンクリックでリンク共有",
+    "feature3_title": "リアルタイム採点",
+    "feature4_title": "AI問題自動作成",
+    "feature5_title": "学習データ分析",
+    "feature6_title": "成績レポート出力",
+    "feature1_description": "選択問題・〇×問題・穴埋め問題・記述問題に対応。ドラッグ＆ドロップで並べ替えでき、数分でクイズが完成します。",
+    "feature2_description": "クイズを作成すると専用リンクが自動生成されます。LINEや黒板に貼り出すだけでOK。生徒はアプリのダウンロード不要です。",
+    "feature3_description": "生徒が解答を送信した瞬間に自動採点。点数と各問題の解説がその場で表示され、待ち時間はありません。",
+    "feature4_description": "教科書・スライド・画像をアップロードすると、AIが解説付きで問題を自動生成。手作業の出題時間を大幅に削減できます（Pro限定）。",
+    "feature5_description": "問題ごとの正答率やクラス全体の解答分布を確認でき、生徒のつまずきポイントをすばやく把握できます。",
+    "feature6_description": "すべての解答記録をCSVファイルとして出力。成績簿への入力や校務システムとの連携もスムーズです。"
+  },
+  "Pricing": {
+    "section_subtitle": "料金プラン",
+    "section_title": "シンプルで分かりやすい料金体系",
+    "section_description": "無料で始めて、必要に応じてアップグレード。隠れた費用は一切ありません。",
+    "button_text": "今すぐ始める"
+  },
+  "PricingPlan": {
+    "free_plan_name": "Free プラン",
+    "premium_plan_name": "Pro プラン",
+    "enterprise_plan_name": "法人プラン",
+    "free_plan_description": "これから試してみたい先生におすすめ",
+    "premium_plan_description": "無制限に問題を作成したい先生におすすめ",
+    "enterprise_plan_description": "学校・教育機関向け",
+    "feature_team_member": "教師アカウント {number} 個",
+    "feature_website": "クイズ {number} 件",
+    "feature_storage": "AI 自動問題作成機能（Pro 限定）",
+    "feature_transfer": "回答回数 無制限",
+    "feature_email_support": "メールサポート",
+    "plan_interval_month": "月",
+    "plan_interval_year": "年",
+    "next_renew_date": "サブスクリプションは {date} に自動更新されます"
+  },
+  "FAQ": {
+    "question1": "無料プランでは何個のクイズを作成できますか？",
+    "answer1": "無料プランでは最大10個までクイズを作成できます。各クイズの問題数に制限はなく、人数を問わず生徒に共有して受験させることが可能です。より多くのクイズを作成したい場合や、AI問題作成機能を利用したい場合は、月額9米ドルのPro プランへアップグレードすると、無制限のクイズ作成とすべての高度な機能をご利用いただけます。",
+    "question2": "生徒がクイズに回答するにはアカウントが必要ですか？",
+    "answer2": "アカウントは不要です。生徒は共有されたリンクをクリックするだけで、ブラウザ上で直接回答でき、事前の登録やログインは一切必要ありません。回答送信後はすぐにスコアと各問題の解説が表示され、先生は管理画面からすべての回答記録を確認できます。",
+    "question3": "AI問題作成はどのような形式に対応していますか？",
+    "answer3": "Pro プランのAI問題作成機能は、テキスト、PDF文書、画像（JPG、PNG）、動画（MP4）、音声ファイル（MP3）など、多様な素材形式に対応しています。教材をアップロードするだけで、AIが選択問題・正誤問題・穴埋め問題・記述問題を自動生成し、各問題に詳しい解説を付けてお届けします。"
+  },
+  "CTA": {
+    "title": "クイズ作成をもっと簡単にしませんか？",
+    "description": "QuizFlowを活用する先生方の仲間入りをして、出題時間を短縮し、生徒の学習状況をより深く把握しましょう。",
+    "button_text": "無料で始める"
+  },
+  "Footer": {
+    "product": "製品",
+    "pricing": "料金",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社情報",
+    "terms_of_service": "利用規約",
+    "privacy_policy": "プライバシーポリシー",
+    "refund_policy": "返金ポリシー",
+    "footer_text": "© {year} {name}. 現代の教育者のために。"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "この操作を実行する権限がありません"
+  },
+  "SignIn": {
+    "meta_title": "ログイン",
+    "meta_description": "QuizFlowアカウントにログインして、クイズの作成を始めましょう。"
+  },
+  "SignUp": {
+    "meta_title": "新規登録",
+    "meta_description": "無料のQuizFlowアカウントを作成して、数分でクイズ作成を始めましょう。"
+  },
+  "DashboardLayout": {
+    "home": "ホーム",
+    "quizzes": "マイクイズ",
+    "todos": "ToDo",
+    "members": "メンバー",
+    "billing": "お支払い",
+    "settings": "設定"
+  },
+  "Quizzes": {
+    "title_bar": "マイクイズ",
+    "title_bar_description": "クイズを管理し、生徒と共有しましょう",
+    "add_quiz_button": "クイズを作成",
+    "empty_title": "クイズはまだありません",
+    "empty_description": "最初のクイズを作成して、生徒と共有しましょう。",
+    "empty_button": "クイズを作成"
+  },
+  "QuizTableColumns": {
+    "title_header": "タイトル",
+    "status_header": "ステータス",
+    "created_at_header": "作成日時",
+    "open_menu": "メニューを開く",
+    "edit": "編集",
+    "results": "成績",
+    "copy_link": "生徒用リンクをコピー",
+    "copy_link_copied": "コピーしました！",
+    "qr_code": "📱 QRコード",
+    "start_live": "Live Mode を開始",
+    "delete": "削除",
+    "status_draft": "下書き",
+    "status_published": "公開中",
+    "status_closed": "終了"
+  },
+  "AddQuiz": {
+    "title_bar": "クイズを作成",
+    "section_title": "新しいクイズを作成",
+    "section_description": "30秒で作成、タイトルや設定は後から変更できます",
+    "title_label": "クイズタイトル",
+    "title_placeholder": "例：第3章 小テスト",
+    "description_label": "出題テーマ（任意）",
+    "description_placeholder": "例：白居易の有名な詩、三角関数、日本の地形",
+    "description_hint": "生徒が回答する前にこの説明が表示され、AI問題作成時にもこのテーマに沿って出題されます。",
+    "submit_button": "クイズを作成",
+    "cancel_button": "キャンセル"
+  },
+  "Dashboard": {
+    "meta_title": "QuizFlow ダッシュボード",
+    "meta_description": "クイズの管理、生徒の成績確認、学習状況の追跡を、すべて一つの場所で行えます。"
+  },
+  "DashboardIndex": {
+    "title_bar": "ダッシュボード",
+    "title_bar_description": "QuizFlow へようこそ",
+    "message_state_title": "最初のクイズを作成しましょう",
+    "message_state_description": "ここからクイズを作成できます。<code>dashboard/page.tsx</code> を編集することで、このページをカスタマイズできます。",
+    "message_state_button": "クイズを作成",
+    "message_state_alternative": "無制限のクイズ作成と AI 自動問題生成をご利用ですか？月額 $9 で <url></url> にアップグレードできます。",
+    "max_message": "",
+    "stat_quiz_count": "クイズ総数",
+    "stat_responses": "解答回数",
+    "stat_avg_rate": "平均正答率",
+    "recent_quizzes": "最近のクイズ",
+    "new_quiz_button": "+ 新規クイズ",
+    "view_all_quizzes": "すべてのクイズを表示 →",
+    "col_title": "タイトル",
+    "col_status": "ステータス",
+    "col_actions": "操作",
+    "action_edit": "編集",
+    "action_results": "結果"
+  },
+  "UserProfile": {
+    "title_bar": "ユーザープロフィール",
+    "title_bar_description": "プロフィールの確認と管理を行います"
+  },
+  "OrganizationProfile": {
+    "title_bar": "組織管理",
+    "title_bar_description": "組織を管理します"
+  },
+  "Billing": {
+    "title_bar": "請求・お支払い",
+    "title_bar_description": "請求情報とサブスクリプションを管理します",
+    "current_section_title": "現在のプラン",
+    "current_section_description": "ご利用状況に合わせて料金プランを調整できます",
+    "manage_subscription_button": "サブスクリプション管理"
+  },
+  "BillingOptions": {
+    "current_plan": "現在のプラン",
+    "upgrade_plan": "Proにアップグレード"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "お支払い確認",
+    "message_state_title": "お支払いが完了しました",
+    "message_state_description": "お支払いが正常に処理されました。ご購入ありがとうございます。",
+    "message_state_button": "請求情報ページに戻る"
+  },
+  "QuizResults": {
+    "title": "クイズ結果",
+    "total_responses": "回答者数",
+    "avg_score": "平均点",
+    "question_count": "問題数",
+    "question_breakdown": "問題別正答率",
+    "question_body": "問題",
+    "correct_count": "正解数 / 回答数",
+    "correct_rate": "正答率",
+    "short_answer_note": "（記述式：手動採点が必要）",
+    "short_answer_summary": "記述式回答一覧",
+    "short_answer_empty": "（無回答）",
+    "short_answer_no_answers": "この問題への回答はまだありません",
+    "short_answer_ai_graded": "AI採点",
+    "short_answer_teacher_graded": "教師確認済み",
+    "short_answer_pending": "未採点",
+    "short_answer_mark_correct": "正解にする",
+    "short_answer_mark_wrong": "不正解にする",
+    "short_answer_saving": "保存中…",
+    "anonymous_student": "匿名",
+    "response_list": "回答一覧",
+    "no_responses": "まだ回答がありません",
+    "student_name": "氏名",
+    "student_email": "メールアドレス",
+    "score": "得点",
+    "submitted_at": "提出日時"
+  },
+  "QuizTake": {
+    "not_available": "このクイズは現在受験できません",
+    "not_available_description": "クイズがまだ公開されていないか、終了している可能性があります。先生にご確認ください。",
+    "no_questions": "このクイズにはまだ問題がありません"
+  },
+  "DataTable": {
+    "no_results": "データがありません。"
+  },
+  "Todos": {
+    "title_bar": "ToDoリスト",
+    "title_bar_description": "ToDoの確認と管理を行います",
+    "add_todo_button": "新規ToDo"
+  },
+  "TodoTableColumns": {
+    "open_menu": "メニューを開く",
+    "edit": "編集",
+    "delete": "削除",
+    "title_header": "タイトル",
+    "message_header": "内容",
+    "created_at_header": "作成日時"
+  },
+  "AddTodo": {
+    "title_bar": "ToDoを追加",
+    "add_todo_section_title": "新しいToDoを作成",
+    "add_todo_section_description": "下記のフォームに入力して新しいToDoを作成してください"
+  },
+  "EditTodo": {
+    "title_bar": "ToDo編集",
+    "edit_todo_section_title": "ToDoを編集",
+    "edit_todo_section_description": "以下のフォームに入力してToDoを編集してください"
+  },
+  "TodoForm": {
+    "title_label": "タイトル",
+    "title_description": "ToDoの内容がわかるタイトルを入力してください。",
+    "message_title": "内容",
+    "message_description": "ToDoの詳細な内容を入力してください。",
+    "submit_button": "送信"
+  },
+  "LiveMode": {
+    "title_host_lobby": "ライブ待機室",
+    "title_player_join": "ライブクイズに参加",
+    "label_game_pin": "ゲームPIN",
+    "label_nickname": "ニックネーム",
+    "label_join_url": "参加URL",
+    "btn_start_game": "開始",
+    "btn_next_question": "次の問題",
+    "btn_show_result": "解答を表示",
+    "btn_end_game": "終了",
+    "btn_show_leaderboard": "ランキングを表示",
+    "btn_join": "参加",
+    "btn_joining": "参加中…",
+    "btn_submit_answer": "回答する",
+    "btn_submitting": "送信中…",
+    "msg_waiting_host": "先生の開始を待っています…",
+    "msg_waiting_players": "参加者を待っています…",
+    "msg_waiting_others": "送信しました。他の参加者を待っています…",
+    "msg_game_not_found": "ライブが見つかりません。PINをご確認ください。",
+    "msg_game_ended": "このライブは終了しました",
+    "msg_nickname_taken": "このニックネームは既に使用されています",
+    "msg_time_up": "時間切れです！",
+    "msg_correct": "✅ 正解！",
+    "msg_wrong": "❌ 不正解",
+    "msg_no_answer": "⏱ 時間切れ・未回答",
+    "msg_need_player": "開始するには参加者が1人以上必要です",
+    "leaderboard_title": "最終ランキング",
+    "answered_count": "{count} / {total} 人が回答済み",
+    "question_progress": "第 {current} / {total} 問",
+    "remaining_time": "残り時間",
+    "correct_count": "{count} 問正解",
+    "err_no_supported_questions": "このクイズにはLive Modeで使える問題がありません（単一選択・複数選択・○×問題のみ対応）"
+  }
+}

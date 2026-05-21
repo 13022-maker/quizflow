@@ -63,13 +63,11 @@ const isOptionalAuthRoute = createRouteMatcher([
 // 公開頁但需要 Clerk context 讓 server component 內的 auth() 可選擇性讀 session,
 // 例：landing / pricing 頁的 visibility gate（未登入訪客 / Free <10 份只看 Free 卡）
 // 不強制登入,只是讓 getPricingVisibility() 之類的 helper 能拿到 userId
+// 從 AllLocales 動態 derive，新增語系不用再改這支
 const isOptionalAuthPageRoute = createRouteMatcher([
   '/',
-  '/en',
-  '/zh',
   '/pricing',
-  '/en/pricing',
-  '/zh/pricing',
+  ...AllLocales.flatMap(locale => [`/${locale}`, `/${locale}/pricing`]),
 ]);
 
 const isProtectedRoute = createRouteMatcher([
