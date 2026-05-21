@@ -239,6 +239,9 @@ STRIPE_SECRET_KEY=any_fake_value
 1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補
 2. ~~免費試用機制（Pro 功能 30 天體驗，到期自動降級）~~ ✅ 2026-04-30 完成 4 缺口修補（Fix 1: AI quota 走 isProOrAbove；Fix 2: billing 頁試用狀態四分支；Fix 3: 到期 banner 限期 7 天；Fix 4: dashboard layout eager trigger，30 天從進 dashboard 起算）。spec: `docs/superpowers/specs/2026-04-30-pro-trial-fixes-design.md`、plan: `docs/superpowers/plans/2026-04-30-pro-trial-fixes.md`
 3. 多語系擴展（日語、韓語、英語、簡體中文）
+   - **Phase 1：日文 (ja)** ✅ 2026-05-21 完成（commit c2af1cb）。spec: `docs/superpowers/specs/2026-05-20-i18n-japanese-design.md`、譯者註記: `src/locales/ja.translation-notes.md`、工具: `scripts/translate-locale.ts`（可重用於 Phase 2/3）
+   - **Phase 2：韓文 (ko)** — 未開（跑同腳本，多注意韓文長字串可能撐爆 nav/button 寬度）
+   - **Phase 3：簡中 (zh-CN)** — 未開（先用 opencc 繁→簡，再用 Claude 修詞）
 4. Live Mode v2（拆 3 子專案）：
    - **Sub-A 斷線偵測 + 重連 UI** ✅ 2026-04-30 完成（純 heartbeat 架構，spec: `docs/superpowers/specs/2026-04-30-live-mode-disconnect-detection-design.md`、plan: `docs/superpowers/plans/2026-04-30-live-mode-disconnect-detection.md`）
    - **Sub-B 新題型支援**（ranking / short_answer / listening）— 未開
