@@ -1493,8 +1493,26 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, result]);
 
-  // 快閃卡複習模式
+  // 快閃卡複習模式（考試模式下完全禁用，僅顯示提示頁）
   if (flashCardMode) {
+    if (preventLeave) {
+      return (
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-8 py-10 text-center shadow-sm">
+            <div className="text-4xl">📝</div>
+            <h2 className="mt-4 text-xl font-bold text-amber-900">目前正式測驗</h2>
+            <p className="mt-2 text-sm text-amber-800">考試模式下無法使用複習模式</p>
+            <button
+              type="button"
+              onClick={() => setFlashCardMode(false)}
+              className="mt-6 inline-flex items-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
+            >
+              返回作答
+            </button>
+          </div>
+        </div>
+      );
+    }
     return (
       <FlashCard
         questions={displayQuestions}
@@ -1591,13 +1609,15 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           )}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setFlashCardMode(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            🃏 複習模式
-          </button>
+          {!preventLeave && (
+            <button
+              type="button"
+              onClick={() => setFlashCardMode(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              🃏 複習模式
+            </button>
+          )}
           {/*
             家教模式按鈕暫時隱藏（保留 tutor logic 在下方，之後想啟用直接還原此區塊即可）
             <button
