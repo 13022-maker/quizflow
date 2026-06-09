@@ -9,8 +9,8 @@ import { describe, expect, it } from 'vitest';
 
 import {
   generateTeacherExam,
+  type TeacherExamChoiceQuestion,
   type TeacherExamInput,
-  type TeacherExamQuestion,
 } from './teacherExam';
 
 const baseInput: Omit<TeacherExamInput, 'questions'> = {
@@ -25,9 +25,11 @@ const baseInput: Omit<TeacherExamInput, 'questions'> = {
   scope: 'ch4~ch6',
 };
 
-const mkQuestion = (i: number): TeacherExamQuestion => ({
+const mkQuestion = (i: number): TeacherExamChoiceQuestion => ({
   stem: `題目 ${i}：這是測試題幹`,
-  options: { A: `選項A${i}`, B: `選項B${i}`, C: `選項C${i}`, D: `選項D${i}` },
+  options: [`選項A${i}`, `選項B${i}`, `選項C${i}`, `選項D${i}`],
+  points: 3,
+  answerIndices: [0],
 });
 
 const mkInput = (n: number): TeacherExamInput => ({
@@ -57,8 +59,42 @@ describe('generateTeacherExam', () => {
     expect(buf.length).toBeGreaterThan(0);
   });
 
-  it('35 題（超過答案欄上限）仍能產出 Buffer', async () => {
-    const buf = await generateTeacherExam(mkInput(35));
+  it('32 題（答案欄非 10 的倍數，最後一列補空格）仍能產出 Buffer', async () => {
+    const buf = await generateTeacherExam(mkInput(32));
+
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(0);
+  });
+
+  it('老師卷（variant=teacher，答案欄預填正解）能產出 Buffer', async () => {
+    const buf = await generateTeacherExam({ ...mkInput(10), variant: 'teacher' });
+
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(0);
+  });
+
+  it('含簡答題（二、簡答題區）能產出 Buffer', async () => {
+    const buf = await generateTeacherExam({
+      ...mkInput(5),
+      variant: 'teacher',
+      shortAnswers: [
+        { stem: '請說明何謂編譯', points: 5, refAnswer: '將原始碼轉成機器碼' },
+        { stem: '請寫出 main 函式', points: 5 },
+      ],
+    });
+
+    expect(Buffer.isBuffer(buf)).toBe(true);
+    expect(buf.length).toBeGreaterThan(0);
+  });
+
+  it('多選題（answerIndices 多個）能產出 Buffer', async () => {
+    const buf = await generateTeacherExam({
+      ...baseInput,
+      variant: 'teacher',
+      questions: [
+        { stem: '下列何者正確（複選）', options: ['甲', '乙', '丙', '丁'], points: 4, answerIndices: [0, 2] },
+      ],
+    });
 
     expect(Buffer.isBuffer(buf)).toBe(true);
     expect(buf.length).toBeGreaterThan(0);

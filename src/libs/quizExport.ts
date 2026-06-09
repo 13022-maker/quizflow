@@ -15,6 +15,7 @@ import type { Buffer } from 'node:buffer';
 import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
 import type { InferSelectModel } from 'drizzle-orm';
 
+import { stripOptionLabel } from '@/lib/ai/optionText';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -82,7 +83,7 @@ function questionToParagraphs(question: Question, index: number, variant: Export
           spacing: { before: 40, after: 40 },
           indent: { left: 400 },
           children: [
-            new TextRun({ text: `(${letter}) ${opt.text}` }),
+            new TextRun({ text: `(${letter}) ${stripOptionLabel(opt.text)}` }),
           ],
         }),
       );

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { stripOptionLabel } from '@/lib/ai/optionText';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -95,26 +96,28 @@ export async function POST(
 
     if ((q.type === 'mc' || q.type === 'listening') && q.options?.length) {
       // 選擇題：將 string[] 轉成 { id, text }[]
+      // stripOptionLabel：去掉 AI 塞在文字裡的「(A)」前綴，避免日後與字母重覆
       options = q.options.map((text, i) => ({
         id: String.fromCharCode(97 + i), // a, b, c, d
-        text,
+        text: stripOptionLabel(text),
       }));
       // answer 可能是 "A"/"B" 大寫字母，或選項文字本身
       const ansStr = typeof q.answer === 'string' ? q.answer : '';
       const answerKey = ansStr.trim().toLowerCase();
       const byLetter = options.find(o => o.id === answerKey);
-      const byText = options.find(o => o.text === ansStr);
+      // 文字 fallback 比對前同樣剝除前綴，兩邊一致才比得到
+      const byText = options.find(o => o.text === stripOptionLabel(ansStr));
       const matched = byLetter ?? byText;
       correctAnswers = matched ? [matched.id] : [];
     } else if (q.type === 'rank' && q.options?.length) {
       // 排序題：每個選項配 id，correctAnswers 為依 q.answer 文字順序對映的 id 陣列
       options = q.options.map((text, i) => ({
         id: String.fromCharCode(97 + i),
-        text,
+        text: stripOptionLabel(text),
       }));
       const answerArr = Array.isArray(q.answer) ? q.answer : [];
       correctAnswers = answerArr
-        .map(ansText => options!.find(o => o.text === ansText)?.id)
+        .map(ansText => options!.find(o => o.text === stripOptionLabel(ansText))?.id)
         .filter((id): id is string => Boolean(id));
       // AI 幻覺保險：若對映失敗，回退到輸入順序當正解
       if (correctAnswers.length !== options.length) {

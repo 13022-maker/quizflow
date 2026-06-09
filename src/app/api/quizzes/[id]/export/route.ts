@@ -13,7 +13,9 @@ import { and, asc, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { db } from '@/libs/DB';
+import { quizToTeacherExam } from '@/libs/quizExamMapper';
 import { generateQuizDocx } from '@/libs/quizExport';
+import { generateTeacherExam } from '@/libs/teacherExam';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
@@ -35,6 +37,8 @@ export async function GET(
   const { searchParams } = new URL(req.url);
   const variantRaw = searchParams.get('variant') ?? 'teacher';
   const variant = variantRaw === 'student' ? 'student' : 'teacher';
+  // format=exam → 段考考卷格式（啟英高中模板）；其他 → 簡易版
+  const isExam = searchParams.get('format') === 'exam';
 
   // 驗證所有權
   const [quiz] = await db
@@ -75,11 +79,15 @@ export async function GET(
     return NextResponse.json({ error: '此測驗還沒有題目' }, { status: 400 });
   }
 
-  const buffer = await generateQuizDocx(quiz as any, questions, variant);
+  const buffer = isExam
+    ? await generateTeacherExam(quizToTeacherExam(questions, variant))
+    : await generateQuizDocx(quiz as any, questions, variant);
 
   // 檔名安全化（Windows 不允許 \ / : * ? " < > |）
   const safeTitle = quiz.title.replace(/[\\/:*?"<>|]/g, '_');
-  const suffix = variant === 'teacher' ? '老師版' : '學生版';
+  const suffix = isExam
+    ? (variant === 'teacher' ? '段考_老師卷' : '段考_學生卷')
+    : (variant === 'teacher' ? '老師版' : '學生版');
   const filename = encodeURIComponent(`${safeTitle}_${suffix}.docx`);
 
   return new NextResponse(new Uint8Array(buffer), {

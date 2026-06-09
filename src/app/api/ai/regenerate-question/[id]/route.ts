@@ -11,6 +11,7 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { stripOptionLabel } from '@/lib/ai/optionText';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
 import { questionSchema, quizSchema } from '@/models/Schema';
@@ -183,9 +184,10 @@ ${hint ? `老師額外要求：${hint}` : ''}
   }
 
   // 轉成 DB 格式：{id, text}（id 用 a/b/c/d）
+  // stripOptionLabel：去掉 AI 可能塞在文字裡的「(A)」前綴，避免日後與字母重覆
   const newOptions = newOptionTexts.map((text, i) => ({
     id: String.fromCharCode(97 + i),
-    text,
+    text: stripOptionLabel(text),
   }));
 
   // answer 解析：可能是 "A" 或 "A,C"，也容忍 "(A)" 或全形逗號

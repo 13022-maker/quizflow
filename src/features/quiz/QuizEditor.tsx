@@ -44,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -508,15 +509,16 @@ export function QuizEditor({
 
       if (q.type === 'mc' && q.options?.length) {
         // 選擇題：將 string[] 轉成 { id, text }[]，並找出正確答案的 id
+        // stripOptionLabel：去掉 AI 塞在文字裡的「(A)」前綴，避免日後與字母重覆
         const options = q.options.map((text, i) => ({
           id: String.fromCharCode(97 + i), // a, b, c, d
-          text,
+          text: stripOptionLabel(text),
         }));
         // AI 回傳的 answer 可能是字母（"A"）或完整選項文字
-        // 先用字母匹配 option id，再用文字完全匹配做 fallback
+        // 先用字母匹配 option id，再用文字完全匹配做 fallback（比對前同樣剝除前綴）
         const answerKey = q.answer.trim().toLowerCase();
         const byLetter = options.find(o => o.id === answerKey);
-        const byText = options.find(o => o.text === q.answer);
+        const byText = options.find(o => o.text === stripOptionLabel(q.answer));
         const matched = byLetter ?? byText;
         await createQuestion(initialQuiz.id, {
           type,
@@ -774,6 +776,16 @@ export function QuizEditor({
                 <DropdownMenuItem asChild>
                   <a href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}>
                     📄 匯出 Word（學生版）
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=student`}>
+                    📝 段考考卷（學生卷）
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=teacher`}>
+                    📝 段考考卷（老師卷）
                   </a>
                 </DropdownMenuItem>
               </>

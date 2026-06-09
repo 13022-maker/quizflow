@@ -1,6 +1,13 @@
 // src/libs/teacherExam.ts
 // QuizFlow — 教師 Word 試卷匯出（啟英高中標準格式）
-// 將測驗資料輸出成 .docx Buffer，符合學校試卷模板（B4 紙、頁首勾選、答案欄）
+// 將測驗資料輸出成 .docx Buffer，符合學校試卷模板（B4 紙、頁首勾選、答案欄、頁尾頁碼）
+//
+// 支援：
+// - N 選項選擇題（單選 / 多選 / 是非）
+// - 配分依實際題目分數動態計算
+// - 答案欄依選擇題題數動態產生（每列 10 格）
+// - 簡答題另闢「二、簡答題」區
+// - teacher / student 兩種變體（老師卷預填答案 + 參考答案；學生卷留白）
 //
 // 注意：本檔輸出 CJK 試卷內容，刻意使用全形空白（U+3000）作排版，故停用 lint 規則。
 /* eslint-disable no-irregular-whitespace */
@@ -30,10 +37,21 @@ import {
 
 export type ExamPeriod = '期初' | '期中' | '期末';
 export type ClassType = '正規班' | '菁英班' | '實用技能班' | '僑生班';
+export type ExamVariant = 'teacher' | 'student';
 
-export type TeacherExamQuestion = {
+// 選擇題（含單選 / 多選 / 是非；是非由 mapper 轉成「正確 / 錯誤」兩選項）
+export type TeacherExamChoiceQuestion = {
   stem: string;
-  options: { A: string; B: string; C: string; D: string };
+  options: string[]; // N 個選項文字（不含 (A) 前綴，由本檔自動編號）
+  points: number;
+  answerIndices: number[]; // 正解選項的索引（多選可多個），老師卷用
+};
+
+// 簡答題
+export type TeacherExamShortQuestion = {
+  stem: string;
+  points: number;
+  refAnswer?: string; // 參考答案（老師卷顯示）
 };
 
 export type TeacherExamInput = {
@@ -46,7 +64,9 @@ export type TeacherExamInput = {
   applicableClass: string;
   teacherName: string;
   scope: string;
-  questions: TeacherExamQuestion[];
+  variant?: ExamVariant; // 預設 student
+  questions: TeacherExamChoiceQuestion[];
+  shortAnswers?: TeacherExamShortQuestion[];
 };
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -57,8 +77,9 @@ const SZ_TITLE = 28; // 14pt — 頁首大標
 const SZ_NOTE = 20; // 10pt — 誠實提醒
 const FILLED_BOX = '■';
 const EMPTY_BOX = '□';
+const COLS_PER_ROW = 10; // 答案欄每列格數
 
-// 必填欄位（除 questions 之外都是 string）
+// 必填欄位（除 questions / shortAnswers / variant 之外都是 string）
 const REQUIRED_STRING_FIELDS: ReadonlyArray<keyof TeacherExamInput> = [
   'school',
   'academicYear',
@@ -93,6 +114,22 @@ function P(children: TextRun[], opts: ParagraphOpts = {}): Paragraph {
     alignment: opts.alignment,
     spacing: opts.spacing ?? { before: 0, after: 0, line: 280 },
   });
+}
+
+// 索引 → 選項字母（0→A、1→B …）
+function letterFor(index: number): string {
+  return String.fromCharCode(65 + index);
+}
+
+// 配分文字：每題同分顯示「每{unit} X 分共 Y 分」，否則只顯示「共 Y 分」
+function pointsLabel(items: { points: number }[], unit: '格' | '題'): string {
+  if (items.length === 0) {
+    return '';
+  }
+  const total = items.reduce((sum, q) => sum + q.points, 0);
+  const first = items[0]!.points;
+  const allEqual = items.every(q => q.points === first);
+  return allEqual ? `(每${unit}${first}分共${total}分)` : `(共${total}分)`;
 }
 
 function validateInput(data: TeacherExamInput): void {
@@ -167,72 +204,102 @@ function buildSectionHeading(title: string): Paragraph {
   return P([T(title, { bold: true })]);
 }
 
-// 單一題目：N.【  】題幹 (A) ... (B) ... (C) ... (D) ...
-function buildQuestion(num: number, q: TeacherExamQuestion): Paragraph {
+// 單一選擇題：N.　(　)題幹　(A)選項　(B)選項 …
+function buildChoiceQuestion(num: number, q: TeacherExamChoiceQuestion): Paragraph {
+  const opts = q.options.map((text, i) => `(${letterFor(i)})${text}`).join('　');
   return P(
     [
-      T(`${num}.【　　】`),
+      T(`${num}.　(　)`),
       T(q.stem),
-      T(` (A) ${q.options.A}　(B) ${q.options.B}　(C) ${q.options.C}　(D) ${q.options.D}`),
+      T(`　${opts}　`),
     ],
     { spacing: { before: 60, after: 60, line: 320 } },
   );
 }
 
-// 答案欄：3 列題號 + 3 列空格 = 共 30 格
-function buildAnswerGrid(): Table {
+// 答案欄：依題數動態產生（每列 COLS_PER_ROW 格），老師卷在答案格預填正解字母
+function buildAnswerGrid(count: number, answersByNum: string[]): Table {
   // 頁面內容寬度 ≈ 14572 - 680 - 680 = 13212 DXA → 10 欄 × 1321 each
   const COL_WIDTH = 1321;
-  const TABLE_WIDTH = COL_WIDTH * 10;
+  const TABLE_WIDTH = COL_WIDTH * COLS_PER_ROW;
   const border = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
   const borders = { top: border, bottom: border, left: border, right: border };
 
+  // 題號列（不足整列的格子留空）
   const headerRow = (start: number) =>
     new TableRow({
       height: { value: 360, rule: HeightRule.ATLEAST },
-      children: Array.from(
-        { length: 10 },
-        (_, i) =>
-          new TableCell({
-            borders,
-            width: { size: COL_WIDTH, type: WidthType.DXA },
-            verticalAlign: VerticalAlign.CENTER,
-            shading: { fill: 'F2F2F2', type: ShadingType.CLEAR, color: 'auto' },
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [
-              P([T(String(start + i), { bold: true })], { alignment: AlignmentType.CENTER }),
-            ],
-          }),
-      ),
+      children: Array.from({ length: COLS_PER_ROW }, (_, i) => {
+        const num = start + i;
+        const label = num <= count ? String(num) : '';
+        return new TableCell({
+          borders,
+          width: { size: COL_WIDTH, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          shading: { fill: 'F2F2F2', type: ShadingType.CLEAR, color: 'auto' },
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [P([T(label, { bold: true })], { alignment: AlignmentType.CENTER })],
+        });
+      }),
     });
 
-  const answerRow = () =>
+  // 作答列（老師卷填正解，學生卷留白）
+  const answerRow = (start: number) =>
     new TableRow({
       height: { value: 540, rule: HeightRule.ATLEAST },
-      children: Array.from(
-        { length: 10 },
-        () =>
-          new TableCell({
-            borders,
-            width: { size: COL_WIDTH, type: WidthType.DXA },
-            margins: { top: 40, bottom: 40, left: 60, right: 60 },
-            children: [P([T('')])],
-          }),
-      ),
+      children: Array.from({ length: COLS_PER_ROW }, (_, i) => {
+        const num = start + i;
+        const ans = num <= count ? (answersByNum[num - 1] ?? '') : '';
+        return new TableCell({
+          borders,
+          width: { size: COL_WIDTH, type: WidthType.DXA },
+          verticalAlign: VerticalAlign.CENTER,
+          margins: { top: 40, bottom: 40, left: 60, right: 60 },
+          children: [P([T(ans, { bold: true })], { alignment: AlignmentType.CENTER })],
+        });
+      }),
     });
+
+  const rows: TableRow[] = [];
+  // 至少 1 列；題數為 0 時仍輸出一列空格
+  const totalRows = Math.max(1, Math.ceil(count / COLS_PER_ROW));
+  for (let r = 0; r < totalRows; r++) {
+    const start = r * COLS_PER_ROW + 1;
+    rows.push(headerRow(start), answerRow(start));
+  }
 
   return new Table({
     width: { size: TABLE_WIDTH, type: WidthType.DXA },
-    columnWidths: Array(10).fill(COL_WIDTH),
-    rows: [
-      headerRow(1),
-      answerRow(),
-      headerRow(11),
-      answerRow(),
-      headerRow(21),
-      answerRow(),
-    ],
+    columnWidths: Array(COLS_PER_ROW).fill(COL_WIDTH),
+    rows,
   });
+}
+
+// 簡答題區：逐題題幹 + 作答線（學生卷）／參考答案（老師卷）
+function buildShortAnswerSection(
+  shortAnswers: TeacherExamShortQuestion[],
+  variant: ExamVariant,
+): Paragraph[] {
+  const out: Paragraph[] = [];
+  out.push(P([T('')])); // 空行
+  out.push(buildSectionHeading(`二、簡答題${pointsLabel(shortAnswers, '題')}：`));
+  shortAnswers.forEach((q, i) => {
+    out.push(P([T(`${i + 1}. `), T(q.stem)], { spacing: { before: 60, after: 40, line: 320 } }));
+    if (variant === 'teacher') {
+      out.push(
+        P([T('　參考答案：', { bold: true }), T(q.refAnswer ?? '（無）')], {
+          spacing: { before: 0, after: 60, line: 320 },
+        }),
+      );
+    } else {
+      out.push(
+        P([T('　答：________________________________________________')], {
+          spacing: { before: 0, after: 60, line: 320 },
+        }),
+      );
+    }
+  });
+  return out;
 }
 
 // 頁尾：第 N 頁，共 M 頁
@@ -273,6 +340,17 @@ function buildFooter(): Footer {
 export async function generateTeacherExam(data: TeacherExamInput): Promise<Buffer> {
   validateInput(data);
 
+  const variant: ExamVariant = data.variant ?? 'student';
+  const choices = data.questions;
+  const shortAnswers = data.shortAnswers ?? [];
+
+  // 老師卷：每題正解字母字串（多選串接，如 "AC"）
+  const answersByNum = choices.map(q =>
+    variant === 'teacher'
+      ? q.answerIndices.map(letterFor).join('')
+      : '',
+  );
+
   const children: Array<Paragraph | Table> = [
     buildTopHeader(data),
     buildClassTypeLine(data),
@@ -280,17 +358,22 @@ export async function generateTeacherExam(data: TeacherExamInput): Promise<Buffe
     buildTeacherRow(data),
     buildHonestyNotice(),
     P([T('')]), // 空行
-    buildSectionHeading('一、單選題'),
+    buildSectionHeading(`一、選擇題${pointsLabel(choices, '格')}：`),
   ];
 
-  data.questions.forEach((q, i) => {
-    children.push(buildQuestion(i + 1, q));
+  choices.forEach((q, i) => {
+    children.push(buildChoiceQuestion(i + 1, q));
   });
 
+  // 答案欄
   children.push(P([T('')]));
-  children.push(buildSectionHeading('一、選擇題(每格4分共100分)：'));
   children.push(P([T('答案欄（請將答案書寫於答案格，未填寫不予計分）')]));
-  children.push(buildAnswerGrid());
+  children.push(buildAnswerGrid(choices.length, answersByNum));
+
+  // 簡答題區（若有）
+  if (shortAnswers.length > 0) {
+    children.push(...buildShortAnswerSection(shortAnswers, variant));
+  }
 
   const doc = new Document({
     creator: 'QuizFlow',
