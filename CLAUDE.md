@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code when working with code in this repository.
 
+## Design
+Use `.claude/design-systems/linear-app/DESIGN.md` as the active design system for all UI work.
+
 ## 專案簡介
 QuizFlow 是專為**台灣老師**設計的 AI 測驗 SaaS 平台。
 老師可快速上傳 PDF（或其他素材），AI 自動生成高品質測驗題，發佈分享連結，讓學生**無需登入**即可作答，系統自動批改並顯示成績與詳解。
