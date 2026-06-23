@@ -198,7 +198,7 @@ const anthropic = new Anthropic();
 async function generateCards(meta: SetMeta): Promise<Card[]> {
   const prompt = buildPrompt(meta);
   const msg = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6-20250620',
     max_tokens: 8192,
     messages: [{ role: 'user', content: prompt }],
   });

@@ -16,7 +16,7 @@ type ModelChoice = 'gemini' | 'claude';
 const DEFAULT_MODEL: ModelChoice = 'gemini';
 
 const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
-const CLAUDE_MODEL_NAME = 'claude-sonnet-4-20250514';
+const CLAUDE_MODEL_NAME = 'claude-sonnet-4-6-20250620';
 
 // 判斷伺服器端是否已配置對應 API 金鑰
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());

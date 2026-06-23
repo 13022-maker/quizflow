@@ -308,7 +308,7 @@ ${typesPrompt}
             'anthropic-version': '2023-06-01',
           },
           body: JSON.stringify({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-6-20250620',
             max_tokens: 4096,
             messages: [{ role: 'user', content: prompt }],
           }),

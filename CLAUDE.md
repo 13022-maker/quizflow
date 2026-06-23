@@ -90,7 +90,7 @@ AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗
 
 **模型指定**
 - Ollama 本地模型名稱：`gemma4:e4b`
-- 分析類功能（弱點分析、班級建議）：Claude API（`claude-sonnet-4-20250514`）
+- 分析類功能（弱點分析、班級建議）：Claude API（`claude-sonnet-4-6-20250620`）
 - 所有 AI 相關邏輯統一放在 `src/lib/ai/` 目錄下
 
 **生成輸出格式（標準 JSON Schema）**

@@ -67,7 +67,7 @@ export async function gradeShortAnswer(input: GradeInput): Promise<GradeResult> 
     .join('\n');
 
   const message = await client.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-6-20250620',
     max_tokens: 512,
     messages: [{ role: 'user', content: promptBody }],
   });

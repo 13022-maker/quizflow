@@ -153,7 +153,7 @@ ${hint ? `老師額外要求：${hint}` : ''}
     console.warn('[regenerate-question] Gemini 過載，fallback Claude');
     try {
       const message = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6-20250620',
         max_tokens: 2048,
         messages: [{ role: 'user', content: prompt }],
       });
