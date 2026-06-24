@@ -80,7 +80,7 @@ export async function POST(request: Request) {
   // Fallback: Claude
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250122',
+      model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
       messages: [{ role: 'user', content: userPrompt }],

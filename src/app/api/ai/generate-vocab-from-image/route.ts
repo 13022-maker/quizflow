@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
-const CLAUDE_MODEL_NAME = 'claude-sonnet-4-20250122';
+const CLAUDE_MODEL_NAME = 'claude-sonnet-4-6';
 
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
 const hasAnthropicKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
