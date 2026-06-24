@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       .join('\n');
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-20250122',
       max_tokens: 1024,
       messages: [
         {

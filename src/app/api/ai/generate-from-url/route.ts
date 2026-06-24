@@ -259,7 +259,7 @@ ${typesPrompt}
     if (effectiveModel === 'claude') {
       const message = await callWithRetry(() =>
         anthropic!.messages.create({
-          model: 'claude-sonnet-4-20250514',
+          model: 'claude-sonnet-4-20250122',
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
         }));
@@ -284,7 +284,7 @@ ${typesPrompt}
         if (hasAnthropicKey) {
           const message = await callWithRetry(() =>
             anthropic!.messages.create({
-              model: 'claude-sonnet-4-20250514',
+              model: 'claude-sonnet-4-20250122',
               max_tokens: 4096,
               messages: [{ role: 'user', content: prompt }],
             }));
