@@ -308,6 +308,10 @@
     "anonymous": "匿名",
     "no_data": "日付範囲を選択して検索してください",
     "no_results": "この期間の成績データはありません",
-    "back": "テスト一覧に戻る"
+    "back": "テスト一覧に戻る",
+    "quick_week": "今週",
+    "quick_month": "今月",
+    "quick_lastMonth": "先月",
+    "filter_quizzes": "テストを絞り込む"
   }
 }

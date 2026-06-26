@@ -308,6 +308,10 @@
     "anonymous": "Anonymous",
     "no_data": "Select a date range and click Search",
     "no_results": "No results for this period",
-    "back": "Back to quizzes"
+    "back": "Back to quizzes",
+    "quick_week": "This Week",
+    "quick_month": "This Month",
+    "quick_lastMonth": "Last Month",
+    "filter_quizzes": "Filter Quizzes"
   }
 }

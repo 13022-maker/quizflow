@@ -30,6 +30,19 @@ function formatPercentage(cell: ScoreCell) {
   return `${((cell.score / cell.totalPoints) * 100).toFixed(1)}%`;
 }
 
+// 計算本週一
+function getMonday(d: Date) {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const monday = new Date(d);
+  monday.setDate(d.getDate() + diff);
+  return monday;
+}
+
+function toDateString(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
 export function StatisticsCrossTable() {
   const t = useTranslations('Statistics');
   const [isPending, startTransition] = useTransition();
@@ -47,10 +60,31 @@ export function StatisticsCrossTable() {
   // 姓名搜尋
   const [nameFilter, setNameFilter] = useState('');
 
+  // 測驗多選篩選（null = 全選）
+  const [selectedQuizIds, setSelectedQuizIds] = useState<Set<number> | null>(null);
+
+  // 快速日期
+  const applyQuickDate = useCallback((preset: 'week' | 'month' | 'lastMonth') => {
+    const today = new Date();
+    if (preset === 'week') {
+      setStartDate(toDateString(getMonday(today)));
+      setEndDate(toDateString(today));
+    } else if (preset === 'month') {
+      setStartDate(toDateString(new Date(today.getFullYear(), today.getMonth(), 1)));
+      setEndDate(toDateString(today));
+    } else {
+      const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const last = new Date(today.getFullYear(), today.getMonth(), 0);
+      setStartDate(toDateString(first));
+      setEndDate(toDateString(last));
+    }
+  }, []);
+
   // 查詢
   const handleSearch = useCallback(() => {
     if (!startDate || !endDate) return;
     setError('');
+    setSelectedQuizIds(null); // 重置測驗篩選
     startTransition(async () => {
       const result = await getStatisticsData({ startDate, endDate });
       if (result.error) {
@@ -62,6 +96,29 @@ export function StatisticsCrossTable() {
       setHasSearched(true);
     });
   }, [startDate, endDate]);
+
+  // 切換單一測驗勾選
+  const toggleQuiz = useCallback((id: number) => {
+    setSelectedQuizIds((prev) => {
+      // null = 全選，展開成全部勾選後再切換
+      const base = prev ?? new Set(quizzes.map((q) => q.id));
+      const next = new Set(base);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      // 若全部都選，回到 null（全選狀態）
+      if (next.size === quizzes.length) return null;
+      return next;
+    });
+  }, [quizzes]);
+
+  // 目前顯示的測驗清單（套用篩選）
+  const visibleQuizzes = useMemo(() => {
+    if (!selectedQuizIds) return quizzes;
+    return quizzes.filter((q) => selectedQuizIds.has(q.id));
+  }, [quizzes, selectedQuizIds]);
 
   // Pivot 邏輯：建立交叉表資料
   const pivotData = useMemo(() => {
@@ -78,7 +135,7 @@ export function StatisticsCrossTable() {
     }
 
     return students.map((name) => {
-      const cells = quizzes.map((q) => lookup.get(`${name}__${q.id}`) ?? null);
+      const cells = visibleQuizzes.map((q) => lookup.get(`${name}__${q.id}`) ?? null);
 
       let totalScore = 0;
       let totalPoints = 0;
@@ -98,7 +155,7 @@ export function StatisticsCrossTable() {
         totalPoints: hasAnyScore ? totalPoints : null,
       };
     });
-  }, [quizzes, responses]);
+  }, [visibleQuizzes, responses]);
 
   // 姓名篩選
   const filteredRows = useMemo(() => {
@@ -115,7 +172,7 @@ export function StatisticsCrossTable() {
 
     const headers = [
       t('student_name'),
-      ...quizzes.map((q) => `${q.title} (${formatDate(q.createdAt)})`),
+      ...visibleQuizzes.map((q) => `${q.title} (${formatDate(q.createdAt)})`),
       t('total'),
       t('total_full_score'),
       t('total_percentage'),
@@ -144,10 +201,24 @@ export function StatisticsCrossTable() {
     a.download = `成績統計_${startDate}_${endDate}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [filteredRows, quizzes, startDate, endDate, t]);
+  }, [filteredRows, visibleQuizzes, startDate, endDate, t]);
 
   return (
     <div className="space-y-4">
+      {/* 快速日期按鈕 */}
+      <div className="flex flex-wrap gap-2">
+        {(['week', 'month', 'lastMonth'] as const).map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => applyQuickDate(preset)}
+            className="rounded-md border border-gray-300 px-3 py-1 text-xs font-medium text-gray-600 transition hover:bg-gray-100"
+          >
+            {t(`quick_${preset}`)}
+          </button>
+        ))}
+      </div>
+
       {/* 日期篩選列 */}
       <div className="flex flex-wrap items-end gap-3">
         <div>
@@ -185,6 +256,33 @@ export function StatisticsCrossTable() {
       {/* 錯誤提示 */}
       {error && (
         <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>
+      )}
+
+      {/* 測驗多選篩選 */}
+      {hasSearched && quizzes.length > 0 && (
+        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <div className="mb-2 text-xs font-medium text-gray-600">{t('filter_quizzes')}</div>
+          <div className="flex flex-wrap gap-2">
+            {quizzes.map((q) => {
+              const checked = !selectedQuizIds || selectedQuizIds.has(q.id);
+              return (
+                <label
+                  key={q.id}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs transition hover:bg-gray-100"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleQuiz(q.id)}
+                    className="accent-gray-900"
+                  />
+                  <span className="text-gray-700">{q.title}</span>
+                  <span className="text-gray-400">({formatDate(q.createdAt)})</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* 搜尋 + 匯出列 */}
@@ -225,7 +323,7 @@ export function StatisticsCrossTable() {
                 <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left font-medium text-gray-700">
                   {t('student_name')}
                 </th>
-                {quizzes.map((q) => (
+                {visibleQuizzes.map((q) => (
                   <th
                     key={q.id}
                     className="whitespace-nowrap px-4 py-3 text-center font-medium text-gray-700"
@@ -249,7 +347,7 @@ export function StatisticsCrossTable() {
                   </td>
                   {row.cells.map((cell, i) => (
                     <td
-                      key={`${row.studentName}-${quizzes[i]!.id}`}
+                      key={`${row.studentName}-${visibleQuizzes[i]!.id}`}
                       className="whitespace-nowrap px-4 py-3 text-center text-gray-600"
                       title={formatPercentage(cell)}
                     >

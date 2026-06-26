@@ -308,6 +308,10 @@
     "anonymous": "匿名",
     "no_data": "請選擇日期區間並點擊查詢",
     "no_results": "該期間沒有成績資料",
-    "back": "返回測驗列表"
+    "back": "返回測驗列表",
+    "quick_week": "本週",
+    "quick_month": "本月",
+    "quick_lastMonth": "上個月",
+    "filter_quizzes": "篩選測驗"
   }
 }
