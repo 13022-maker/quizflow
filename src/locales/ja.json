@@ -116,7 +116,8 @@
     "add_quiz_button": "クイズを作成",
     "empty_title": "クイズはまだありません",
     "empty_description": "最初のクイズを作成して、生徒と共有しましょう。",
-    "empty_button": "クイズを作成"
+    "empty_button": "クイズを作成",
+    "stats_button": "成績統計"
   },
   "QuizTableColumns": {
     "title_header": "タイトル",
@@ -292,5 +293,21 @@
     "remaining_time": "残り時間",
     "correct_count": "{count} 問正解",
     "err_no_supported_questions": "このクイズにはLive Modeで使える問題がありません（単一選択・複数選択・○×問題のみ対応）"
+  },
+  "Statistics": {
+    "title": "成績統計",
+    "start_date": "開始日",
+    "end_date": "終了日",
+    "search": "検索",
+    "search_student": "学生名を検索",
+    "export_csv": "CSV エクスポート",
+    "total": "合計",
+    "total_full_score": "合計満点",
+    "total_percentage": "合計パーセント",
+    "student_name": "学生名",
+    "anonymous": "匿名",
+    "no_data": "日付範囲を選択して検索してください",
+    "no_results": "この期間の成績データはありません",
+    "back": "テスト一覧に戻る"
   }
 }

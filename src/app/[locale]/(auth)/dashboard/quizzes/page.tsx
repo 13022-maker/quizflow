@@ -139,6 +139,12 @@ export default async function QuizzesPage() {
               // 主按鈕直達 AI 命題；旁邊加小字「手動建立」副入口連到 /new 頁（手動 / vocab）
               <div className="flex items-center gap-3">
                 <Link
+                  href="/dashboard/quizzes/statistics"
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 transition hover:bg-gray-50"
+                >
+                  {t('stats_button')}
+                </Link>
+                <Link
                   href="/dashboard/quizzes/new"
                   className="text-xs text-muted-foreground hover:text-foreground hover:underline"
                 >

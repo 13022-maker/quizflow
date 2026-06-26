@@ -116,7 +116,8 @@
     "add_quiz_button": "New Quiz",
     "empty_title": "No quizzes yet",
     "empty_description": "Create your first quiz and share it with your students.",
-    "empty_button": "Create Quiz"
+    "empty_button": "Create Quiz",
+    "stats_button": "Score Statistics"
   },
   "QuizTableColumns": {
     "title_header": "Title",
@@ -292,5 +293,21 @@
     "remaining_time": "Time left",
     "correct_count": "{count} correct",
     "err_no_supported_questions": "This quiz has no questions supported by Live Mode (only single/multiple choice and true/false)"
+  },
+  "Statistics": {
+    "title": "Score Statistics",
+    "start_date": "Start Date",
+    "end_date": "End Date",
+    "search": "Search",
+    "search_student": "Search student name",
+    "export_csv": "Export CSV",
+    "total": "Total",
+    "total_full_score": "Total Full Score",
+    "total_percentage": "Total Percentage",
+    "student_name": "Student Name",
+    "anonymous": "Anonymous",
+    "no_data": "Select a date range and click Search",
+    "no_results": "No results for this period",
+    "back": "Back to quizzes"
   }
 }

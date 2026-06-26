@@ -116,7 +116,8 @@
     "add_quiz_button": "建立測驗",
     "empty_title": "還沒有測驗",
     "empty_description": "建立第一份測驗，並分享給您的學生。",
-    "empty_button": "建立測驗"
+    "empty_button": "建立測驗",
+    "stats_button": "成績統計"
   },
   "QuizTableColumns": {
     "title_header": "標題",
@@ -292,5 +293,21 @@
     "remaining_time": "剩餘時間",
     "correct_count": "答對 {count} 題",
     "err_no_supported_questions": "此測驗沒有可用於 Live Mode 的題目（僅支援單選、多選、是非題）"
+  },
+  "Statistics": {
+    "title": "成績統計",
+    "start_date": "起始日",
+    "end_date": "結束日",
+    "search": "查詢",
+    "search_student": "搜尋學生姓名",
+    "export_csv": "匯出 CSV",
+    "total": "加總",
+    "total_full_score": "加總滿分",
+    "total_percentage": "加總百分比",
+    "student_name": "學生姓名",
+    "anonymous": "匿名",
+    "no_data": "請選擇日期區間並點擊查詢",
+    "no_results": "該期間沒有成績資料",
+    "back": "返回測驗列表"
   }
 }
