@@ -217,7 +217,7 @@ async function generateCards(meta: SetMeta): Promise<Card[]> {
 
   const parsed = JSON.parse(jsonMatch[0]);
   if (!Array.isArray(parsed)) {
-    throw new Error('回應非 array');
+    throw new TypeError('回應非 array');
   }
 
   // 基本欄位檢查
@@ -251,7 +251,7 @@ async function main() {
   // 參數
   const args = process.argv.slice(2);
   const ownerIdArg = args[args.indexOf('--owner-id') + 1];
-  const onlyArg = args.indexOf('--only') >= 0 ? Number.parseInt(args[args.indexOf('--only') + 1] ?? '', 10) : null;
+  const onlyArg = args.includes('--only') ? Number.parseInt(args[args.indexOf('--only') + 1] ?? '', 10) : null;
 
   const ownerId = (args.includes('--owner-id') && ownerIdArg) ? ownerIdArg : 'user_3C9FZwiUnMJYsBJ7T05aqmFku58';
   const targetSets = onlyArg ? SETS.filter(s => s.index === onlyArg) : SETS;

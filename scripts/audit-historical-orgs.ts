@@ -42,11 +42,11 @@ type AuditResult = DbOrg & {
 const SLEEP_MS = 120; // 防 Clerk rate limit
 
 function sleep(ms: number) {
-  return new Promise((r) => setTimeout(r, ms));
+  return new Promise(r => setTimeout(r, ms));
 }
 
 async function lookupOrg(orgId: string): Promise<AuditResult> {
-  const dbOrg = dbOrgs.find((o) => o.ownerId === orgId)!;
+  const dbOrg = dbOrgs.find(o => o.ownerId === orgId)!;
   try {
     const res = await fetch(
       `https://api.clerk.com/v1/organizations/${orgId}`,
@@ -107,7 +107,9 @@ async function main() {
     const r = await lookupOrg(o.ownerId);
     results.push(r);
     console.log(r.status === 'active' ? `✅ active(createdBy=${r.createdBy ?? 'null'})` : r.status === 'not_found' ? '🪦 not_found(已刪除)' : `⚠️  error(${r.httpStatus})`);
-    if (i < dbOrgs.length - 1) await sleep(SLEEP_MS);
+    if (i < dbOrgs.length - 1) {
+      await sleep(SLEEP_MS);
+    }
   }
 
   // 寫 JSON
@@ -117,11 +119,11 @@ async function main() {
   );
 
   // 統計
-  const active = results.filter((r) => r.status === 'active');
-  const notFound = results.filter((r) => r.status === 'not_found');
-  const errors = results.filter((r) => r.status === 'error');
-  const activeWithCreator = active.filter((r) => r.createdBy);
-  const activeNoCreator = active.filter((r) => !r.createdBy);
+  const active = results.filter(r => r.status === 'active');
+  const notFound = results.filter(r => r.status === 'not_found');
+  const errors = results.filter(r => r.status === 'error');
+  const activeWithCreator = active.filter(r => r.createdBy);
+  const activeNoCreator = active.filter(r => !r.createdBy);
 
   const activeRows = active.reduce((s, r) => s + r.totalRows, 0);
   const notFoundRows = notFound.reduce((s, r) => s + r.totalRows, 0);
@@ -193,7 +195,7 @@ async function main() {
   lines.push(`- Not found(🪦): Clerk 已刪除,DB 那 N row 變死資料`);
   lines.push(`  → 選項: a) 也 DELETE  b) 改 owner_id 給特定 user  c) 維持原狀`);
 
-  fs.writeFileSync(path.join('tmp', 'clerk-org-audit.md'), lines.join('\n') + '\n');
+  fs.writeFileSync(path.join('tmp', 'clerk-org-audit.md'), `${lines.join('\n')}\n`);
 
   console.log(``);
   console.log(`📝 結果:`);

@@ -216,7 +216,7 @@ async function runPlayer(nickname: string, log: PlayerLog): Promise<void> {
               isCorrect: !!result.isCorrect,
             });
           }
-        })().catch(() => {/* 忽略，不中斷主迴圈 */});
+        })().catch(() => { /* 忽略，不中斷主迴圈 */ });
       }
     }
 
@@ -231,7 +231,7 @@ async function runPlayer(nickname: string, log: PlayerLog): Promise<void> {
 
 function pct(arr: number[], p: number): number {
   if (arr.length === 0) {
-    return NaN;
+    return Number.NaN;
   }
   const sorted = [...arr].sort((a, b) => a - b);
   const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * p));
@@ -239,7 +239,7 @@ function pct(arr: number[], p: number): number {
 }
 
 function printReport(logs: PlayerLog[]) {
-  console.log('\n' + '='.repeat(80));
+  console.log(`\n${'='.repeat(80)}`);
   console.log('              📊 Live Mode 壓測報告');
   console.log('='.repeat(80));
 
@@ -277,7 +277,7 @@ function printReport(logs: PlayerLog[]) {
 
   console.log(`\n[題目同步偏差] (老師按下一題後，所有玩家收到題目的時間差)`);
   console.log('  Q# | qId  | 玩家數 | 最快(ms) | 中位(ms) | 最慢(ms) | 偏差(ms)');
-  console.log('  ' + '-'.repeat(70));
+  console.log(`  ${'-'.repeat(70)}`);
   for (const qid of qidOrdered) {
     const events = joined
       .map(l => l.questionEvents.find(e => e.questionId === qid))
@@ -315,7 +315,7 @@ function printReport(logs: PlayerLog[]) {
   console.log(`\n[最終結果]`);
   const ranked = [...joined].sort((a, b) => b.finalScore - a.finalScore);
   console.log('  排名 | 暱稱       | 分數    | 答對 | poll 失敗');
-  console.log('  ' + '-'.repeat(50));
+  console.log(`  ${'-'.repeat(50)}`);
   ranked.forEach((l, i) => {
     console.log(
       `  ${String(i + 1).padStart(3)}  | ${l.nickname.padEnd(10)} | `
@@ -324,7 +324,7 @@ function printReport(logs: PlayerLog[]) {
     );
   });
 
-  console.log('\n' + '='.repeat(80) + '\n');
+  console.log(`\n${'='.repeat(80)}\n`);
 }
 
 async function main() {

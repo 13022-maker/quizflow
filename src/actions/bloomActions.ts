@@ -33,7 +33,9 @@ function generateRoomCode(): string {
 
 // Bloom 題型 → QuizFlow 題型映射
 function toQuizFlowType(bloomType: BloomQuestion['type']): 'single_choice' | 'short_answer' {
-  if (bloomType === 'short_answer') return 'short_answer';
+  if (bloomType === 'short_answer') {
+    return 'short_answer';
+  }
   return 'single_choice';
 }
 
@@ -45,7 +47,9 @@ function buildOptions(opts: string[]): { id: string; text: string }[] {
 
 // correct_answer（索引）→ correctAnswers（id 陣列）
 function buildCorrectAnswers(question: BloomQuestion): string[] {
-  if (question.type === 'short_answer') return [];
+  if (question.type === 'short_answer') {
+    return [];
+  }
   const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
   const idx = typeof question.correct_answer === 'number' ? question.correct_answer : 0;
   return [ids[idx] ?? 'a'];
@@ -59,7 +63,9 @@ export async function createQuizWithBloomQuestions(
   questions: BloomQuestion[],
 ): Promise<{ quizId: number } | { error: string }> {
   const { userId } = await auth();
-  if (!userId) return { error: '未登入' };
+  if (!userId) {
+    return { error: '未登入' };
+  }
 
   const titleResult = TitleSchema.safeParse(title);
   if (!titleResult.success) {
@@ -77,7 +83,9 @@ export async function createQuizWithBloomQuestions(
     })
     .returning();
 
-  if (!inserted) return { error: '建立測驗失敗' };
+  if (!inserted) {
+    return { error: '建立測驗失敗' };
+  }
 
   const quizId = inserted.id;
 

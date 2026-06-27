@@ -194,6 +194,7 @@ describe('assertCanFork', () => {
   it('private source 拋 ForkError code=visibility', () => {
     try {
       assertCanFork(mkSource({ visibility: 'private' }), 'user_new', true);
+
       expect.fail('應該拋出 ForkError');
     } catch (e) {
       expect(e).toBeInstanceOf(ForkError);
@@ -204,6 +205,7 @@ describe('assertCanFork', () => {
   it('self-fork（actor 等於 source.ownerId）拋 ForkError code=self-fork', () => {
     try {
       assertCanFork(mkSource({ ownerId: 'user_x' }), 'user_x', true);
+
       expect.fail('應該拋出 ForkError');
     } catch (e) {
       expect(e).toBeInstanceOf(ForkError);
@@ -214,6 +216,7 @@ describe('assertCanFork', () => {
   it('非 Pro 拋 ForkError code=plan', () => {
     try {
       assertCanFork(mkSource(), 'user_new', false);
+
       expect.fail('應該拋出 ForkError');
     } catch (e) {
       expect(e).toBeInstanceOf(ForkError);
@@ -224,6 +227,7 @@ describe('assertCanFork', () => {
   it('source 不存在（null）拋 ForkError code=not-found', () => {
     try {
       assertCanFork(null, 'user_new', true);
+
       expect.fail('應該拋出 ForkError');
     } catch (e) {
       expect(e).toBeInstanceOf(ForkError);

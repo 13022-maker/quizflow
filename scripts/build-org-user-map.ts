@@ -46,11 +46,15 @@ async function fetchAllOrgs(): Promise<Org[]> {
       data: Array<{ id: string; name: string; created_by?: string | null }>;
     };
 
-    if (!json.data?.length) break;
+    if (!json.data?.length) {
+      break;
+    }
     for (const o of json.data) {
       all.push({ id: o.id, name: o.name, createdBy: o.created_by ?? null });
     }
-    if (json.data.length < limit) break;
+    if (json.data.length < limit) {
+      break;
+    }
     offset += limit;
   }
   return all;
@@ -85,7 +89,7 @@ function buildSQL(
   if (map.length === 0 && deadOrgIds.length === 0) {
     lines.push(`-- (empty — 此 migration 等同 noop)`);
     lines.push(`SELECT 1;`);
-    return lines.join('\n') + '\n';
+    return `${lines.join('\n')}\n`;
   }
 
   // ---- Section A: Active orgs ----
@@ -113,7 +117,7 @@ function buildSQL(
     lines.push(`-- =============================================`);
     lines.push(`-- Section B: Dead orgs (${deadOrgIds.length} 個) → ${DEAD_ORG_FALLBACK_USER}`);
     lines.push(`-- =============================================`);
-    const inList = deadOrgIds.map((id) => `  '${id}'`).join(',\n');
+    const inList = deadOrgIds.map(id => `  '${id}'`).join(',\n');
     for (const t of TABLES) {
       lines.push(`UPDATE "${t}" SET owner_id = '${DEAD_ORG_FALLBACK_USER}' WHERE owner_id IN (`);
       lines.push(inList);
@@ -122,7 +126,7 @@ function buildSQL(
     }
   }
 
-  return lines.join('\n') + '\n';
+  return `${lines.join('\n')}\n`;
 }
 
 function appendJournalEntry() {
@@ -140,7 +144,7 @@ function appendJournalEntry() {
     tag: '0020_org_to_user_remap',
     breakpoints: true,
   });
-  fs.writeFileSync(p, JSON.stringify(j, null, 2) + '\n');
+  fs.writeFileSync(p, `${JSON.stringify(j, null, 2)}\n`);
   console.log('📝 _journal.json 追加 0020 entry');
 }
 
@@ -152,7 +156,7 @@ function loadDeadOrgIds(): string[] {
   }
   type AuditRow = { ownerId: string; status: 'active' | 'not_found' | 'error' };
   const audit = JSON.parse(fs.readFileSync(auditPath, 'utf8')) as AuditRow[];
-  const deadIds = audit.filter((r) => r.status === 'not_found').map((r) => r.ownerId);
+  const deadIds = audit.filter(r => r.status === 'not_found').map(r => r.ownerId);
   console.log(`📦 audit 抓到 ${deadIds.length} 個 dead org → reassign 給 ${DEAD_ORG_FALLBACK_USER}`);
   return deadIds;
 }
@@ -165,8 +169,11 @@ async function main() {
   const mapping: Array<{ orgId: string; userId: string }> = [];
   const noCreator: Org[] = [];
   for (const o of orgs) {
-    if (!o.createdBy) noCreator.push(o);
-    else mapping.push({ orgId: o.id, userId: o.createdBy });
+    if (!o.createdBy) {
+      noCreator.push(o);
+    } else {
+      mapping.push({ orgId: o.id, userId: o.createdBy });
+    }
   }
 
   fs.mkdirSync('tmp', { recursive: true });
@@ -174,14 +181,17 @@ async function main() {
     'tmp/org-user-map.json',
     JSON.stringify(
       { generatedAt: new Date().toISOString(), mapping, noCreator },
-      null, 2,
+      null,
+      2,
     ),
   );
   console.log('📝 對照表 → tmp/org-user-map.json');
 
   if (noCreator.length) {
     console.warn(`⚠️  ${noCreator.length} 個 active org 無 createdBy:`);
-    for (const o of noCreator) console.warn(`   ${o.id} (${o.name})`);
+    for (const o of noCreator) {
+      console.warn(`   ${o.id} (${o.name})`);
+    }
   }
 
   const deadOrgIds = loadDeadOrgIds();

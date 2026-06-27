@@ -1076,7 +1076,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   onChange={e => setCount(Number(e.target.value))}
                   className="h-2 flex-1 accent-amber-500"
                 />
-                <span className="inline-flex min-w-[2.5rem] items-center justify-center rounded-lg bg-amber-50 px-2 py-1 text-base font-bold tabular-nums text-amber-600">
+                <span className="inline-flex min-w-10 items-center justify-center rounded-lg bg-amber-50 px-2 py-1 text-base font-bold tabular-nums text-amber-600">
                   {effectiveCount}
                 </span>
               </div>

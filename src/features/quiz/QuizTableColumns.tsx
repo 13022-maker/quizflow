@@ -49,7 +49,7 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
     startTransition(async () => {
       const res = await createLiveGame({ quizId: quiz.id });
       // DEBUG：把完整 res 印到 console 方便定位暫時的 'error' in undefined
-      // eslint-disable-next-line no-console
+
       console.warn('[createLiveGame result]', res);
       if (res && typeof res === 'object' && 'error' in res) {
         setLiveError(res.error ?? '建立失敗');

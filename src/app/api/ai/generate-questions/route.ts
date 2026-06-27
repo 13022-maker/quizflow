@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     '108-shs-geography': make108Prefix('高中地理'),
     '108-shs-science': make108Prefix('高中自然'),
     // PISA 國際素養
-    pisa: `請以 PISA 國際學生能力評量風格出題：
+    'pisa': `請以 PISA 國際學生能力評量風格出題：
 - 題幹必須連結真實生活情境（社會議題、科學現象、數據資料）
 - 強調閱讀理解、資料判讀、推理應用
 - 跨領域整合，不限單一學科知識

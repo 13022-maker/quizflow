@@ -24,7 +24,9 @@ export default async function StatisticsPage() {
           href="/dashboard/quizzes"
           className="text-sm text-gray-500 transition hover:text-gray-700"
         >
-          ← {t('back')}
+          ←
+          {' '}
+          {t('back')}
         </Link>
         <h1 className="text-2xl font-bold">{t('title')}</h1>
       </div>

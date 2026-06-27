@@ -63,7 +63,7 @@ export async function getStatisticsData(input: { startDate: string; endDate: str
     return { quizzes: [], responses: [] };
   }
 
-  const quizIds = quizzes.map((q) => q.id);
+  const quizIds = quizzes.map(q => q.id);
 
   // 同一 studentName + quizId 取最高分
   const responses = await db
@@ -78,12 +78,12 @@ export async function getStatisticsData(input: { startDate: string; endDate: str
     .groupBy(responseSchema.quizId, responseSchema.studentName);
 
   return {
-    quizzes: quizzes.map((q) => ({
+    quizzes: quizzes.map(q => ({
       id: q.id,
       title: q.title,
       createdAt: q.createdAt.toISOString(),
     })),
-    responses: responses.map((r) => ({
+    responses: responses.map(r => ({
       quizId: r.quizId,
       studentName: r.studentName ?? '匿名',
       score: r.score !== null ? Number(r.score) : null,

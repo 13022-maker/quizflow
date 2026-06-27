@@ -19,14 +19,17 @@ function formatDate(iso: string) {
 type ScoreCell = { score: number | null; totalPoints: number | null } | null;
 
 function formatScore(cell: ScoreCell) {
-  if (!cell || cell.score === null || cell.totalPoints === null) return '—';
+  if (!cell || cell.score === null || cell.totalPoints === null) {
+    return '—';
+  }
   return `${cell.score}/${cell.totalPoints}`;
 }
 
 // 百分比（用於 tooltip）
 function formatPercentage(cell: ScoreCell) {
-  if (!cell || cell.score === null || cell.totalPoints === null || cell.totalPoints === 0)
+  if (!cell || cell.score === null || cell.totalPoints === null || cell.totalPoints === 0) {
     return '';
+  }
   return `${((cell.score / cell.totalPoints) * 100).toFixed(1)}%`;
 }
 
@@ -82,7 +85,9 @@ export function StatisticsCrossTable() {
 
   // 查詢
   const handleSearch = useCallback(() => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate) {
+      return;
+    }
     setError('');
     setSelectedQuizIds(null); // 重置測驗篩選
     startTransition(async () => {
@@ -101,7 +106,7 @@ export function StatisticsCrossTable() {
   const toggleQuiz = useCallback((id: number) => {
     setSelectedQuizIds((prev) => {
       // null = 全選，展開成全部勾選後再切換
-      const base = prev ?? new Set(quizzes.map((q) => q.id));
+      const base = prev ?? new Set(quizzes.map(q => q.id));
       const next = new Set(base);
       if (next.has(id)) {
         next.delete(id);
@@ -109,20 +114,24 @@ export function StatisticsCrossTable() {
         next.add(id);
       }
       // 若全部都選，回到 null（全選狀態）
-      if (next.size === quizzes.length) return null;
+      if (next.size === quizzes.length) {
+        return null;
+      }
       return next;
     });
   }, [quizzes]);
 
   // 目前顯示的測驗清單（套用篩選）
   const visibleQuizzes = useMemo(() => {
-    if (!selectedQuizIds) return quizzes;
-    return quizzes.filter((q) => selectedQuizIds.has(q.id));
+    if (!selectedQuizIds) {
+      return quizzes;
+    }
+    return quizzes.filter(q => selectedQuizIds.has(q.id));
   }, [quizzes, selectedQuizIds]);
 
   // Pivot 邏輯：建立交叉表資料
   const pivotData = useMemo(() => {
-    const studentSet = new Set(responses.map((r) => r.studentName));
+    const studentSet = new Set(responses.map(r => r.studentName));
     const students = Array.from(studentSet).sort();
 
     // 查找表：`${studentName}__${quizId}` → { score, totalPoints }
@@ -135,7 +144,7 @@ export function StatisticsCrossTable() {
     }
 
     return students.map((name) => {
-      const cells = visibleQuizzes.map((q) => lookup.get(`${name}__${q.id}`) ?? null);
+      const cells = visibleQuizzes.map(q => lookup.get(`${name}__${q.id}`) ?? null);
 
       let totalScore = 0;
       let totalPoints = 0;
@@ -159,40 +168,44 @@ export function StatisticsCrossTable() {
 
   // 姓名篩選
   const filteredRows = useMemo(() => {
-    if (!nameFilter.trim()) return pivotData;
+    if (!nameFilter.trim()) {
+      return pivotData;
+    }
     const keyword = nameFilter.trim().toLowerCase();
-    return pivotData.filter((row) => row.studentName.toLowerCase().includes(keyword));
+    return pivotData.filter(row => row.studentName.toLowerCase().includes(keyword));
   }, [pivotData, nameFilter]);
 
   // CSV 匯出
   const handleExportCSV = useCallback(() => {
-    if (filteredRows.length === 0) return;
+    if (filteredRows.length === 0) {
+      return;
+    }
 
     const escapeCSV = (val: string) => `"${val.replace(/"/g, '""')}"`;
 
     const headers = [
       t('student_name'),
-      ...visibleQuizzes.map((q) => `${q.title} (${formatDate(q.createdAt)})`),
+      ...visibleQuizzes.map(q => `${q.title} (${formatDate(q.createdAt)})`),
       t('total'),
       t('total_full_score'),
       t('total_percentage'),
     ];
 
     const csvRows = filteredRows.map((row) => {
-      const cells = row.cells.map((cell) =>
+      const cells = row.cells.map(cell =>
         cell && cell.score !== null ? String(cell.score) : '',
       );
       const total = row.totalScore !== null ? String(row.totalScore) : '';
       const totalFull = row.totalPoints !== null ? String(row.totalPoints) : '';
-      const pct =
-        row.totalScore !== null && row.totalPoints !== null && row.totalPoints > 0
+      const pct
+        = row.totalScore !== null && row.totalPoints !== null && row.totalPoints > 0
           ? `${((row.totalScore / row.totalPoints) * 100).toFixed(1)}%`
           : '';
       return [escapeCSV(row.studentName), ...cells, total, totalFull, pct];
     });
 
     // BOM + CSV 內容
-    const csv = `﻿${[headers.map(escapeCSV).join(','), ...csvRows.map((r) => r.join(','))].join('\n')}`;
+    const csv = `﻿${[headers.map(escapeCSV).join(','), ...csvRows.map(r => r.join(','))].join('\n')}`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -207,7 +220,7 @@ export function StatisticsCrossTable() {
     <div className="space-y-4">
       {/* 快速日期按鈕 */}
       <div className="flex flex-wrap gap-2">
-        {(['week', 'month', 'lastMonth'] as const).map((preset) => (
+        {(['week', 'month', 'lastMonth'] as const).map(preset => (
           <button
             key={preset}
             type="button"
@@ -228,7 +241,7 @@ export function StatisticsCrossTable() {
           <input
             type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={e => setStartDate(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
@@ -239,7 +252,7 @@ export function StatisticsCrossTable() {
           <input
             type="date"
             value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
+            onChange={e => setEndDate(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
@@ -277,7 +290,11 @@ export function StatisticsCrossTable() {
                     className="accent-gray-900"
                   />
                   <span className="text-gray-700">{q.title}</span>
-                  <span className="text-gray-400">({formatDate(q.createdAt)})</span>
+                  <span className="text-gray-400">
+                    (
+                    {formatDate(q.createdAt)}
+                    )
+                  </span>
                 </label>
               );
             })}
@@ -292,7 +309,7 @@ export function StatisticsCrossTable() {
             type="text"
             placeholder={t('search_student')}
             value={nameFilter}
-            onChange={(e) => setNameFilter(e.target.value)}
+            onChange={e => setNameFilter(e.target.value)}
             className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
           />
           {filteredRows.length > 0 && (
@@ -323,7 +340,7 @@ export function StatisticsCrossTable() {
                 <th className="sticky left-0 z-10 bg-gray-50 px-4 py-3 text-left font-medium text-gray-700">
                   {t('student_name')}
                 </th>
-                {visibleQuizzes.map((q) => (
+                {visibleQuizzes.map(q => (
                   <th
                     key={q.id}
                     className="whitespace-nowrap px-4 py-3 text-center font-medium text-gray-700"
@@ -340,7 +357,7 @@ export function StatisticsCrossTable() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((row) => (
+              {filteredRows.map(row => (
                 <tr key={row.studentName} className="border-t border-gray-100 hover:bg-gray-50">
                   <td className="sticky left-0 z-10 bg-white px-4 py-3 font-medium text-gray-900">
                     {row.studentName}

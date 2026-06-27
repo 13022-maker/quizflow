@@ -40,6 +40,7 @@ test.describe('Quiz Take（學生公開作答）', () => {
     const res = await request.post(`${baseURL}/api/test/seed-quiz`, {
       data: FIXTURE,
     });
+
     expect(
       res.ok(),
       `seed endpoint 失敗（${res.status()}）：可能是 webServer 沒跑、ENABLE_TEST_ENDPOINTS 沒設，或 DATABASE_URL 指向真實 DB`,
@@ -65,6 +66,7 @@ test.describe('Quiz Take（學生公開作答）', () => {
         ],
       },
     });
+
     expect(seedRes.ok(), `seed expired quiz failed: ${seedRes.status()}`).toBe(true);
 
     // 訪問已過期測驗
@@ -106,7 +108,9 @@ test.describe('Quiz Take（學生公開作答）', () => {
 
     // 6. 驗證分數頁：「作答完成」+ 100/100
     await expect(page.getByText('作答完成')).toBeVisible();
+
     const scorePanel = page.getByText('作答完成').locator('..');
+
     await expect(scorePanel).toContainText('100');
     await expect(scorePanel).toContainText('100%');
   });
