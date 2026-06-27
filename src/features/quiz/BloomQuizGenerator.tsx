@@ -6,14 +6,7 @@ import { useCallback, useState, useTransition } from 'react';
 
 import { createQuizWithBloomQuestions, type BloomQuestion } from '@/actions/bloomActions';
 
-const BLOOM_LABELS: Record<string, string> = {
-  remember: '記憶 Remember',
-  understand: '理解 Understand',
-  apply: '應用 Apply',
-  analyze: '分析 Analyze',
-  evaluate: '評估 Evaluate',
-  create: '創造 Create',
-};
+// ---------- 常數 ----------
 
 const BLOOM_LEVELS = [
   { key: 'remember', label: '記憶 (Remember)', description: '回憶事實和基本概念', keywords: ['定義', '列舉', '復述'], difficulty: 1 },
@@ -24,26 +17,82 @@ const BLOOM_LEVELS = [
   { key: 'create', label: '創造 (Create)', description: '組合成新想法', keywords: ['設計', '發明', '建構'], difficulty: 6 },
 ];
 
-const SYSTEM_PROMPT_DISPLAY = `你是台灣教育專家，幫助教師生成高品質的自動評量題目。
-根據 Bloom's Taxonomy 設計題目，確保題目符合認知層級要求，
-使用台灣教育術語和例子，支援單選題與簡答題。
+const BLOOM_LABELS: Record<string, string> = Object.fromEntries(BLOOM_LEVELS.map(l => [l.key, l.label]));
 
-輸出格式：JSON，每題包含 bloom_level、difficulty、content、
-options、correct_answer、explanation、learning_objective。`;
+const SYSTEM_PROMPT_DISPLAY = `根據 Bloom's Taxonomy（布魯姆分類法）設計題目，確保題目符合認知層級要求。
+使用台灣教育術語，支援選擇題與簡答題。
 
-// 題型卡片
+選擇題：四個選項，標明正確選項字母。
+簡答題：提供參考答案與評分要點。
+每題附解析與學習目標。`;
+
 const QUESTION_TYPE_CARDS = [
   { value: 'multiple_choice', icon: '🔘', label: '選擇題', desc: '四選一' },
   { value: 'short_answer', icon: '✏️', label: '簡答題', desc: '短文作答' },
   { value: 'mixed', icon: '✨', label: '混合', desc: '自動分配' },
 ];
 
-// 難度按鈕
 const DIFFICULTY_BTNS = [
   { value: 'easy', label: '入門' },
   { value: 'mixed', label: '均勻' },
   { value: 'hard', label: '進階' },
 ];
+
+// ---------- 工具函式 ----------
+
+// difficulty → generate-questions API 的 difficulty + Bloom framework
+function toApiParams(difficulty: string) {
+  if (difficulty === 'easy') return { difficulty: 'easy', framework: 'bloom-understand' };
+  if (difficulty === 'hard') return { difficulty: 'hard', framework: 'bloom-evaluate' };
+  return { difficulty: 'medium', framework: '' };
+}
+
+// difficulty → 顯示用 bloom_level 與 difficulty 數字
+function toBoomMeta(difficulty: string): { bloomLevel: string; difficultyNum: number } {
+  if (difficulty === 'easy') return { bloomLevel: 'understand', difficultyNum: 2 };
+  if (difficulty === 'hard') return { bloomLevel: 'evaluate', difficultyNum: 5 };
+  return { bloomLevel: 'apply', difficultyNum: 3 };
+}
+
+// questionType → generate-questions API 的 types 陣列
+function toApiTypes(questionType: string): string[] {
+  if (questionType === 'multiple_choice') return ['mc'];
+  if (questionType === 'short_answer') return ['short'];
+  return ['mc']; // mixed → 以選擇題為主，避免 double count
+}
+
+// 去掉 "(A) " 前綴
+function stripOptionPrefix(opt: string) {
+  return opt.replace(/^\([A-Z]\)\s*/, '');
+}
+
+// 答案字母 → 選項索引
+function answerToIndex(answer: string) {
+  const letter = (answer ?? '').trim().toUpperCase();
+  const idx = letter.charCodeAt(0) - 65;
+  return Number.isNaN(idx) ? 0 : idx;
+}
+
+// 把 generate-questions 回傳格式轉成 BloomQuestion
+type RawQuestion = { type: string; question: string; options?: string[]; answer: string; explanation: string };
+function convertToBloom(q: RawQuestion, idx: number, bloomLevel: string, difficultyNum: number): BloomQuestion {
+  const cleanOpts = q.options?.map(stripOptionPrefix);
+  const isShort = q.type === 'short' || q.type === 'short_answer';
+  return {
+    id: idx + 1,
+    type: isShort ? 'short_answer' : 'multiple_choice',
+    bloom_level: bloomLevel,
+    difficulty: difficultyNum,
+    content: q.question,
+    options: cleanOpts,
+    correct_answer: isShort ? q.answer : answerToIndex(q.answer),
+    explanation: q.explanation,
+    learning_objective: '',
+    estimated_time_minutes: 2,
+  };
+}
+
+// ---------- 元件 ----------
 
 type BloomOutput = { metadata?: { topic?: string }; questions: BloomQuestion[] };
 
@@ -52,13 +101,11 @@ export function BloomQuizGenerator() {
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<'generator' | 'bloom' | 'prompt'>('generator');
 
-  // 表單狀態
   const [contentInput, setContentInput] = useState('');
   const [questionType, setQuestionType] = useState('multiple_choice');
   const [difficulty, setDifficulty] = useState('mixed');
   const [numQuestions, setNumQuestions] = useState(10);
 
-  // 結果狀態
   const [output, setOutput] = useState<BloomOutput | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState('');
@@ -68,22 +115,30 @@ export function BloomQuizGenerator() {
     if (!contentInput.trim()) { setGenError('請先輸入教學內容'); return; }
     setGenError(''); setImportError(''); setOutput(null); setIsGenerating(true);
     try {
-      const res = await fetch('/api/ai/bloom-studio', {
+      const { difficulty: apiDiff, framework } = toApiParams(difficulty);
+      const res = await fetch('/api/ai/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: contentInput, difficulty, numQuestions, questionType }),
+        body: JSON.stringify({
+          topic: contentInput,
+          types: toApiTypes(questionType),
+          difficulty: apiDiff,
+          framework: framework || undefined,
+          count: numQuestions,
+        }),
       });
-      // 先取 text，再嘗試解析 JSON，讓錯誤訊息更清楚
       const text = await res.text();
-      let data: BloomOutput & { error?: string };
-      try {
-        data = JSON.parse(text);
-      } catch {
-        setGenError(`伺服器回應非 JSON（前 200 字）：${text.slice(0, 200)}`);
-        return;
-      }
-      if (!res.ok) { setGenError(data.error ?? '生成失敗，請重試'); return; }
-      setOutput(data);
+      let data: { title?: string; questions?: RawQuestion[]; error?: string };
+      try { data = JSON.parse(text); }
+      catch { setGenError(`伺服器回應非 JSON（前 200 字）：${text.slice(0, 200)}`); return; }
+      if (!res.ok || data.error) { setGenError(data.error ?? '生成失敗，請重試'); return; }
+      if (!data.questions?.length) { setGenError('未收到任何題目，請重試'); return; }
+
+      const { bloomLevel, difficultyNum } = toBoomMeta(difficulty);
+      setOutput({
+        metadata: { topic: data.title },
+        questions: data.questions.map((q, i) => convertToBloom(q, i, bloomLevel, difficultyNum)),
+      });
     } catch (e) {
       setGenError(e instanceof Error ? e.message : '網路錯誤，請重試');
     } finally {
@@ -123,35 +178,21 @@ export function BloomQuizGenerator() {
             { key: 'bloom', label: '📚 Bloom 分類參考' },
             { key: 'prompt', label: '💡 系統 Prompt' },
           ] as const).map(tab => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
+            <button key={tab.key} type="button" onClick={() => setActiveTab(tab.key)}
               className={`flex-1 rounded-lg py-2.5 text-sm font-semibold transition ${
-                activeTab === tab.key
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              {tab.label}
-            </button>
+                activeTab === tab.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+              }`}>{tab.label}</button>
           ))}
         </div>
 
         {/* Tab: 題目生成器 */}
         {activeTab === 'generator' && (
           <div className="space-y-4">
-            {/* 輸入區 */}
             <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="mb-2 text-sm font-semibold text-gray-700">
-                📝 教學內容（貼上 PDF 文字、YouTube 摘要或課程筆記）
-              </p>
-              <textarea
-                value={contentInput}
-                onChange={e => setContentInput(e.target.value)}
+              <p className="mb-2 text-sm font-semibold text-gray-700">📝 教學內容（貼上 PDF 文字、YouTube 摘要或課程筆記）</p>
+              <textarea value={contentInput} onChange={e => setContentInput(e.target.value)}
                 placeholder="例如：介紹光合作用的過程，包括光反應和暗反應..."
-                className="h-36 w-full resize-none rounded-xl border border-gray-200 p-3 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100"
-              />
+                className="h-36 w-full resize-none rounded-xl border border-gray-200 p-3 text-sm placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-100" />
             </div>
 
             {/* 題型選擇 */}
@@ -159,23 +200,13 @@ export function BloomQuizGenerator() {
               <p className="mb-3 text-sm font-semibold text-gray-700">選擇題型</p>
               <div className="grid grid-cols-3 gap-3">
                 {QUESTION_TYPE_CARDS.map(card => (
-                  <button
-                    key={card.value}
-                    type="button"
-                    onClick={() => setQuestionType(card.value)}
+                  <button key={card.value} type="button" onClick={() => setQuestionType(card.value)}
                     className={`flex flex-col items-start gap-0.5 rounded-xl border-2 p-4 text-left transition ${
-                      questionType === card.value
-                        ? 'border-amber-400 bg-amber-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
+                      questionType === card.value ? 'border-amber-400 bg-amber-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}>
                     <div className="mb-1 flex w-full items-center justify-between">
                       <span className="text-xl">{card.icon}</span>
-                      <span className={`size-4 rounded-full border-2 ${
-                        questionType === card.value
-                          ? 'border-amber-500 bg-amber-500'
-                          : 'border-gray-300'
-                      }`} />
+                      <span className={`size-4 rounded-full border-2 ${questionType === card.value ? 'border-amber-500 bg-amber-500' : 'border-gray-300'}`} />
                     </div>
                     <span className="text-sm font-bold text-gray-900">{card.label}</span>
                     <span className="text-xs text-gray-400">{card.desc}</span>
@@ -188,44 +219,27 @@ export function BloomQuizGenerator() {
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="mb-4">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-700">每種題型出幾題</p>
+                  <p className="text-sm font-semibold text-gray-700">出幾題</p>
                   <span className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-bold text-amber-700">{numQuestions}</span>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="20"
-                  value={numQuestions}
+                <input type="range" min="1" max="20" value={numQuestions}
                   onChange={e => setNumQuestions(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-amber-500"
-                />
-                <div className="mt-1 flex justify-between text-xs text-gray-400">
-                  <span>1</span><span>20</span>
-                </div>
+                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-gray-200 accent-amber-500" />
+                <div className="mt-1 flex justify-between text-xs text-gray-400"><span>1</span><span>20</span></div>
               </div>
-
               <div>
                 <p className="mb-2 text-sm font-semibold text-gray-700">難度等級</p>
                 <div className="flex gap-2">
                   {DIFFICULTY_BTNS.map(btn => (
-                    <button
-                      key={btn.value}
-                      type="button"
-                      onClick={() => setDifficulty(btn.value)}
+                    <button key={btn.value} type="button" onClick={() => setDifficulty(btn.value)}
                       className={`flex-1 rounded-xl py-2.5 text-sm font-bold transition ${
-                        difficulty === btn.value
-                          ? 'bg-gray-900 text-white'
-                          : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-400'
-                      }`}
-                    >
-                      {btn.label}
-                    </button>
+                        difficulty === btn.value ? 'bg-gray-900 text-white' : 'border border-gray-200 bg-white text-gray-600 hover:border-gray-400'
+                      }`}>{btn.label}</button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* 錯誤提示 */}
             {genError && (
               <div className="flex items-start gap-2 rounded-xl bg-red-50 p-3 text-sm text-red-600">
                 <AlertCircle className="mt-0.5 size-4 shrink-0" />
@@ -233,16 +247,10 @@ export function BloomQuizGenerator() {
               </div>
             )}
 
-            {/* 生成按鈕 */}
-            <button
-              type="button"
-              onClick={() => void handleGenerate()}
+            <button type="button" onClick={() => void handleGenerate()}
               disabled={isGenerating || !contentInput.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-base font-bold text-white transition hover:bg-gray-800 disabled:opacity-40"
-            >
-              {isGenerating
-                ? <><Loader className="size-5 animate-spin" /> 生成中...</>
-                : <><Zap className="size-5" /> 🤖 開始 AI 命題</>}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-900 py-4 text-base font-bold text-white transition hover:bg-gray-800 disabled:opacity-40">
+              {isGenerating ? <><Loader className="size-5 animate-spin" /> 生成中...</> : <><Zap className="size-5" /> 🤖 開始 AI 命題</>}
             </button>
           </div>
         )}
@@ -260,9 +268,7 @@ export function BloomQuizGenerator() {
                   </div>
                   <p className="mb-2 text-sm text-gray-600">{level.description}</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {level.keywords.map(kw => (
-                      <span key={kw} className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs text-indigo-700">{kw}</span>
-                    ))}
+                    {level.keywords.map(kw => <span key={kw} className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs text-indigo-700">{kw}</span>)}
                   </div>
                 </div>
               ))}
@@ -316,18 +322,13 @@ export function BloomQuizGenerator() {
                       </span>
                     </div>
                   </div>
-
                   <p className="mb-3 text-sm font-medium text-gray-900">{q.content}</p>
-
                   {q.options && q.options.length > 0 && (
                     <div className="mb-3 space-y-2">
                       {q.options.map((opt, oIdx) => (
-                        <div key={oIdx}
-                          className={`rounded-lg border p-2.5 text-sm ${
-                            oIdx === q.correct_answer
-                              ? 'border-green-300 bg-green-50 text-green-800'
-                              : 'border-gray-100 bg-gray-50 text-gray-700'
-                          }`}>
+                        <div key={oIdx} className={`rounded-lg border p-2.5 text-sm ${
+                          oIdx === q.correct_answer ? 'border-green-300 bg-green-50 text-green-800' : 'border-gray-100 bg-gray-50 text-gray-700'
+                        }`}>
                           <span className="mr-2 font-semibold">{String.fromCharCode(65 + oIdx)}.</span>
                           {opt}
                           {oIdx === q.correct_answer && <span className="ml-2">✓</span>}
@@ -335,24 +336,11 @@ export function BloomQuizGenerator() {
                       ))}
                     </div>
                   )}
-
                   {q.type === 'short_answer' && (
                     <div className="mb-3 rounded-lg border border-green-200 bg-green-50 p-2.5 text-sm text-green-800">
                       <strong>參考答案：</strong>{String(q.correct_answer)}
                     </div>
                   )}
-
-                  <div className="mb-2 grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2.5">
-                      <p className="mb-0.5 text-xs text-gray-500">學習目標</p>
-                      <p className="text-sm text-gray-900">{q.learning_objective}</p>
-                    </div>
-                    <div className="rounded-lg bg-purple-50 p-2.5">
-                      <p className="mb-0.5 text-xs text-gray-500">預估時間</p>
-                      <p className="text-sm text-gray-900">{q.estimated_time_minutes ?? 2} 分鐘</p>
-                    </div>
-                  </div>
-
                   <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
                     <strong>解釋：</strong>{q.explanation}
                   </div>
