@@ -66,35 +66,41 @@ const DIFFICULTY_HINTS: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
-  const { userId } = await auth();
-  if (!userId) {
-    return NextResponse.json({ error: '未登入' }, { status: 401 });
-  }
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: '未登入' }, { status: 401 });
+    }
 
-  const quota = await checkAndIncrementAiUsage(userId);
-  if (!quota.allowed) {
-    return NextResponse.json(
-      { error: quota.reason, upgradeRequired: true },
-      { status: 403 },
-    );
-  }
+    const quota = await checkAndIncrementAiUsage(userId);
+    if (!quota.allowed) {
+      return NextResponse.json(
+        { error: quota.reason, upgradeRequired: true },
+        { status: 403 },
+      );
+    }
 
-  const body = await request.json();
-  const { content, difficulty = 'mixed', numQuestions = 5, questionType = 'mixed' } = body;
+    const body = await request.json();
+    const { content, difficulty = 'mixed', numQuestions = 5, questionType = 'mixed' } = body;
 
-  if (!content?.trim()) {
-    return NextResponse.json({ error: '請輸入教學內容' }, { status: 400 });
-  }
+    if (!content?.trim()) {
+      return NextResponse.json({ error: '請輸入教學內容' }, { status: 400 });
+    }
 
-  const count = Math.min(Number(numQuestions) || 5, 20);
-  const difficultyHint = DIFFICULTY_HINTS[difficulty] ?? DIFFICULTY_HINTS.mixed;
-  const typeHint = questionType === 'multiple_choice'
-    ? '全部使用單選題（multiple_choice）'
-    : questionType === 'short_answer'
-      ? '全部使用簡答題（short_answer）'
-      : '以單選題為主，若 Bloom 層次為評估或創造可使用簡答題';
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: '伺服器未設定 ANTHROPIC_API_KEY' }, { status: 500 });
+    }
 
-  const userPrompt = `教學內容：
+    const count = Math.min(Number(numQuestions) || 5, 20);
+    const difficultyHint = DIFFICULTY_HINTS[difficulty] ?? DIFFICULTY_HINTS.mixed!;
+    const typeHint = questionType === 'multiple_choice'
+      ? '全部使用單選題（multiple_choice）'
+      : questionType === 'short_answer'
+        ? '全部使用簡答題（short_answer）'
+        : '以單選題為主，若 Bloom 層次為評估或創造可使用簡答題';
+
+    const userPrompt = `教學內容：
 ${content}
 
 生成要求：
@@ -105,14 +111,8 @@ ${content}
 
 請確保每題都有明確的 Bloom 認知層級標記、難度分數、解釋與學習目標。使用繁體中文和台灣教育語境。`;
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: '伺服器未設定 ANTHROPIC_API_KEY' }, { status: 500 });
-  }
+    const client = new Anthropic({ apiKey });
 
-  const client = new Anthropic({ apiKey });
-
-  try {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4000,
@@ -122,7 +122,7 @@ ${content}
 
     const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
 
-    // 解析 JSON（允許 Claude 輸出 markdown code block 包裝）
+    // 解析 JSON（允許 Claude 包 markdown code block）
     const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return NextResponse.json({ error: '回應格式錯誤，請重試' }, { status: 500 });
@@ -131,7 +131,8 @@ ${content}
     const parsed = JSON.parse(jsonMatch[0]);
     return NextResponse.json(parsed);
   } catch (err) {
-    const message = err instanceof Error ? err.message : '未知錯誤';
-    return NextResponse.json({ error: `AI 生成失敗：${message}` }, { status: 500 });
+    const msg = err instanceof Error ? err.message : '未知錯誤';
+    console.error('[bloom-studio]', msg);
+    return NextResponse.json({ error: `生成失敗：${msg}` }, { status: 500 });
   }
 }
