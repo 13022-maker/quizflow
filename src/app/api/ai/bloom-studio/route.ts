@@ -112,25 +112,26 @@ ${content}
 
   const client = new Anthropic({ apiKey });
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: userPrompt }],
-  });
-
-  const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
-
-  // 解析 JSON
-  const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    return NextResponse.json({ error: '回應格式錯誤，請重試', raw: responseText }, { status: 500 });
-  }
-
   try {
+    const message = await client.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4000,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: userPrompt }],
+    });
+
+    const responseText = message.content[0]?.type === 'text' ? message.content[0].text : '';
+
+    // 解析 JSON（允許 Claude 輸出 markdown code block 包裝）
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return NextResponse.json({ error: '回應格式錯誤，請重試' }, { status: 500 });
+    }
+
     const parsed = JSON.parse(jsonMatch[0]);
     return NextResponse.json(parsed);
-  } catch {
-    return NextResponse.json({ error: 'JSON 解析失敗，請重試', raw: responseText }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : '未知錯誤';
+    return NextResponse.json({ error: `AI 生成失敗：${message}` }, { status: 500 });
   }
 }

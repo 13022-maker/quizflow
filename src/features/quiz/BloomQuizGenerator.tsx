@@ -71,7 +71,16 @@ export function BloomQuizGenerator() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: contentInput, difficulty: selectedDifficulty, numQuestions, questionType }),
       });
-      const data = await res.json();
+
+      // 防禦：伺服器若回傳 HTML 錯誤頁，res.json() 會拋 SyntaxError
+      let data: BloomOutput & { error?: string };
+      try {
+        data = await res.json();
+      } catch {
+        setGenError('伺服器回應格式錯誤，請稍後重試');
+        return;
+      }
+
       if (!res.ok) {
         setGenError(data.error ?? '生成失敗，請重試');
         return;
