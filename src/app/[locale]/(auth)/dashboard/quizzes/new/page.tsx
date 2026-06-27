@@ -2,10 +2,8 @@ import { auth } from '@clerk/nextjs/server';
 import { count, eq } from 'drizzle-orm';
 import { getTranslations } from 'next-intl/server';
 
-import { DashboardSection } from '@/features/dashboard/DashboardSection';
-import { TitleBar } from '@/features/dashboard/TitleBar';
 import { AiPrefillTrigger } from '@/features/quiz/AiPrefillTrigger';
-import { QuizForm } from '@/features/quiz/QuizForm';
+import { BloomQuizGenerator } from '@/features/quiz/BloomQuizGenerator';
 import { QuizLimitWall } from '@/features/quiz/QuizLimitWall';
 import { db } from '@/libs/DB';
 import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
@@ -27,7 +25,6 @@ export default async function NewQuizPage({
 }: {
   searchParams: { ai?: string; prefill?: string };
 }) {
-  const t = await getTranslations('AddQuiz');
   const { userId } = await auth();
 
   // 伺服器端先查方案與測驗數量，超過上限就顯示升級牆
@@ -49,21 +46,10 @@ export default async function NewQuizPage({
     }
   }
 
-  // 從市集 CTA 進來:?ai=1 觸發 AI 自動建立測驗 + redirect 到 edit 頁;否則保留手動 QuizForm
+  // 從市集 CTA 進來：?ai=1 觸發 AI 自動建立測驗 + redirect 到 edit 頁
   if (searchParams.ai === '1') {
     return <AiPrefillTrigger prefill={searchParams.prefill ?? ''} />;
   }
 
-  return (
-    <>
-      <TitleBar title={t('title_bar')} />
-
-      <DashboardSection
-        title={t('section_title')}
-        description={t('section_description')}
-      >
-        <QuizForm />
-      </DashboardSection>
-    </>
-  );
+  return <BloomQuizGenerator />;
 }
