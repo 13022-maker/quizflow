@@ -3,25 +3,16 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, count, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
+import type { SubmitInput } from '@/libs/submitValidation';
+import { parseSubmitInput } from '@/libs/submitValidation';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
-const SubmitSchema = z.object({
-  quizId: z.number().int().positive(),
-  studentName: z.string().max(100).optional(),
-  studentEmail: z.string().email().max(200).optional(),
-  // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題/排序題）
-  answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
-  // 考試防作弊：學生離開頁面次數（preventLeave 開啟時才有意義）
-  leaveCount: z.number().int().min(0).optional(),
-});
-
-export type SubmitInput = z.infer<typeof SubmitSchema>;
+export type { SubmitInput };
 
 export type SubmitResult = {
   responseId: number;
@@ -45,10 +36,12 @@ export async function checkAttemptCount(quizId: number, email: string): Promise<
   return row?.value ?? 0;
 }
 
-export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResult> {
-  const parsed = SubmitSchema.safeParse(data);
-  if (!parsed.success) {
-    throw new Error('格式錯誤');
+export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResult | { error: string }> {
+  // 驗證失敗回傳結構化錯誤（不 throw）：production 上 Server Action throw 的
+  // 訊息會被 Next.js 遮罩，學生看不到真正原因，且 server 會留下 error log
+  const parsed = parseSubmitInput(data);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
   const { quizId, studentName, studentEmail, answers, leaveCount } = parsed.data;
@@ -67,7 +60,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
   if (quiz?.allowedAttempts && studentEmail) {
     const attemptCount = await checkAttemptCount(quizId, studentEmail);
     if (attemptCount >= quiz.allowedAttempts) {
-      throw new Error('ATTEMPT_LIMIT_EXCEEDED');
+      return { error: '您已達到作答上限，無法再次提交。' };
     }
   }
 
@@ -78,7 +71,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     .where(eq(questionSchema.quizId, quizId));
 
   if (questions.length === 0) {
-    throw new Error('找不到題目');
+    return { error: '找不到題目，請重新整理頁面後再試一次' };
   }
 
   // 簡答題 AI 評分：擁有者 Pro 才啟用（學生作答端沒登入，用 quiz.ownerId 查方案）
@@ -201,7 +194,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     .returning();
 
   if (!inserted) {
-    throw new Error('儲存失敗');
+    return { error: '儲存失敗，請再試一次' };
   }
 
   // 寫入每題的 answer（簡答題附 gradingMeta，其他題型 gradingMeta=null）

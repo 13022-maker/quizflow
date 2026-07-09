@@ -1438,12 +1438,18 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         return;
       }
     }
+    // email 選填，但有填就先在前端擋格式（送出鈕不在 form 裡，瀏覽器原生驗證不會觸發）
+    const trimmedEmail = studentEmail.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/.test(trimmedEmail)) {
+      setError('Email 格式不正確，請修正或留空');
+      return;
+    }
     setError('');
     setIsSubmitting(true);
 
     try {
-      if (quiz.allowedAttempts && studentEmail) {
-        const attemptCount = await checkAttemptCount(quiz.id, studentEmail);
+      if (quiz.allowedAttempts && trimmedEmail) {
+        const attemptCount = await checkAttemptCount(quiz.id, trimmedEmail);
         if (attemptCount >= quiz.allowedAttempts) {
           setError('您已達到作答上限，無法再次提交。');
           setIsSubmitting(false);
@@ -1458,19 +1464,20 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
       const res = await submitQuizResponse({
         quizId: quiz.id,
-        studentName: studentName || undefined,
-        studentEmail: studentEmail || undefined,
+        studentName: studentName.trim() || undefined,
+        studentEmail: trimmedEmail || undefined,
         answers: stringKeyAnswers,
         leaveCount: preventLeave ? leaveCountRef.current : undefined,
       });
+      // Server Action 改回傳結構化錯誤（不 throw），訊息才不會被 production 遮罩
+      if ('error' in res) {
+        setError(res.error);
+        return;
+      }
       setResult(res);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg === 'ATTEMPT_LIMIT_EXCEEDED') {
-        setError('您已達到作答上限，無法再次提交。');
-      } else {
-        setError(`提交失敗：${msg || '未知錯誤'}，請再試一次`);
-      }
+      setError(`提交失敗：${msg || '未知錯誤'}，請再試一次`);
     } finally {
       setIsSubmitting(false);
     }
