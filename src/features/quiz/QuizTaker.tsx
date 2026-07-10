@@ -1680,20 +1680,27 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       {!tutorMode && (
         <div className="rounded-xl border bg-card p-6">
           <p className="mb-3 text-sm font-medium">作答者資料（選填）</p>
+          {/* 固定顯示標籤（不只靠 placeholder）：打字後 placeholder 消失，學生常把姓名填進 Email 欄 */}
           <div className="flex gap-3 max-sm:flex-col">
-            <input
-              value={studentName}
-              onChange={e => setStudentName(e.target.value)}
-              placeholder="姓名"
-              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-            />
-            <input
-              type="email"
-              value={studentEmail}
-              onChange={e => setStudentEmail(e.target.value)}
-              placeholder="Email"
-              className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
-            />
+            <label className="flex-1">
+              <span className="mb-1 block text-xs text-muted-foreground">姓名</span>
+              <input
+                value={studentName}
+                onChange={e => setStudentName(e.target.value)}
+                placeholder="例：王小明"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              />
+            </label>
+            <label className="flex-1">
+              <span className="mb-1 block text-xs text-muted-foreground">Email</span>
+              <input
+                type="email"
+                value={studentEmail}
+                onChange={e => setStudentEmail(e.target.value)}
+                placeholder="例：student@example.com"
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+              />
+            </label>
           </div>
         </div>
       )}
