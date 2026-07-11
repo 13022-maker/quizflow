@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
 import { db } from '@/libs/DB';
-import { getSubject } from '@/libs/adaptive/subjects';
+import { resolveSubject } from '@/libs/adaptive/service';
 import { adaptivePracticeSchema } from '@/models/Schema';
 
 import { AdaptiveLearnClient } from './AdaptiveLearnClient';
@@ -26,7 +26,7 @@ export default async function AdaptiveStudentPage({
     notFound();
   }
 
-  const subject = getSubject(practice.subjectId);
+  const subject = await resolveSubject(practice.subjectId); // 內建或自建（db:）皆可
 
   return (
     <AdaptiveLearnClient
