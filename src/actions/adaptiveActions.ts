@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import { db } from '@/libs/DB';
 import { generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
+import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { adaptivePracticeSchema, adaptiveSubjectSchema } from '@/models/Schema';
 
@@ -22,8 +23,6 @@ const createPracticeSchema = z.object({
   title: z.string().trim().min(1, '請輸入練習名稱').max(100),
   subjectId: z.string().min(1),
 });
-
-const DB_SUBJECT_PREFIX = 'db:';
 
 /**
  * 老師可選用的學科清單：內建三科 ＋ 自己 AI 生成的學科。

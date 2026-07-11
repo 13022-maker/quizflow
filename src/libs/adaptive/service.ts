@@ -57,7 +57,7 @@ function makeLogSink(practiceId: number, repo: DrizzleAdaptiveRepository) {
 }
 
 /** 自建學科的 subjectId 前綴：practice.subject_id 存 "db:<adaptive_subject.id>" */
-const DB_SUBJECT_PREFIX = 'db:';
+export const DB_SUBJECT_PREFIX = 'db:';
 
 /**
  * 解析學科：內建（cpp/python/calculus，程式碼 registry）或
