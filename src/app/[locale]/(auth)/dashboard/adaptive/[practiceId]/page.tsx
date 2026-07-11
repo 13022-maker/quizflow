@@ -62,7 +62,7 @@ export default async function AdaptiveBoardPage({
     notFound();
   }
 
-  const service = getAdaptiveService(practice.id, practice.subjectId);
+  const service = await getAdaptiveService(practice.id, practice.subjectId);
 
   // 全班診斷：引擎的 mastered / learning / locked 判定逐生計算
   const states = await service.repo.list();

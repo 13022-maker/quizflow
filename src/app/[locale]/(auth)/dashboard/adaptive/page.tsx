@@ -2,9 +2,8 @@ import { auth } from '@clerk/nextjs/server';
 import { desc, eq, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
-import { createAdaptivePractice } from '@/actions/adaptiveActions';
+import { createAdaptivePractice, listAvailableSubjects } from '@/actions/adaptiveActions';
 import { db } from '@/libs/DB';
-import { listSubjects } from '@/libs/adaptive/subjects';
 import { adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
 
 import { CopyLinkButton } from './CopyLinkButton';
@@ -21,7 +20,7 @@ export default async function AdaptiveListPage() {
     return null;
   }
 
-  const subjects = listSubjects();
+  const subjects = await listAvailableSubjects(); // 內建三科 ＋ 老師自建學科
   const subjectNames = new Map(subjects.map(s => [s.id, s.name]));
 
   // 練習清單＋各練習的學生數
@@ -45,11 +44,19 @@ export default async function AdaptiveListPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-2">
-        <h1 className="text-xl font-bold">🎯 適性學習</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          BKT 動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。
-        </p>
+      <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">🎯 適性學習</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            BKT 動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。
+          </p>
+        </div>
+        <Link
+          href="/dashboard/adaptive/new-subject"
+          className="shrink-0 rounded-lg border px-3 py-2 text-sm font-medium hover:bg-muted"
+        >
+          ✨ AI 生成學科
+        </Link>
       </div>
 
       {/* 建立練習 */}

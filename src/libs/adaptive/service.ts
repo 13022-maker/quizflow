@@ -8,7 +8,11 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import { Env } from '@/libs/Env';
-import { adaptiveEventSchema, adaptivePracticeSchema } from '@/models/Schema';
+import {
+  adaptiveEventSchema,
+  adaptivePracticeSchema,
+  adaptiveSubjectSchema,
+} from '@/models/Schema';
 
 import { ClaudeTutorProvider } from './claude-provider';
 import { AdaptiveEngine, type Item } from './engine';
@@ -52,8 +56,38 @@ function makeLogSink(practiceId: number, repo: DrizzleAdaptiveRepository) {
   };
 }
 
-function createService(practiceId: number, subjectId: string): AdaptiveService {
-  const subject = getSubject(subjectId); // 學科不存在會丟出含可用清單的錯誤
+/** 自建學科的 subjectId 前綴：practice.subject_id 存 "db:<adaptive_subject.id>" */
+const DB_SUBJECT_PREFIX = 'db:';
+
+/**
+ * 解析學科：內建（cpp/python/calculus，程式碼 registry）或
+ * 老師自建（"db:<id>"，從 adaptive_subject 表載入 AI 生成的內容）。
+ */
+export async function resolveSubject(subjectId: string): Promise<Subject> {
+  if (!subjectId.startsWith(DB_SUBJECT_PREFIX)) {
+    return getSubject(subjectId); // 內建學科；不存在會丟出含可用清單的錯誤
+  }
+  const id = Number(subjectId.slice(DB_SUBJECT_PREFIX.length));
+  if (!Number.isInteger(id)) {
+    throw new Error(`學科不存在：${subjectId}`);
+  }
+  const [row] = await db
+    .select()
+    .from(adaptiveSubjectSchema)
+    .where(eq(adaptiveSubjectSchema.id, id));
+  if (!row) {
+    throw new Error(`學科不存在：${subjectId}`);
+  }
+  return {
+    id: subjectId,
+    name: row.name,
+    graph: row.graph,
+    itemBank: row.itemBank,
+    tutor: row.tutor,
+  };
+}
+
+function createService(practiceId: number, subject: Subject): AdaptiveService {
   const repo = new DrizzleAdaptiveRepository(practiceId);
   const engine = new AdaptiveEngine(subject.graph, subject.itemBank, repo);
 
@@ -85,11 +119,15 @@ const globalStore = globalThis as unknown as {
 };
 
 /** 取得指定練習的服務單例（key = practiceId；subjectId 來自 practice 資料列） */
-export function getAdaptiveService(practiceId: number, subjectId: string): AdaptiveService {
+export async function getAdaptiveService(
+  practiceId: number,
+  subjectId: string,
+): Promise<AdaptiveService> {
   globalStore.__adaptiveServices ??= new Map();
   let service = globalStore.__adaptiveServices.get(practiceId);
   if (!service) {
-    service = createService(practiceId, subjectId);
+    const subject = await resolveSubject(subjectId); // 自建學科需查表（一次後進快取）
+    service = createService(practiceId, subject);
     globalStore.__adaptiveServices.set(practiceId, service);
   }
   return service;
@@ -108,7 +146,7 @@ export async function getServiceByCode(code: string) {
   if (!practice) {
     throw new Error(`練習不存在：${code}`);
   }
-  return { practice, service: getAdaptiveService(practice.id, practice.subjectId) };
+  return { practice, service: await getAdaptiveService(practice.id, practice.subjectId) };
 }
 
 /** 統一的錯誤轉 HTTP 回應：依錯誤訊息分類狀態碼（學生端公開 API 用） */

@@ -569,3 +569,35 @@ export const adaptiveEventSchema = pgTable(
     };
   },
 );
+
+// 老師自建學科（AI 生成）：知識圖譜＋題庫＋導師風格整包存 JSONB。
+// 內建學科（cpp/python/calculus）在程式碼裡；自建學科的 practice.subject_id 存 "db:<id>"。
+export const adaptiveSubjectSchema = pgTable('adaptive_subject', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk user ID（建立學科的老師）
+  name: text('name').notNull(), // 學科顯示名稱（AI 取名，例如「二次函數」）
+  sourceTopic: text('source_topic').notNull(), // 老師輸入的主題（重生成／追溯用）
+  graph: jsonb('graph').notNull().$type<{
+    nodes: { id: string; name: string; prerequisites: string[] }[];
+  }>(),
+  itemBank: jsonb('item_bank').notNull().$type<{
+    items: {
+      id: string;
+      knowledgeId: string;
+      difficulty: number;
+      prompt: string;
+      options: string[];
+      answerIndex: number;
+      explanation?: string;
+    }[];
+  }>(),
+  tutor: jsonb('tutor').notNull().$type<{
+    lessonExampleRule: string;
+    formatRule: string;
+  }>(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});

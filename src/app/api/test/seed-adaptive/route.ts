@@ -11,7 +11,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
-import { getSubject } from '@/libs/adaptive/subjects';
+import { resolveSubject } from '@/libs/adaptive/service';
 import { adaptivePracticeSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
@@ -19,7 +19,7 @@ export const runtime = 'nodejs';
 const seedSchema = z.object({
   accessCode: z.string().min(1).max(64),
   title: z.string().min(1),
-  subjectId: z.string().min(1), // cpp / python / calculus
+  subjectId: z.string().min(1), // cpp / python / calculus 或自建 db:<id>
 });
 
 export async function POST(req: Request) {
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
-  getSubject(parsed.data.subjectId); // 學科不存在直接丟錯
+  await resolveSubject(parsed.data.subjectId); // 學科不存在直接丟錯（支援內建與自建 db:）
 
   // 冪等：同 accessCode 重複 seed 先刪舊資料（學生狀態與事件 cascade 一併清掉）
   await db
