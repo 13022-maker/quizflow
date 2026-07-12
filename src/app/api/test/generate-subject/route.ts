@@ -3,8 +3,8 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import { generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
+import { db } from '@/libs/DB';
 import { adaptiveSubjectSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';

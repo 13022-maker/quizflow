@@ -85,6 +85,6 @@ export class DrizzleAdaptiveRepository implements StudentStateRepository {
       })
       .from(adaptiveStudentStateSchema)
       .where(eq(adaptiveStudentStateSchema.practiceId, this.practiceId));
-    return new Map(rows.map((r) => [r.studentKey, r.displayName]));
+    return new Map(rows.map(r => [r.studentKey, r.displayName]));
   }
 }

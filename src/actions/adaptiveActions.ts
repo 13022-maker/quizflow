@@ -13,10 +13,10 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import { generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
 import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
+import { db } from '@/libs/DB';
 import { adaptivePracticeSchema, adaptiveSubjectSchema } from '@/models/Schema';
 
 const createPracticeSchema = z.object({

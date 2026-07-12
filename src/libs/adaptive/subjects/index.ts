@@ -15,13 +15,13 @@
  * ============================================================================
  */
 
-import type { KnowledgeGraph, ItemBank } from "../engine";
-import { cppSubject } from "./cpp";
-import { pythonSubject } from "./python";
-import { calculusSubject } from "./calculus";
+import type { ItemBank, KnowledgeGraph } from '../engine';
+import { calculusSubject } from './calculus';
+import { cppSubject } from './cpp';
+import { pythonSubject } from './python';
 
 /** 導師提示詞的學科客製段落（LLM 生成課文與即答時使用） */
-export interface TutorProfile {
+export type TutorProfile = {
   /** 課文「重點講解」一節的範例形式要求（程式學科=可執行程式碼；數學學科=逐步算式推導） */
   lessonExampleRule: string;
   /**
@@ -30,19 +30,19 @@ export interface TutorProfile {
    * 模型預設愛用 LaTeX（$、\frac），但前端的 Markdown 渲染不支援。
    */
   formatRule: string;
-}
+};
 
 /** 一個學科 = 識別碼 + 顯示名稱 + 知識圖譜 + 題庫 + 導師風格 */
-export interface Subject {
-  id: string;         // subjectId，用於 API 與儲存檔名（如 'cpp'）
-  name: string;       // 顯示名稱（如 'C++ 程式設計'）
+export type Subject = {
+  id: string; // subjectId，用於 API 與儲存檔名（如 'cpp'）
+  name: string; // 顯示名稱（如 'C++ 程式設計'）
   graph: KnowledgeGraph;
   itemBank: ItemBank;
   tutor: TutorProfile;
-}
+};
 
 /** 預設學科：未指定 subjectId 時使用（維持既有流程完全不變） */
-export const DEFAULT_SUBJECT_ID = "cpp";
+export const DEFAULT_SUBJECT_ID = 'cpp';
 
 /** 註冊表：新增學科在此加一行 */
 const SUBJECTS = new Map<string, Subject>([
@@ -56,7 +56,7 @@ export function getSubject(subjectId: string): Subject {
   const subject = SUBJECTS.get(subjectId);
   if (!subject) {
     throw new Error(
-      `學科不存在：${subjectId}（可用學科：${[...SUBJECTS.keys()].join("、")}）`
+      `學科不存在：${subjectId}（可用學科：${[...SUBJECTS.keys()].join('、')}）`,
     );
   }
   return subject;

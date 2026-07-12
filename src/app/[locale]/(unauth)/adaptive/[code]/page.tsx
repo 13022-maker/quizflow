@@ -1,8 +1,8 @@
 import { eq } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 
-import { db } from '@/libs/DB';
 import { resolveSubject } from '@/libs/adaptive/service';
+import { db } from '@/libs/DB';
 import { adaptivePracticeSchema } from '@/models/Schema';
 
 import { AdaptiveLearnClient } from './AdaptiveLearnClient';

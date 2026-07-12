@@ -6,9 +6,8 @@
  *   {"type":"error","error":"…"}
  * 非課文情境（派題／完課）沒有 delta，直接收到 step——前端一律走此端點。
  */
-import { getServiceByCode, toClientStep, toErrorResponse } from '@/libs/adaptive/service';
-
 import type { AdaptiveService } from '@/libs/adaptive/service';
+import { getServiceByCode, toClientStep, toErrorResponse } from '@/libs/adaptive/service';
 
 export async function GET(
   request: Request,

@@ -30,12 +30,12 @@ type Identity = {
 /** 課文 Markdown 容器樣式（QuizFlow 沒裝 typography plugin，用 arbitrary variants 排版） */
 const LESSON_BODY_CLASS
   = 'text-sm leading-6 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold '
-    + '[&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold '
-    + '[&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 '
-    + '[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 '
-    + '[&_code]:font-mono [&_code]:text-[0.85em] '
-    + '[&_table]:my-2 [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:px-2 [&_th]:py-1 '
-    + '[&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground';
+  + '[&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold '
+  + '[&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 '
+  + '[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 '
+  + '[&_code]:font-mono [&_code]:text-[0.85em] '
+  + '[&_table]:my-2 [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:px-2 [&_th]:py-1 '
+  + '[&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground';
 
 export function AdaptiveLearnClient({
   code,
@@ -442,7 +442,6 @@ export function AdaptiveLearnClient({
               <div
                 className={`mt-3 ${LESSON_BODY_CLASS}`}
                 // 內容來自自家 API（Claude 生成的 Markdown），非使用者輸入
-                // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: String(marked.parse(streamingText)) }}
               />
             </div>
@@ -487,8 +486,7 @@ export function AdaptiveLearnClient({
                   }
                   return (
                     <button
-                      // eslint-disable-next-line react/no-array-index-key
-                      key={i}
+                      key={opt}
                       type="button"
                       className={cls}
                       disabled={grading || feedback !== null}
@@ -560,13 +558,10 @@ export function AdaptiveLearnClient({
                   看不懂的地方，用滑鼠選取文字即可劃線提問
                 </span>
               </div>
-              {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
               <div
-                role="article"
                 className={LESSON_BODY_CLASS}
                 onMouseUp={handleLessonMouseUp}
                 // 內容來自自家 API（Claude 生成的 Markdown），非使用者輸入
-                // eslint-disable-next-line react/no-danger
                 dangerouslySetInnerHTML={{ __html: String(marked.parse(step.lesson.content)) }}
               />
 

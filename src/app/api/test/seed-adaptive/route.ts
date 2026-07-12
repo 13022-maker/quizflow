@@ -10,8 +10,8 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { db } from '@/libs/DB';
 import { resolveSubject } from '@/libs/adaptive/service';
+import { db } from '@/libs/DB';
 import { adaptivePracticeSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';

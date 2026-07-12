@@ -22,16 +22,17 @@
  * ============================================================================
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import Anthropic from '@anthropic-ai/sdk';
+
+import type { Subject } from './subjects';
+import { cppSubject } from './subjects/cpp'; // 預設學科（向下相容用）
 import {
+  type AnnotationContext,
+  type RemedialLesson,
+  type StruggleEvidence,
   TemplateTutorProvider,
   type TutorProvider,
-  type StruggleEvidence,
-  type RemedialLesson,
-  type AnnotationContext,
-} from "./tutor";
-import type { Subject } from "./subjects";
-import { cppSubject } from "./subjects/cpp"; // 預設學科（向下相容用）
+} from './tutor';
 
 /**
  * 課文輸出改用「純 Markdown ＋ 格式約定」而非 JSON Schema：
@@ -40,20 +41,20 @@ import { cppSubject } from "./subjects/cpp"; // 預設學科（向下相容用�
  * 生成完畢後由 parseLessonMarkdown() 拆回 RemedialLesson 結構。
  */
 function parseLessonMarkdown(markdown: string, knowledgeId: string): RemedialLesson {
-  const title = markdown.match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "補強課文";
+  const title = markdown.match(/^#\s+(\S.*)$/m)?.[1]?.trim() ?? '補強課文';
 
   // 以「## 思考題」為界：前段是課文本體，後段逐行取出列點作為思考題
   const split = markdown.split(/^##\s*【?思考題】?\s*$/m);
   const content = (split[0] ?? markdown).trim();
   const bulletPattern = /^\s*(?:[-*・]|\d+[.、）)])\s+/;
-  const thoughtQuestions = (split[1] ?? "")
-    .split("\n")
-    .filter((line) => bulletPattern.test(line))
-    .map((line) => line.replace(bulletPattern, "").trim())
+  const thoughtQuestions = (split[1] ?? '')
+    .split('\n')
+    .filter(line => bulletPattern.test(line))
+    .map(line => line.replace(bulletPattern, '').trim())
     .filter(Boolean);
 
   if (thoughtQuestions.length === 0) {
-    thoughtQuestions.push("用自己的話說明這篇課文的核心觀念是什麼？");
+    thoughtQuestions.push('用自己的話說明這篇課文的核心觀念是什麼？');
   }
   return { knowledgeId, title, content, thoughtQuestions };
 }
@@ -98,17 +99,17 @@ function buildAnnotationSystemPrompt(subject: Subject): string {
 function buildEvidencePrompt(evidence: StruggleEvidence): string {
   const { node, mastery, wrongItems, totalHintsUsed, previousAnnotations } = evidence;
   const wrongList = wrongItems
-    .map((it) => `- 【${it.id}】難度 ${it.difficulty.toFixed(1)}：${it.prompt}`)
-    .join("\n");
-  const annotationList =
-    previousAnnotations.length > 0
-      ? previousAnnotations.map((q) => `- ${q}`).join("\n")
-      : "（無）";
+    .map(it => `- 【${it.id}】難度 ${it.difficulty.toFixed(1)}：${it.prompt}`)
+    .join('\n');
+  const annotationList
+    = previousAnnotations.length > 0
+      ? previousAnnotations.map(q => `- ${q}`).join('\n')
+      : '（無）';
 
   return `請為以下卡關的學生生成一篇補強課文。
 
 ## 卡關知識點
-${node.name}（前置知識點：${node.prerequisites.length > 0 ? node.prerequisites.join("、") : "無"}）
+${node.name}（前置知識點：${node.prerequisites.length > 0 ? node.prerequisites.join('、') : '無'}）
 
 ## 學生狀態
 - 當前精熟度機率（BKT 估計）：${mastery.toFixed(3)}
@@ -138,52 +139,48 @@ export class ClaudeTutorProvider implements TutorProvider {
 
   async generateLesson(
     evidence: StruggleEvidence,
-    onDelta?: (text: string) => void
+    onDelta?: (text: string) => void,
   ): Promise<RemedialLesson> {
     try {
-      console.log("   🤖 正在呼叫 Claude API 生成客製化補強課文…");
       // 串流呼叫：課文以純 Markdown 逐段輸出，每個文字增量即時回呼給 onDelta
       // （前端可邊收邊渲染，Bloom 的「流式生成」體驗）
       const stream = this.client.messages.stream({
-        model: "claude-opus-4-8",
+        model: 'claude-opus-4-8',
         max_tokens: 16000,
-        thinking: { type: "adaptive" }, // Opus 4.8 需明確開啟 adaptive thinking
+        thinking: { type: 'adaptive' }, // Opus 4.8 需明確開啟 adaptive thinking
         system: this.lessonSystemPrompt,
-        messages: [{ role: "user", content: buildEvidencePrompt(evidence) }],
+        messages: [{ role: 'user', content: buildEvidencePrompt(evidence) }],
       });
       if (onDelta) {
-        stream.on("text", (delta) => onDelta(delta));
+        stream.on('text', delta => onDelta(delta));
       }
       const message = await stream.finalMessage();
 
       // 先檢查停止原因，再讀內容（refusal / max_tokens 時輸出可能不完整）
-      if (message.stop_reason === "refusal") {
-        console.warn("   ⚠️ Claude 拒絕了此請求，改用模板版課文");
+      if (message.stop_reason === 'refusal') {
+        console.warn('   ⚠️ Claude 拒絕了此請求，改用模板版課文');
         return this.fallback.generateLesson(evidence, onDelta);
       }
-      if (message.stop_reason === "max_tokens") {
-        console.warn("   ⚠️ 輸出被 max_tokens 截斷，改用模板版課文");
+      if (message.stop_reason === 'max_tokens') {
+        console.warn('   ⚠️ 輸出被 max_tokens 截斷，改用模板版課文');
         return this.fallback.generateLesson(evidence, onDelta);
       }
 
-      const textBlock = message.content.find((b) => b.type === "text");
-      if (!textBlock || textBlock.type !== "text") {
-        throw new Error("回應中沒有文字內容");
+      const textBlock = message.content.find(b => b.type === 'text');
+      if (!textBlock || textBlock.type !== 'text') {
+        throw new Error('回應中沒有文字內容');
       }
 
-      console.log(
-        `   ✅ 課文生成完成（輸入 ${message.usage.input_tokens} tokens、輸出 ${message.usage.output_tokens} tokens）`
-      );
       // 依格式約定把 Markdown 拆回 RemedialLesson 結構
       return parseLessonMarkdown(textBlock.text, evidence.node.id);
     } catch (error) {
       // 分類錯誤原因後降級回模板版：課堂上不能因為 API 問題中斷教學
       if (error instanceof Anthropic.AuthenticationError) {
-        console.warn("   ⚠️ API 金鑰無效或未設定（請設定 ANTHROPIC_API_KEY），改用模板版課文");
+        console.warn('   ⚠️ API 金鑰無效或未設定（請設定 ANTHROPIC_API_KEY），改用模板版課文');
       } else if (error instanceof Anthropic.RateLimitError) {
-        console.warn("   ⚠️ API 觸發限流（429），改用模板版課文");
+        console.warn('   ⚠️ API 觸發限流（429），改用模板版課文');
       } else if (error instanceof Anthropic.APIConnectionError) {
-        console.warn("   ⚠️ 無法連線到 Claude API（請檢查網路），改用模板版課文");
+        console.warn('   ⚠️ 無法連線到 Claude API（請檢查網路），改用模板版課文');
       } else if (error instanceof Anthropic.APIError) {
         console.warn(`   ⚠️ Claude API 錯誤（${error.status}）：${error.message}，改用模板版課文`);
       } else {
@@ -205,18 +202,18 @@ export class ClaudeTutorProvider implements TutorProvider {
       // 重建本篇課文的問答歷史（交替 user / assistant）
       context.history.forEach((ex, i) => {
         messages.push({
-          role: "user",
+          role: 'user',
           content:
             i === 0
               ? this.firstAnnotationTurn(context, ex.highlightedText, ex.question)
               : this.followUpTurn(ex.highlightedText, ex.question),
         });
-        messages.push({ role: "assistant", content: ex.answer });
+        messages.push({ role: 'assistant', content: ex.answer });
       });
 
       // 本次提問：若是本篇第一問，帶入課文全文；否則只帶劃線與問題
       messages.push({
-        role: "user",
+        role: 'user',
         content:
           context.history.length === 0
             ? this.firstAnnotationTurn(context, context.highlightedText, context.question)
@@ -224,27 +221,27 @@ export class ClaudeTutorProvider implements TutorProvider {
       });
 
       const stream = this.client.messages.stream({
-        model: "claude-opus-4-8",
+        model: 'claude-opus-4-8',
         max_tokens: 16000,
-        thinking: { type: "adaptive" },
+        thinking: { type: 'adaptive' },
         system: this.annotationSystemPrompt,
         messages,
       });
       const message = await stream.finalMessage();
 
-      if (message.stop_reason === "refusal") {
-        console.warn("   ⚠️ Claude 拒絕了此提問，改用模板版回答");
+      if (message.stop_reason === 'refusal') {
+        console.warn('   ⚠️ Claude 拒絕了此提問，改用模板版回答');
         return this.fallback.answerAnnotation(context);
       }
-      const textBlock = message.content.find((b) => b.type === "text");
-      if (!textBlock || textBlock.type !== "text") {
-        throw new Error("回應中沒有文字內容");
+      const textBlock = message.content.find(b => b.type === 'text');
+      if (!textBlock || textBlock.type !== 'text') {
+        throw new Error('回應中沒有文字內容');
       }
       return textBlock.text.trim();
     } catch (error) {
       // 即時問答失敗不該中斷閱讀：說明原因後降級回模板版回答
       console.warn(
-        `   ⚠️ 即時回答失敗（${(error as Error).message}），改用模板版回答`
+        `   ⚠️ 即時回答失敗（${(error as Error).message}），改用模板版回答`,
       );
       return this.fallback.answerAnnotation(context);
     }
@@ -254,7 +251,7 @@ export class ClaudeTutorProvider implements TutorProvider {
   private firstAnnotationTurn(
     context: AnnotationContext,
     highlightedText: string,
-    question: string
+    question: string,
   ): string {
     return `以下是我正在閱讀的補強課文：
 

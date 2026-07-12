@@ -3,9 +3,9 @@ import { and, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { db } from '@/libs/DB';
-import { getAdaptiveService } from '@/libs/adaptive/service';
 import type { KnowledgeDiagnosis } from '@/libs/adaptive/engine';
+import { getAdaptiveService } from '@/libs/adaptive/service';
+import { db } from '@/libs/DB';
 import { adaptiveEventSchema, adaptivePracticeSchema } from '@/models/Schema';
 
 import { AutoRefresh } from '../AutoRefresh';
@@ -183,7 +183,7 @@ export default async function AdaptiveBoardPage({
                 const meta = EVENT_META[e.eventType] ?? { icon: '📌', label: e.eventType };
                 return (
                   <div key={e.id} className="flex items-baseline gap-2.5 border-b py-2 text-sm last:border-b-0">
-                    <span className="w-36 shrink-0 tabular-nums text-xs text-muted-foreground">
+                    <span className="w-36 shrink-0 text-xs tabular-nums text-muted-foreground">
                       {e.createdAt.toLocaleString('zh-TW', { hour12: false })}
                     </span>
                     <span className="shrink-0">{meta.icon}</span>

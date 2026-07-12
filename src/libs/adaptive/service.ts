@@ -20,9 +20,9 @@ import { DrizzleAdaptiveRepository } from './repository';
 import { getSubject, type Subject } from './subjects';
 import {
   BloomTutorLayer,
-  TemplateTutorProvider,
   type LearningEvent,
   type NextStep,
+  TemplateTutorProvider,
   type TutorProvider,
 } from './tutor';
 
@@ -69,7 +69,7 @@ export async function resolveSubject(subjectId: string): Promise<Subject> {
   }
   const id = Number(subjectId.slice(DB_SUBJECT_PREFIX.length));
   if (!Number.isInteger(id)) {
-    throw new Error(`學科不存在：${subjectId}`);
+    throw new TypeError(`學科不存在：${subjectId}`);
   }
   const [row] = await db
     .select()
@@ -109,7 +109,7 @@ function createService(practiceId: number, subject: Subject): AdaptiveService {
     engine,
     layer,
     repo,
-    findItem: (itemId) => subject.itemBank.items.find(it => it.id === itemId),
+    findItem: itemId => subject.itemBank.items.find(it => it.id === itemId),
   };
 }
 
