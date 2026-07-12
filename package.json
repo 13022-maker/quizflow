@@ -58,6 +58,7 @@
     "docx": "^9.6.1",
     "drizzle-orm": "^0.35.1",
     "lucide-react": "^0.453.0",
+    "marked": "^12.0.2",
     "nanoid": "^5.1.7",
     "next": "^14.2.35",
     "next-intl": "^3.21.1",

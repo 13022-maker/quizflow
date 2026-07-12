@@ -239,6 +239,20 @@
       "when": 1778479011876,
       "tag": "0033_curious_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1783777767916,
+      "tag": "0034_cooing_bulldozer",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1783780200737,
+      "tag": "0035_curved_talon",
+      "breakpoints": true
     }
   ]
 }

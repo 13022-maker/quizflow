@@ -495,3 +495,109 @@ export const todoSchema = pgTable('todo', {
     .notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
+
+// ==================== 適性學習（Adaptive Learning）====================
+// 動態診斷、差異化派案：BKT 精熟度引擎＋卡關補強課文（引擎在 src/libs/adaptive/）
+// 老師建立「適性練習」取得分享連結；學生免登入，輸入姓名＋學號即可開始，
+// 進度以（practiceId, studentKey）持久化，下次輸入同學號自動續學。
+
+export const adaptivePracticeSchema = pgTable('adaptive_practice', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk user ID（建立練習的老師）
+  subjectId: text('subject_id').notNull(), // 學科 id：cpp / python / calculus（見 libs/adaptive/subjects）
+  title: text('title').notNull(),
+  accessCode: text('access_code').unique().notNull(), // 8 碼隨機英數，學生連結用（防猜測）
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+export const adaptiveStudentStateSchema = pgTable(
+  'adaptive_student_state',
+  {
+    id: serial('id').primaryKey(),
+    practiceId: integer('practice_id')
+      .notNull()
+      .references(() => adaptivePracticeSchema.id, { onDelete: 'cascade' }),
+    studentKey: text('student_key').notNull(), // 學號／座號（免登入，同一練習內唯一）
+    displayName: text('display_name').notNull(), // 學生姓名（首次進入時填寫）
+    // BKT 引擎狀態（沿用 edtech MVP 的序列化格式：Map/Set → JSONB 物件/陣列）
+    knowledge: jsonb('knowledge')
+      .notNull()
+      .$type<Record<string, { mastery: number; targetDifficulty: number; attempts: number }>>(),
+    answeredItemIds: jsonb('answered_item_ids').notNull().$type<string[]>(),
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // 同一練習內一個學號一筆狀態（upsert 依此鍵）
+      practiceStudentIdx: uniqueIndex('adaptive_state_practice_student_idx').on(
+        table.practiceId,
+        table.studentKey,
+      ),
+    };
+  },
+);
+
+export const adaptiveEventSchema = pgTable(
+  'adaptive_event',
+  {
+    id: serial('id').primaryKey(),
+    practiceId: integer('practice_id')
+      .notNull()
+      .references(() => adaptivePracticeSchema.id, { onDelete: 'cascade' }),
+    studentKey: text('student_key').notNull(),
+    displayName: text('display_name').notNull(), // 反正規化存姓名，時間軸不用 join
+    eventType: text('event_type').notNull(), // remedial_lesson_dispatched / annotation_added / lesson_completed / knowledge_mastered / course_completed
+    knowledgeId: text('knowledge_id'),
+    detail: text('detail'),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  (table) => {
+    return {
+      // 教師儀表板時間軸：依練習查最新事件
+      practiceCreatedIdx: index('adaptive_event_practice_created_idx').on(
+        table.practiceId,
+        table.createdAt,
+      ),
+    };
+  },
+);
+
+// 老師自建學科（AI 生成）：知識圖譜＋題庫＋導師風格整包存 JSONB。
+// 內建學科（cpp/python/calculus）在程式碼裡；自建學科的 practice.subject_id 存 "db:<id>"。
+export const adaptiveSubjectSchema = pgTable('adaptive_subject', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk user ID（建立學科的老師）
+  name: text('name').notNull(), // 學科顯示名稱（AI 取名，例如「二次函數」）
+  sourceTopic: text('source_topic').notNull(), // 老師輸入的主題（重生成／追溯用）
+  graph: jsonb('graph').notNull().$type<{
+    nodes: { id: string; name: string; prerequisites: string[] }[];
+  }>(),
+  itemBank: jsonb('item_bank').notNull().$type<{
+    items: {
+      id: string;
+      knowledgeId: string;
+      difficulty: number;
+      prompt: string;
+      options: string[];
+      answerIndex: number;
+      explanation?: string;
+    }[];
+  }>(),
+  tutor: jsonb('tutor').notNull().$type<{
+    lessonExampleRule: string;
+    formatRule: string;
+  }>(),
+  updatedAt: timestamp('updated_at', { mode: 'date' })
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});

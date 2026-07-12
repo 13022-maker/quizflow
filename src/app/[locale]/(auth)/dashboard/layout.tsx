@@ -45,6 +45,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 label: '單字卡',
               },
               {
+                href: '/dashboard/adaptive',
+                label: '適性學習',
+              },
+              {
                 href: '/marketplace',
                 label: '市集',
               },
