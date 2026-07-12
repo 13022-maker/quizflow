@@ -558,6 +558,9 @@ export function AdaptiveLearnClient({
                   看不懂的地方，用滑鼠選取文字即可劃線提問
                 </span>
               </div>
+              {/* onMouseUp 用來抓「劃線選取」的文字，是文字選取而非點擊互動，
+                  沒有對應的鍵盤操作可替代，故停用靜態元素互動規則 */}
+              {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
               <div
                 className={LESSON_BODY_CLASS}
                 onMouseUp={handleLessonMouseUp}
