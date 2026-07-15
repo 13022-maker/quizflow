@@ -14,6 +14,8 @@
 
 import { useRef, useState } from 'react';
 
+import { buildChapters, type PdfChapter } from './pdfChapters';
+
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -175,6 +177,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [startPage, setStartPage] = useState(1);
   const [endPage, setEndPage] = useState(1);
   const [pageLoading, setPageLoading] = useState(false);
+  // PDF 章節（來自書籤，無書籤時為空陣列）；畫面渲染留給 Task 3，這裡先 void 避免 noUnusedLocals 誤判
+  const [chapters, setChapters] = useState<PdfChapter[]>([]);
+  void chapters;
 
   // AI 模型選擇（僅檔案模式會用到，預設 Gemini 省錢快速）
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
@@ -288,6 +293,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     if (nonImage) {
       // 單檔模式：PDF / 音檔
       setPdfPageCount(null);
+      setChapters([]);
       setFiles([nonImage]);
 
       if (nonImage.size > MAX_UPLOAD_SIZE) {
@@ -310,6 +316,36 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         setPdfPageCount(total);
         setStartPage(1);
         setEndPage(Math.min(10, total));
+
+        // 解析 PDF 內建書籤（目錄）→ 章節清單；無書籤或解析失敗時維持空陣列
+        try {
+          const outline = await pdf.getOutline();
+          if (outline && outline.length > 0) {
+            const raw: { title: string; start: number }[] = [];
+            for (const item of outline) {
+              try {
+                // dest 可能是字串（具名目的地）或陣列，需解析成頁面參照
+                const dest = typeof item.dest === 'string'
+                  ? await pdf.getDestination(item.dest)
+                  : item.dest;
+                const ref = Array.isArray(dest) ? dest[0] : null;
+                if (!ref) {
+                  continue;
+                }
+                const pageIndex = await pdf.getPageIndex(ref);
+                raw.push({ title: item.title, start: pageIndex + 1 });
+              } catch {
+                // 個別書籤解析失敗即略過，不影響其餘章節
+              }
+            }
+            setChapters(buildChapters(raw, total));
+          } else {
+            setChapters([]);
+          }
+        } catch {
+          // 整體書籤讀取失敗 → 不顯示章節，頁碼功能不受影響
+          setChapters([]);
+        }
       } catch {
         setPdfPageCount(null);
       } finally {
@@ -320,6 +356,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
     // 全為圖片：累加到現有圖片清單（若目前已有 PDF/音檔則改為覆寫為新圖片清單）
     setPdfPageCount(null);
+    setChapters([]);
     setFiles((prev) => {
       const prevAllImages = prev.every(isImageFile);
       const merged = prevAllImages ? [...prev, ...incoming] : [...incoming];
@@ -829,6 +866,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                               setResult(null);
                               if (fExt === 'pdf') {
                                 setPdfPageCount(null);
+                                setChapters([]);
                               }
                             }}
                             className="flex size-6 items-center justify-center text-xl text-gray-400 transition-colors hover:text-red-500"
