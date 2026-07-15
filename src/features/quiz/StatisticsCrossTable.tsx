@@ -204,8 +204,8 @@ export function StatisticsCrossTable() {
       return [escapeCSV(row.studentName), ...cells, total, totalFull, pct];
     });
 
-    // BOM + CSV 內容
-    const csv = `﻿${[headers.map(escapeCSV).join(','), ...csvRows.map(r => r.join(','))].join('\n')}`;
+    // BOM + CSV 內容（BOM 用 \uFEFF 跳脫寫法，避免 no-irregular-whitespace）
+    const csv = `\uFEFF${[headers.map(escapeCSV).join(','), ...csvRows.map(r => r.join(','))].join('\n')}`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

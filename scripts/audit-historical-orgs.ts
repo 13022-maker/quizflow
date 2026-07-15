@@ -45,6 +45,15 @@ function sleep(ms: number) {
   return new Promise(r => setTimeout(r, ms));
 }
 
+// 先讀入歷史 org 清單（提前到 lookupOrg 之前定義，符合 no-use-before-define）
+const inputPath = 'tmp/historical-orgs.json';
+if (!fs.existsSync(inputPath)) {
+  console.error(`❌ 找不到 ${inputPath},先跑前一步 dump 流程`);
+  process.exit(1);
+}
+const dbOrgs = JSON.parse(fs.readFileSync(inputPath, 'utf8')) as DbOrg[];
+console.log(`📦 讀進 ${dbOrgs.length} 個歷史 org`);
+
 async function lookupOrg(orgId: string): Promise<AuditResult> {
   const dbOrg = dbOrgs.find(o => o.ownerId === orgId)!;
   try {
@@ -90,14 +99,6 @@ async function lookupOrg(orgId: string): Promise<AuditResult> {
     };
   }
 }
-
-const inputPath = 'tmp/historical-orgs.json';
-if (!fs.existsSync(inputPath)) {
-  console.error(`❌ 找不到 ${inputPath},先跑前一步 dump 流程`);
-  process.exit(1);
-}
-const dbOrgs = JSON.parse(fs.readFileSync(inputPath, 'utf8')) as DbOrg[];
-console.log(`📦 讀進 ${dbOrgs.length} 個歷史 org`);
 
 async function main() {
   const results: AuditResult[] = [];

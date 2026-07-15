@@ -125,9 +125,13 @@ export function BloomQuizGenerator() {
 
   const handleGenerate = useCallback(async () => {
     if (!contentInput.trim()) {
-      setGenError('請先輸入教學內容'); return;
+      setGenError('請先輸入教學內容');
+      return;
     }
-    setGenError(''); setImportError(''); setOutput(null); setIsGenerating(true);
+    setGenError('');
+    setImportError('');
+    setOutput(null);
+    setIsGenerating(true);
     try {
       const { difficulty: apiDiff, framework } = toApiParams(difficulty);
       const res = await fetch('/api/ai/generate-questions', {
@@ -146,13 +150,16 @@ export function BloomQuizGenerator() {
       try {
         data = JSON.parse(text);
       } catch {
-        setGenError(`伺服器回應非 JSON（前 200 字）：${text.slice(0, 200)}`); return;
+        setGenError(`伺服器回應非 JSON（前 200 字）：${text.slice(0, 200)}`);
+        return;
       }
       if (!res.ok || data.error) {
-        setGenError(data.error ?? '生成失敗，請重試'); return;
+        setGenError(data.error ?? '生成失敗，請重試');
+        return;
       }
       if (!data.questions?.length) {
-        setGenError('未收到任何題目，請重試'); return;
+        setGenError('未收到任何題目，請重試');
+        return;
       }
 
       const { bloomLevel, difficultyNum } = toBoomMeta(difficulty);
@@ -174,7 +181,9 @@ export function BloomQuizGenerator() {
     const blob = new Blob([JSON.stringify(output, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'bloom-questions.json'; a.click();
+    a.href = url;
+    a.download = 'bloom-questions.json';
+    a.click();
     URL.revokeObjectURL(url);
   }, [output]);
 
@@ -188,7 +197,8 @@ export function BloomQuizGenerator() {
     startTransition(async () => {
       const result = await createQuizWithBloomQuestions(title, output.questions);
       if ('error' in result) {
-        setImportError(result.error); return;
+        setImportError(result.error);
+        return;
       }
       router.push(`/dashboard/quizzes/${result.quizId}/edit`);
     });
