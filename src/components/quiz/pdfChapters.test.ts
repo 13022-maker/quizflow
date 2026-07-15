@@ -9,6 +9,7 @@ describe('buildChapters', () => {
       { title: '第2章 迴圈結構', start: 8 },
       { title: '第3章 陣列', start: 15 },
     ];
+
     expect(buildChapters(raw, 25)).toEqual([
       { title: '第1章 程式設計概論', start: 1, end: 7 },
       { title: '第2章 迴圈結構', start: 8, end: 14 },
@@ -21,6 +22,7 @@ describe('buildChapters', () => {
       { title: '第2章', start: 8 },
       { title: '第1章', start: 1 },
     ];
+
     expect(buildChapters(raw, 10)).toEqual([
       { title: '第1章', start: 1, end: 7 },
       { title: '第2章', start: 8, end: 10 },
@@ -43,6 +45,7 @@ describe('buildChapters', () => {
       { title: '第1章重複書籤', start: 1 },
       { title: '第2章', start: 5 },
     ];
+
     expect(buildChapters(raw, 8)).toEqual([
       { title: '第1章', start: 1, end: 4 },
       { title: '第2章', start: 5, end: 8 },
@@ -55,6 +58,7 @@ describe('buildChapters', () => {
       { title: '第1章', start: 0 },
       { title: '第2章', start: 3 },
     ];
+
     expect(buildChapters(raw, 6)).toEqual([
       { title: '第2章', start: 3, end: 6 },
     ]);
