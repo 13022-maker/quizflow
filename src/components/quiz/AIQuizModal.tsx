@@ -14,6 +14,8 @@
 
 import { useRef, useState } from 'react';
 
+import { buildChapters, type PdfChapter } from './pdfChapters';
+
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
 type Difficulty = 'easy' | 'medium' | 'hard';
@@ -175,6 +177,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [startPage, setStartPage] = useState(1);
   const [endPage, setEndPage] = useState(1);
   const [pageLoading, setPageLoading] = useState(false);
+  // PDF 章節（來自書籤，無書籤時為空陣列）
+  const [chapters, setChapters] = useState<PdfChapter[]>([]);
 
   // AI 模型選擇（僅檔案模式會用到，預設 Gemini 省錢快速）
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
@@ -288,6 +292,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     if (nonImage) {
       // 單檔模式：PDF / 音檔
       setPdfPageCount(null);
+      setChapters([]);
       setFiles([nonImage]);
 
       if (nonImage.size > MAX_UPLOAD_SIZE) {
@@ -310,6 +315,36 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         setPdfPageCount(total);
         setStartPage(1);
         setEndPage(Math.min(10, total));
+
+        // 解析 PDF 內建書籤（目錄）→ 章節清單；無書籤或解析失敗時維持空陣列
+        try {
+          const outline = await pdf.getOutline();
+          if (outline && outline.length > 0) {
+            const raw: { title: string; start: number }[] = [];
+            for (const item of outline) {
+              try {
+                // dest 可能是字串（具名目的地）或陣列，需解析成頁面參照
+                const dest = typeof item.dest === 'string'
+                  ? await pdf.getDestination(item.dest)
+                  : item.dest;
+                const ref = Array.isArray(dest) ? dest[0] : null;
+                if (!ref) {
+                  continue;
+                }
+                const pageIndex = await pdf.getPageIndex(ref);
+                raw.push({ title: item.title, start: pageIndex + 1 });
+              } catch {
+                // 個別書籤解析失敗即略過，不影響其餘章節
+              }
+            }
+            setChapters(buildChapters(raw, total));
+          } else {
+            setChapters([]);
+          }
+        } catch {
+          // 整體書籤讀取失敗 → 不顯示章節，頁碼功能不受影響
+          setChapters([]);
+        }
       } catch {
         setPdfPageCount(null);
       } finally {
@@ -320,6 +355,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
     // 全為圖片：累加到現有圖片清單（若目前已有 PDF/音檔則改為覆寫為新圖片清單）
     setPdfPageCount(null);
+    setChapters([]);
     setFiles((prev) => {
       const prevAllImages = prev.every(isImageFile);
       const merged = prevAllImages ? [...prev, ...incoming] : [...incoming];
@@ -829,6 +865,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                               setResult(null);
                               if (fExt === 'pdf') {
                                 setPdfPageCount(null);
+                                setChapters([]);
                               }
                             }}
                             className="flex size-6 items-center justify-center text-xl text-gray-400 transition-colors hover:text-red-500"
@@ -859,6 +896,41 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       >
                         + 再加幾張
                       </button>
+                    </div>
+                  )}
+
+                  {/* 依章節選取（僅當 PDF 含書籤時顯示） */}
+                  {chapters.length > 0 && (
+                    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:px-4">
+                      <p className="text-xs font-bold text-gray-700">
+                        📑 依章節選取（點一下自動帶入頁碼）
+                      </p>
+                      <div className="max-h-48 space-y-1 overflow-y-auto">
+                        {chapters.map((ch) => {
+                          // 頁碼完全等於某章範圍時才視為選中（手動改頁碼會自動取消高亮）
+                          const selected = startPage === ch.start && endPage === ch.end;
+                          return (
+                            <button
+                              key={`${ch.title}-${ch.start}`}
+                              type="button"
+                              onClick={() => {
+                                setStartPage(ch.start);
+                                setEndPage(ch.end);
+                              }}
+                              className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition-colors ${
+                                selected
+                                  ? 'border-amber-400 bg-amber-50 text-amber-800'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50/40'
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1 truncate font-medium">{ch.title}</span>
+                              <span className="shrink-0 font-mono text-xs text-gray-500">
+                                {`p.${ch.start}–${ch.end}`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
