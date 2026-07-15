@@ -177,9 +177,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [startPage, setStartPage] = useState(1);
   const [endPage, setEndPage] = useState(1);
   const [pageLoading, setPageLoading] = useState(false);
-  // PDF 章節（來自書籤，無書籤時為空陣列）；畫面渲染留給 Task 3，這裡先 void 避免 noUnusedLocals 誤判
+  // PDF 章節（來自書籤，無書籤時為空陣列）
   const [chapters, setChapters] = useState<PdfChapter[]>([]);
-  void chapters;
 
   // AI 模型選擇（僅檔案模式會用到，預設 Gemini 省錢快速）
   const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
@@ -897,6 +896,41 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       >
                         + 再加幾張
                       </button>
+                    </div>
+                  )}
+
+                  {/* 依章節選取（僅當 PDF 含書籤時顯示） */}
+                  {chapters.length > 0 && (
+                    <div className="space-y-1.5 rounded-xl border border-gray-200 bg-gray-50 p-3 sm:px-4">
+                      <p className="text-xs font-bold text-gray-700">
+                        📑 依章節選取（點一下自動帶入頁碼）
+                      </p>
+                      <div className="max-h-48 space-y-1 overflow-y-auto">
+                        {chapters.map((ch) => {
+                          // 頁碼完全等於某章範圍時才視為選中（手動改頁碼會自動取消高亮）
+                          const selected = startPage === ch.start && endPage === ch.end;
+                          return (
+                            <button
+                              key={`${ch.title}-${ch.start}`}
+                              type="button"
+                              onClick={() => {
+                                setStartPage(ch.start);
+                                setEndPage(ch.end);
+                              }}
+                              className={`flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-1.5 text-left text-sm transition-colors ${
+                                selected
+                                  ? 'border-amber-400 bg-amber-50 text-amber-800'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-amber-300 hover:bg-amber-50/40'
+                              }`}
+                            >
+                              <span className="min-w-0 flex-1 truncate font-medium">{ch.title}</span>
+                              <span className="shrink-0 font-mono text-xs text-gray-500">
+                                {`p.${ch.start}–${ch.end}`}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   )}
 
