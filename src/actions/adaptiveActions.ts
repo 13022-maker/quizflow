@@ -120,15 +120,35 @@ const generateSubjectSchema = z.object({
  * AI 生成一個新學科並存入 adaptive_subject。
  * 回傳結果給前端（不 redirect，讓生成頁顯示成功摘要與學科 id）。
  */
-export async function generateAdaptiveSubject(input: { topic: string; material?: string }) {
+export async function generateAdaptiveSubject(
+  input: { topic: string; material?: string },
+): Promise<
+  { id: number; name: string; knowledgeCount: number; itemCount: number } | { error: string }
+  > {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('請先登入');
   }
 
   const parsed = generateSubjectSchema.parse(input);
-  // 呼叫 Claude 生成（含結構＋語意＋引擎建構三道驗證，失敗自動重試一次）
-  const generated = await generateSubject(parsed.topic, parsed.material);
+
+  // 呼叫 AI 生成（含結構＋語意＋引擎建構三道驗證，失敗自動重試一次）
+  let generated: Awaited<ReturnType<typeof generateSubject>>;
+  try {
+    generated = await generateSubject(parsed.topic, parsed.material);
+  } catch (err) {
+    // 兩個 AI provider 都失敗（或模型拒絕）：回傳友善錯誤，不讓例外冒泡成整頁 digest error
+    console.error('[generateAdaptiveSubject] AI 生成失敗：', err);
+    const msg = err instanceof Error ? err.message : '';
+    // Claude 的拒絕/截斷訊息照實顯示；Gemini 對應的 SAFETY / MAX_TOKENS 轉成等義的可行動訊息
+    let friendly = 'AI 服務暫時無法使用，請稍後再試';
+    if (msg.includes('拒絕') || msg.includes('SAFETY')) {
+      friendly = '模型拒絕生成此主題的內容，請換一個主題';
+    } else if (msg.includes('截斷') || msg.includes('MAX_TOKENS')) {
+      friendly = '生成內容過長被截斷，請縮小主題範圍再試';
+    }
+    return { error: friendly } as const;
+  }
   const { subject } = toSubject(generated, 'pending'); // 取正規化後的 graph/itemBank/tutor
 
   const [row] = await db

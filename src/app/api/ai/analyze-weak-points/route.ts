@@ -1,11 +1,9 @@
-// Anthropic SDK 需要 Node.js Runtime
-import Anthropic from '@anthropic-ai/sdk';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-export const runtime = 'nodejs';
+import { generateAIText } from '@/lib/ai/textModel';
 
-const client = new Anthropic();
+export const runtime = 'nodejs';
 
 // 輸入驗證 schema
 const InputSchema = z.object({
@@ -41,13 +39,8 @@ export async function POST(request: Request) {
       )
       .join('\n\n');
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `你是一位學習分析助手。以下是這位學生答錯的題目，請分析學生可能不熟悉的知識概念，並給予 1-2 句具體的學習建議。
+    const { text: raw, usedModel } = await generateAIText({
+      prompt: `你是一位學習分析助手。以下是這位學生答錯的題目，請分析學生可能不熟悉的知識概念，並給予 1-2 句具體的學習建議。
 
 ${questionsText}
 
@@ -57,12 +50,12 @@ ${questionsText}
     { "concept": "概念名稱", "suggestion": "具體學習建議" }
   ]
 }`,
-        },
-      ],
+      maxTokens: 1024,
+      json: true,
     });
+    console.warn(`[analyze-weak-points] usedModel=${usedModel}`);
 
     // 提取 JSON 文字
-    const raw = (message.content[0] as { type: string; text: string }).text ?? '';
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) {
       return NextResponse.json({ error: 'AI 回傳格式錯誤' }, { status: 500 });

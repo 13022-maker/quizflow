@@ -1,11 +1,9 @@
 // 簡答題 AI 自動評分（學生提交時呼叫，同步）
 //
-// 使用 @anthropic-ai/sdk 直接呼叫 Claude，與專案其他 AI 端點一致
-// （CLAUDE.md 明示「維持 @anthropic-ai/sdk，不遷移」）。
+// 使用統一文字生成 helper（generateAIText），自動根據使用者身份分流 Claude/Gemini
+// 學生提交時無登入狀態 → 自動走 Gemini（符合設計：學生端批改用 Gemini 品質足夠）
 
-import Anthropic from '@anthropic-ai/sdk';
-
-const client = new Anthropic();
+import { generateAIText } from '@/lib/ai/textModel';
 
 export type GradeResult = {
   isCorrect: boolean; // 是否「算對」（>=70% 滿分算對）
@@ -66,13 +64,11 @@ export async function gradeShortAnswer(input: GradeInput): Promise<GradeResult> 
     .filter(Boolean)
     .join('\n');
 
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 512,
-    messages: [{ role: 'user', content: promptBody }],
+  const { text: raw } = await generateAIText({
+    prompt: promptBody,
+    maxTokens: 512,
+    json: true,
   });
-
-  const raw = (message.content[0] as { type: string; text: string }).text ?? '';
   const match = raw.match(/\{[\s\S]*\}/);
   if (!match) {
     throw new Error('AI 回傳格式無 JSON');

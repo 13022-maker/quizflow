@@ -24,6 +24,8 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
+import { generateAIText, isProSafe } from '@/lib/ai/textModel';
+
 import type { Subject } from './subjects';
 import { cppSubject } from './subjects/cpp'; // 預設學科（向下相容用）
 import {
@@ -141,51 +143,67 @@ export class ClaudeTutorProvider implements TutorProvider {
     evidence: StruggleEvidence,
     onDelta?: (text: string) => void,
   ): Promise<RemedialLesson> {
+    // 付費且有金鑰才走 Claude 串流（免費用戶直接跳到 Gemini）
+    if (await isProSafe() && process.env.ANTHROPIC_API_KEY?.trim()) {
+      try {
+        // 串流呼叫：課文以純 Markdown 逐段輸出，每個文字增量即時回呼給 onDelta
+        // （前端可邊收邊渲染，Bloom 的「流式生成」體驗）
+        const stream = this.client.messages.stream({
+          model: 'claude-opus-4-8',
+          max_tokens: 16000,
+          thinking: { type: 'adaptive' }, // Opus 4.8 需明確開啟 adaptive thinking
+          system: this.lessonSystemPrompt,
+          messages: [{ role: 'user', content: buildEvidencePrompt(evidence) }],
+        });
+        if (onDelta) {
+          stream.on('text', delta => onDelta(delta));
+        }
+        const message = await stream.finalMessage();
+
+        // 先檢查停止原因，再讀內容（refusal / max_tokens 時輸出可能不完整）
+        if (message.stop_reason === 'refusal') {
+          throw new Error('Claude 拒絕了此請求');
+        }
+        if (message.stop_reason === 'max_tokens') {
+          throw new Error('輸出被 max_tokens 截斷');
+        }
+
+        const textBlock = message.content.find(b => b.type === 'text');
+        if (!textBlock || textBlock.type !== 'text') {
+          throw new Error('回應中沒有文字內容');
+        }
+
+        // 依格式約定把 Markdown 拆回 RemedialLesson 結構
+        return parseLessonMarkdown(textBlock.text, evidence.node.id);
+      } catch (error) {
+        // 分類錯誤原因後改試 Gemini（課堂上不能因為 API 問題中斷教學）
+        if (error instanceof Anthropic.AuthenticationError) {
+          console.warn('   ⚠️ API 金鑰無效或未設定（請設定 ANTHROPIC_API_KEY）');
+        } else if (error instanceof Anthropic.RateLimitError) {
+          console.warn('   ⚠️ API 觸發限流（429）');
+        } else if (error instanceof Anthropic.APIConnectionError) {
+          console.warn('   ⚠️ 無法連線到 Claude API（請檢查網路）');
+        } else if (error instanceof Anthropic.APIError) {
+          console.warn(`   ⚠️ Claude API 錯誤（${error.status}）：${error.message}`);
+        } else {
+          console.warn(`   ⚠️ 課文生成失敗：${(error as Error).message}`);
+        }
+        console.warn('   ⚠️ Claude 失敗，改試 Gemini');
+      }
+    }
+    // Gemini 備援（免費用戶的主路徑）：非串流，一次回全文
     try {
-      // 串流呼叫：課文以純 Markdown 逐段輸出，每個文字增量即時回呼給 onDelta
-      // （前端可邊收邊渲染，Bloom 的「流式生成」體驗）
-      const stream = this.client.messages.stream({
-        model: 'claude-opus-4-8',
-        max_tokens: 16000,
-        thinking: { type: 'adaptive' }, // Opus 4.8 需明確開啟 adaptive thinking
+      const { text } = await generateAIText({
+        prompt: buildEvidencePrompt(evidence),
         system: this.lessonSystemPrompt,
-        messages: [{ role: 'user', content: buildEvidencePrompt(evidence) }],
+        maxTokens: 16000,
+        // 付費用戶進到這裡代表 Claude 剛失敗過，直接走 Gemini 不再重試 Claude
+        forceGemini: true,
       });
-      if (onDelta) {
-        stream.on('text', delta => onDelta(delta));
-      }
-      const message = await stream.finalMessage();
-
-      // 先檢查停止原因，再讀內容（refusal / max_tokens 時輸出可能不完整）
-      if (message.stop_reason === 'refusal') {
-        console.warn('   ⚠️ Claude 拒絕了此請求，改用模板版課文');
-        return this.fallback.generateLesson(evidence, onDelta);
-      }
-      if (message.stop_reason === 'max_tokens') {
-        console.warn('   ⚠️ 輸出被 max_tokens 截斷，改用模板版課文');
-        return this.fallback.generateLesson(evidence, onDelta);
-      }
-
-      const textBlock = message.content.find(b => b.type === 'text');
-      if (!textBlock || textBlock.type !== 'text') {
-        throw new Error('回應中沒有文字內容');
-      }
-
-      // 依格式約定把 Markdown 拆回 RemedialLesson 結構
-      return parseLessonMarkdown(textBlock.text, evidence.node.id);
-    } catch (error) {
-      // 分類錯誤原因後降級回模板版：課堂上不能因為 API 問題中斷教學
-      if (error instanceof Anthropic.AuthenticationError) {
-        console.warn('   ⚠️ API 金鑰無效或未設定（請設定 ANTHROPIC_API_KEY），改用模板版課文');
-      } else if (error instanceof Anthropic.RateLimitError) {
-        console.warn('   ⚠️ API 觸發限流（429），改用模板版課文');
-      } else if (error instanceof Anthropic.APIConnectionError) {
-        console.warn('   ⚠️ 無法連線到 Claude API（請檢查網路），改用模板版課文');
-      } else if (error instanceof Anthropic.APIError) {
-        console.warn(`   ⚠️ Claude API 錯誤（${error.status}）：${error.message}，改用模板版課文`);
-      } else {
-        console.warn(`   ⚠️ 課文生成失敗：${(error as Error).message}，改用模板版課文`);
-      }
+      onDelta?.(text); // 無串流，全文一次回呼
+      return parseLessonMarkdown(text, evidence.node.id);
+    } catch (err) {
+      console.warn(`   ⚠️ Gemini 也失敗（${(err as Error).message}），改用模板版課文`);
       return this.fallback.generateLesson(evidence, onDelta);
     }
   }
@@ -196,53 +214,78 @@ export class ClaudeTutorProvider implements TutorProvider {
    * （後續追問共用同一前綴，對 prompt cache 友善），之後每輪只帶劃線段落與問題。
    */
   async answerAnnotation(context: AnnotationContext): Promise<string> {
-    try {
-      const messages: Anthropic.MessageParam[] = [];
+    // 付費且有金鑰才走 Claude 串流（免費用戶直接跳到 Gemini）
+    if (await isProSafe() && process.env.ANTHROPIC_API_KEY?.trim()) {
+      try {
+        const messages: Anthropic.MessageParam[] = [];
 
-      // 重建本篇課文的問答歷史（交替 user / assistant）
-      context.history.forEach((ex, i) => {
+        // 重建本篇課文的問答歷史（交替 user / assistant）
+        context.history.forEach((ex, i) => {
+          messages.push({
+            role: 'user',
+            content:
+              i === 0
+                ? this.firstAnnotationTurn(context, ex.highlightedText, ex.question)
+                : this.followUpTurn(ex.highlightedText, ex.question),
+          });
+          messages.push({ role: 'assistant', content: ex.answer });
+        });
+
+        // 本次提問：若是本篇第一問，帶入課文全文；否則只帶劃線與問題
         messages.push({
           role: 'user',
           content:
-            i === 0
-              ? this.firstAnnotationTurn(context, ex.highlightedText, ex.question)
-              : this.followUpTurn(ex.highlightedText, ex.question),
+            context.history.length === 0
+              ? this.firstAnnotationTurn(context, context.highlightedText, context.question)
+              : this.followUpTurn(context.highlightedText, context.question),
         });
-        messages.push({ role: 'assistant', content: ex.answer });
-      });
 
-      // 本次提問：若是本篇第一問，帶入課文全文；否則只帶劃線與問題
-      messages.push({
-        role: 'user',
-        content:
-          context.history.length === 0
-            ? this.firstAnnotationTurn(context, context.highlightedText, context.question)
-            : this.followUpTurn(context.highlightedText, context.question),
-      });
+        const stream = this.client.messages.stream({
+          model: 'claude-opus-4-8',
+          max_tokens: 16000,
+          thinking: { type: 'adaptive' },
+          system: this.annotationSystemPrompt,
+          messages,
+        });
+        const message = await stream.finalMessage();
 
-      const stream = this.client.messages.stream({
-        model: 'claude-opus-4-8',
-        max_tokens: 16000,
-        thinking: { type: 'adaptive' },
+        if (message.stop_reason === 'refusal') {
+          throw new Error('Claude 拒絕了此提問');
+        }
+        const textBlock = message.content.find(b => b.type === 'text');
+        if (!textBlock || textBlock.type !== 'text') {
+          throw new Error('回應中沒有文字內容');
+        }
+        return textBlock.text.trim();
+      } catch (error) {
+        // 即時問答失敗不該中斷閱讀：說明原因後改試 Gemini
+        console.warn(
+          `   ⚠️ 即時回答失敗（${(error as Error).message}），改試 Gemini`,
+        );
+      }
+    }
+    // Gemini 備援：把問答歷史序列化成單一 prompt
+    try {
+      const parts: string[] = [];
+      context.history.forEach((ex, i) => {
+        parts.push(`【學生】${i === 0
+          ? this.firstAnnotationTurn(context, ex.highlightedText, ex.question)
+          : this.followUpTurn(ex.highlightedText, ex.question)}`);
+        parts.push(`【導師】${ex.answer}`);
+      });
+      parts.push(`【學生】${context.history.length === 0
+        ? this.firstAnnotationTurn(context, context.highlightedText, context.question)
+        : this.followUpTurn(context.highlightedText, context.question)}`);
+      const { text } = await generateAIText({
+        prompt: parts.join('\n\n'),
         system: this.annotationSystemPrompt,
-        messages,
+        maxTokens: 4096,
+        // 付費用戶進到這裡代表 Claude 剛失敗過，直接走 Gemini 不再重試 Claude
+        forceGemini: true,
       });
-      const message = await stream.finalMessage();
-
-      if (message.stop_reason === 'refusal') {
-        console.warn('   ⚠️ Claude 拒絕了此提問，改用模板版回答');
-        return this.fallback.answerAnnotation(context);
-      }
-      const textBlock = message.content.find(b => b.type === 'text');
-      if (!textBlock || textBlock.type !== 'text') {
-        throw new Error('回應中沒有文字內容');
-      }
-      return textBlock.text.trim();
-    } catch (error) {
-      // 即時問答失敗不該中斷閱讀：說明原因後降級回模板版回答
-      console.warn(
-        `   ⚠️ 即時回答失敗（${(error as Error).message}），改用模板版回答`,
-      );
+      return text.trim();
+    } catch (err) {
+      console.warn(`   ⚠️ Gemini 即時回答也失敗（${(err as Error).message}），改用模板版回答`);
       return this.fallback.answerAnnotation(context);
     }
   }

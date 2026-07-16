@@ -1,12 +1,13 @@
 /**
- * AI 生成學科 — 老師輸入單元主題（可選附教材文字），Claude 生成完整學科：
+ * AI 生成學科 — 老師輸入單元主題（可選附教材文字），AI（Claude 為主，失敗自動退 Gemini）生成完整學科：
  *   知識圖譜（3~5 個知識點，含前置依賴鏈）＋題庫（每點 5~8 題單選，難度分布
  *   0.2~0.9、正解、解析）＋導師風格規則（數學類強制純文字數學式、程式類給範例）。
  * 驗證三道關卡：JSON 可解析 → zod 結構驗證 → AdaptiveEngine 建構（拓撲排序驗 DAG）。
  * 格式不合法自動重試一次（把錯誤訊息回饋給模型修正）。
  */
-import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
+
+import { generateAIText } from '@/lib/ai/textModel';
 
 import { AdaptiveEngine, type ItemBank, type KnowledgeGraph } from './engine';
 import type { Subject } from './subjects';
@@ -152,39 +153,25 @@ function extractJson(text: string): unknown {
 }
 
 /**
- * 呼叫 Claude 生成學科（約 1~3 分鐘）。
+ * 呼叫 AI 生成學科（約 1~3 分鐘）。走 generateAIText 分流備援（付費 Claude 失敗自動退 Gemini）。
  * 驗證失敗會帶著錯誤訊息重試一次；兩次都失敗才丟錯給呼叫端。
  */
 export async function generateSubject(topic: string, material?: string): Promise<GeneratedSubject> {
-  const client = new Anthropic(); // 金鑰從 ANTHROPIC_API_KEY 環境變數讀取
-
-  const messages: Anthropic.MessageParam[] = [
-    { role: 'user', content: buildUserPrompt(topic, material) },
-  ];
-
   let lastError = '';
   for (let attempt = 0; attempt < 2; attempt++) {
-    // 串流避免長輸出撞上 HTTP 逾時；finalMessage() 聚合完整回應
-    const stream = client.messages.stream({
-      model: 'claude-opus-4-8',
-      max_tokens: 32000,
-      thinking: { type: 'adaptive' },
+    // 重試時附上上次的驗證錯誤，讓模型修正
+    const retryNote = lastError
+      ? `\n\n【上次生成有以下問題，請修正後重新生成】\n${lastError}`
+      : '';
+    const { text, usedModel } = await generateAIText({
+      prompt: buildUserPrompt(topic, material) + retryNote,
       system: SYSTEM_PROMPT,
-      messages,
+      claudeModel: 'claude-opus-4-8',
+      claudeThinking: true,
+      maxTokens: 32000,
+      json: true,
     });
-    const message = await stream.finalMessage();
-
-    if (message.stop_reason === 'refusal') {
-      throw new Error('模型拒絕生成此主題的內容，請換一個主題');
-    }
-    if (message.stop_reason === 'max_tokens') {
-      throw new Error('生成內容過長被截斷，請縮小主題範圍再試');
-    }
-
-    const text = message.content
-      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
-      .map(b => b.text)
-      .join('');
+    console.warn(`[generate-subject] attempt=${attempt} usedModel=${usedModel}`);
 
     try {
       const generated = generatedSubjectSchema.parse(extractJson(text));
@@ -192,14 +179,6 @@ export async function generateSubject(topic: string, material?: string): Promise
       return generated;
     } catch (error) {
       lastError = (error as Error).message;
-      // 把上一輪輸出與錯誤回饋給模型修正後重試
-      messages.push(
-        { role: 'assistant', content: text },
-        {
-          role: 'user',
-          content: `你的輸出驗證失敗：${lastError}\n請修正後重新輸出完整 JSON（同樣不要圍欄與說明文字）。`,
-        },
-      );
     }
   }
   throw new Error(`AI 生成的學科結構驗證失敗：${lastError}`);
