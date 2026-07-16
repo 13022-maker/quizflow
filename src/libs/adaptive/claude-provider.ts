@@ -197,6 +197,8 @@ export class ClaudeTutorProvider implements TutorProvider {
         prompt: buildEvidencePrompt(evidence),
         system: this.lessonSystemPrompt,
         maxTokens: 16000,
+        // 付費用戶進到這裡代表 Claude 剛失敗過，直接走 Gemini 不再重試 Claude
+        forceGemini: true,
       });
       onDelta?.(text); // 無串流，全文一次回呼
       return parseLessonMarkdown(text, evidence.node.id);
@@ -278,6 +280,8 @@ export class ClaudeTutorProvider implements TutorProvider {
         prompt: parts.join('\n\n'),
         system: this.annotationSystemPrompt,
         maxTokens: 4096,
+        // 付費用戶進到這裡代表 Claude 剛失敗過，直接走 Gemini 不再重試 Claude
+        forceGemini: true,
       });
       return text.trim();
     } catch (err) {

@@ -19,6 +19,7 @@ type GenerateAITextOptions = {
   claudeThinking?: boolean; // Opus 4.8 需開 adaptive thinking
   maxTokens?: number; // 預設 4096
   json?: boolean; // true 時 Gemini 開 JSON mode
+  forceGemini?: boolean; // 呼叫端已自行嘗試過 Claude 失敗時，跳過 Claude 直接走 Gemini
 };
 
 /** 決定首選 provider（純函式，可測） */
@@ -101,7 +102,7 @@ export async function generateAIText(
 ): Promise<{ text: string; usedModel: 'claude' | 'gemini' }> {
   const isPro = await isProSafe();
   const provider = resolveAIProvider(isPro, Boolean(process.env.ANTHROPIC_API_KEY?.trim()));
-  if (provider === 'claude') {
+  if (!opts.forceGemini && provider === 'claude') {
     try {
       return { text: await callClaude(opts), usedModel: 'claude' };
     } catch (err) {
