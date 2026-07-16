@@ -307,7 +307,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
       setPageLoading(true);
       try {
-        const pdfjsLib = await import('pdfjs-dist');
+        // 用 minified 進入點：非壓縮 pdf.mjs 會被 Sentry wrapping loader 包壞（見 src/types/pdfjs-min.d.ts）
+        const pdfjsLib = await import('pdfjs-dist/build/pdf.min.mjs');
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
         const arrayBuffer = await nonImage.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
