@@ -7,6 +7,7 @@
  *       spec: docs/superpowers/specs/2026-07-16-ai-provider-fallback-design.md
  */
 import Anthropic from '@anthropic-ai/sdk';
+import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 
 import { isProOrAbove } from '@/libs/Plan';
@@ -28,8 +29,12 @@ export function resolveAIProvider(isPro: boolean, hasClaudeKey: boolean): 'claud
 /** isProOrAbove 安全版：無 auth context（學生端、CLI）時視為 free，不 throw */
 export async function isProSafe(): Promise<boolean> {
   try {
-    // isProOrAbove 的參數目前未使用（內部以 auth() 取得 userId）
-    return await isProOrAbove('');
+    // 先取得真實 userId，再查方案；無 auth context 時視為 free
+    const { userId } = await auth();
+    if (!userId) {
+      return false;
+    }
+    return await isProOrAbove(userId);
   } catch {
     return false;
   }
