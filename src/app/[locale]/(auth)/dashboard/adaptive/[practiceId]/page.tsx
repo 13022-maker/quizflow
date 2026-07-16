@@ -127,47 +127,72 @@ export default async function AdaptiveBoardPage({
                     {knowledgeColumns.map(k => (
                       <th key={k.knowledgeId} className="px-4 py-2 font-medium">{k.name}</th>
                     ))}
+                    <th className="px-4 py-2 font-medium">學習後分數</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map(s => (
-                    <tr key={s.studentKey} className="border-t">
-                      <td className="px-4 py-3">
-                        <span className="font-medium">{s.displayName}</span>
-                        <span className="ml-1 text-xs text-muted-foreground">
-                          （
-                          {s.studentKey}
-                          ）
-                        </span>
-                      </td>
-                      {s.diagnosis.map((d) => {
-                        const meta = STATUS_META[d.status];
-                        return (
-                          <td key={d.knowledgeId} className="px-4 py-3">
-                            <div className="text-xs">
-                              {meta.label}
-                              {' '}
-                              {(d.mastery * 100).toFixed(0)}
-                              %
-                            </div>
-                            <div className="my-1.5 h-1.5 w-24 overflow-hidden rounded bg-muted">
-                              <div
-                                className={`h-full ${meta.bar}`}
-                                style={{ width: `${Math.round(d.mastery * 100)}%` }}
-                              />
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              作答
-                              {' '}
-                              {d.attempts}
-                              {' '}
-                              次
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
+                  {students.map((s) => {
+                    // 學習後分數＝全部知識點目前精熟度平均 ×100（鎖定中算低分：還沒學到）
+                    const score = s.diagnosis.length > 0
+                      ? Math.round(
+                        (s.diagnosis.reduce((sum, d) => sum + d.mastery, 0) / s.diagnosis.length) * 100,
+                      )
+                      : null;
+                    // 分數區間配色：≥80 綠（大致精熟）、≥60 藍（過半）、其餘灰
+                    const scoreColor = score === null
+                      ? 'text-muted-foreground'
+                      : score >= 80
+                        ? 'text-green-600'
+                        : score >= 60
+                          ? 'text-blue-600'
+                          : 'text-gray-500';
+                    return (
+                      <tr key={s.studentKey} className="border-t">
+                        <td className="px-4 py-3">
+                          <span className="font-medium">{s.displayName}</span>
+                          <span className="ml-1 text-xs text-muted-foreground">
+                            （
+                            {s.studentKey}
+                            ）
+                          </span>
+                        </td>
+                        {s.diagnosis.map((d) => {
+                          const meta = STATUS_META[d.status];
+                          return (
+                            <td key={d.knowledgeId} className="px-4 py-3">
+                              <div className="text-xs">
+                                {meta.label}
+                                {' '}
+                                {(d.mastery * 100).toFixed(0)}
+                                %
+                              </div>
+                              <div className="my-1.5 h-1.5 w-24 overflow-hidden rounded bg-muted">
+                                <div
+                                  className={`h-full ${meta.bar}`}
+                                  style={{ width: `${Math.round(d.mastery * 100)}%` }}
+                                />
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                作答
+                                {' '}
+                                {d.attempts}
+                                {' '}
+                                次
+                              </div>
+                            </td>
+                          );
+                        })}
+                        <td className="px-4 py-3">
+                          <span className={`text-base font-bold tabular-nums ${scoreColor}`}>
+                            {score === null ? '—' : score}
+                          </span>
+                          {score !== null && (
+                            <span className="ml-0.5 text-xs text-muted-foreground">分</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
