@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { isProSafe } from '@/lib/ai/textModel';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -296,6 +297,12 @@ ${typesPrompt}
   // 音檔只能走 Gemini（Claude 不支援音檔多模態）
   let effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
 
+  // 免費用戶選 Claude → 靜默轉 Gemini（付費者才走 Claude；UI 照舊可選，由 server 分流）
+  if (effectiveModel === 'claude' && !(await isProSafe())) {
+    console.warn('[generate-from-file] 非付費用戶選 Claude，靜默轉 Gemini');
+    effectiveModel = 'gemini';
+  }
+
   // 伺服器端金鑰檢查：Gemini 沒設且非音檔 → 自動改用 Claude
   if (effectiveModel === 'gemini' && !hasGeminiKey) {
     if (isAudio) {
@@ -372,9 +379,13 @@ ${typesPrompt}
         ? await generateWithClaude(media, prompt)
         : await generateWithGemini(media, prompt);
     } catch (err) {
-      // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
       if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
+        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
         raw = await generateWithClaude(media, prompt);
+      } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
+        // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
+        console.warn('[generate-from-file] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
+        raw = await generateWithGemini(media, prompt);
       } else {
         throw err;
       }
