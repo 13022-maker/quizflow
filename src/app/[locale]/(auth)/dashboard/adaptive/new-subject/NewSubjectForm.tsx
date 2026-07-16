@@ -33,11 +33,15 @@ export function NewSubjectForm() {
     setError(null);
     setResult(null);
     try {
-      const res = await generateAdaptiveSubject({
+      const result = await generateAdaptiveSubject({
         topic: topic.trim(),
         material: material.trim() || undefined,
       });
-      setResult(res);
+      if ('error' in result) {
+        setError(result.error);
+        return;
+      }
+      setResult(result);
       router.refresh(); // 讓清單頁的學科下拉即時更新
     } catch (e) {
       setError((e as Error).message);
