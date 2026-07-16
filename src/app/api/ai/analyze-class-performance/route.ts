@@ -1,12 +1,10 @@
-// Anthropic SDK 需要 Node.js Runtime
-import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-export const runtime = 'nodejs';
+import { generateAIText } from '@/lib/ai/textModel';
 
-const client = new Anthropic();
+export const runtime = 'nodejs';
 
 // 輸入驗證 schema
 const InputSchema = z.object({
@@ -44,13 +42,8 @@ export async function POST(request: Request) {
       .map((q, i) => `第${i + 1}題：${q.question}（答對率：${q.correctRate}%）`)
       .join('\n');
 
-    const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      messages: [
-        {
-          role: 'user',
-          content: `你是一位教學分析助手。以下是「${quizTitle}」這份測驗各題的班級答對率統計，請分析整體學習情況並給予 2-3 條具體教學建議。
+    const { text: raw, usedModel } = await generateAIText({
+      prompt: `你是一位教學分析助手。以下是「${quizTitle}」這份測驗各題的班級答對率統計，請分析整體學習情況並給予 2-3 條具體教學建議。
 
 ${statsText}
 
@@ -59,12 +52,12 @@ ${statsText}
   "summary": "整體班級學習情況摘要（2-3 句）",
   "suggestions": ["具體教學建議一", "具體教學建議二", "具體教學建議三"]
 }`,
-        },
-      ],
+      maxTokens: 1024,
+      json: true,
     });
+    console.warn(`[analyze-class-performance] usedModel=${usedModel}`);
 
     // 提取 JSON 文字
-    const raw = (message.content[0] as { type: string; text: string }).text ?? '';
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) {
       return NextResponse.json({ error: 'AI 回傳格式錯誤' }, { status: 500 });
