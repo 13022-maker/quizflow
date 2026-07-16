@@ -140,11 +140,14 @@ export async function generateAdaptiveSubject(
     // 兩個 AI provider 都失敗（或模型拒絕）：回傳友善錯誤，不讓例外冒泡成整頁 digest error
     console.error('[generateAdaptiveSubject] AI 生成失敗：', err);
     const msg = err instanceof Error ? err.message : '';
-    return {
-      error: msg.includes('拒絕') || msg.includes('截斷')
-        ? msg // 模型拒絕/截斷是可行動的訊息，照實顯示
-        : 'AI 服務暫時無法使用，請稍後再試',
-    } as const;
+    // Claude 的拒絕/截斷訊息照實顯示；Gemini 對應的 SAFETY / MAX_TOKENS 轉成等義的可行動訊息
+    let friendly = 'AI 服務暫時無法使用，請稍後再試';
+    if (msg.includes('拒絕') || msg.includes('SAFETY')) {
+      friendly = '模型拒絕生成此主題的內容，請換一個主題';
+    } else if (msg.includes('截斷') || msg.includes('MAX_TOKENS')) {
+      friendly = '生成內容過長被截斷，請縮小主題範圍再試';
+    }
+    return { error: friendly } as const;
   }
   const { subject } = toSubject(generated, 'pending'); // 取正規化後的 graph/itemBank/tutor
 
