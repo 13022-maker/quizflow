@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { generateAIText } from '@/lib/ai/textModel';
 import { db } from '@/libs/DB';
 import { responseSchema } from '@/models/Schema';
 
@@ -63,39 +64,13 @@ JSON 格式：
   ]
 }`;
 
-    const apiKey = process.env.OPENAI_API_KEY;
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-
-    let raw: string;
-
-    if (apiKey) {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          response_format: { type: 'json_object' },
-        }),
-      });
-      if (!res.ok) {
-        throw new Error(`OpenAI 錯誤 ${res.status}`);
-      }
-      const data = await res.json();
-      raw = data.choices[0].message.content;
-    } else if (anthropicKey) {
-      const Anthropic = (await import('@anthropic-ai/sdk')).default;
-      const client = new Anthropic();
-      const msg = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 2048,
-        messages: [{ role: 'user', content: prompt }],
-      });
-      raw = (msg.content[0] as { text: string }).text;
-    } else {
-      return NextResponse.json({ error: 'AI 功能尚未設定' }, { status: 503 });
-    }
+    // 統一走 generateAIText：付費 Claude（失敗備援 Gemini）、免費 Gemini
+    const { text: raw, usedModel } = await generateAIText({
+      prompt,
+      maxTokens: 2048,
+      json: true,
+    });
+    console.warn(`[generate-remedial] usedModel=${usedModel}`);
 
     const match = raw.match(/\{[\s\S]*\}/);
     if (!match) {
