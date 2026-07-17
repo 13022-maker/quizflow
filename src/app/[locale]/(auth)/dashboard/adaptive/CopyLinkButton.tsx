@@ -20,7 +20,9 @@ export function CopyLinkButton({ path }: { path: string }) {
     <button
       type="button"
       onClick={copy}
-      className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-medium hover:bg-muted"
+      className={`inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted ${
+        copied ? 'text-emerald-600' : ''
+      }`}
     >
       {copied ? '✓ 已複製' : '📋 複製學生連結'}
     </button>
