@@ -35,8 +35,10 @@ const STATUS_META = {
  */
 export default async function AdaptiveBoardPage({
   params,
+  searchParams,
 }: {
   params: { practiceId: string };
+  searchParams: { sort?: string };
 }) {
   const { userId } = await auth();
   if (!userId) {
@@ -88,6 +90,26 @@ export default async function AdaptiveBoardPage({
   // 知識點欄位以第一位學生的診斷排序為準（引擎回傳已按學習路徑排序）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
 
+  // 每位學生先算好學習後分數＝全部知識點目前精熟度平均 ×100（鎖定中算低分：還沒學到）
+  const scoredStudents = students.map(s => ({
+    ...s,
+    score: s.diagnosis.length > 0
+      ? Math.round(
+        (s.diagnosis.reduce((sum, d) => sum + d.mastery, 0) / s.diagnosis.length) * 100,
+      )
+      : null,
+  }));
+
+  // 依網址 ?sort= 排序（無分數者視為最低分排在後面）；未指定則維持加入順序
+  const sort = searchParams.sort === 'score_asc' || searchParams.sort === 'score_desc'
+    ? searchParams.sort
+    : null;
+  if (sort === 'score_desc') {
+    scoredStudents.sort((a, b) => (b.score ?? -1) - (a.score ?? -1));
+  } else if (sort === 'score_asc') {
+    scoredStudents.sort((a, b) => (a.score ?? -1) - (b.score ?? -1));
+  }
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <AutoRefresh />
@@ -127,17 +149,24 @@ export default async function AdaptiveBoardPage({
                     {knowledgeColumns.map(k => (
                       <th key={k.knowledgeId} className="px-4 py-2 font-medium">{k.name}</th>
                     ))}
-                    <th className="px-4 py-2 font-medium">學習後分數</th>
+                    <th className="px-4 py-2 font-medium">
+                      {/* 點擊切換排序：高→低 ⇄ 低→高（router.refresh 會保留網址，與 10 秒自動刷新相容） */}
+                      <Link
+                        href={sort === 'score_desc' ? '?sort=score_asc' : '?sort=score_desc'}
+                        className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                        title="依學習後分數排序"
+                      >
+                        學習後分數
+                        <span className="text-xs text-muted-foreground">
+                          {sort === 'score_desc' ? '▼' : sort === 'score_asc' ? '▲' : '⇅'}
+                        </span>
+                      </Link>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {students.map((s) => {
-                    // 學習後分數＝全部知識點目前精熟度平均 ×100（鎖定中算低分：還沒學到）
-                    const score = s.diagnosis.length > 0
-                      ? Math.round(
-                        (s.diagnosis.reduce((sum, d) => sum + d.mastery, 0) / s.diagnosis.length) * 100,
-                      )
-                      : null;
+                  {scoredStudents.map((s) => {
+                    const score = s.score;
                     // 分數區間配色：≥80 綠（大致精熟）、≥60 藍（過半）、其餘灰
                     const scoreColor = score === null
                       ? 'text-muted-foreground'
