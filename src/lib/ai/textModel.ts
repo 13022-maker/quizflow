@@ -10,7 +10,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 
-import { isProOrAbove } from '@/libs/Plan';
+import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
+import { PLAN_ID } from '@/utils/AppConfig';
 
 type GenerateAITextOptions = {
   prompt: string; // 完整使用者 prompt（單輪文字）
@@ -36,6 +37,23 @@ export async function isProSafe(): Promise<boolean> {
       return false;
     }
     return await isProOrAbove(userId);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 嚴格付費判定：只認 Paddle 訂閱（active/trialing/past_due），30 天免費試用不算。
+ * 用於高成本生成（如生成學科的 Claude Opus）；getUserPlanId 只查訂閱表、從不看試用，
+ * 正是「真付費」訊號。無 auth context（學生端、CLI）時安全回 false。
+ */
+export async function isPaidSubscriberSafe(): Promise<boolean> {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return false;
+    }
+    return (await getUserPlanId(userId)) !== PLAN_ID.FREE;
   } catch {
     return false;
   }

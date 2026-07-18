@@ -7,7 +7,7 @@
  */
 import { z } from 'zod';
 
-import { generateAIText } from '@/lib/ai/textModel';
+import { generateAIText, isPaidSubscriberSafe } from '@/lib/ai/textModel';
 
 import { AdaptiveEngine, type ItemBank, type KnowledgeGraph } from './engine';
 import type { Subject } from './subjects';
@@ -153,10 +153,13 @@ function extractJson(text: string): unknown {
 }
 
 /**
- * 呼叫 AI 生成學科（約 1~3 分鐘）。走 generateAIText 分流備援（付費 Claude 失敗自動退 Gemini）。
+ * 呼叫 AI 生成學科（約 1~3 分鐘）。走 generateAIText 分流備援。
+ * 只有真正付費訂閱（Paddle）才燒 Claude Opus；試用/免費一律 Gemini（使用者 2026-07-18 決策）。
  * 驗證失敗會帶著錯誤訊息重試一次；兩次都失敗才丟錯給呼叫端。
  */
 export async function generateSubject(topic: string, material?: string): Promise<GeneratedSubject> {
+  // 嚴格付費判定：30 天免費試用不算，避免試用戶單次生成就消耗 32k Opus tokens
+  const forceGemini = !(await isPaidSubscriberSafe());
   let lastError = '';
   for (let attempt = 0; attempt < 2; attempt++) {
     // 重試時附上上次的驗證錯誤，讓模型修正
@@ -170,6 +173,7 @@ export async function generateSubject(topic: string, material?: string): Promise
       claudeThinking: true,
       maxTokens: 32000,
       json: true,
+      forceGemini,
     });
     console.warn(`[generate-subject] attempt=${attempt} usedModel=${usedModel}`);
 
