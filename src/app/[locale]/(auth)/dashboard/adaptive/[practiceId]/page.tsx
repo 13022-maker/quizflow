@@ -90,15 +90,21 @@ export default async function AdaptiveBoardPage({
   // 知識點欄位以第一位學生的診斷排序為準（引擎回傳已按學習路徑排序）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
 
-  // 每位學生先算好學習後分數＝全部知識點目前精熟度平均 ×100（鎖定中算低分：還沒學到）
-  const scoredStudents = students.map(s => ({
-    ...s,
-    score: s.diagnosis.length > 0
-      ? Math.round(
-        (s.diagnosis.reduce((sum, d) => sum + d.mastery, 0) / s.diagnosis.length) * 100,
-      )
-      : null,
-  }));
+  // 每位學生先算好學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100
+  // 鎖定中的知識點從未派過題、mastery 永遠停在初始值，排除在外才能反映個別學生的實際差異
+  const scoredStudents = students.map((s) => {
+    const unlocked = s.diagnosis.filter(d => d.status !== 'locked');
+    return {
+      ...s,
+      score: unlocked.length > 0
+        ? Math.round(
+          (unlocked.reduce((sum, d) => sum + d.mastery, 0) / unlocked.length) * 100,
+        )
+        : null,
+      // 總作答次數：加總所有知識點的作答次數，直接反映每位學生實際花的次數差異
+      totalAttempts: s.diagnosis.reduce((sum, d) => sum + d.attempts, 0),
+    };
+  });
 
   // 依網址 ?sort= 排序（無分數者視為最低分排在後面）；未指定則維持加入順序
   const sort = searchParams.sort === 'score_asc' || searchParams.sort === 'score_desc'
@@ -162,6 +168,7 @@ export default async function AdaptiveBoardPage({
                         </span>
                       </Link>
                     </th>
+                    <th className="px-4 py-2 font-medium">總作答次數</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -218,6 +225,9 @@ export default async function AdaptiveBoardPage({
                           {score !== null && (
                             <span className="ml-0.5 text-xs text-muted-foreground">分</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="tabular-nums text-muted-foreground">{s.totalAttempts}</span>
                         </td>
                       </tr>
                     );
