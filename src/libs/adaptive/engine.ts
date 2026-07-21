@@ -153,6 +153,18 @@ export function clamp(value: number, min: number, max: number): number {
 }
 
 /**
+ * 從候選題池中挑「距離目標難度最近」的題目；
+ * 若有多題並列最近（距離相同），改用亂數在其中隨機挑一題，
+ * 避免同樣作答路徑的學生每次都選到陣列裡的同一題、導致精熟度收斂成一模一樣的數字。
+ */
+export function pickNearestByDifficulty(pool: Item[], targetDifficulty: number): Item {
+  const distance = (it: Item) => Math.abs(it.difficulty - targetDifficulty);
+  const minDistance = Math.min(...pool.map(distance));
+  const nearest = pool.filter(it => Math.abs(distance(it) - minDistance) < 1e-9);
+  return nearest[Math.floor(Math.random() * nearest.length)]!;
+}
+
+/**
  * BKT 核心更新：對單次作答結果做貝氏更新，再套用學習轉移。
  *
  * 步驟一（貝氏證據更新）：依作答結果修正 P(已學會)
@@ -321,7 +333,7 @@ export class AdaptiveEngine {
       reason = `「${targetNode.name}」學習中（精熟度 ${km.mastery.toFixed(2)}），依目標難度派題`;
     }
 
-    // 步驟 3：在目標知識點題目中，選「難度最接近目標難度」的題目
+    // 步驟 3：在目標知識點題目中，選「難度最接近目標難度」的題目（並列時隨機挑一題）
     const km = this.getMastery(state, targetNode.id);
     const candidates = this.itemBank.items.filter(it => it.knowledgeId === targetNode!.id);
     if (candidates.length === 0) {
@@ -330,18 +342,14 @@ export class AdaptiveEngine {
     // 優先使用未作答過的題目；但若最接近的新題與目標難度落差過大
     // （> FRESH_GAP_TOLERANCE），允許重派已作答過的題——例如補強課文讀完後
     // 難度已下修，此時重試先前答錯的簡單題，正是精熟學習法的正確做法
-    const pickNearest = (pool: Item[]): Item =>
-      pool.reduce((best, cur) =>
-        Math.abs(cur.difficulty - km.targetDifficulty) < Math.abs(best.difficulty - km.targetDifficulty)
-          ? cur
-          : best,
-      );
     const fresh = candidates.filter(it => !state.answeredItemIds.has(it.id));
-    let item = fresh.length > 0 ? pickNearest(fresh) : pickNearest(candidates);
+    let item = fresh.length > 0
+      ? pickNearestByDifficulty(fresh, km.targetDifficulty)
+      : pickNearestByDifficulty(candidates, km.targetDifficulty);
     if (
       Math.abs(item.difficulty - km.targetDifficulty) > ENGINE_CONFIG.FRESH_GAP_TOLERANCE
     ) {
-      const overall = pickNearest(candidates); // 含已作答的完整題池
+      const overall = pickNearestByDifficulty(candidates, km.targetDifficulty); // 含已作答的完整題池
       if (
         Math.abs(overall.difficulty - km.targetDifficulty)
         < Math.abs(item.difficulty - km.targetDifficulty)
