@@ -128,6 +128,13 @@ export default async function AdaptiveBoardPage({
         </h1>
         <div className="flex items-center gap-2">
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
+          <a
+            href={`/api/adaptive-practices/${practice.id}/export-csv`}
+            download
+            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
+          >
+            ↓ 匯出班級成績
+          </a>
           <DeletePracticeButton id={practice.id} />
         </div>
       </div>
