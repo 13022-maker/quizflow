@@ -55,6 +55,7 @@ const SYSTEM_PROMPT = `你是台灣教育專家，幫助教師生成高品質的
 
 type 值只能是 "multiple_choice" 或 "short_answer"。
 correct_answer 對 multiple_choice 是選項索引（0-based），對 short_answer 是參考答案字串。
+multiple_choice 的 correct_answer 索引務必平均分散在 0~3 之間，不要讓多題答案集中在同一個索引（尤其避免全部是 0）。
 必須輸出純 JSON，不要加 markdown code block。`;
 
 // difficulty → Bloom 層級提示

@@ -232,7 +232,8 @@ ${typesPrompt}
     { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["事件A","事件B","事件C","事件D"], "answer": ["事件A","事件B","事件C","事件D"], "explanation": "說明" }
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`;
 
   // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
   let effectiveModel = model;

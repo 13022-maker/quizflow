@@ -243,7 +243,8 @@ export async function POST(request: Request) {
   "questions": [
     { "type": "listening", "question": "根據音檔，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }
   ]
-}`
+}
+7. 正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母`
     : `請根據以上文件內容出題。
 
 難度：${diffLabel}
@@ -271,6 +272,7 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型。
+單選題（mc）與聽力題（listening）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。
 聽力題特別注意：
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
