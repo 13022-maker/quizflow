@@ -595,6 +595,8 @@ export const adaptiveSubjectSchema = pgTable('adaptive_subject', {
     lessonExampleRule: string;
     formatRule: string;
   }>(),
+  archivedAt: timestamp('archived_at', { mode: 'date' }), // null = 未封存；封存後從「建立新練習」下拉選單消失，但既有練習不受影響
+  pinned: boolean('pinned').default(false).notNull(), // 釘選：下拉選單與管理頁排最前面
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())

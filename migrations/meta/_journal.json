@@ -253,6 +253,13 @@
       "when": 1783780200737,
       "tag": "0035_curved_talon",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784858076474,
+      "tag": "0036_nosy_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

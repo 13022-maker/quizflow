@@ -54,12 +54,20 @@ export default async function AdaptiveListPage() {
         title="🎯 適性學習"
         description="BKT 動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。"
         action={(
-          <Link
-            href="/dashboard/adaptive/new-subject"
-            className="shrink-0 rounded-lg bg-primary/10 px-3.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
-          >
-            ✨ AI 生成學科
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href="/dashboard/adaptive/subjects"
+              className="rounded-lg border px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+            >
+              ⚙️ 管理學科
+            </Link>
+            <Link
+              href="/dashboard/adaptive/new-subject"
+              className="rounded-lg bg-primary/10 px-3.5 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+            >
+              ✨ AI 生成學科
+            </Link>
+          </div>
         )}
       />
 

@@ -7,7 +7,7 @@
  * 學生端走公開 API（/api/adaptive/[code]/*），不經過這裡。
  */
 import { auth } from '@clerk/nextjs/server';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -38,8 +38,13 @@ export async function listAvailableSubjects(): Promise<{ id: string; name: strin
   const custom = await db
     .select({ id: adaptiveSubjectSchema.id, name: adaptiveSubjectSchema.name })
     .from(adaptiveSubjectSchema)
-    .where(eq(adaptiveSubjectSchema.ownerId, userId))
-    .orderBy(desc(adaptiveSubjectSchema.createdAt));
+    .where(
+      and(
+        eq(adaptiveSubjectSchema.ownerId, userId),
+        isNull(adaptiveSubjectSchema.archivedAt), // 已封存的不進下拉選單
+      ),
+    )
+    .orderBy(desc(adaptiveSubjectSchema.pinned), desc(adaptiveSubjectSchema.createdAt)); // 釘選優先，其餘新到舊
 
   return [
     ...builtIn,
@@ -170,4 +175,156 @@ export async function generateAdaptiveSubject(
     knowledgeCount: subject.graph.nodes.length,
     itemCount: subject.itemBank.items.length,
   };
+}
+
+/**
+ * 學科管理頁（/dashboard/adaptive/subjects）用：回傳老師自己全部自建學科（含已封存），
+ * 附帶知識點數／題目數，只列自建學科，內建三科不在管理範圍內。
+ */
+export async function listMySubjectsForManagement(): Promise<{
+  id: number;
+  name: string;
+  sourceTopic: string;
+  pinned: boolean;
+  archivedAt: Date | null;
+  createdAt: Date;
+  knowledgeCount: number;
+  itemCount: number;
+}[]> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+
+  const rows = await db
+    .select()
+    .from(adaptiveSubjectSchema)
+    .where(eq(adaptiveSubjectSchema.ownerId, userId))
+    .orderBy(desc(adaptiveSubjectSchema.pinned), desc(adaptiveSubjectSchema.createdAt));
+
+  return rows.map(r => ({
+    id: r.id,
+    name: r.name,
+    sourceTopic: r.sourceTopic,
+    pinned: r.pinned,
+    archivedAt: r.archivedAt,
+    createdAt: r.createdAt,
+    knowledgeCount: r.graph.nodes.length,
+    itemCount: r.itemBank.items.length,
+  }));
+}
+
+/** 驗證是本人擁有的自建學科，回傳該 row（給 rename/pin/archive/delete 共用） */
+async function assertOwnSubject(subjectId: number, userId: string) {
+  const [row] = await db
+    .select({ id: adaptiveSubjectSchema.id, ownerId: adaptiveSubjectSchema.ownerId })
+    .from(adaptiveSubjectSchema)
+    .where(eq(adaptiveSubjectSchema.id, subjectId));
+  if (!row || row.ownerId !== userId) {
+    throw new Error('學科不存在或非本人建立');
+  }
+}
+
+const renameSubjectSchema = z.object({
+  name: z.string().trim().min(1, '請輸入學科名稱').max(100),
+});
+
+/** 重新命名自建學科 */
+export async function renameAdaptiveSubject(subjectId: number, name: string) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+  const parsed = renameSubjectSchema.parse({ name });
+
+  await db
+    .update(adaptiveSubjectSchema)
+    .set({ name: parsed.name })
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+}
+
+/** 釘選／取消釘選自建學科：排到下拉選單與管理頁最前面 */
+export async function setAdaptiveSubjectPinned(subjectId: number, pinned: boolean) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+
+  await db
+    .update(adaptiveSubjectSchema)
+    .set({ pinned })
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+}
+
+/** 封存自建學科：從「建立新練習」下拉選單隱藏，既有練習不受影響（resolveSubject 不看這個欄位） */
+export async function archiveAdaptiveSubject(subjectId: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+
+  await db
+    .update(adaptiveSubjectSchema)
+    .set({ archivedAt: new Date() })
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+}
+
+/** 取消封存：重新出現在下拉選單 */
+export async function unarchiveAdaptiveSubject(subjectId: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+
+  await db
+    .update(adaptiveSubjectSchema)
+    .set({ archivedAt: null })
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+}
+
+/**
+ * 刪除自建學科。adaptive_practice.subject_id 沒有外鍵約束，
+ * 若貿然刪除已被練習使用的學科，該練習的班級儀表板會直接壞掉（resolveSubject 找不到列）。
+ * 因此刪除前先檢查是否已有練習在用，有的話拒絕並請老師改用封存。
+ */
+export async function deleteAdaptiveSubject(subjectId: number): Promise<{ error?: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+
+  const dbSubjectId = `${DB_SUBJECT_PREFIX}${subjectId}`;
+  const usedByPractices = await db
+    .select({ id: adaptivePracticeSchema.id })
+    .from(adaptivePracticeSchema)
+    .where(eq(adaptivePracticeSchema.subjectId, dbSubjectId));
+
+  if (usedByPractices.length > 0) {
+    return { error: `此學科已建立 ${usedByPractices.length} 個練習，無法刪除，請改用封存` };
+  }
+
+  await db
+    .delete(adaptiveSubjectSchema)
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+  return {};
 }
