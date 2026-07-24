@@ -27,16 +27,31 @@ const createPracticeSchema = z.object({
 /**
  * 老師可選用的學科清單：內建三科 ＋ 自己 AI 生成的學科。
  * 建練習的下拉選單與驗證都用它（自建學科帶 db: 前綴的 id）。
+ * group 供下拉選單分組（<optgroup>）用；pinned 供釘選學科加 📌 前綴用。
  */
-export async function listAvailableSubjects(): Promise<{ id: string; name: string }[]> {
+export async function listAvailableSubjects(): Promise<{
+  id: string;
+  name: string;
+  group: 'built-in' | 'custom';
+  pinned: boolean;
+}[]> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('請先登入');
   }
 
-  const builtIn = listSubjects().map(s => ({ id: s.id, name: s.name }));
+  const builtIn = listSubjects().map(s => ({
+    id: s.id,
+    name: s.name,
+    group: 'built-in' as const,
+    pinned: false,
+  }));
   const custom = await db
-    .select({ id: adaptiveSubjectSchema.id, name: adaptiveSubjectSchema.name })
+    .select({
+      id: adaptiveSubjectSchema.id,
+      name: adaptiveSubjectSchema.name,
+      pinned: adaptiveSubjectSchema.pinned,
+    })
     .from(adaptiveSubjectSchema)
     .where(
       and(
@@ -48,7 +63,12 @@ export async function listAvailableSubjects(): Promise<{ id: string; name: strin
 
   return [
     ...builtIn,
-    ...custom.map(c => ({ id: `${DB_SUBJECT_PREFIX}${c.id}`, name: `${c.name}（我的）` })),
+    ...custom.map(c => ({
+      id: `${DB_SUBJECT_PREFIX}${c.id}`,
+      name: c.name,
+      group: 'custom' as const,
+      pinned: c.pinned,
+    })),
   ];
 }
 

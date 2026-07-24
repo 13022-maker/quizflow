@@ -28,6 +28,8 @@ export default async function AdaptiveListPage() {
 
   const subjects = await listAvailableSubjects(); // 內建三科 ＋ 老師自建學科
   const subjectNames = new Map(subjects.map(s => [s.id, s.name]));
+  const builtInSubjects = subjects.filter(s => s.group === 'built-in');
+  const customSubjects = subjects.filter(s => s.group === 'custom');
 
   // 練習清單＋各練習的學生數
   const practices = await db
@@ -96,9 +98,20 @@ export default async function AdaptiveListPage() {
               name="subjectId"
               className="h-9 rounded-lg border bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
             >
-              {subjects.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              <optgroup label="內建科目">
+                {builtInSubjects.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+              {customSubjects.length > 0 && (
+                <optgroup label="我的學科">
+                  {customSubjects.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.pinned ? `📌 ${s.name}` : s.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           </div>
           <button
