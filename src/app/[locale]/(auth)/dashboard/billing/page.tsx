@@ -30,7 +30,7 @@ export default async function BillingPage() {
 
   // 副標日期 format
   const trialEndsAtLabel = trial?.endsAt
-    ? trial.endsAt.toLocaleDateString('zh-TW')
+    ? trial.endsAt.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })
     : '';
 
   return (

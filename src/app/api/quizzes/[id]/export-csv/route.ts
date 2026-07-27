@@ -48,7 +48,7 @@ export async function GET(
       r.score !== null && r.totalPoints !== null ? `${r.score}/${r.totalPoints}` : '—',
       rate,
       String(r.leaveCount),
-      r.submittedAt.toLocaleString('zh-TW'),
+      r.submittedAt.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' }),
     ];
   });
 

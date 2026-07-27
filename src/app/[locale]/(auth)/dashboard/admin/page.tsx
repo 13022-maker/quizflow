@@ -226,7 +226,7 @@ export default async function AdminStatsPage({
     return true;
   });
 
-  const todayStr = today.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric' });
+  const todayStr = today.toLocaleDateString('zh-TW', { month: 'long', day: 'numeric', timeZone: 'Asia/Taipei' });
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -282,7 +282,7 @@ export default async function AdminStatsPage({
                             : '—'}
                         </td>
                         <td className="px-4 py-3 text-right text-muted-foreground">
-                          {r.submittedAt.toLocaleString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                          {r.submittedAt.toLocaleString('zh-TW', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Taipei' })}
                         </td>
                       </tr>
                     ))}
@@ -418,6 +418,7 @@ export default async function AdminStatsPage({
                                   day: 'numeric',
                                   hour: '2-digit',
                                   minute: '2-digit',
+                                  timeZone: 'Asia/Taipei',
                                 })}
                               </td>
                             </tr>

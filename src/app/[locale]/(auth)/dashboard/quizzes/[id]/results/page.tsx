@@ -143,7 +143,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
           studentEmail: r?.studentEmail ?? null,
           answer: answerText,
           submittedAtFormatted: r?.submittedAt
-            ? r.submittedAt.toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short' })
+            ? r.submittedAt.toLocaleString('zh-TW', { dateStyle: 'short', timeStyle: 'short', timeZone: 'Asia/Taipei' })
             : null,
           isCorrect: a.isCorrect,
           gradingMeta: a.gradingMeta, // Phase C：AI 評分 + 老師複核狀態

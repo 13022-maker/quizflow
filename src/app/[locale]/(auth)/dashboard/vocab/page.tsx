@@ -58,6 +58,7 @@ export default async function VocabListPage() {
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
+                  timeZone: 'Asia/Taipei',
                 });
                 const hasCards = set.lastCardAt !== null;
                 const isPublic = set.visibility === 'public';
