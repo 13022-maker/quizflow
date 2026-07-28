@@ -145,6 +145,18 @@ const TYPE_LABELS: Record<string, string> = {
   fill: '填空題（用 ___ 標空格，附答案）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
+  listening: '聽力題（type 為 "listening"，4選1，額外提供 listeningText 欄位存放要念的口語化對話或短文）',
+};
+
+// JSON 格式範例：只放老師勾選的題型，避免 AI 看到範例裡有的題型就自動多生一題
+// （踩過的坑：範例陣列本來不管勾選什麼都列出全部題型，AI 常常照抄範例多生出沒勾選的聽力題）
+const TYPE_EXAMPLES: Record<string, string> = {
+  mc: '    { "type": "mc", "question": "題目", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }',
+  tf: '    { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" }',
+  fill: '    { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" }',
+  short: '    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" }',
+  rank: '    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" }',
+  listening: '    { "type": "listening", "question": "根據內容，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明", "listeningText": "根據文件內容改寫成口語化的朗讀文字，作為學生聽力素材" }',
 };
 
 export async function POST(request: Request) {
@@ -222,6 +234,11 @@ export async function POST(request: Request) {
 
   const diffLabel = DIFF_LABELS[difficulty] || '中等';
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
+  // 只放老師勾選的題型範例；沒勾選的題型完全不出現在 prompt 裡（防呆：空陣列退回 mc 範例）
+  const questionsExample = types
+    .map(t => TYPE_EXAMPLES[t])
+    .filter(Boolean)
+    .join(',\n') || TYPE_EXAMPLES.mc;
 
   // 音檔用聽力題專用 prompt，文件 / 圖片用一般 prompt
   const prompt = isAudio
@@ -259,24 +276,21 @@ ${typesPrompt}
 5. 次方寫作 x²、x³、x⁴；三次方以上可用 x^n（例如 x^10）
 6. 根號寫作 √2、√(a+b)；不寫 \\sqrt
 7. 微積分符號 ∫、∑、∞、lim 直接使用 Unicode
-8. JSON 格式：
+8. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
 {
   "title": "根據文件內容自動命名的試卷標題",
   "questions": [
-    { "type": "mc", "question": "題目", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" },
-    { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
-    { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
-    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
-    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" },
-    { "type": "listening", "question": "根據內容，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明", "listeningText": "根據文件內容改寫成口語化的朗讀文字，作為學生聽力素材" }
+${questionsExample}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型。
-單選題（mc）與聽力題（listening）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。
+${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（mc）'}的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${hasListening
+  ? `
 聽力題特別注意：
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
-- listeningText 控制在 50-200 字`;
+- listeningText 控制在 50-200 字`
+  : ''}`;
 
   const imageMimeMap: Record<string, string> = {
     jpg: 'image/jpeg',

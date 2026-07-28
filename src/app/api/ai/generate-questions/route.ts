@@ -29,6 +29,17 @@ const TYPE_LABELS: Record<string, string> = {
   listening: '聽力題（type 為 "listening"，4選1，額外提供 listeningText 欄位存放要念的口語化對話或短文）',
 };
 
+// JSON 格式範例：只放老師勾選的題型，避免 AI 看到範例裡有的題型就自動多生一題
+// （踩過的坑：範例陣列本來不管勾選什麼都列出全部題型，AI 常常照抄範例多生出沒勾選的聽力題）
+const TYPE_EXAMPLES: Record<string, string> = {
+  mc: '    { "type": "mc", "question": "題目", "options": ["(A)選項一","(B)選項二","(C)選項三","(D)選項四"], "answer": "A", "explanation": "說明" }',
+  tf: '    { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" }',
+  fill: '    { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" }',
+  short: '    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" }',
+  rank: '    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" }',
+  listening: '    { "type": "listening", "question": "根據對話內容，小明最後決定做什麼？", "options": ["(A)去圖書館","(B)回家寫功課","(C)去打球","(D)去吃飯"], "answer": "C", "explanation": "說明", "listeningText": "小華：嘿，小明，等一下要不要一起去打球？\\n小明：好啊！我剛好寫完功課了。" }',
+};
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -192,9 +203,34 @@ export async function POST(request: Request) {
   const frameworkPrefix = (typeof framework === 'string' && FRAMEWORK_PROMPTS[framework]) || '';
 
   const diffLabel = DIFF_LABELS[difficulty] ?? '中等';
-  const typesPrompt = (types as string[])
+  const selectedTypes = types as string[];
+  const typesPrompt = selectedTypes
     .map(t => `- ${TYPE_LABELS[t] ?? t}，共 ${count} 題`)
     .join('\n');
+  // 只放老師勾選的題型範例；沒勾選的題型完全不出現在 prompt 裡（防呆：空陣列退回 mc 範例）
+  const questionsExample = selectedTypes
+    .map(t => TYPE_EXAMPLES[t])
+    .filter(Boolean)
+    .join(',\n') || TYPE_EXAMPLES.mc;
+
+  const listeningNote = hasListening
+    ? `
+聽力題特別注意：
+- 【口語化手法】listeningText 必須像真人說話，自然穿插語氣詞（欸、嗯、啊、對、那個、然後），允許短停頓（用「，」或「…」表示），避免書面語如「由於／因此／然而／此外」，改用口語連接詞（所以、結果、可是、不過）
+- 【情境多樣化】從以下情境隨機挑選，不要每題都是學生對話：
+  1. 雙人對話（朋友／家人／師生／同事／店員與客人）
+  2. 校園廣播、店家或車站公告（單人敘述）
+  3. 電話留言、語音訊息（第一人稱）
+  4. 新聞、天氣、活動介紹（主播式敘述）
+- 【干擾選項設計】4 個選項中，至少 1 個干擾項必須是「listeningText 中有出現但不是正確答案」的字詞或數字，避免學生憑印象隨便選就對，提高鑑別度
+- 【字數分級】
+  - 簡單：選項 ≤8 字、listeningText ≤50 字
+  - 中等：選項 ≤15 字、listeningText ≤100 字
+  - 困難：選項不限、listeningText ≤200 字`
+    : '';
+  const answerDistNote = selectedTypes.includes('mc') || hasListening
+    ? `\n${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（mc）'}的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`
+    : '';
 
   const prompt = `${frameworkPrefix}你是台灣高中的出題專家，請根據以下主題或課文內容出題。
 
@@ -213,32 +249,14 @@ ${typesPrompt}
 5. 次方寫作 x²、x³、x⁴；三次方以上可用 x^n（例如 x^10）
 6. 根號寫作 √2、√(a+b)；不寫 \\sqrt
 7. 微積分符號 ∫、∑、∞、lim 直接使用 Unicode
-8. JSON 格式：
+8. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
 {
   "title": "根據主題自動命名的試卷標題",
   "questions": [
-    { "type": "mc", "question": "題目", "options": ["(A)選項一","(B)選項二","(C)選項三","(D)選項四"], "answer": "A", "explanation": "說明" },
-    { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
-    { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
-    { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
-    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "answer": ["文藝復興","工業革命","二次大戰","網際網路誕生"], "explanation": "說明" },
-    { "type": "listening", "question": "根據對話內容，小明最後決定做什麼？", "options": ["(A)去圖書館","(B)回家寫功課","(C)去打球","(D)去吃飯"], "answer": "C", "explanation": "說明", "listeningText": "小華：嘿，小明，等一下要不要一起去打球？\\n小明：好啊！我剛好寫完功課了。" }
+${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）與聽力題（listening）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。
-聽力題特別注意：
-- 【口語化手法】listeningText 必須像真人說話，自然穿插語氣詞（欸、嗯、啊、對、那個、然後），允許短停頓（用「，」或「…」表示），避免書面語如「由於／因此／然而／此外」，改用口語連接詞（所以、結果、可是、不過）
-- 【情境多樣化】從以下情境隨機挑選，不要每題都是學生對話：
-  1. 雙人對話（朋友／家人／師生／同事／店員與客人）
-  2. 校園廣播、店家或車站公告（單人敘述）
-  3. 電話留言、語音訊息（第一人稱）
-  4. 新聞、天氣、活動介紹（主播式敘述）
-- 【干擾選項設計】4 個選項中，至少 1 個干擾項必須是「listeningText 中有出現但不是正確答案」的字詞或數字，避免學生憑印象隨便選就對，提高鑑別度
-- 【字數分級】
-  - 簡單：選項 ≤8 字、listeningText ≤50 字
-  - 中等：選項 ≤15 字、listeningText ≤100 字
-  - 困難：選項不限、listeningText ≤200 字`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
