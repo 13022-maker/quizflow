@@ -27,15 +27,29 @@ type Identity = {
   displayName: string;
 };
 
-/** 課文 Markdown 容器樣式（QuizFlow 沒裝 typography plugin，用 arbitrary variants 排版） */
-const LESSON_BODY_CLASS
-  = 'text-sm leading-6 [&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold '
-  + '[&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold '
-  + '[&_p]:mb-2 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 '
-  + '[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 '
+/**
+ * Markdown 容器共用樣式（QuizFlow 沒裝 typography plugin，用 arbitrary variants 排版）
+ * 程式碼區塊（```c ... ```）會被 marked 解析成 <pre><code>，靠這組樣式依語法分段顯示，
+ * 而不是把整段 code fence 當純文字擠成一行。
+ */
+const MARKDOWN_BODY_CLASS
+  = '[&_p]:mb-2 last:[&_p]:mb-0 [&_ul]:mb-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:mb-2 [&_ol]:list-decimal [&_ol]:pl-5 '
+  + '[&_pre]:my-2 [&_pre]:overflow-x-auto [&_pre]:whitespace-pre [&_pre]:rounded-md [&_pre]:bg-muted [&_pre]:p-3 '
   + '[&_code]:font-mono [&_code]:text-[0.85em] '
-  + '[&_table]:my-2 [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:px-2 [&_th]:py-1 '
   + '[&_blockquote]:border-l-2 [&_blockquote]:pl-3 [&_blockquote]:text-muted-foreground';
+
+/** 課文（lesson）Markdown 容器樣式：在共用樣式外加標題／表格排版 */
+const LESSON_BODY_CLASS
+  = `text-sm leading-6 ${MARKDOWN_BODY_CLASS} `
+  + '[&_h1]:mb-2 [&_h1]:text-lg [&_h1]:font-bold '
+  + '[&_h2]:mb-2 [&_h2]:mt-4 [&_h2]:text-base [&_h2]:font-semibold [&_h3]:font-semibold '
+  + '[&_table]:my-2 [&_table]:border-collapse [&_td]:border [&_td]:px-2 [&_td]:py-1 [&_th]:border [&_th]:px-2 [&_th]:py-1';
+
+/** 題目 prompt Markdown 容器樣式（可能含程式碼區塊，需按 Markdown 語法分段渲染） */
+const PROMPT_BODY_CLASS = `text-base leading-6 ${MARKDOWN_BODY_CLASS}`;
+
+/** 判題解析 explanation Markdown 容器樣式（同樣可能含程式碼片段） */
+const EXPLANATION_BODY_CLASS = `mt-2 text-sm leading-6 ${MARKDOWN_BODY_CLASS}`;
 
 export function AdaptiveLearnClient({
   code,
@@ -465,7 +479,11 @@ export function AdaptiveLearnClient({
                   <span className="rounded bg-muted px-2 py-0.5 text-xs">🔁 補強</span>
                 )}
               </div>
-              <p className="my-3.5 text-base">{step.dispatch.item.prompt}</p>
+              <div
+                className={`my-3.5 ${PROMPT_BODY_CLASS}`}
+                // 內容來自自家 API（AI 生成的 Markdown 題目，含程式碼區塊），非使用者輸入
+                dangerouslySetInnerHTML={{ __html: String(marked.parse(step.dispatch.item.prompt)) }}
+              />
               <p className="text-xs text-muted-foreground">
                 派題診斷：
                 {step.dispatch.reason}
@@ -535,7 +553,11 @@ export function AdaptiveLearnClient({
                       : `❌ 答錯了，正確答案是 ${String.fromCharCode(65 + feedback.answerIndex)}`}
                   </strong>
                   {feedback.explanation && (
-                    <p className="mt-2 text-sm">{feedback.explanation}</p>
+                    <div
+                      className={EXPLANATION_BODY_CLASS}
+                      // 內容來自自家 API（AI 生成的 Markdown 解析，可能含程式碼片段），非使用者輸入
+                      dangerouslySetInnerHTML={{ __html: String(marked.parse(feedback.explanation)) }}
+                    />
                   )}
                   <button
                     type="button"
