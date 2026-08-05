@@ -56,7 +56,6 @@ export default async function AdaptiveSubjectsPage() {
                         <thead className="bg-muted/50 text-left">
                           <tr>
                             <th className="px-4 py-2 font-medium">名稱</th>
-                            <th className="px-4 py-2 font-medium">來源主題</th>
                             <th className="px-4 py-2 font-medium">知識點</th>
                             <th className="px-4 py-2 font-medium">題目</th>
                             <th className="px-4 py-2 font-medium">建立日期</th>
@@ -66,15 +65,23 @@ export default async function AdaptiveSubjectsPage() {
                         <tbody>
                           {active.map(s => (
                             <tr key={s.id} className="border-t">
-                              <td className="px-4 py-3">
-                                <span className="font-medium">{s.name}</span>
-                                {s.pinned && (
-                                  <span className="ml-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                    📌 已釘選
-                                  </span>
+                              <td className="max-w-xs px-4 py-3">
+                                <div className="flex items-center">
+                                  <span className="font-medium">{s.name}</span>
+                                  {s.pinned && (
+                                    <span className="ml-1.5 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                      📌 已釘選
+                                    </span>
+                                  )}
+                                </div>
+                                {/* 來源主題（老師當初輸入的原始主題，重生成／追溯用）跟名稱常常高度重複，
+                                    降級為次要小字並在不同於名稱時才顯示，避免每列重複兩次一樣的內容 */}
+                                {s.sourceTopic !== s.name && (
+                                  <p className="mt-0.5 truncate text-xs text-muted-foreground" title={s.sourceTopic}>
+                                    {s.sourceTopic}
+                                  </p>
                                 )}
                               </td>
-                              <td className="px-4 py-3 text-muted-foreground">{s.sourceTopic}</td>
                               <td className="px-4 py-3 text-muted-foreground">{s.knowledgeCount}</td>
                               <td className="px-4 py-3 text-muted-foreground">{s.itemCount}</td>
                               <td className="px-4 py-3 text-muted-foreground">{formatDate(s.createdAt)}</td>
@@ -96,7 +103,6 @@ export default async function AdaptiveSubjectsPage() {
                       <thead className="bg-muted/50 text-left">
                         <tr>
                           <th className="px-4 py-2 font-medium">名稱</th>
-                          <th className="px-4 py-2 font-medium">來源主題</th>
                           <th className="px-4 py-2 font-medium">知識點</th>
                           <th className="px-4 py-2 font-medium">題目</th>
                           <th className="px-4 py-2 font-medium">建立日期</th>
@@ -106,8 +112,14 @@ export default async function AdaptiveSubjectsPage() {
                       <tbody>
                         {archived.map(s => (
                           <tr key={s.id} className="border-t">
-                            <td className="px-4 py-3">{s.name}</td>
-                            <td className="px-4 py-3 text-muted-foreground">{s.sourceTopic}</td>
+                            <td className="max-w-xs px-4 py-3">
+                              <span>{s.name}</span>
+                              {s.sourceTopic !== s.name && (
+                                <p className="mt-0.5 truncate text-xs text-muted-foreground" title={s.sourceTopic}>
+                                  {s.sourceTopic}
+                                </p>
+                              )}
+                            </td>
                             <td className="px-4 py-3 text-muted-foreground">{s.knowledgeCount}</td>
                             <td className="px-4 py-3 text-muted-foreground">{s.itemCount}</td>
                             <td className="px-4 py-3 text-muted-foreground">{formatDate(s.createdAt)}</td>
