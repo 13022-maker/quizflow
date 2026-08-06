@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
 import { useState } from 'react';
 
+import { countClozeBlanks } from '@/lib/cloze';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -151,22 +152,30 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
           </div>
         )}
 
-        {question.options && question.options.length > 0 && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            {question.options.length}
-            {' '}
-            個選項
-            {question.correctAnswers && question.correctAnswers.length > 0 && (
-              <span className="ml-1 text-green-600">
-                ·
+        {question.type === 'cloze'
+          ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {countClozeBlanks(question.body)}
                 {' '}
-                {question.correctAnswers.length}
-                {' '}
-                個正確答案
-              </span>
-            )}
-          </p>
-        )}
+                個空格
+              </p>
+            )
+          : question.options && question.options.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {question.options.length}
+              {' '}
+              個選項
+              {question.correctAnswers && question.correctAnswers.length > 0 && (
+                <span className="ml-1 text-green-600">
+                  ·
+                  {' '}
+                  {question.correctAnswers.length}
+                  {' '}
+                  個正確答案
+                </span>
+              )}
+            </p>
+          )}
       </div>
 
       {/* 操作 */}
