@@ -91,39 +91,17 @@ export function gradeClozeAnswers(
 
 const ENGLISH_TOKEN = /^[a-z]{3,}$/iu;
 const NUMBER_TOKEN = /^\d[\d.,%]*$/;
-// CJK Unified Ideographs: U+4E00-U+9FFF (使用 Unicode 十六進制範圍確保相容)
-// 例如「光合作用」、「陽光」等
+// CJK Unified Ideographs: U+4E00-U+9FFF，限制 2-4 字（粗略啟發式，無分詞庫）
 // eslint-disable-next-line regexp/no-obscure-range
-const CJK_PATTERN = /^[一-鿿]+$/;
-const TOKEN_SPLIT = /([\s，。、！？「」『』,.!?;:()（）\n]+)/;
+const CJK_PHRASE = /^[一-鿿]{2,4}$/;
+const TOKEN_SPLIT = /[\s，。、！？「」『』,.!?;:()（）]+/;
 
 /** 掃出文字中可以拿來挖空的候選詞（尚未去重） */
 export function findClozeCandidates(plainText: string): string[] {
-  const candidates: string[] = [];
-
-  plainText
+  return plainText
     .split(TOKEN_SPLIT)
     .map(t => t.trim())
-    .filter(t => t)
-    .forEach((token) => {
-      if (ENGLISH_TOKEN.test(token)) {
-        // 英文詞彙直接加入
-        candidates.push(token);
-      } else if (NUMBER_TOKEN.test(token)) {
-        // 數字直接加入
-        candidates.push(token);
-      } else if (CJK_PATTERN.test(token) && token.length >= 2) {
-        // 中文詞組：無分詞庫的情況下，提取所有 2-4 字子字串
-        // 例如「光合作用」會產生：光合、光合作、光合作用、合作、合作用、作用...
-        for (let i = 0; i <= token.length - 2; i++) {
-          for (let len = 2; len <= Math.min(4, token.length - i); len++) {
-            candidates.push(token.substring(i, i + len));
-          }
-        }
-      }
-    });
-
-  return candidates;
+    .filter(t => t && (ENGLISH_TOKEN.test(t) || NUMBER_TOKEN.test(t) || CJK_PHRASE.test(t)));
 }
 
 /**

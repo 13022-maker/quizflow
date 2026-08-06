@@ -87,6 +87,7 @@ describe('stripClozeMarkers', () => {
 describe('gradeClozeAnswers', () => {
   it('全部答對 → isCorrect true，awardedRatio 1', () => {
     const result = gradeClozeAnswers(['陽光', '水'], ['陽光', '水']);
+
     expect(result).toEqual({
       perBlank: [true, true],
       correctCount: 2,
@@ -98,6 +99,7 @@ describe('gradeClozeAnswers', () => {
 
   it('部分答對 → isCorrect false，awardedRatio 按比例', () => {
     const result = gradeClozeAnswers(['陽光', '水', '二氧化碳'], ['陽光', '水', '土']);
+
     expect(result.correctCount).toBe(2);
     expect(result.totalBlanks).toBe(3);
     expect(result.isCorrect).toBe(false);
@@ -106,23 +108,27 @@ describe('gradeClozeAnswers', () => {
 
   it('比對忽略前後空白與英文大小寫', () => {
     const result = gradeClozeAnswers(['Sunlight'], [' sunlight ']);
+
     expect(result.perBlank).toEqual([true]);
   });
 
   it('學生沒填的空格算錯', () => {
     const result = gradeClozeAnswers(['陽光', '水'], ['陽光', undefined]);
+
     expect(result.perBlank).toEqual([true, false]);
     expect(result.correctCount).toBe(1);
   });
 
   it('studentAnswers 為 undefined 時全部算錯，不會炸', () => {
     const result = gradeClozeAnswers(['陽光', '水'], undefined);
+
     expect(result.correctCount).toBe(0);
     expect(result.isCorrect).toBe(false);
   });
 
   it('沒有空格（totalBlanks=0）時 isCorrect 為 false、awardedRatio 為 0', () => {
     const result = gradeClozeAnswers([], []);
+
     expect(result.isCorrect).toBe(false);
     expect(result.awardedRatio).toBe(0);
   });
@@ -139,9 +145,13 @@ describe('findClozeCandidates', () => {
     expect(findClozeCandidates('溫度是 100 度')).toEqual(expect.arrayContaining(['100']));
   });
 
-  it('抓出 2-4 字中文詞組', () => {
-    const candidates = findClozeCandidates('光合作用需要陽光、水和二氧化碳');
-    expect(candidates.length).toBeGreaterThan(0);
+  it('抓出 2-4 字中文詞組（分隔型）', () => {
+    // 無分詞庫下，只能掃出「分隔符分開的 2-4 字詞組」
+    const candidates = findClozeCandidates('光合。作用。需要陽光、水分。進行呼吸');
+
+    expect(candidates).toEqual(
+      expect.arrayContaining(['光合', '作用', '需要陽光', '水分', '進行呼吸']),
+    );
   });
 
   it('太短的英文詞（<3 字母）不算候選', () => {
@@ -153,12 +163,14 @@ describe('applyRandomClozeBlanks', () => {
   it('標記數量等於 min(count, 候選詞數量)', () => {
     const body = 'The sunlight and water are important for photosynthesis';
     const result = applyRandomClozeBlanks(body, 3);
+
     expect(countClozeBlanks(result)).toBe(3);
   });
 
   it('候選詞不足時，標記數 = 候選詞數，不會炸', () => {
     const body = 'ab cd';
     const result = applyRandomClozeBlanks(body, 5);
+
     // ab / cd 都只有 2 個字母，不符合候選規則，維持原文不變
     expect(result).toBe(body);
   });
@@ -166,6 +178,7 @@ describe('applyRandomClozeBlanks', () => {
   it('不會重複標記已經被 [[ ]] 包住的文字', () => {
     const body = '需要[[陽光]]才能進行 photosynthesis process';
     const result = applyRandomClozeBlanks(body, 5);
+
     // 「陽光」已經被標記過，不應該出現 [[[[陽光]]]] 這種雙重標記
     expect(result).not.toContain('[[[[');
     expect(extractClozeAnswers(result)).toContain('陽光');
