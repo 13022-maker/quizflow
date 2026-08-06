@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
+import { gradeClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
 import type { SubmitInput } from '@/libs/submitValidation';
@@ -147,6 +148,15 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
             gradedAt: new Date().toISOString(),
           });
         }
+      }
+    } else if (question.type === 'cloze') {
+      // 克漏字題：逐格精準比對，部分分 = 配分 × 答對比例，全對才 isCorrect=true
+      const studentBlanks = Array.isArray(studentAnswer) ? studentAnswer : [];
+      const grade = gradeClozeAnswers(question.correctAnswers ?? [], studentBlanks);
+      totalPoints += question.points;
+      if (grade.totalBlanks > 0) {
+        isCorrect = grade.isCorrect;
+        awardedPoints = Math.round(question.points * grade.awardedRatio);
       }
     } else if (question.correctAnswers && studentAnswer !== undefined) {
       // 既有題型批改邏輯
