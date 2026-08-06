@@ -281,6 +281,7 @@ function QuestionItem({
           body={question.body}
           value={Array.isArray(answer) ? answer : undefined}
           onChange={v => onChange(v)}
+          correctAnswers={question.correctAnswers}
         />
       )}
 
