@@ -67,6 +67,7 @@ export const questionTypeEnum = pgEnum('question_type', [
   'short_answer', // 簡答題
   'ranking', // 排序題（拖拉排序）
   'listening', // 聽力題（播放音檔 + 選擇題）
+  'cloze', // 克漏字/填空題（文章挖空，[[詞彙]] 標記，body 直接存含標記的原文）
 ]);
 
 export const quizStatusEnum = pgEnum('quiz_status', [
