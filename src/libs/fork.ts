@@ -13,7 +13,8 @@ type QuestionType =
   | 'true_false'
   | 'short_answer'
   | 'ranking'
-  | 'listening';
+  | 'listening'
+  | 'cloze';
 
 // fork 來源 quiz 需要讀取的欄位（DAO 層 select 後傳入）
 export type SourceQuiz = {

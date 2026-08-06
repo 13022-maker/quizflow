@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { extractClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -22,7 +23,7 @@ async function verifyOwnership(quizId: number, userId: string) {
 }
 
 const QuestionInputSchema = z.object({
-  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
+  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening', 'cloze']),
   body: z.string().min(1, '請輸入題目內���'),
   imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
   audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網��
@@ -68,7 +69,9 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     audioUrl: parsed.data.audioUrl || null,
     audioTranscript: parsed.data.audioTranscript || null,
     options: parsed.data.options ?? null,
-    correctAnswers: parsed.data.correctAnswers ?? null,
+    correctAnswers: parsed.data.type === 'cloze'
+      ? extractClozeAnswers(parsed.data.body)
+      : (parsed.data.correctAnswers ?? null),
     // 只有簡答題才存 referenceAnswer，其他題型強制 null 避免誤存
     referenceAnswer: parsed.data.type === 'short_answer' ? (parsed.data.referenceAnswer || null) : null,
     points: parsed.data.points,
@@ -100,7 +103,9 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       audioUrl: parsed.data.audioUrl || null,
       audioTranscript: parsed.data.audioTranscript || null,
       options: parsed.data.options ?? null,
-      correctAnswers: parsed.data.correctAnswers ?? null,
+      correctAnswers: parsed.data.type === 'cloze'
+        ? extractClozeAnswers(parsed.data.body)
+        : (parsed.data.correctAnswers ?? null),
       // 只有簡答題才存 referenceAnswer，切到其他題型時順手清空
       referenceAnswer: parsed.data.type === 'short_answer' ? (parsed.data.referenceAnswer || null) : null,
       points: parsed.data.points,

@@ -7,6 +7,8 @@ import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
 
+import { ClozeEditor } from './ClozeEditor';
+
 export const QUESTION_TYPE_LABELS = {
   single_choice: '單選題',
   multiple_choice: '多選題',
@@ -14,6 +16,7 @@ export const QUESTION_TYPE_LABELS = {
   short_answer: '簡答題',
   ranking: '排序題',
   listening: '聽力題',
+  cloze: '克漏字題',
 } as const;
 
 const TRUE_FALSE_OPTIONS = [
@@ -53,7 +56,7 @@ function normalizeImageUrl(raw: string): { url: string; warning?: string } {
 }
 
 const QuestionSchema = z.object({
-  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening']),
+  type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening', 'cloze']),
   body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().optional(), // 題目圖片網址
   audioUrl: z.string().optional(), // 聽力題音檔網址
@@ -215,6 +218,10 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
     } else if (type === 'short_answer') {
       replace([]);
       form.setValue('correctAnswers', []);
+    } else if (type === 'cloze') {
+      // 克漏字題不用 options，答案是從 body 的 [[ ]] 標記推導出來的
+      replace([]);
+      form.setValue('correctAnswers', []);
     } else if (type === 'ranking') {
       // 排序題：至少 3 個選項才有意義
       const current = form.getValues('options') ?? [];
@@ -300,22 +307,31 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         </div>
       </div>
 
-      {/* 題目內容 */}
-      <div>
-        {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-        <label className="mb-1 block text-sm font-medium">題目內容</label>
-        <textarea
-          {...form.register('body')}
-          rows={2}
-          placeholder="輸入題目..."
-          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        />
-        {form.formState.errors.body && (
-          <p className="mt-1 text-xs text-destructive">
-            {form.formState.errors.body.message}
-          </p>
-        )}
-      </div>
+      {/* 題目內容：克漏字題用專用的 ClozeEditor（body 本身就是含標記的文章），其他題型用一般 textarea */}
+      {type === 'cloze'
+        ? (
+            <ClozeEditor
+              body={form.watch('body')}
+              onChange={next => form.setValue('body', next, { shouldDirty: true, shouldValidate: true })}
+            />
+          )
+        : (
+            <div>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="mb-1 block text-sm font-medium">題目內容</label>
+              <textarea
+                {...form.register('body')}
+                rows={2}
+                placeholder="輸入題目..."
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              {form.formState.errors.body && (
+                <p className="mt-1 text-xs text-destructive">
+                  {form.formState.errors.body.message}
+                </p>
+              )}
+            </div>
+          )}
 
       {/* 插入圖片 */}
       <div>
@@ -465,7 +481,7 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
       )}
 
       {/* 選項清單（選擇題 / 是非題 / 排序題 / 聽力題） */}
-      {type !== 'short_answer' && (
+      {type !== 'short_answer' && type !== 'cloze' && (
         <div>
           <label className="mb-1 block text-sm font-medium">
             選項
