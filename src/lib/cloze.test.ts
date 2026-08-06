@@ -187,4 +187,21 @@ describe('applyRandomClozeBlanks', () => {
   it('沒有候選詞時原樣回傳', () => {
     expect(applyRandomClozeBlanks('。，！？', 3)).toBe('。，！？');
   });
+
+  it('標記時保留空格和標點符號（回歸測試）', () => {
+    // 驗證 TOKEN_SPLIT 的捕捉組正常工作，不會吃掉分隔符
+    // 這個測試防止如下 bug：將「The sunlight and water」變成「[[The]][[sunlight]][[and]]waterare」
+    const body = 'The sunlight and water are important for photosynthesis.';
+    const result = applyRandomClozeBlanks(body, 5);
+
+    // 驗證 1: 去掉標記後用佔位符替換，應該還能看到所有原始空格/標點
+    const normalized = stripClozeMarkers(result);
+
+    expect(normalized).toContain(' ');
+    expect(normalized).toContain('.');
+
+    // 驗證 2: 沒被標記的詞之間應該保留空格（不是「wordword」的形式）
+    expect(result).not.toMatch(/\][A-Z]/i);
+    expect(result).not.toMatch(/[a-z]\[/);
+  });
 });

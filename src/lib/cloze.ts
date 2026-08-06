@@ -94,7 +94,8 @@ const NUMBER_TOKEN = /^\d[\d.,%]*$/;
 // CJK Unified Ideographs: U+4E00-U+9FFF，限制 2-4 字（粗略啟發式，無分詞庫）
 // eslint-disable-next-line regexp/no-obscure-range
 const CJK_PHRASE = /^[一-鿿]{2,4}$/;
-const TOKEN_SPLIT = /[\s，。、！？「」『』,.!?;:()（）]+/;
+// 捕捉組（括號）必須保留，String.split() 只有在 regex 含捕捉組時才會保留分隔符
+const TOKEN_SPLIT = /([\s，。、！？「」『』,.!?;:()（）]+)/;
 
 /** 掃出文字中可以拿來挖空的候選詞（尚未去重） */
 export function findClozeCandidates(plainText: string): string[] {
