@@ -157,6 +157,14 @@ describe('findClozeCandidates', () => {
   it('太短的英文詞（<3 字母）不算候選', () => {
     expect(findClozeCandidates('a is it')).toEqual([]);
   });
+
+  it('連續中文（沒有標點分隔）抓不到任何候選詞——已知限制，釘住行為避免之後誤改壞', () => {
+    // 沒有分詞庫，只能用「標點分隔的整個詞組 2-4 字」判斷，超過 4 字的連續中文
+    // 整段會被當成一個 token，長度不符就整個跳過。中文長句本來就建議老師手動標記。
+    const candidates = findClozeCandidates('光合作用需要陽光水分和二氧化碳才能順利進行');
+
+    expect(candidates).toEqual([]);
+  });
 });
 
 describe('applyRandomClozeBlanks', () => {
@@ -186,6 +194,12 @@ describe('applyRandomClozeBlanks', () => {
 
   it('沒有候選詞時原樣回傳', () => {
     expect(applyRandomClozeBlanks('。，！？', 3)).toBe('。，！？');
+  });
+
+  it('連續中文（沒有標點分隔）是已知限制，隨機挑選會是無動作（回傳原文）', () => {
+    const body = '光合作用需要陽光水分和二氧化碳才能順利進行';
+
+    expect(applyRandomClozeBlanks(body, 3)).toBe(body);
   });
 
   it('標記時保留空格和標點符號（回歸測試）', () => {

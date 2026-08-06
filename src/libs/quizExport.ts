@@ -16,6 +16,7 @@ import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } fro
 import type { InferSelectModel } from 'drizzle-orm';
 
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { stripClozeMarkers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -46,13 +47,16 @@ function questionToParagraphs(question: Question, index: number, variant: Export
   const paragraphs: Paragraph[] = [];
 
   // 題目本文（含分數）
+  // 克漏字題的 body 含 [[答案]] 標記，docx 是印出來給人看的最終文件，
+  // 不論教師版或學生版都要先去標記，不能讓標記符號原樣出現在紙本上
+  const safeBody = question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body;
   const pointsText = variant === 'teacher' ? `（${question.points} 分）` : '';
   paragraphs.push(
     new Paragraph({
       spacing: { before: 240, after: 120 },
       children: [
         new TextRun({ text: `${index + 1}. `, bold: true }),
-        new TextRun({ text: question.body }),
+        new TextRun({ text: safeBody }),
         ...(pointsText ? [new TextRun({ text: pointsText, color: '666666', size: 20 })] : []),
       ],
     }),

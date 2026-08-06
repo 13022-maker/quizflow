@@ -16,8 +16,21 @@ type Props = {
 
 export function ClozeEditor({ body, onChange }: Props) {
   const [randomCount, setRandomCount] = useState(5);
+  // 隨機挑選對連續中文（沒有標點分隔）是已知限制，挑不到詞時要明確告知，
+  // 不然按鈕看起來像壞掉（見 code review 發現：純規則對一般中文段落常常挑不到任何候選詞）
+  const [randomPickMessage, setRandomPickMessage] = useState('');
   const blankCount = countClozeBlanks(body);
   const segments = parseClozeBody(body);
+
+  const handleRandomPick = () => {
+    const next = applyRandomClozeBlanks(body, randomCount);
+    if (next === body) {
+      setRandomPickMessage('找不到適合的詞（純規則對連續中文效果有限），請手動用 [[ ]] 標記重點詞彙');
+      return;
+    }
+    setRandomPickMessage('');
+    onChange(next);
+  };
 
   return (
     <div>
@@ -48,7 +61,7 @@ export function ClozeEditor({ body, onChange }: Props) {
         />
         <button
           type="button"
-          onClick={() => onChange(applyRandomClozeBlanks(body, randomCount))}
+          onClick={handleRandomPick}
           className="rounded-md border border-input bg-background px-3 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           🎲 隨機挑選
@@ -57,6 +70,9 @@ export function ClozeEditor({ body, onChange }: Props) {
           隨機模式對英文/數字效果較佳，中文段落建議手動用 [[ ]] 標記重點詞彙
         </span>
       </div>
+      {randomPickMessage && (
+        <p className="mt-1 text-xs text-amber-600">{randomPickMessage}</p>
+      )}
 
       <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2 text-sm leading-relaxed">
         {segments.length === 0

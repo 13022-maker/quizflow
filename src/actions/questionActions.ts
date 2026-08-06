@@ -34,6 +34,15 @@ const QuestionInputSchema = z.object({
   correctAnswers: z.array(z.string()).optional(),
   referenceAnswer: z.string().optional(), // 簡答題參考答案 / 評分要點
   points: z.coerce.number().min(1).default(1),
+}).superRefine((data, ctx) => {
+  // 克漏字題若沒有任何 [[ ]] 標記（沒標記或標記打錯），無法批改，擋在存檔前
+  if (data.type === 'cloze' && extractClozeAnswers(data.body).length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['body'],
+      message: '克漏字題至少需要一個空格，請用 [[詞彙]] 標記要挖空的重點',
+    });
+  }
 });
 
 export type QuestionInput = z.infer<typeof QuestionInputSchema>;

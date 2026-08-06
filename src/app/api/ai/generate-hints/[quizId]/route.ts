@@ -17,6 +17,7 @@ import { GoogleGenAI } from '@google/genai';
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { stripClozeMarkers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -123,7 +124,7 @@ export async function POST(
 4. 只回傳合法 JSON
 
 題目列表：
-${toGenerate.map((q, i) => `[${i}] ${q.body}`).join('\n')}
+${toGenerate.map((q, i) => `[${i}] ${stripClozeMarkers(q.body)}`).join('\n')}
 
 JSON 格式（index 對應上面編號）：
 {"hints":[{"index":0,"hint":"..."},{"index":1,"hint":"..."}]}`;

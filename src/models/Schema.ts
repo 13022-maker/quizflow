@@ -182,7 +182,9 @@ export const questionSchema = pgTable('question', {
     .notNull()
     .references(() => quizSchema.id, { onDelete: 'cascade' }),
   type: questionTypeEnum('type').notNull(),
-  body: text('body').notNull(), // 題目文字
+  // 題目文字。type='cloze' 時含 [[答案]] 標記（src/lib/cloze.ts），
+  // 任何會讓學生／AI／匯出文件看到 body 的地方，都必須先過 stripClozeMarkers()，不能原樣輸出
+  body: text('body').notNull(),
   imageUrl: text('image_url'), // 題目圖片網址
   audioUrl: text('audio_url'), // 聽力題音檔網址（Vercel Blob）
   audioTranscript: text('audio_transcript'), // 音檔逐字稿（老師可選填，供 AI 出題 / 輔助）

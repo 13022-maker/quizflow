@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
+import { extractClozeAnswers } from '@/lib/cloze';
 
 import { ClozeEditor } from './ClozeEditor';
 
@@ -67,6 +68,15 @@ const QuestionSchema = z.object({
   correctAnswers: z.array(z.string()).optional(),
   referenceAnswer: z.string().optional(), // 簡答題參考答案 / 評分要點（給 AI 評分用）
   points: z.coerce.number().min(1).default(1),
+}).superRefine((data, ctx) => {
+  // 克漏字題若沒有任何 [[ ]] 標記，無法批改，存檔前先擋下來（跟 questionActions.ts 的伺服器端驗證一致）
+  if (data.type === 'cloze' && extractClozeAnswers(data.body).length === 0) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['body'],
+      message: '克漏字題至少需要一個空格，請用 [[詞彙]] 標記要挖空的重點',
+    });
+  }
 });
 
 export type QuestionFormValues = z.infer<typeof QuestionSchema>;
@@ -310,10 +320,17 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
       {/* 題目內容：克漏字題用專用的 ClozeEditor（body 本身就是含標記的文章），其他題型用一般 textarea */}
       {type === 'cloze'
         ? (
-            <ClozeEditor
-              body={form.watch('body')}
-              onChange={next => form.setValue('body', next, { shouldDirty: true, shouldValidate: true })}
-            />
+            <div>
+              <ClozeEditor
+                body={form.watch('body')}
+                onChange={next => form.setValue('body', next, { shouldDirty: true, shouldValidate: true })}
+              />
+              {form.formState.errors.body && (
+                <p className="mt-1 text-xs text-destructive">
+                  {form.formState.errors.body.message}
+                </p>
+              )}
+            </div>
           )
         : (
             <div>

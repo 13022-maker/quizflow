@@ -903,6 +903,18 @@ function ResultScreen({
                     </div>
                   )}
 
+                  {/* 克漏字題可能是部分分（答對比例），跟其他二元題型不同，明確標出實得分數 */}
+                  {question.type === 'cloze' && detail && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      得分：
+                      {detail.awardedPoints}
+                      {' / '}
+                      {detail.points}
+                      {' '}
+                      分
+                    </p>
+                  )}
+
                   {/* 簡答題：AI 已批改 → 顯示判定、得分與評語；未批改 → 待老師批改 */}
                   {isShort && (
                     detail?.aiReason
