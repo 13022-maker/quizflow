@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import { Button } from '@/components/ui/button';
-import { gradeClozeAnswers } from '@/lib/cloze';
+import { gradeClozeAnswers, stripClozeMarkers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { ClozeQuestion } from './ClozeQuestion';
@@ -418,9 +418,13 @@ function ResultScreen({
   const hasShortAnswer = questions.some(q => q.type === 'short_answer');
 
   // 可重做的錯題（排除簡答題）
-  const retryableWrongCount = result.details.filter(
-    d => d.isCorrect === false && questions.find(q => q.id === d.questionId)?.type !== 'short_answer',
-  ).length;
+  const retryableWrongCount = result.details.filter((d) => {
+    if (d.isCorrect !== false) {
+      return false;
+    }
+    const qType = questions.find(q => q.id === d.questionId)?.type;
+    return qType !== 'short_answer' && qType !== 'cloze';
+  }).length;
 
   // 錯題單字卡
   const [vocabLoading, setVocabLoading] = useState(false);
@@ -433,7 +437,7 @@ function ResultScreen({
   const wrongQuestions = result.details
     .filter(d => d.isCorrect === false)
     .map(d => questions.find(q => q.id === d.questionId))
-    .filter(Boolean) as Question[];
+    .filter((q): q is Question => !!q && q.type !== 'cloze');
 
   const handleBuildVocab = async () => {
     if (wrongQuestions.length === 0) {
@@ -505,9 +509,10 @@ function ResultScreen({
       const icon = detail?.isCorrect ? '✅' : detail?.isCorrect === false ? '❌' : '⏳';
       // eslint-disable-next-line ts/no-use-before-define
       const hint = hints[q.id] ?? '';
+      const safeBody = q.type === 'cloze' ? stripClozeMarkers(q.body) : q.body;
 
       return `<div style="margin-bottom:16px;padding:12px;border:1px solid ${detail?.isCorrect === false ? '#fca5a5' : '#d1d5db'};border-radius:8px;${detail?.isCorrect === false ? 'background:#fef2f2' : ''}">
-        <p style="font-weight:600;margin:0">${icon} Q${i + 1}. ${q.body}</p>
+        <p style="font-weight:600;margin:0">${icon} Q${i + 1}. ${safeBody}</p>
         <p style="margin:4px 0 0;color:#666">你的答案：${studentText}</p>
         ${correctText && detail?.isCorrect === false ? `<p style="margin:4px 0 0;color:#15803d">正確答案：${correctText}</p>` : ''}
         ${hint ? `<div style="margin-top:8px;padding:8px;background:#fef3c7;border-radius:6px;font-size:13px"><b>💡 AI 助教：</b>${hint}</div>` : ''}
@@ -585,7 +590,7 @@ function ResultScreen({
       .filter(d => d.isCorrect === false)
       .map((d) => {
         const q = questions.find(qItem => qItem.id === d.questionId);
-        if (!q || q.type === 'short_answer') {
+        if (!q || q.type === 'short_answer' || q.type === 'cloze') {
           return null;
         }
 
@@ -864,7 +869,7 @@ function ResultScreen({
                   {index + 1}
                   .
                   {' '}
-                  {question.body}
+                  {question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body}
                 </p>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {detail?.points}
@@ -1396,6 +1401,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
     return displayQuestions.filter(
       q =>
         q.type !== 'short_answer'
+        && q.type !== 'cloze'
         && result.details.some(d => d.questionId === q.id && d.isCorrect === false),
     );
   }, [result, displayQuestions]);
