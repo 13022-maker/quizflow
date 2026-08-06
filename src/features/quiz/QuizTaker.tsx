@@ -7,8 +7,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
 import { Button } from '@/components/ui/button';
+import { gradeClozeAnswers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
+import { ClozeQuestion } from './ClozeQuestion';
 import { FlashCard } from './FlashCard';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
@@ -67,6 +69,15 @@ function gradeAnswer(question: Question, answer: string | string[] | undefined):
   if (question.type === 'ranking') {
     const given = Array.isArray(answer) ? answer : [];
     return JSON.stringify(given) === JSON.stringify(question.correctAnswers);
+  }
+  if (question.type === 'cloze') {
+    if (!question.correctAnswers) {
+      return false;
+    }
+    return gradeClozeAnswers(
+      question.correctAnswers,
+      Array.isArray(answer) ? answer : undefined,
+    ).isCorrect;
   }
   return false;
 }
@@ -128,7 +139,9 @@ function QuestionItem({
         <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 text-sm font-bold text-white shadow-sm">
           {index + 1}
         </span>
-        <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+        {question.type !== 'cloze' && (
+          <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+        )}
       </div>
 
       {/* 題目圖片 */}
@@ -260,6 +273,15 @@ function QuestionItem({
             onChange={v => onChange(v)}
           />
         </div>
+      )}
+
+      {/* 克漏字題 */}
+      {question.type === 'cloze' && (
+        <ClozeQuestion
+          body={question.body}
+          value={Array.isArray(answer) ? answer : undefined}
+          onChange={v => onChange(v)}
+        />
       )}
 
       {/* 家教模式：確認按鈕 + 即時批改 feedback */}
