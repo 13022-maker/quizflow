@@ -53,7 +53,7 @@ export function stripClozeMarkers(body: string, placeholder: string = CLOZE_PLAC
     .join('');
 }
 
-function normalizeClozeAnswer(v: string): string {
+export function normalizeClozeAnswer(v: string): string {
   return v.trim().toLocaleLowerCase();
 }
 
@@ -61,28 +61,61 @@ export type ClozeGradeResult = {
   perBlank: boolean[];
   correctCount: number;
   totalBlanks: number;
-  isCorrect: boolean; // 全部答對才 true；totalBlanks 為 0 時視為 false（沒有空格不算「答對」）
-  awardedRatio: number; // correctCount / totalBlanks，totalBlanks 為 0 時為 0
+  isCorrect: boolean; // 全部答對才 true（用過提示不影響這個判斷，只影響 awardedRatio）；totalBlanks 為 0 時視為 false
+  awardedRatio: number; // 0~1，用過提示且答對的格子只算 0.5 分，totalBlanks 為 0 時為 0
 };
 
-/** 逐格比對：trim + 大小寫不敏感的精準字串比對，不叫 AI */
+/**
+ * 逐格比對：trim + 大小寫不敏感的精準字串比對，不叫 AI。
+ * hintedIndices：用過「💡 提示」的空格 index（見 pickClozeHintOptions），
+ * 這些格子即使答對，對 awardedRatio 的貢獻也只算 0.5（不是 1），答錯仍是 0。
+ */
 export function gradeClozeAnswers(
   correctAnswers: string[],
   studentAnswers: (string | undefined)[] | undefined,
+  hintedIndices: number[] = [],
 ): ClozeGradeResult {
+  const hintedSet = new Set(hintedIndices);
   const totalBlanks = correctAnswers.length;
   const perBlank = correctAnswers.map((correct, i) => {
     const given = studentAnswers?.[i];
     return given !== undefined && normalizeClozeAnswer(given) === normalizeClozeAnswer(correct);
   });
   const correctCount = perBlank.filter(Boolean).length;
+  const totalRatio = perBlank.reduce(
+    (sum, ok, i) => sum + (ok ? (hintedSet.has(i) ? 0.5 : 1) : 0),
+    0,
+  );
   return {
     perBlank,
     correctCount,
     totalBlanks,
     isCorrect: totalBlanks > 0 && correctCount === totalBlanks,
-    awardedRatio: totalBlanks > 0 ? correctCount / totalBlanks : 0,
+    awardedRatio: totalBlanks > 0 ? totalRatio / totalBlanks : 0,
   };
+}
+
+/**
+ * 「💡 提示」用的 3 選項：1 個正確答案 + 2 個從同一題「其他空格」答案抽出的幹擾項
+ * （去除跟目標答案重複的），純規則、不叫 AI、不用教師額外輸入。
+ * 湊不到 2 個不重複的幹擾項（通常是空格數 < 3，或其他答案剛好都跟目標相同）時回傳 null，
+ * 呼叫端應該在拿到 null 時不顯示提示按鈕，不要硬湊假選項。
+ */
+export function pickClozeHintOptions(correctAnswers: string[], blankIndex: number): string[] | null {
+  const correct = correctAnswers[blankIndex];
+  if (correct === undefined) {
+    return null;
+  }
+  const distractPool = Array.from(new Set(
+    correctAnswers
+      .filter((_, i) => i !== blankIndex)
+      .filter(ans => normalizeClozeAnswer(ans) !== normalizeClozeAnswer(correct)),
+  ));
+  if (distractPool.length < 2) {
+    return null;
+  }
+  const distractors = [...distractPool].sort(() => Math.random() - 0.5).slice(0, 2);
+  return [correct, ...distractors].sort(() => Math.random() - 0.5);
 }
 
 // ---------- 隨機挑空（教師編輯器用，純規則，不叫 AI） ----------

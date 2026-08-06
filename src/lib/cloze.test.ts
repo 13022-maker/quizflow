@@ -7,6 +7,7 @@ import {
   findClozeCandidates,
   gradeClozeAnswers,
   parseClozeBody,
+  pickClozeHintOptions,
   stripClozeMarkers,
 } from './cloze';
 
@@ -132,6 +133,37 @@ describe('gradeClozeAnswers', () => {
     expect(result.isCorrect).toBe(false);
     expect(result.awardedRatio).toBe(0);
   });
+
+  it('用過提示的空格答對時，該格只算半分（awardedRatio 反映）', () => {
+    // 3 格全對，其中 1 格（index 1）用過提示 → (1 + 0.5 + 1) / 3
+    const result = gradeClozeAnswers(['陽光', '水', '葉綠素'], ['陽光', '水', '葉綠素'], [1]);
+
+    expect(result.perBlank).toEqual([true, true, true]);
+    expect(result.correctCount).toBe(3);
+    expect(result.isCorrect).toBe(true); // 全對，用提示不影響「是否全對」的判斷
+    expect(result.awardedRatio).toBeCloseTo((1 + 0.5 + 1) / 3);
+  });
+
+  it('用過提示但答錯的空格，仍然算 0 分（不會因為用提示反而扣更多）', () => {
+    const result = gradeClozeAnswers(['陽光', '水'], ['陽光', '土壤'], [1]);
+
+    expect(result.perBlank).toEqual([true, false]);
+    expect(result.awardedRatio).toBeCloseTo(1 / 2);
+  });
+
+  it('沒有提示（不傳第三參數）時行為完全不變，向後相容', () => {
+    const result = gradeClozeAnswers(['陽光', '水', '葉綠素'], ['陽光', '水', '土壤']);
+
+    expect(result.correctCount).toBe(2);
+    expect(result.awardedRatio).toBeCloseTo(2 / 3);
+  });
+
+  it('hintedIndices 傳空陣列，效果跟不傳一樣', () => {
+    const withEmpty = gradeClozeAnswers(['陽光', '水'], ['陽光', '水'], []);
+    const withoutParam = gradeClozeAnswers(['陽光', '水'], ['陽光', '水']);
+
+    expect(withEmpty.awardedRatio).toBe(withoutParam.awardedRatio);
+  });
 });
 
 describe('findClozeCandidates', () => {
@@ -217,5 +249,44 @@ describe('applyRandomClozeBlanks', () => {
     // 驗證 2: 沒被標記的詞之間應該保留空格（不是「wordword」的形式）
     expect(result).not.toMatch(/\][A-Z]/i);
     expect(result).not.toMatch(/[a-z]\[/);
+  });
+});
+
+describe('pickClozeHintOptions', () => {
+  it('空格數足夠時，回傳含正確答案在內的 3 個選項', () => {
+    const options = pickClozeHintOptions(['陽光', '水', '葉綠素'], 0);
+
+    expect(options).not.toBeNull();
+    expect(options).toHaveLength(3);
+    expect(options).toContain('陽光');
+  });
+
+  it('幹擾項是從其他空格的答案抽的（不是憑空生成）', () => {
+    const correctAnswers = ['陽光', '水', '葉綠素'];
+    const options = pickClozeHintOptions(correctAnswers, 0)!;
+    const distractors = options.filter(o => o !== '陽光');
+
+    distractors.forEach((d) => {
+      expect(['水', '葉綠素']).toContain(d);
+    });
+  });
+
+  it('只有 2 個空格（湊不到 2 個幹擾項）時回傳 null', () => {
+    expect(pickClozeHintOptions(['陽光', '水'], 0)).toBeNull();
+  });
+
+  it('其他空格答案跟目標答案重複、去重後不足 2 個時回傳 null', () => {
+    // index 0 的答案是「陽光」，其他兩格也都是「陽光」，去重後幹擾項池是空的
+    expect(pickClozeHintOptions(['陽光', '陽光', '陽光'], 0)).toBeNull();
+  });
+
+  it('blankIndex 超出範圍時回傳 null，不會炸', () => {
+    expect(pickClozeHintOptions(['陽光', '水', '葉綠素'], 99)).toBeNull();
+  });
+
+  it('去重後幹擾項池剛好 2 個以上，仍然只回傳 2 個幹擾項（共 3 個選項）', () => {
+    const options = pickClozeHintOptions(['陽光', '水', '葉綠素', '二氧化碳'], 0)!;
+
+    expect(options).toHaveLength(3);
   });
 });
