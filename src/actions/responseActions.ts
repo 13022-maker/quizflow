@@ -236,13 +236,25 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
 // ─── Phase C：老師複核簡答題 ────────────────────────────────────────────
 
 /**
- * 計算單一 answer 的實得分（給重算 response.score 用）
+ * 計算單一 answer 的實得分（給重算 response.score 用，
+ * 老師手動批改任一簡答題時會觸發整份 response 重算）
  *
  * 規則：
  * - 非簡答題：isCorrect=true 給滿分，其餘 0
  * - 簡答題：
  *   - gradedBy='teacher' → isCorrect=true 給滿分，false 給 0（老師二元判定）
  *   - gradedBy='ai' / 沒 gradingMeta → 用 aiScore（允許部分分）
+ *
+ * ⚠️ 已知缺口（cloze 題，非這次重算機制本身造成，是既有限制）：
+ * 這裡對「非簡答題」是純二元判斷（isCorrect ? 滿分 : 0），但 cloze 題在
+ * submitQuizResponse 當下是用 gradeClozeAnswers 算比例分（見該函式），
+ * 部分答對、或答對但用過提示（半分封頂）算出來的分數都不是滿分也不是 0。
+ * 一旦這個函式被觸發重算（老師改判任一簡答題的對錯），cloze 題的實得分
+ * 會被這裡的二元邏輯覆寫掉，提示折扣或部分分都會消失（部分對變 0、
+ * 全對但用過提示變滿分）。因為 hintedIndices 目前完全沒有持久化到
+ * DB（只在送出當下算完就丟），這裡拿不到資料重算，就算想修也修不了，
+ * 只能先记录下來。要真的修，最小改法是把 hintedIndices 也存進
+ * answer.gradingMeta（nullable jsonb，不用改 migration）。
  */
 function computeAwardedPoints(input: {
   isCorrect: boolean | null;

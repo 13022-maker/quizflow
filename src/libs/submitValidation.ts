@@ -12,7 +12,11 @@ export const SubmitSchema = z.object({
   // trim：手機鍵盤自動選字常在尾端補空格，是 email 驗證失敗最常見原因
   studentName: z.string().trim().max(100).optional(),
   studentEmail: z.string().trim().email().max(200).optional(),
-  // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題/排序題）
+  // { questionId: answer } — answer 是 string（簡答/是非）或 string[]（選擇題/排序題）。
+  // 例外：克漏字題會多夾帶 `${questionId}__hints` 這種合成 key（string[]，用過提示的
+  // 空格 index），不是真實 question id，見 responseActions.ts 的 cloze 批改分支跟
+  // QuizTaker.tsx 的 handleSubmit。這裡的 key 型別若之後想收緊（例如改 z.coerce.number()），
+  // 一定要先確認這個例外，不然提示批改會在執行期悄悄壞掉且沒有型別錯誤可以抓。
   answers: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
   // 考試防作弊：學生離開頁面次數（preventLeave 開啟時才有意義）
   leaveCount: z.number().int().min(0).optional(),

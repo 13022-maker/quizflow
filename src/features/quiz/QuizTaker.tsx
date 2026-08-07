@@ -1360,7 +1360,13 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   const [studentEmail, setStudentEmail] = useState('');
 
   const handleClozeHintUsed = (questionId: number, hintedIndices: number[]) => {
-    setClozeHints(prev => ({ ...prev, [questionId]: hintedIndices }));
+    // 聯集而非覆寫：ClozeQuestion 的 hintedBlanks 是元件內 state，
+    // 進出複習模式（FlashCard 會整個 unmount 題目清單）會重置歸零，
+    // 如果直接覆寫，先前已經用過的提示紀錄會被沖掉，等於白用提示卻拿了全分
+    setClozeHints(prev => ({
+      ...prev,
+      [questionId]: Array.from(new Set([...(prev[questionId] ?? []), ...hintedIndices])),
+    }));
   };
 
   const toggleFlag = (qId: number) => {

@@ -59,4 +59,20 @@ describe('parseSubmitInput', () => {
 
     expect(result.ok).toBe(false);
   });
+
+  it('克漏字題的「questionId + __hints」合成 key（提示使用紀錄）應正常通過驗證，不是真實 question id 也沒關係', () => {
+    // 這個 key 的存在是刻意設計（見 responseActions.ts / QuizTaker.tsx），
+    // 這個測試是防呆：以後如果有人想收緊 answers 的 key 型別（例如改成
+    // z.coerce.number()），這裡會先紅燈提醒，而不是等提示批改在 production 悄悄壞掉。
+    const result = parseSubmitInput({
+      ...validInput,
+      answers: { ...validInput.answers, '42__hints': ['0', '2'] },
+    });
+
+    expect(result.ok).toBe(true);
+
+    if (result.ok) {
+      expect(result.data.answers['42__hints']).toEqual(['0', '2']);
+    }
+  });
 });
