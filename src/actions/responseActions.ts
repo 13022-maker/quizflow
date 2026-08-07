@@ -151,8 +151,13 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
       }
     } else if (question.type === 'cloze') {
       // 克漏字題：逐格精準比對，部分分 = 配分 × 答對比例，全對才 isCorrect=true
+      // 用過提示的空格（合成 key，不是真實 question id，見 QuizTaker.tsx handleSubmit）該格封頂半分
       const studentBlanks = Array.isArray(studentAnswer) ? studentAnswer : [];
-      const grade = gradeClozeAnswers(question.correctAnswers ?? [], studentBlanks);
+      const hintKey = answers[`${question.id}__hints`];
+      const hintedIndices = Array.isArray(hintKey)
+        ? hintKey.map(s => Number(s)).filter(n => !Number.isNaN(n))
+        : [];
+      const grade = gradeClozeAnswers(question.correctAnswers ?? [], studentBlanks, hintedIndices);
       totalPoints += question.points;
       if (grade.totalBlanks > 0) {
         isCorrect = grade.isCorrect;
