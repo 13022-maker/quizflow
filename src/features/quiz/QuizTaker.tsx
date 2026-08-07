@@ -110,12 +110,14 @@ function QuestionItem({
   answer,
   onChange,
   tutor,
+  onClozeHintUsed,
 }: {
   question: Question;
   index: number;
   answer: string | string[] | undefined;
   onChange: (value: string | string[]) => void;
   tutor?: TutorState;
+  onClozeHintUsed?: (hintedIndices: number[]) => void;
 }) {
   // 是非題若 DB 中沒有 options，自動補上預設選項
   const TRUE_FALSE_DEFAULTS = [
@@ -282,6 +284,7 @@ function QuestionItem({
           value={Array.isArray(answer) ? answer : undefined}
           onChange={v => onChange(v)}
           correctAnswers={question.correctAnswers}
+          onHintUsed={onClozeHintUsed}
         />
       )}
 
@@ -1350,9 +1353,15 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
   }, []);
 
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
+  // 克漏字題各題用過提示的空格 index（questionId → 已用提示的 blank index 陣列）
+  const [clozeHints, setClozeHints] = useState<Record<number, number[]>>({});
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
   const [studentName, setStudentName] = useState('');
   const [studentEmail, setStudentEmail] = useState('');
+
+  const handleClozeHintUsed = (questionId: number, hintedIndices: number[]) => {
+    setClozeHints(prev => ({ ...prev, [questionId]: hintedIndices }));
+  };
 
   const toggleFlag = (qId: number) => {
     setFlagged((prev) => {
@@ -1501,6 +1510,13 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       const stringKeyAnswers: Record<string, string | string[]> = {};
       for (const [key, value] of Object.entries(answers)) {
         stringKeyAnswers[String(key)] = value;
+      }
+      // 克漏字題提示使用紀錄：用合成 key（questionId__hints）夾帶，
+      // 不動 answer 本身的格式，伺服器端 responseActions.ts 會讀這個 key
+      for (const [questionId, hintedIndices] of Object.entries(clozeHints)) {
+        if (hintedIndices.length > 0) {
+          stringKeyAnswers[`${questionId}__hints`] = hintedIndices.map(String);
+        }
       }
 
       const res = await submitQuizResponse({
@@ -1828,6 +1844,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
             index={index}
             answer={answers[question.id]}
             onChange={value => handleAnswer(question.id, value)}
+            onClozeHintUsed={indices => handleClozeHintUsed(question.id, indices)}
             tutor={
               tutorMode
                 ? {
