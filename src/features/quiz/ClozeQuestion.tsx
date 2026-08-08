@@ -17,7 +17,9 @@
  * 送出後那一格最高只算半分（見 src/lib/cloze.ts 的 gradeClozeAnswers 第三參數），
  * 是否用過提示透過 onHintUsed 往上通知父層，送出時併入 answers 的
  * `${questionId}__hints` 合成 key（不動 DB schema、不動實際作答文字）。
- * 同一題內少於 3 個空格（湊不到 2 個不重複的幹擾項）時，該空格不顯示提示按鈕。
+ * 同一題其他空格答案湊不到 2 個不重複的幹擾項時，會改從文章本身抽字當備援
+ * （見 pickClozeHintOptions 的第二層邏輯），讓 1-2 個空格的題目也有機會出現
+ * 提示按鈕；兩層都湊不到才不顯示提示按鈕。
  */
 import { useState } from 'react';
 
@@ -58,7 +60,7 @@ export function ClozeQuestion({ body, value, onChange, correctAnswers, onHintUse
     if (hintedBlanks.has(index)) {
       return;
     }
-    const options = pickClozeHintOptions(correctAnswers ?? [], index);
+    const options = pickClozeHintOptions(correctAnswers ?? [], index, body);
     if (!options) {
       return;
     }
@@ -85,7 +87,7 @@ export function ClozeQuestion({ body, value, onChange, correctAnswers, onHintUse
                     ? 'border-red-400 bg-red-50'
                     : 'border-red-300 bg-red-50/60'; // touched 但還是空白：提示還沒填
               // 只用來判斷「要不要顯示提示按鈕」，不拿這次呼叫的洗牌結果來渲染
-              const hintAvailable = pickClozeHintOptions(correctAnswers ?? [], seg.index) !== null;
+              const hintAvailable = pickClozeHintOptions(correctAnswers ?? [], seg.index, body) !== null;
               const isHinted = hintedBlanks.has(seg.index);
               return (
                 <span key={`b-${seg.index}`} className="inline-flex items-center gap-1">
