@@ -96,25 +96,52 @@ export function gradeClozeAnswers(
 }
 
 /**
- * 「💡 提示」用的 3 選項：1 個正確答案 + 2 個從同一題「其他空格」答案抽出的幹擾項
- * （去除跟目標答案重複的），純規則、不叫 AI、不用教師額外輸入。
- * 湊不到 2 個不重複的幹擾項（通常是空格數 < 3，或其他答案剛好都跟目標相同）時回傳 null，
- * 呼叫端應該在拿到 null 時不顯示提示按鈕，不要硬湊假選項。
+ * 「💡 提示」用的 3 選項：1 個正確答案 + 2 個幹擾項，純規則、不叫 AI、不用教師額外輸入。
+ * 幹擾項來源分兩層：
+ * 1. 優先用同一題「其他空格」的正確答案（去除跟目標答案重複的）——品質較好，
+ *    跟題目情境相關。
+ * 2. 第 1 層湊不到 2 個不重複的時，改用 passageBody（文章原文，含 [[ ]] 標記皆可）
+ *    比照「🎲 隨機挑選」的規則（見 findClozeCandidates）從文章本身抽字當備援，
+ *    排除同一題「任何一格」的正確答案（避免把其他空格的真答案偽裝成幹擾項），
+ *    也排除已經在幹擾項池裡的詞。沒傳 passageBody 或抽不到字時，維持只看
+ *    同題其他空格的行為。
+ * 兩層合計還是湊不到 2 個不重複的幹擾項時回傳 null，呼叫端應該在拿到 null 時
+ * 不顯示提示按鈕，不要硬湊假選項。
  */
-export function pickClozeHintOptions(correctAnswers: string[], blankIndex: number): string[] | null {
+export function pickClozeHintOptions(
+  correctAnswers: string[],
+  blankIndex: number,
+  passageBody?: string,
+): string[] | null {
   const correct = correctAnswers[blankIndex];
   if (correct === undefined) {
     return null;
   }
-  const distractPool = Array.from(new Set(
+  const normalizedCorrect = normalizeClozeAnswer(correct);
+
+  let distractorPool = Array.from(new Set(
     correctAnswers
       .filter((_, i) => i !== blankIndex)
-      .filter(ans => normalizeClozeAnswer(ans) !== normalizeClozeAnswer(correct)),
+      .filter(ans => normalizeClozeAnswer(ans) !== normalizedCorrect),
   ));
-  if (distractPool.length < 2) {
+
+  if (distractorPool.length < 2 && passageBody) {
+    const usedAnswers = new Set(correctAnswers.map(normalizeClozeAnswer));
+    const textCandidates = parseClozeBody(passageBody)
+      .filter((s): s is Extract<ClozeSegment, { kind: 'text' }> => s.kind === 'text')
+      .flatMap(s => findClozeCandidates(s.text));
+    const extraCandidates = Array.from(new Set(textCandidates)).filter((cand) => {
+      const normalizedCand = normalizeClozeAnswer(cand);
+      return !usedAnswers.has(normalizedCand)
+        && !distractorPool.some(p => normalizeClozeAnswer(p) === normalizedCand);
+    });
+    distractorPool = [...distractorPool, ...extraCandidates];
+  }
+
+  if (distractorPool.length < 2) {
     return null;
   }
-  const distractors = [...distractPool].sort(() => Math.random() - 0.5).slice(0, 2);
+  const distractors = [...distractorPool].sort(() => Math.random() - 0.5).slice(0, 2);
   return [correct, ...distractors].sort(() => Math.random() - 0.5);
 }
 

@@ -289,4 +289,61 @@ describe('pickClozeHintOptions', () => {
 
     expect(options).toHaveLength(3);
   });
+
+  it('沒傳 passageBody 時行為完全不變（向後相容）：同題空格不夠仍回傳 null', () => {
+    expect(pickClozeHintOptions(['陽光', '水'], 0)).toBeNull();
+  });
+
+  it('同題空格夠（≥3）時，即使有傳 passageBody 也優先用同題答案，不用管 passageBody 對不對', () => {
+    // passageBody 給一個完全抽不到字的內容（純標點），確認不影響同題答案已經足夠的情況
+    const options = pickClozeHintOptions(['陽光', '水', '葉綠素'], 0, '。，！？');
+
+    expect(options).not.toBeNull();
+    expect(options).toHaveLength(3);
+  });
+
+  it('同題空格不夠時，改用 passageBody 抽字當備援', () => {
+    const passageBody = 'Photosynthesis needs [[陽光]] and water to occur naturally';
+    const options = pickClozeHintOptions(['陽光', '水'], 0, passageBody);
+
+    expect(options).not.toBeNull();
+    expect(options).toHaveLength(3);
+    expect(options).toContain('陽光');
+  });
+
+  it('文章抽字備援不會把「同題其他空格答案」重複列成第二個候選（不會跟第一層撞名）', () => {
+    // "water" 本來就是這題另一格的答案，會透過第一層合法成為幹擾項候選——
+    // 這是既有、預期的行為（同題其他空格答案本來就可以當幹擾項），不用排除。
+    // 這個測試要確認的是：文章裡的 "water" 不會被第二層又「重複」加進候選池一次
+    // （只會有一個 water，不會有兩個 water 佔掉 2 個幹擾項名額）。
+    const passageBody = 'The process needs sunlight and water and energy and carbon to occur';
+    const options = pickClozeHintOptions(['sunlight', 'water'], 0, passageBody)!;
+
+    expect(options).not.toBeNull();
+    expect(options.filter(o => o.toLowerCase() === 'water')).toHaveLength(options.includes('water') ? 1 : 0);
+  });
+
+  it('文章抽字備援也抽不到字（連續中文無標點）時，仍回傳 null，不會硬湊', () => {
+    const passageBody = '光合作用需要陽光水分和二氧化碳才能順利進行';
+    const options = pickClozeHintOptions(['陽光', '水分'], 0, passageBody);
+
+    expect(options).toBeNull();
+  });
+
+  it('只有 1 個空格（同題完全沒有其他空格）時，兩個幹擾項都靠文章抽字備援', () => {
+    const passageBody = 'The quick brown fox jumps over the lazy dog near [[river]]';
+    const options = pickClozeHintOptions(['river'], 0, passageBody);
+
+    expect(options).not.toBeNull();
+    expect(options).toHaveLength(3);
+    expect(options).toContain('river');
+  });
+
+  it('文章抽字備援不會把正確答案自己當成幹擾項（就算文章裡出現兩次）', () => {
+    const passageBody = 'The sunlight and more sunlight and water and energy appear here today';
+    const options = pickClozeHintOptions(['sunlight'], 0, passageBody)!;
+
+    expect(options).not.toBeNull();
+    expect(options.filter(o => o.toLowerCase() === 'sunlight')).toHaveLength(1);
+  });
 });
