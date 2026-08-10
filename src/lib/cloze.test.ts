@@ -347,9 +347,19 @@ describe('pickClozeHintOptions', () => {
     expect(options.filter(o => o.toLowerCase() === 'sunlight')).toHaveLength(1);
   });
 
-  it('文章抽字備援去重要正規化（大小寫不敏感），不會把同一個詞的大小寫變體都當成不同候選詞', () => {
-    // "The" 出現在句首（大寫）跟句中「the」（小寫），正規化前是兩個不同字串，
-    // 正規化後其實是同一個詞，不應該同時出現在幹擾項裡湊出兩個看起來一樣的選項
+  it('文章抽字備援去重要正規化（大小寫不敏感）：候選詞剛好只有大小寫變體時，正規化後不足 2 個應回傳 null', () => {
+    // 決定性測試（不靠亂數抽樣）：這段文章抽字後只會有 "The"／"the" 兩個候選詞，
+    // 兩者是同一個詞的大小寫變體。若去重沒有正規化（bug 重現），Set 對原字串
+    // 去重會留下 2 個「不同」候選詞，湊得到 2 個幹擾項，回傳非 null；
+    // 正規化去重後兩者是同一個詞，只剩 1 個候選，湊不到 2 個，回傳 null。
+    // 這樣測試的是「回傳 null 與否」這個決定性結果，不用依賴哪兩個候選詞被
+    // 亂數抽中，避免像前一版測試那樣統計檢定力太弱、大部分執行都測不出問題。
+    const options = pickClozeHintOptions(['fox'], 0, 'The the');
+
+    expect(options).toBeNull();
+  });
+
+  it('文章抽字備援去重正規化後仍足夠時，幹擾項裡不會出現同一個詞的大小寫變體', () => {
     const passageBody = 'The quick fox and the lazy dog jumped over the fence today';
     const options = pickClozeHintOptions(['fox'], 0, passageBody)!;
 
