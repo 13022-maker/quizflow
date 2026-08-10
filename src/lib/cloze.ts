@@ -130,10 +130,16 @@ export function pickClozeHintOptions(
     const textCandidates = parseClozeBody(passageBody)
       .filter((s): s is Extract<ClozeSegment, { kind: 'text' }> => s.kind === 'text')
       .flatMap(s => findClozeCandidates(s.text));
-    const extraCandidates = Array.from(new Set(textCandidates)).filter((cand) => {
+    // 正規化去重（trim + 大小寫不敏感），不能只用 Set 對原字串去重——
+    // 否則像 "The"/"the" 會被當成兩個不同候選詞，湊成兩個看起來一樣的幹擾項
+    const seenNormalized = new Set(distractorPool.map(normalizeClozeAnswer));
+    const extraCandidates = textCandidates.filter((cand) => {
       const normalizedCand = normalizeClozeAnswer(cand);
-      return !usedAnswers.has(normalizedCand)
-        && !distractorPool.some(p => normalizeClozeAnswer(p) === normalizedCand);
+      if (usedAnswers.has(normalizedCand) || seenNormalized.has(normalizedCand)) {
+        return false;
+      }
+      seenNormalized.add(normalizedCand);
+      return true;
     });
     distractorPool = [...distractorPool, ...extraCandidates];
   }

@@ -346,4 +346,21 @@ describe('pickClozeHintOptions', () => {
     expect(options).not.toBeNull();
     expect(options.filter(o => o.toLowerCase() === 'sunlight')).toHaveLength(1);
   });
+
+  it('文章抽字備援去重要正規化（大小寫不敏感），不會把同一個詞的大小寫變體都當成不同候選詞', () => {
+    // "The" 出現在句首（大寫）跟句中「the」（小寫），正規化前是兩個不同字串，
+    // 正規化後其實是同一個詞，不應該同時出現在幹擾項裡湊出兩個看起來一樣的選項
+    const passageBody = 'The quick fox and the lazy dog jumped over the fence today';
+    const options = pickClozeHintOptions(['fox'], 0, passageBody)!;
+
+    expect(options).not.toBeNull();
+
+    const normalizedCounts = new Map<string, number>();
+    options.forEach((o) => {
+      const key = o.toLowerCase();
+      normalizedCounts.set(key, (normalizedCounts.get(key) ?? 0) + 1);
+    });
+
+    expect(Math.max(...normalizedCounts.values())).toBe(1);
+  });
 });
