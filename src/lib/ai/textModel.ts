@@ -28,6 +28,50 @@ export function resolveAIProvider(isPro: boolean, hasClaudeKey: boolean): 'claud
   return isPro && hasClaudeKey ? 'claude' : 'gemini';
 }
 
+/**
+ * 判斷這個錯誤是不是「暫時性、值得重試」的（純函式，可測）。
+ * 429/529（限流/過載）、5xx（伺服器錯誤）、訊息含 overloaded 才算；
+ * 400/401/403 這種請求本身有問題的錯誤，重試也不會變好，不列入。
+ */
+export function isRetryableAIError(err: unknown): boolean {
+  const status = (err as { status?: number; code?: number } | null)?.status
+    ?? (err as { code?: number } | null)?.code;
+  return status === 429
+    || status === 529
+    || (typeof status === 'number' && status >= 500)
+    || (err instanceof Error && err.message.includes('overloaded'));
+}
+
+/**
+ * 通用重試 wrapper：可重試的錯誤失敗時遞增 backoff 重試，不可重試或試滿次數就拋出。
+ *
+ * 修復真實踩過的坑：簡答題 AI 評分（gradeShortAnswer → callGemini）過去完全沒有
+ * 重試機制，短時間內大量學生同時交卷（各自獨立呼叫一次 Gemini API）很容易撞到
+ * 限流，沒有 retry 就整批直接判定「AI 批改失敗，待老師複核」。這裡補齊跟
+ * generate-from-file/route.ts 既有 callWithRetry 一致的防禦深度。
+ */
+export async function withAIRetry<T>(
+  fn: () => Promise<T>,
+  options: { maxRetries?: number; delayMs?: number } = {},
+): Promise<T> {
+  const maxRetries = options.maxRetries ?? 3;
+  const delayMs = options.delayMs ?? 1500;
+  let lastErr: unknown;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryableAIError(err) || i === maxRetries - 1) {
+        throw err;
+      }
+      await new Promise(resolve => setTimeout(resolve, (i + 1) * delayMs));
+    }
+  }
+  // 理論上不會走到這裡（迴圈內一定 return 或 throw），保留給 TypeScript 型別檢查
+  throw lastErr;
+}
+
 /** isProOrAbove 安全版：無 auth context（學生端、CLI）時視為 free，不 throw */
 export async function isProSafe(): Promise<boolean> {
   try {
@@ -113,6 +157,8 @@ async function callGemini(opts: GenerateAITextOptions): Promise<string> {
 
 /**
  * 統一文字生成：付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini。
+ * 兩個 provider 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試
+ * 3 次再放棄，不是每次撞到限流就整個判定失敗（見 withAIRetry 註解）。
  * 兩個 provider 都失敗才 throw，讓呼叫端自己的錯誤處理接手。
  */
 export async function generateAIText(
@@ -122,10 +168,10 @@ export async function generateAIText(
   const provider = resolveAIProvider(isPro, Boolean(process.env.ANTHROPIC_API_KEY?.trim()));
   if (!opts.forceGemini && provider === 'claude') {
     try {
-      return { text: await callClaude(opts), usedModel: 'claude' };
+      return { text: await withAIRetry(() => callClaude(opts)), usedModel: 'claude' };
     } catch (err) {
       console.warn('[textModel] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
     }
   }
-  return { text: await callGemini(opts), usedModel: 'gemini' };
+  return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
 }
