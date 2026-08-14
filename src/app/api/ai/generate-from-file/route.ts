@@ -9,6 +9,7 @@ import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { isProSafe } from '@/lib/ai/textModel';
+import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -222,16 +223,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (isPDF && endPage > 0) {
-    const pageCount = endPage - startPage + 1;
-    if (pageCount > 20) {
-      return NextResponse.json(
-        { error: `選取範圍共 ${pageCount} 頁，超過上限 20 頁，請縮小範圍後重試` },
-        { status: 400 },
-      );
-    }
-  }
-
   const diffLabel = DIFF_LABELS[difficulty] || '中等';
   const typesPrompt = types.map(t => `- ${TYPE_LABELS[t]}，共 ${count} 題`).join('\n');
   // 只放老師勾選的題型範例；沒勾選的題型完全不出現在 prompt 裡（防呆：空陣列退回 mc 範例）
@@ -276,7 +267,8 @@ ${typesPrompt}
 5. 次方寫作 x²、x³、x⁴；三次方以上可用 x^n（例如 x^10）
 6. 根號寫作 √2、√(a+b)；不寫 \\sqrt
 7. 微積分符號 ∫、∑、∞、lim 直接使用 Unicode
-8. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
+8. 若文件內容本身是選擇題格式（含①②③④或 A/B/C/D 等選項標號），出「填空題」時請將題幹與正確選項的文字內容重組成一句完整敘述句，把關鍵詞彙或答案內容挖空（用 ___ 標示），answer 填正確選項的實際文字內容；不要照抄原本的①②③④符號，也不要整段原封不動照搬選擇題格式
+9. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
 {
   "title": "根據文件內容自動命名的試卷標題",
   "questions": [
@@ -363,25 +355,40 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       });
     }
   } else {
-    // PDF：若有傳頁數範圍用 pdf-lib 裁切後再傳
+    // PDF：一律用伺服器端量到的真實頁數判斷上限，不信任前端傳來的 startPage/endPage
+    // （前端讀取頁數失敗時不會傳這兩個值，過去這裡會把整份大 PDF 原封不動送給 AI，
+    //  命題耗時很容易超過 Vercel maxDuration 逾時，見 src/libs/pdfPageLimit.ts）
+    //
+    // ignoreEncryption: true —— 踩過的坑：老師上傳的 PDF 若有加密限制（常見於證照題庫
+    // 下載檔，通常是防修改/防列印，不是版權 DRM），pdf-lib 預設遇到加密 PDF 會直接
+    // throw EncryptedPDFError；同一份檔案送去前端 pdfjs-dist 讀頁數時也會失敗，
+    // 導致頁數選擇器完全不出現（見 AIQuizModal.tsx / FileQuizGenerator.tsx 的靜默 catch）。
+    // 更關鍵的是：就算不裁切、直接把原始 bytes 送給 AI，AI 多模態模型很可能因為
+    // PDF 帶著加密限制而讀不到內容，這才是「命題失敗」最直接的原因——不只是逾時。
+    // 解法：一律用 pdf-lib 讀取＋透過 copyPages 重新輸出成一份乾淨的 PDF（不帶原始
+    // 加密限制），不論需不需要裁切頁數，都不要把原始 bytes 直接送給 AI。
     const arrayBuffer = await firstFile.arrayBuffer();
-    let pdfBytes: Uint8Array;
-    if (endPage > 0) {
-      const srcDoc = await PDFDocument.load(arrayBuffer);
-      const newDoc = await PDFDocument.create();
-      const totalPages = srcDoc.getPageCount();
-      const safeStart = Math.max(1, startPage);
-      const safeEnd = Math.min(endPage, totalPages);
-      const indices = Array.from(
-        { length: safeEnd - safeStart + 1 },
-        (_, i) => safeStart - 1 + i,
-      );
-      const copiedPages = await newDoc.copyPages(srcDoc, indices);
-      copiedPages.forEach(page => newDoc.addPage(page));
-      pdfBytes = await newDoc.save();
-    } else {
-      pdfBytes = new Uint8Array(arrayBuffer);
+    const srcDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
+    const actualTotalPages = srcDoc.getPageCount();
+
+    const range = resolvePdfPageRange({
+      actualTotalPages,
+      requestedStartPage: startPage,
+      requestedEndPage: endPage,
+    });
+    if (!range.ok) {
+      return NextResponse.json({ error: range.error }, { status: 400 });
     }
+
+    const newDoc = await PDFDocument.create();
+    const indices = Array.from(
+      { length: range.endPage - range.startPage + 1 },
+      (_, i) => range.startPage - 1 + i,
+    );
+    const copiedPages = await newDoc.copyPages(srcDoc, indices);
+    copiedPages.forEach(page => newDoc.addPage(page));
+    const pdfBytes = await newDoc.save();
+
     media.push({
       mimeType: 'application/pdf',
       base64: Buffer.from(pdfBytes).toString('base64'),

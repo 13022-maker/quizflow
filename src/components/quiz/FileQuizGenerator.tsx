@@ -103,8 +103,11 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       setStartPage(1);
       setEndPage(Math.min(10, total));
     } catch {
-      // 讀頁數失敗就不顯示選擇器，讓後端直接處理
       setPdfPageCount(null);
+      // 讀取頁數失敗不能完全靜默：伺服器端會用真實頁數擋下超過 20 頁的 PDF
+      // （見 src/libs/pdfPageLimit.ts），沒提示的話老師會以為選頁數這一步被跳過了、
+      // 命題卻莫名其妙失敗，完全不知道發生什麼事
+      setError('無法自動讀取這份 PDF 的頁數，若頁數超過 20 頁，命題可能會被拒絕。建議重新整理頁面再試一次，或改上傳較短的檔案。');
     } finally {
       setPageLoading(false);
     }
