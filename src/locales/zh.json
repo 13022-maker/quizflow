@@ -104,14 +104,14 @@
   },
   "DashboardLayout": {
     "home": "首頁",
-    "quizzes": "我的測驗",
+    "quizzes": "我的教材",
     "todos": "待辦事項",
     "members": "成員",
     "billing": "帳單",
     "settings": "設定"
   },
   "Quizzes": {
-    "title_bar": "我的測驗",
+    "title_bar": "我的教材",
     "title_bar_description": "管理並分享您的測驗給學生",
     "add_quiz_button": "建立測驗",
     "empty_title": "還沒有測驗",

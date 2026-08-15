@@ -104,14 +104,14 @@
   },
   "DashboardLayout": {
     "home": "Home",
-    "quizzes": "Quizzes",
+    "quizzes": "My Materials",
     "todos": "Todos",
     "members": "Members",
     "billing": "Billing",
     "settings": "Settings"
   },
   "Quizzes": {
-    "title_bar": "My Quizzes",
+    "title_bar": "My Materials",
     "title_bar_description": "Manage and share your quizzes with students",
     "add_quiz_button": "New Quiz",
     "empty_title": "No quizzes yet",
