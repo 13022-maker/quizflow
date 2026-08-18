@@ -119,6 +119,11 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
     name: 'options',
   });
 
+  // 標記「type 的 useEffect 是不是第一次執行（表單剛掛載）」，
+  // 掛載時 type 只是既有題目帶進來的初始值，不是使用者手動切換題型：
+  // 選項補形狀（如是非題補回預設選項）仍要跑，但不能清空 correctAnswers（見下方 effect）
+  const isFirstTypeEffect = useRef(true);
+
   const type = form.watch('type');
   const correctAnswers = form.watch('correctAnswers') ?? [];
 
@@ -209,6 +214,12 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
 
   // 切換題型時重設選項
   useEffect(() => {
+    // 掛載時的第一次執行：type 只是既有題目帶進來的初始值，不是使用者手動切換，
+    // 選項補形狀（如是非題補回預設選項）仍要跑，但不能清空既有的 correctAnswers，
+    // 否則編輯舊題目（例如只是加張圖片）存檔就會把正確答案洗掉
+    const isMount = isFirstTypeEffect.current;
+    isFirstTypeEffect.current = false;
+
     if (type === 'listening') {
       // 聽力題固定 4 個選項（4 選 1）
       const current = form.getValues('options') ?? [];
@@ -221,17 +232,25 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
           { id: crypto.randomUUID(), text: '' },
         ]);
       }
-      form.setValue('correctAnswers', []);
+      if (!isMount) {
+        form.setValue('correctAnswers', []);
+      }
     } else if (type === 'true_false') {
       replace(TRUE_FALSE_OPTIONS);
-      form.setValue('correctAnswers', []);
+      if (!isMount) {
+        form.setValue('correctAnswers', []);
+      }
     } else if (type === 'short_answer') {
       replace([]);
-      form.setValue('correctAnswers', []);
+      if (!isMount) {
+        form.setValue('correctAnswers', []);
+      }
     } else if (type === 'cloze') {
       // 克漏字題不用 options，答案是從 body 的 [[ ]] 標記推導出來的
       replace([]);
-      form.setValue('correctAnswers', []);
+      if (!isMount) {
+        form.setValue('correctAnswers', []);
+      }
     } else if (type === 'ranking') {
       // 排序題：至少 3 個選項才有意義
       const current = form.getValues('options') ?? [];
@@ -244,7 +263,9 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         ]);
       }
       // 排序題的 correctAnswers 在 submit 時根據選項順序決定，這裡先清空
-      form.setValue('correctAnswers', []);
+      if (!isMount) {
+        form.setValue('correctAnswers', []);
+      }
     } else {
       // 從 true_false / short_answer / ranking 切換到一般選擇題，初始化兩個空選項
       const current = form.getValues('options') ?? [];
@@ -254,7 +275,9 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
           { id: crypto.randomUUID(), text: '' },
           { id: crypto.randomUUID(), text: '' },
         ]);
-        form.setValue('correctAnswers', []);
+        if (!isMount) {
+          form.setValue('correctAnswers', []);
+        }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
