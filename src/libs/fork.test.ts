@@ -38,6 +38,7 @@ const mkQuestion = (overrides: Partial<SourceQuestion> = {}): SourceQuestion => 
   body: '光合作用主要發生在哪裡？',
   imageUrl: null,
   audioUrl: null,
+  audioDurationSec: null,
   audioTranscript: null,
   options: [
     { id: 'a', text: '葉綠體' },

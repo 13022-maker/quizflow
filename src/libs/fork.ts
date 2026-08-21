@@ -43,6 +43,7 @@ export type SourceQuestion = {
   body: string;
   imageUrl: string | null;
   audioUrl: string | null;
+  audioDurationSec: number | null;
   audioTranscript: string | null;
   options: { id: string; text: string }[] | null;
   correctAnswers: string[] | null;
@@ -165,6 +166,7 @@ export function buildForkedQuestions(
     body: q.body,
     imageUrl: q.imageUrl,
     audioUrl: q.audioUrl,
+    audioDurationSec: q.audioDurationSec,
     audioTranscript: q.audioTranscript,
     options: q.options,
     correctAnswers: q.correctAnswers,

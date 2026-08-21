@@ -1155,6 +1155,7 @@ export function QuizEditor({
                             body: question.body,
                             imageUrl: question.imageUrl ?? '',
                             audioUrl: question.audioUrl ?? '',
+                            audioDurationSec: question.audioDurationSec ?? undefined,
                             audioTranscript: question.audioTranscript ?? '',
                             options: question.options ?? undefined,
                             correctAnswers: question.correctAnswers ?? undefined,
@@ -1200,6 +1201,8 @@ export function QuizEditor({
                             await updateQuestion(questionId, initialQuiz.id, {
                               type: question.type,
                               body: question.body,
+                              imageUrl: question.imageUrl ?? undefined,
+                              audioTranscript: question.audioTranscript ?? undefined,
                               options: question.options ?? undefined,
                               correctAnswers: question.correctAnswers ?? undefined,
                               points: question.points,

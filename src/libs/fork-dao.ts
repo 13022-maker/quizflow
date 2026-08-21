@@ -72,6 +72,7 @@ async function loadSourceQuestions(sourceId: number): Promise<SourceQuestion[]> 
       body: questionSchema.body,
       imageUrl: questionSchema.imageUrl,
       audioUrl: questionSchema.audioUrl,
+      audioDurationSec: questionSchema.audioDurationSec,
       audioTranscript: questionSchema.audioTranscript,
       options: questionSchema.options,
       correctAnswers: questionSchema.correctAnswers,
