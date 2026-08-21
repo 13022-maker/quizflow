@@ -11,6 +11,7 @@ import {
 } from '@/models/Schema';
 
 import { publishTick } from './ablyServer';
+import { getEffectiveQuestionDuration } from './questionDuration';
 import { calcLiveScore, gradeAnswer, isLiveSupportedType } from './scoring';
 import type {
   LiveAnswerStat,
@@ -62,8 +63,9 @@ async function maybeAutoAdvance(game: LiveGameRow): Promise<boolean> {
       return true;
     }
   } else if (game.status === 'showing_result') {
-    // showing_result → 下一題 OR finished（用 supportedCount 判斷）
-    const supportedCount = (await getLiveQuestions(game.quizId)).length;
+    // showing_result → 下一題 OR finished（用 questions.length 判斷）
+    const questionsForAdvance = await getLiveQuestions(game.quizId);
+    const supportedCount = questionsForAdvance.length;
     const nextIdx = game.currentQuestionIndex + 1;
     if (nextIdx >= supportedCount) {
       const updated = await db
@@ -82,7 +84,11 @@ async function maybeAutoAdvance(game: LiveGameRow): Promise<boolean> {
       }
     } else {
       const startedAt = new Date(nowMs);
-      const transitionAt = new Date(nowMs + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000);
+      const nextQForAdvance = questionsForAdvance[nextIdx];
+      const effectiveDurationForAdvance = nextQForAdvance
+        ? getEffectiveQuestionDuration(nextQForAdvance, game.questionDuration)
+        : game.questionDuration;
+      const transitionAt = new Date(nowMs + (effectiveDurationForAdvance + PLAY_PHASE_BUFFER_SEC) * 1000);
       const updated = await db
         .update(liveGameSchema)
         .set({
@@ -130,9 +136,14 @@ async function loadGameWithAutoAdvance(gameId: number): Promise<LiveGameRow | nu
   // Self-heal NULL nextTransitionAt（'use server' Server Action 寫入會被吃掉）
   if (!game.nextTransitionAt) {
     if (game.status === 'playing' && game.questionStartedAt) {
-      // 從 questionStartedAt 反推：題目開始時間 + 題目時長 + 5s 緩衝
+      // 從 questionStartedAt 反推：題目開始時間 + (延長後)題目時長 + 5s 緩衝
+      const questionsForHeal = await getLiveQuestions(game.quizId);
+      const currentQForHeal = questionsForHeal[game.currentQuestionIndex];
+      const effectiveDurationForHeal = currentQForHeal
+        ? getEffectiveQuestionDuration(currentQForHeal, game.questionDuration)
+        : game.questionDuration;
       const transitionAt = new Date(
-        game.questionStartedAt.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000,
+        game.questionStartedAt.getTime() + (effectiveDurationForHeal + PLAY_PHASE_BUFFER_SEC) * 1000,
       );
       await db
         .update(liveGameSchema)
@@ -177,6 +188,8 @@ export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForH
       type: questionSchema.type,
       body: questionSchema.body,
       imageUrl: questionSchema.imageUrl,
+      audioUrl: questionSchema.audioUrl,
+      audioDurationSec: questionSchema.audioDurationSec,
       options: questionSchema.options,
       correctAnswers: questionSchema.correctAnswers,
       position: questionSchema.position,
@@ -189,9 +202,11 @@ export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForH
     .filter(r => isLiveSupportedType(r.type))
     .map(r => ({
       id: r.id,
-      type: r.type as 'single_choice' | 'multiple_choice' | 'true_false',
+      type: r.type as 'single_choice' | 'multiple_choice' | 'true_false' | 'listening',
       body: r.body,
       imageUrl: r.imageUrl,
+      audioUrl: r.audioUrl,
+      audioDurationSec: r.audioDurationSec,
       options: (r.options ?? []) as { id: string; text: string }[],
       correctAnswers: (r.correctAnswers ?? []) as string[],
     }));
@@ -291,7 +306,9 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
       status: game.status,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
-      questionDuration: game.questionDuration,
+      questionDuration: currentQuestion
+        ? getEffectiveQuestionDuration(currentQuestion, game.questionDuration)
+        : game.questionDuration,
       totalQuestions: questions.length,
     },
     players,
@@ -339,6 +356,8 @@ export async function getPlayerState(
       type: current.type,
       body: current.body,
       imageUrl: current.imageUrl,
+      audioUrl: current.audioUrl,
+      audioDurationSec: current.audioDurationSec,
       options: current.options,
     };
   }
@@ -388,7 +407,9 @@ export async function getPlayerState(
       status: game.status,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
-      questionDuration: game.questionDuration,
+      questionDuration: current
+        ? getEffectiveQuestionDuration(current, game.questionDuration)
+        : game.questionDuration,
       totalQuestions: questions.length,
     },
     me: {
