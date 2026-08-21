@@ -474,7 +474,9 @@ export async function recordAnswer(params: {
   const startedAtMs = game.questionStartedAt ? game.questionStartedAt.getTime() : 0;
   const nowMs = Date.now();
   const elapsed = nowMs - startedAtMs;
-  const durationMs = game.questionDuration * 1000;
+  // 聽力題的作答時長也要延長（跟 getHostState/getPlayerState/自動推進邏輯一致，
+  // 否則學生聽完音檔才作答會被誤判逾時）
+  const durationMs = getEffectiveQuestionDuration(currentQuestion, game.questionDuration) * 1000;
 
   let responseMs = Math.max(0, elapsed);
   let isTimedOut = false;
