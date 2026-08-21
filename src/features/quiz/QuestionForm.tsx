@@ -6,6 +6,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
+import { probeAudioDuration } from '@/lib/audioDuration';
 import { extractClozeAnswers } from '@/lib/cloze';
 
 import { ClozeEditor } from './ClozeEditor';
@@ -61,6 +62,7 @@ const QuestionSchema = z.object({
   body: z.string().min(1, '請輸入題目內容'),
   imageUrl: z.string().optional(), // 題目圖片網址
   audioUrl: z.string().optional(), // 聽力題音檔網址
+  audioDurationSec: z.number().optional(), // 聽力題音檔秒數（Live Mode 計時用）
   audioTranscript: z.string().optional(), // 音檔逐字稿（選填）
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
@@ -202,6 +204,9 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         throw new Error(data.error ?? '上傳失敗');
       }
       form.setValue('audioUrl', data.url, { shouldDirty: true });
+      // 偵測音檔秒數，存下來給 Live Mode 用來延長作答時間；偵測失敗也不阻擋存檔
+      const durationSec = await probeAudioDuration(data.url);
+      form.setValue('audioDurationSec', durationSec ?? undefined, { shouldDirty: true });
     } catch (err) {
       setAudioUploadError(err instanceof Error ? err.message : '上傳失敗');
     } finally {
@@ -481,7 +486,10 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
               {form.watch('audioUrl') && (
                 <button
                   type="button"
-                  onClick={() => form.setValue('audioUrl', '', { shouldDirty: true })}
+                  onClick={() => {
+                    form.setValue('audioUrl', '', { shouldDirty: true });
+                    form.setValue('audioDurationSec', undefined, { shouldDirty: true });
+                  }}
                   className="text-xs text-destructive hover:underline"
                 >
                   移除音檔
