@@ -45,7 +45,8 @@ export function gradeAnswer(
 
   switch (questionType) {
     case 'single_choice':
-    case 'true_false': {
+    case 'true_false':
+    case 'listening': {
       if (typeof selectedOptionId !== 'string') {
         return false;
       }
@@ -79,6 +80,7 @@ export const LIVE_SUPPORTED_TYPES: LiveQuestionType[] = [
   'single_choice',
   'multiple_choice',
   'true_false',
+  'listening',
 ];
 
 export function isLiveSupportedType(type: string): type is LiveQuestionType {

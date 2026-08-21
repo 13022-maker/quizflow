@@ -2,7 +2,7 @@
 
 export type LiveGameStatus = 'waiting' | 'playing' | 'showing_result' | 'finished';
 
-export type LiveQuestionType = 'single_choice' | 'multiple_choice' | 'true_false';
+export type LiveQuestionType = 'single_choice' | 'multiple_choice' | 'true_false' | 'listening';
 
 export type LiveQuestionOption = { id: string; text: string };
 
@@ -12,6 +12,8 @@ export type LiveQuestionForHost = {
   type: LiveQuestionType;
   body: string;
   imageUrl: string | null;
+  audioUrl: string | null; // 聽力題音檔網址
+  audioDurationSec: number | null; // 聽力題音檔秒數（Live Mode 計時用）
   options: LiveQuestionOption[];
   correctAnswers: string[];
 };
@@ -22,6 +24,8 @@ export type LiveQuestionForPlayer = {
   type: LiveQuestionType;
   body: string;
   imageUrl: string | null;
+  audioUrl: string | null; // 聽力題音檔網址
+  audioDurationSec: number | null; // 聽力題音檔秒數（判斷「音檔播完才顯示選項」用）
   options: LiveQuestionOption[];
 };
 
