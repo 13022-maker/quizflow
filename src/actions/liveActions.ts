@@ -11,6 +11,8 @@ import {
   quizSchema,
 } from '@/models/Schema';
 import { publishTick } from '@/services/live/ablyServer';
+import { getLiveQuestions } from '@/services/live/liveStore';
+import { getEffectiveQuestionDuration } from '@/services/live/questionDuration';
 import { isLiveSupportedType } from '@/services/live/scoring';
 
 // 自動推進等待時間（秒）：題目倒數結束後緩衝、答案揭示停留
@@ -147,6 +149,13 @@ export async function startGame(gameId: number) {
     return { error: 'ALREADY_STARTED' };
   }
 
+  // 第一題若是聽力題，作答時間要加上音檔長度
+  const questions = await getLiveQuestions(game.quizId);
+  const firstQuestion = questions[0];
+  const effectiveDuration = firstQuestion
+    ? getEffectiveQuestionDuration(firstQuestion, game.questionDuration)
+    : game.questionDuration;
+
   // 用 JS Date：跟 questionStartedAt 同 pattern，可靠寫入 timestamp 欄位
   const now = new Date();
   await db
@@ -155,7 +164,7 @@ export async function startGame(gameId: number) {
       status: 'playing',
       currentQuestionIndex: 0,
       questionStartedAt: now,
-      nextTransitionAt: new Date(now.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
+      nextTransitionAt: new Date(now.getTime() + (effectiveDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
     })
     .where(eq(liveGameSchema.id, game.id));
 
@@ -198,13 +207,9 @@ export async function nextQuestion(gameId: number) {
     return { error: 'GAME_NOT_FOUND' };
   }
 
-  // 取支援題型數量
-  const rows = await db
-    .select({ type: questionSchema.type })
-    .from(questionSchema)
-    .where(eq(questionSchema.quizId, game.quizId))
-    .orderBy(asc(questionSchema.position));
-  const supportedCount = rows.filter(r => isLiveSupportedType(r.type)).length;
+  // 取支援題型清單（含音檔長度，換題時要用來算延長後的作答時間）
+  const questions = await getLiveQuestions(game.quizId);
+  const supportedCount = questions.length;
 
   const nextIdx = game.currentQuestionIndex + 1;
   if (nextIdx >= supportedCount) {
@@ -217,6 +222,11 @@ export async function nextQuestion(gameId: number) {
     return { ok: true as const, finished: true };
   }
 
+  const nextQuestionRow = questions[nextIdx];
+  const effectiveDuration = nextQuestionRow
+    ? getEffectiveQuestionDuration(nextQuestionRow, game.questionDuration)
+    : game.questionDuration;
+
   const nowQ = new Date();
   await db
     .update(liveGameSchema)
@@ -224,7 +234,7 @@ export async function nextQuestion(gameId: number) {
       status: 'playing',
       currentQuestionIndex: nextIdx,
       questionStartedAt: nowQ,
-      nextTransitionAt: new Date(nowQ.getTime() + (game.questionDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
+      nextTransitionAt: new Date(nowQ.getTime() + (effectiveDuration + PLAY_PHASE_BUFFER_SEC) * 1000),
     })
     .where(eq(liveGameSchema.id, game.id));
 
