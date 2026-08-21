@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useCountdown } from '@/hooks/useCountdown';
+import { LISTENING_FALLBACK_SEC } from '@/services/live/questionDuration';
 import type { LivePlayerState, LiveQuestionForPlayer } from '@/services/live/types';
 
 type Props = {
@@ -23,11 +24,34 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
   const [selectedSingle, setSelectedSingle] = useState<string | null>(null);
   const [selectedMulti, setSelectedMulti] = useState<Set<string>>(new Set());
 
-  // 換題清空選擇
+  // 聽力題播放狀態：'pending' 尚未判斷、'playing' 播放中（選項隱藏）、
+  // 'blocked' 被瀏覽器擋自動播放（顯示手動播放按鈕）、'ended' 播完/late-join 判定已播完（顯示選項）
+  const [audioState, setAudioState] = useState<'pending' | 'playing' | 'blocked' | 'ended'>('pending');
+
+  // 換題清空選擇 + 重新判斷聽力題播放狀態
   const questionId = currentQuestion?.id ?? null;
   useEffect(() => {
     setSelectedSingle(null);
     setSelectedMulti(new Set());
+
+    if (currentQuestion?.type !== 'listening') {
+      setAudioState('ended'); // 非聽力題視同「已播完」，選項直接顯示
+      return;
+    }
+
+    // 中途加入 / reconnect：若加入時音檔理論上已經播完，不重播，直接顯示選項
+    // （避免卡在「聆聽中」畫面卻永遠聽不到已經播完的聲音）
+    if (game.questionStartedAt) {
+      const elapsedMs = Date.now() - new Date(game.questionStartedAt).getTime();
+      const audioLenMs = (currentQuestion.audioDurationSec ?? LISTENING_FALLBACK_SEC) * 1000;
+      if (elapsedMs >= audioLenMs) {
+        setAudioState('ended');
+        return;
+      }
+    }
+
+    setAudioState('playing');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [questionId]);
 
   if (!currentQuestion) {
@@ -118,19 +142,63 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
             className="mt-3 max-h-60 rounded-lg"
           />
         )}
+        {currentQuestion.type === 'listening' && currentQuestion.audioUrl && !isShowingResult && (
+          <div className="mt-3">
+            {audioState === 'playing' && (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <audio
+                autoPlay
+                src={currentQuestion.audioUrl}
+                onEnded={() => setAudioState('ended')}
+                onPlay={() => setAudioState('playing')}
+                onError={() => setAudioState('ended')}
+                ref={(el) => {
+                  // autoplay 被瀏覽器政策擋下時 play() 會 reject，退回手動播放按鈕
+                  el?.play().catch(() => setAudioState('blocked'));
+                }}
+              />
+            )}
+            {audioState === 'playing' && (
+              <p className="text-center text-sm text-muted-foreground">🎧 聆聽中…</p>
+            )}
+            {audioState === 'blocked' && (
+              <div className="text-center">
+                {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                <audio
+                  id={`listening-audio-${currentQuestion.id}`}
+                  src={currentQuestion.audioUrl}
+                  onEnded={() => setAudioState('ended')}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById(`listening-audio-${currentQuestion.id}`) as HTMLAudioElement | null;
+                    el?.play();
+                    setAudioState('playing');
+                  }}
+                >
+                  ▶️ 點我播放音檔
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* 選項 */}
-      <PlayerOptionList
-        question={currentQuestion}
-        selectedSingle={selectedSingle}
-        selectedMulti={selectedMulti}
-        myAnswerIds={myAnswerIds(myAnswer?.selectedOptionId)}
-        correctAnswers={isShowingResult ? correctAnswers : undefined}
-        disabled={hasAnswered || isShowingResult || submitting}
-        onSelectSingle={setSelectedSingle}
-        onToggleMulti={handleToggleMulti}
-      />
+      {/* 選項：聽力題要等音檔播完（或已判定播完）才顯示，避免用猜的搶快 */}
+      {audioState !== 'playing' && audioState !== 'blocked' && (
+        <PlayerOptionList
+          question={currentQuestion}
+          selectedSingle={selectedSingle}
+          selectedMulti={selectedMulti}
+          myAnswerIds={myAnswerIds(myAnswer?.selectedOptionId)}
+          correctAnswers={isShowingResult ? correctAnswers : undefined}
+          disabled={hasAnswered || isShowingResult || submitting}
+          onSelectSingle={setSelectedSingle}
+          onToggleMulti={handleToggleMulti}
+        />
+      )}
 
       {/* 提交 / 狀態 */}
       {!isShowingResult && !hasAnswered && (

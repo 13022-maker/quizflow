@@ -81,6 +81,9 @@ export function LiveQuestionScreen({
             className="mt-4 max-h-72 rounded-lg"
           />
         )}
+        {currentQuestion.type === 'listening' && !isShowingResult && (
+          <p className="mt-3 text-center text-sm text-muted-foreground">🎧 播放中（學生裝置各自播放）</p>
+        )}
       </div>
 
       {/* 倒數進度條 */}
