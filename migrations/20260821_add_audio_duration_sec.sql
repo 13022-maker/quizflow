@@ -1,0 +1,1 @@
+ALTER TABLE "question" ADD COLUMN "audio_duration_sec" integer;

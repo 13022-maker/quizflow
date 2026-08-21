@@ -187,6 +187,7 @@ export const questionSchema = pgTable('question', {
   body: text('body').notNull(),
   imageUrl: text('image_url'), // 題目圖片網址
   audioUrl: text('audio_url'), // 聽力題音檔網址（Vercel Blob）
+  audioDurationSec: integer('audio_duration_sec'), // 音檔秒數，上傳/生成時前端偵測寫入，nullable（Live Mode 用來延長作答時間）
   audioTranscript: text('audio_transcript'), // 音檔逐字稿（老師可選填，供 AI 出題 / 輔助）
   options: jsonb('options').$type<{ id: string; text: string }[]>(),
   correctAnswers: jsonb('correct_answers').$type<string[]>(),

@@ -267,6 +267,13 @@
       "when": 1785962273297,
       "tag": "0037_fluffy_red_wolf",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1787289999547,
+      "tag": "20260821_add_audio_duration_sec",
+      "breakpoints": true
     }
   ]
 }
