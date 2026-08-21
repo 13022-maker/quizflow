@@ -27,6 +27,7 @@ const QuestionInputSchema = z.object({
   body: z.string().min(1, '請輸入題目內���'),
   imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
   audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網��
+  audioDurationSec: z.number().int().nonnegative().optional(), // 聽力題音檔秒數（前端探測後帶入）
   audioTranscript: z.string().optional(), // 音檔逐字稿
   options: z
     .array(z.object({ id: z.string(), text: z.string().min(1, '請輸入選項內容') }))
@@ -76,6 +77,7 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     body: parsed.data.body,
     imageUrl: parsed.data.imageUrl || null,
     audioUrl: parsed.data.audioUrl || null,
+    audioDurationSec: parsed.data.audioDurationSec ?? null,
     audioTranscript: parsed.data.audioTranscript || null,
     options: parsed.data.options ?? null,
     correctAnswers: parsed.data.type === 'cloze'
@@ -110,6 +112,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       body: parsed.data.body,
       imageUrl: parsed.data.imageUrl || null,
       audioUrl: parsed.data.audioUrl || null,
+      audioDurationSec: parsed.data.audioDurationSec ?? null,
       audioTranscript: parsed.data.audioTranscript || null,
       options: parsed.data.options ?? null,
       correctAnswers: parsed.data.type === 'cloze'
