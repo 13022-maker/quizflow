@@ -21,6 +21,7 @@ type GeneratedQuestion = {
   explanation?: string;
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題已生成的音檔 URL
+  audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
 };
 
 // 題型對應：AIQuizModal → DB enum
@@ -145,6 +146,7 @@ export async function POST(
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
       audioUrl: q.audioUrl || null,
+      audioDurationSec: q.audioDurationSec ?? null,
       audioTranscript: q.listeningText || null,
       points: 1,
       position: nextPosition++,

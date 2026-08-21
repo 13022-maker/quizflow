@@ -14,6 +14,8 @@
 
 import { useRef, useState } from 'react';
 
+import { probeAudioDuration } from '@/lib/audioDuration';
+
 import { buildChapters, type PdfChapter } from './pdfChapters';
 
 // ─── Types ───────────────────────────────────────────────
@@ -29,6 +31,7 @@ type GeneratedQuestion = {
   explanation?: string;
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
+  audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
 };
 
 type GeneratedResult = {
@@ -546,6 +549,11 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 q.audioUrl = ttsData.url;
                 if (!q.listeningText) {
                   q.listeningText = ttsText;
+                }
+                // 偵測音檔秒數，存下來給 Live Mode 用來延長作答時間；偵測失敗也不阻擋匯入
+                const durationSec = await probeAudioDuration(ttsData.url);
+                if (durationSec !== null) {
+                  q.audioDurationSec = durationSec;
                 }
               }
             } catch {
