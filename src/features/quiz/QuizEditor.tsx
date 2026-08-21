@@ -1196,7 +1196,7 @@ export function QuizEditor({
                           }}
                           onDelete={() => handleDeleteQuestion(question.id)}
                           isDeleting={deletingId === question.id}
-                          onAudioRegenerated={async (questionId, audioUrl) => {
+                          onAudioRegenerated={async (questionId, audioUrl, audioDurationSec) => {
                             await updateQuestion(questionId, initialQuiz.id, {
                               type: question.type,
                               body: question.body,
@@ -1204,6 +1204,7 @@ export function QuizEditor({
                               correctAnswers: question.correctAnswers ?? undefined,
                               points: question.points,
                               audioUrl,
+                              audioDurationSec: audioDurationSec ?? undefined,
                             });
                             router.refresh();
                           }}

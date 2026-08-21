@@ -5,6 +5,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
 import { useState } from 'react';
 
+import { probeAudioDuration } from '@/lib/audioDuration';
 import { countClozeBlanks } from '@/lib/cloze';
 import type { questionSchema } from '@/models/Schema';
 
@@ -18,7 +19,7 @@ type Props = {
   onEdit: () => void;
   onDelete: () => void;
   isDeleting: boolean;
-  onAudioRegenerated?: (questionId: number, audioUrl: string) => void;
+  onAudioRegenerated?: (questionId: number, audioUrl: string, audioDurationSec: number | null) => void;
 };
 
 export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, onAudioRegenerated }: Props) {
@@ -49,7 +50,10 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
         throw new Error(data.error || '語音生成失敗');
       }
       const { url } = await res.json();
-      onAudioRegenerated?.(question.id, url);
+      // 重新生成音檔後，新音檔的秒數可能跟舊的不一樣，必須重新偵測並回傳，
+      // 否則 Live Mode 延長時間會用到舊音檔的秒數，跟新音檔對不上。
+      const durationSec = await probeAudioDuration(url);
+      onAudioRegenerated?.(question.id, url, durationSec);
     } catch (err) {
       setTtsError(err instanceof Error ? err.message : '語音生成失敗');
     } finally {
