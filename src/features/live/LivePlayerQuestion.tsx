@@ -217,8 +217,11 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
       </div>
 
       {/* 選項：聽力題要等音檔播完（或已判定播完）才顯示，避免用猜的搶快；
-          但公布答案階段（isShowingResult）一定要顯示，不然學生看不到自己對錯 */}
-      {(isShowingResult || (audioState !== 'playing' && audioState !== 'blocked')) && (
+          但公布答案階段（isShowingResult）一定要顯示，不然學生看不到自己對錯；
+          倒數只剩 5 秒內強制顯示——保底機制，避免音檔實際長度超過系統算出的
+          作答視窗（例如舊資料 audioDurationSec 是 null、或音檔載入失敗）時，
+          學生從頭到尾看不到選項、必然逾時 0 分 */}
+      {(isShowingResult || remaining <= 5 || (audioState !== 'playing' && audioState !== 'blocked')) && (
         <PlayerOptionList
           question={currentQuestion}
           selectedSingle={selectedSingle}
