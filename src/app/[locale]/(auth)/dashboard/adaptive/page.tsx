@@ -8,6 +8,7 @@ import { db } from '@/libs/DB';
 import { adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
 
 import { CopyLinkButton } from './CopyLinkButton';
+import { SubjectCombobox } from './SubjectCombobox';
 
 export const dynamic = 'force-dynamic';
 
@@ -91,29 +92,7 @@ export default async function AdaptiveListPage() {
               className="h-9 w-56 rounded-lg border px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="adaptive-subject" className="text-sm font-medium">學科</label>
-            <select
-              id="adaptive-subject"
-              name="subjectId"
-              className="h-9 rounded-lg border bg-background px-2 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              <optgroup label="內建科目">
-                {builtInSubjects.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </optgroup>
-              {customSubjects.length > 0 && (
-                <optgroup label="我的學科">
-                  {customSubjects.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.pinned ? `📌 ${s.name}` : s.name}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
+          <SubjectCombobox builtInSubjects={builtInSubjects} customSubjects={customSubjects} />
           <button
             type="submit"
             className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
