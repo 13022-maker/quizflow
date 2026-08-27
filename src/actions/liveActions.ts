@@ -206,6 +206,12 @@ export async function nextQuestion(gameId: number) {
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
+  // 狀態已經被背景自動推進過（老師停留在答案畫面超過 5 秒，
+  // loadGameWithAutoAdvance 在某次 host-state 輪詢時已經 +1 過），
+  // 這裡直接無害返回目前狀態，避免對同一題再 +1 造成多跳一題。
+  if (game.status !== 'showing_result') {
+    return { ok: true as const, finished: game.status === 'finished' };
+  }
 
   // 取支援題型清單（含音檔長度，換題時要用來算延長後的作答時間）
   const questions = await getLiveQuestions(game.quizId);
