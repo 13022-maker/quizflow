@@ -7,6 +7,7 @@
  */
 import { z } from 'zod';
 
+import type { Media } from '@/lib/ai/textModel';
 import { generateAIText, isPaidSubscriberSafe } from '@/lib/ai/textModel';
 
 import { AdaptiveEngine, type ItemBank, type KnowledgeGraph } from './engine';
@@ -90,11 +91,30 @@ const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適
 5. 所有內容使用繁體中文（台灣用語）
 6. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊`;
 
-function buildUserPrompt(topic: string, material?: string): string {
+export function buildUserPrompt(topic: string, material?: string, hasMedia?: boolean): string {
+  if (hasMedia) {
+    return `請為以下單元主題設計學科：「${topic.trim()}」\n\n以下是老師上傳的教材檔案，知識點劃分與題目範圍以檔案內容為準（不要超出檔案範圍出題）。`;
+  }
   const materialBlock = material?.trim()
     ? `\n\n以下是老師提供的教材內容，知識點劃分與題目範圍以此為準（不要超出教材範圍出題）：\n<教材>\n${material.trim().slice(0, 20000)}\n</教材>`
     : '';
   return `請為以下單元主題設計學科：「${topic.trim()}」${materialBlock}`;
+}
+
+/**
+ * 把 AI 生成失敗的錯誤轉成老師看得懂的訊息（純函式，可測）。
+ * Claude 的拒絕/截斷訊息、Gemini 對應的 SAFETY / MAX_TOKENS 都轉成等義的可行動訊息。
+ * generateAdaptiveSubject（文字模式）跟 generate-subject-from-file route（檔案模式）共用。
+ */
+export function friendlyAIGenerationError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : '';
+  if (msg.includes('拒絕') || msg.includes('SAFETY')) {
+    return '模型拒絕生成此主題的內容，請換一個主題';
+  }
+  if (msg.includes('截斷') || msg.includes('MAX_TOKENS')) {
+    return '生成內容過長被截斷，請縮小主題範圍再試';
+  }
+  return 'AI 服務暫時無法使用，請稍後再試';
 }
 
 /** 把生成結果組裝成引擎可用的 Subject（id 由呼叫端以 db:<rowId> 填入） */
@@ -166,7 +186,11 @@ function extractJson(text: string): unknown {
  * 只有真正付費訂閱（Paddle）才燒 Claude Opus；試用/免費一律 Gemini（使用者 2026-07-18 決策）。
  * 驗證失敗會帶著錯誤訊息重試一次；兩次都失敗才丟錯給呼叫端。
  */
-export async function generateSubject(topic: string, material?: string): Promise<GeneratedSubject> {
+export async function generateSubject(
+  topic: string,
+  material?: string,
+  media?: Media[],
+): Promise<GeneratedSubject> {
   // 嚴格付費判定：30 天免費試用不算，避免試用戶單次生成就消耗 32k Opus tokens
   const forceGemini = !(await isPaidSubscriberSafe());
   let lastError = '';
@@ -176,13 +200,14 @@ export async function generateSubject(topic: string, material?: string): Promise
       ? `\n\n【上次生成有以下問題，請修正後重新生成】\n${lastError}`
       : '';
     const { text, usedModel } = await generateAIText({
-      prompt: buildUserPrompt(topic, material) + retryNote,
+      prompt: buildUserPrompt(topic, material, Boolean(media?.length)) + retryNote,
       system: SYSTEM_PROMPT,
       claudeModel: 'claude-opus-4-8',
       claudeThinking: true,
       maxTokens: 32000,
       json: true,
       forceGemini,
+      media,
     });
     console.warn(`[generate-subject] attempt=${attempt} usedModel=${usedModel}`);
 
