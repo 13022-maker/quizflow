@@ -158,6 +158,13 @@ export async function saveGeneratedSubject(
   topic: string,
   generated: Awaited<ReturnType<typeof generateSubject>>,
 ): Promise<SavedSubjectResult> {
+  // 這個函式是 'use server' 檔案的獨立可呼叫端點，不能只信任傳入的 userId 參數，
+  // 必須在函式內部重新驗證登入身份，避免被當成 RPC 帶偽造 userId 呼叫，寫入別人帳號底下
+  const { userId: authedUserId } = await auth();
+  if (!authedUserId || authedUserId !== userId) {
+    throw new Error('未授權：userId 與登入身份不符');
+  }
+
   const { subject } = toSubject(generated, 'pending'); // 取正規化後的 graph/itemBank/tutor
 
   const [row] = await db
