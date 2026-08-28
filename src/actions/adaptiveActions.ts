@@ -13,7 +13,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
+import { friendlyAIGenerationError, generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
 import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
@@ -136,10 +136,50 @@ export async function deleteAdaptivePractice(practiceId: number) {
   revalidatePath('/dashboard/adaptive');
 }
 
-const generateSubjectSchema = z.object({
+export const generateSubjectSchema = z.object({
   topic: z.string().trim().min(2, '請輸入單元主題').max(100),
   material: z.string().trim().max(20000).optional(),
 });
+
+type SavedSubjectResult = {
+  id: number;
+  name: string;
+  knowledgeCount: number;
+  itemCount: number;
+};
+
+/**
+ * 把 AI 生成結果（GeneratedSubject）寫入 adaptive_subject，並讓學科清單頁重新驗證快取。
+ * 文字模式（generateAdaptiveSubject，本檔案）與檔案上傳模式
+ * （/api/ai/generate-subject-from-file）共用，避免存檔邏輯寫兩份。
+ */
+export async function saveGeneratedSubject(
+  userId: string,
+  topic: string,
+  generated: Awaited<ReturnType<typeof generateSubject>>,
+): Promise<SavedSubjectResult> {
+  const { subject } = toSubject(generated, 'pending'); // 取正規化後的 graph/itemBank/tutor
+
+  const [row] = await db
+    .insert(adaptiveSubjectSchema)
+    .values({
+      ownerId: userId,
+      name: generated.name,
+      sourceTopic: topic,
+      graph: subject.graph,
+      itemBank: subject.itemBank,
+      tutor: subject.tutor,
+    })
+    .returning();
+
+  revalidatePath('/dashboard/adaptive');
+  return {
+    id: row!.id,
+    name: row!.name,
+    knowledgeCount: subject.graph.nodes.length,
+    itemCount: subject.itemBank.items.length,
+  };
+}
 
 /**
  * AI 生成一個新學科並存入 adaptive_subject。
@@ -147,9 +187,7 @@ const generateSubjectSchema = z.object({
  */
 export async function generateAdaptiveSubject(
   input: { topic: string; material?: string },
-): Promise<
-  { id: number; name: string; knowledgeCount: number; itemCount: number } | { error: string }
-  > {
+): Promise<SavedSubjectResult | { error: string }> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('請先登入');
@@ -164,37 +202,10 @@ export async function generateAdaptiveSubject(
   } catch (err) {
     // 兩個 AI provider 都失敗（或模型拒絕）：回傳友善錯誤，不讓例外冒泡成整頁 digest error
     console.error('[generateAdaptiveSubject] AI 生成失敗：', err);
-    const msg = err instanceof Error ? err.message : '';
-    // Claude 的拒絕/截斷訊息照實顯示；Gemini 對應的 SAFETY / MAX_TOKENS 轉成等義的可行動訊息
-    let friendly = 'AI 服務暫時無法使用，請稍後再試';
-    if (msg.includes('拒絕') || msg.includes('SAFETY')) {
-      friendly = '模型拒絕生成此主題的內容，請換一個主題';
-    } else if (msg.includes('截斷') || msg.includes('MAX_TOKENS')) {
-      friendly = '生成內容過長被截斷，請縮小主題範圍再試';
-    }
-    return { error: friendly } as const;
+    return { error: friendlyAIGenerationError(err) } as const;
   }
-  const { subject } = toSubject(generated, 'pending'); // 取正規化後的 graph/itemBank/tutor
 
-  const [row] = await db
-    .insert(adaptiveSubjectSchema)
-    .values({
-      ownerId: userId,
-      name: generated.name,
-      sourceTopic: parsed.topic,
-      graph: subject.graph,
-      itemBank: subject.itemBank,
-      tutor: subject.tutor,
-    })
-    .returning();
-
-  revalidatePath('/dashboard/adaptive');
-  return {
-    id: row!.id,
-    name: row!.name,
-    knowledgeCount: subject.graph.nodes.length,
-    itemCount: subject.itemBank.items.length,
-  };
+  return saveGeneratedSubject(userId, parsed.topic, generated);
 }
 
 /**
