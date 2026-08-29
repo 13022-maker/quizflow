@@ -13,7 +13,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
-import { friendlyAIGenerationError, generateSubject, toSubject } from '@/libs/adaptive/generate-subject';
+import { friendlyAIGenerationError, generateSubject, generateSubjectSchema, toSubject } from '@/libs/adaptive/generate-subject';
 import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
@@ -135,11 +135,6 @@ export async function deleteAdaptivePractice(practiceId: number) {
 
   revalidatePath('/dashboard/adaptive');
 }
-
-export const generateSubjectSchema = z.object({
-  topic: z.string().trim().min(2, '請輸入單元主題').max(100),
-  material: z.string().trim().max(20000).optional(),
-});
 
 type SavedSubjectResult = {
   id: number;

@@ -5,9 +5,9 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
-import { generateSubjectSchema, saveGeneratedSubject } from '@/actions/adaptiveActions';
+import { saveGeneratedSubject } from '@/actions/adaptiveActions';
 import type { Media } from '@/lib/ai/textModel';
-import { friendlyAIGenerationError, generateSubject } from '@/libs/adaptive/generate-subject';
+import { friendlyAIGenerationError, generateSubject, generateSubjectSchema } from '@/libs/adaptive/generate-subject';
 import {
   fileExtToImageMimeType,
   validateSubjectUploadFiles,

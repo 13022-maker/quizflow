@@ -47,6 +47,16 @@ const generatedSubjectSchema = z.object({
 
 export type GeneratedSubject = z.infer<typeof generatedSubjectSchema>;
 
+/**
+ * 前端輸入（單元主題／教材文字）的驗證 schema。
+ * 文字模式（generateAdaptiveSubject）與檔案上傳模式（generate-subject-from-file route）共用，
+ * 這個檔案不是 'use server'，schema 可以放心 export（'use server' 檔案只能 export async function）。
+ */
+export const generateSubjectSchema = z.object({
+  topic: z.string().trim().min(2, '請輸入單元主題').max(100),
+  material: z.string().trim().max(20000).optional(),
+});
+
 const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適性學習系統」設計學科內容。
 系統原理：BKT 精熟度模型沿知識圖譜的前置依賴逐點教學，依學生表現動態調整題目難度；
 學生連錯兩題會觸發 AI 補強課文。你設計的內容品質直接決定診斷準確度。
