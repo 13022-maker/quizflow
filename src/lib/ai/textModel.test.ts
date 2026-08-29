@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isRetryableAIError, resolveAIProvider, withAIRetry } from './textModel';
+import { buildClaudeMediaBlocks, buildGeminiMediaParts, isRetryableAIError, resolveAIProvider, withAIRetry } from './textModel';
 
 describe('resolveAIProvider', () => {
   it('付費且有 Claude 金鑰 → claude', () => {
@@ -96,5 +96,76 @@ describe('withAIRetry', () => {
 
     await expect(withAIRetry(fn, { maxRetries: 3, delayMs: 0 })).rejects.toEqual({ status: 429 });
     expect(fn).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('buildClaudeMediaBlocks', () => {
+  it('圖片 mimeType（image/ 開頭）轉成 Claude image block', () => {
+    const blocks = buildClaudeMediaBlocks([
+      { mimeType: 'image/png', base64: 'AAAA' },
+    ]);
+
+    expect(blocks).toEqual([
+      {
+        type: 'image',
+        source: { type: 'base64', media_type: 'image/png', data: 'AAAA' },
+      },
+    ]);
+  });
+
+  it('非 image/ 開頭的 mimeType 轉成 Claude document block（PDF）', () => {
+    const blocks = buildClaudeMediaBlocks([
+      { mimeType: 'application/pdf', base64: 'BBBB' },
+    ]);
+
+    expect(blocks).toEqual([
+      {
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: 'BBBB' },
+      },
+    ]);
+  });
+
+  it('多份 media 依原順序轉成多個 blocks', () => {
+    const blocks = buildClaudeMediaBlocks([
+      { mimeType: 'image/jpeg', base64: 'A' },
+      { mimeType: 'image/png', base64: 'B' },
+    ]);
+
+    expect(blocks).toHaveLength(2);
+    expect(blocks[0]).toMatchObject({ source: { data: 'A' } });
+    expect(blocks[1]).toMatchObject({ source: { data: 'B' } });
+  });
+
+  it('空陣列回傳空陣列', () => {
+    expect(buildClaudeMediaBlocks([])).toEqual([]);
+  });
+});
+
+describe('buildGeminiMediaParts', () => {
+  it('每份 media 轉成一個 inlineData part', () => {
+    const parts = buildGeminiMediaParts([
+      { mimeType: 'application/pdf', base64: 'CCCC' },
+    ]);
+
+    expect(parts).toEqual([
+      { inlineData: { mimeType: 'application/pdf', data: 'CCCC' } },
+    ]);
+  });
+
+  it('多份 media 依原順序轉成多個 parts', () => {
+    const parts = buildGeminiMediaParts([
+      { mimeType: 'image/png', base64: 'A' },
+      { mimeType: 'image/png', base64: 'B' },
+    ]);
+
+    expect(parts).toEqual([
+      { inlineData: { mimeType: 'image/png', data: 'A' } },
+      { inlineData: { mimeType: 'image/png', data: 'B' } },
+    ]);
+  });
+
+  it('空陣列回傳空陣列', () => {
+    expect(buildGeminiMediaParts([])).toEqual([]);
   });
 });

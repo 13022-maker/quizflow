@@ -60,3 +60,6 @@ tmp/
 
 # vercel
 .vercel
+
+# git worktrees（subagent-driven-development 隔離工作區用）
+.worktrees/

@@ -13,6 +13,9 @@ import { GoogleGenAI } from '@google/genai';
 import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { PLAN_ID } from '@/utils/AppConfig';
 
+// 一份多模態素材：mimeType + base64（跟 generate-from-file/route.ts 現有的同形狀 local type 對齊）
+export type Media = { mimeType: string; base64: string };
+
 type GenerateAITextOptions = {
   prompt: string; // 完整使用者 prompt（單輪文字）
   system?: string; // system prompt（Gemini 端會前綴到 prompt）
@@ -21,7 +24,36 @@ type GenerateAITextOptions = {
   maxTokens?: number; // 預設 4096
   json?: boolean; // true 時 Gemini 開 JSON mode
   forceGemini?: boolean; // 呼叫端已自行嘗試過 Claude 失敗時，跳過 Claude 直接走 Gemini
+  media?: Media[]; // 多模態素材（PDF / 圖片）；Claude 走 image/document blocks，Gemini 走 inlineData
 };
+
+/** Claude 多模態 content blocks：image/ 開頭走 image type，其餘（PDF）走 document type（純函式，可測） */
+export function buildClaudeMediaBlocks(
+  media: Media[],
+): (Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam)[] {
+  return media.map((m): Anthropic.ImageBlockParam | Anthropic.DocumentBlockParam =>
+    m.mimeType.startsWith('image/')
+      ? {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: m.mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+            data: m.base64,
+          },
+        }
+      : {
+          type: 'document',
+          source: { type: 'base64', media_type: 'application/pdf', data: m.base64 },
+        },
+  );
+}
+
+/** Gemini 多模態 parts：inlineData（純函式，可測） */
+export function buildGeminiMediaParts(
+  media: Media[],
+): { inlineData: { mimeType: string; data: string } }[] {
+  return media.map(m => ({ inlineData: { mimeType: m.mimeType, data: m.base64 } }));
+}
 
 /** 決定首選 provider（純函式，可測） */
 export function resolveAIProvider(isPro: boolean, hasClaudeKey: boolean): 'claude' | 'gemini' {
@@ -105,13 +137,16 @@ export async function isPaidSubscriberSafe(): Promise<boolean> {
 
 async function callClaude(opts: GenerateAITextOptions): Promise<string> {
   const client = new Anthropic();
+  const content: Anthropic.MessageParam['content'] = opts.media?.length
+    ? [...buildClaudeMediaBlocks(opts.media), { type: 'text', text: opts.prompt }]
+    : opts.prompt;
   // 串流聚合避免長輸出撞 HTTP 逾時（比照 generate-subject 既有寫法）
   const stream = client.messages.stream({
     model: opts.claudeModel ?? 'claude-sonnet-4-6',
     max_tokens: opts.maxTokens ?? 4096,
     ...(opts.claudeThinking ? { thinking: { type: 'adaptive' as const } } : {}),
     ...(opts.system ? { system: opts.system } : {}),
-    messages: [{ role: 'user', content: opts.prompt }],
+    messages: [{ role: 'user', content }],
   });
   const message = await stream.finalMessage();
   if (message.stop_reason === 'refusal') {
@@ -134,9 +169,13 @@ async function callGemini(opts: GenerateAITextOptions): Promise<string> {
   const gemini = new GoogleGenAI({ apiKey: key });
   // Gemini 無獨立 system 欄位使用習慣（比照本專案既有寫法），前綴到 prompt
   const fullPrompt = opts.system ? `${opts.system}\n\n---\n\n${opts.prompt}` : opts.prompt;
+  const parts = [
+    ...(opts.media?.length ? buildGeminiMediaParts(opts.media) : []),
+    { text: fullPrompt },
+  ];
   const response = await gemini.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+    contents: [{ role: 'user', parts }],
     config: {
       maxOutputTokens: opts.maxTokens ?? 4096,
       ...(opts.json ? { responseMimeType: 'application/json' } : {}),
