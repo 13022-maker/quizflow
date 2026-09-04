@@ -19,7 +19,7 @@ import { probeAudioDuration } from '@/lib/audioDuration';
 import { buildChapters, type PdfChapter } from './pdfChapters';
 
 // ─── Types ───────────────────────────────────────────────
-type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
+type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
 type Difficulty = 'easy' | 'medium' | 'hard';
 type Mode = 'text' | 'file' | 'url';
 
@@ -27,7 +27,7 @@ type GeneratedQuestion = {
   type: QuestionType;
   question: string;
   options?: string[];
-  answer: string | string[];
+  answer?: string | string[]; // 克漏字題不用此欄位，答案直接標記在 question 內文的 [[詞彙]] 裡
   explanation?: string;
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
@@ -53,6 +53,7 @@ const QUESTION_TYPES = [
   { value: 'fill' as QuestionType, emoji: '✏️', label: '填空題', sub: '填入答案' },
   { value: 'short' as QuestionType, emoji: '📝', label: '簡答題', sub: '短文作答' },
   { value: 'rank' as QuestionType, emoji: '🔢', label: '排序題', sub: '依序排列' },
+  { value: 'cloze' as QuestionType, emoji: '📄', label: '克漏字', sub: '短文挖空' },
   { value: 'listening' as QuestionType, emoji: '🎧', label: '聽力題', sub: 'AI 語音 + 選擇' },
 ];
 

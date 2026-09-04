@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { extractClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -12,7 +13,7 @@ import { questionSchema, quizSchema } from '@/models/Schema';
 export const runtime = 'nodejs';
 
 // AIQuizModal 回傳的題目格式
-type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
+type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
 type GeneratedQuestion = {
   type: FileQuestionType;
   question: string;
@@ -32,6 +33,7 @@ const DB_TYPE_MAP: Record<FileQuestionType, string> = {
   short: 'short_answer',
   rank: 'ranking',
   listening: 'listening',
+  cloze: 'cloze',
 };
 
 export async function POST(
@@ -91,11 +93,18 @@ export async function POST(
 
   // 將 AIQuizModal 格式轉換為 DB 格式，批次組成 rows
   const rows = questions.map((q) => {
-    const type = (DB_TYPE_MAP[q.type] ?? 'short_answer') as typeof questionSchema.$inferInsert.type;
+    let type = (DB_TYPE_MAP[q.type] ?? 'short_answer') as typeof questionSchema.$inferInsert.type;
     let options: { id: string; text: string }[] | null = null;
     let correctAnswers: string[] = [];
 
-    if ((q.type === 'mc' || q.type === 'listening') && q.options?.length) {
+    if (q.type === 'cloze') {
+      // 克漏字題：body 直接是 AI 回傳含 [[詞彙]] 標記的文章，答案從標記反推（跟老師手動編輯用同一套函式）
+      correctAnswers = extractClozeAnswers(q.question);
+      // 防呆：AI 沒標記任何空格就退回簡答題，避免建出空白克漏字題
+      if (correctAnswers.length === 0) {
+        type = 'short_answer' as typeof questionSchema.$inferInsert.type;
+      }
+    } else if ((q.type === 'mc' || q.type === 'listening') && q.options?.length) {
       // 選擇題：將 string[] 轉成 { id, text }[]
       // stripOptionLabel：去掉 AI 塞在文字裡的「(A)」前綴，避免日後與字母重覆
       options = q.options.map((text, i) => ({

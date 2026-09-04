@@ -46,6 +46,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
+import { stripClozeMarkers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -64,12 +65,12 @@ type FileGeneratedQuestion = {
 };
 
 // AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
-type AIQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening';
+type AIQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
 type AIGeneratedQuestion = {
   type: AIQuestionType;
   question: string;
   options?: string[];
-  answer: string | string[];
+  answer?: string | string[]; // 克漏字題不用此欄位，答案標記在 question 內文的 [[詞彙]] 裡
   explanation?: string;
   listeningText?: string; // 聽力題口語化文字
   audioUrl?: string; // 聽力題 TTS 音檔 URL
@@ -116,12 +117,12 @@ function buildDefaultTopic(description?: string | null): string {
   return desc;
 }
 
-// CreateQuizWithAIButton 預設標題格式「AI 出題 M/D」;符合此 pattern 才允許自動覆寫,
+// CreateQuizWithAIButton 預設標題格式「M/D 出題」;符合此 pattern 才允許自動覆寫,
 // 已被用戶手動改過的標題不動。月日為 1-2 位數字。
-const DEFAULT_AI_TITLE_RE = /^AI 出題 \d{1,2}\/\d{1,2}$/;
+const DEFAULT_AI_TITLE_RE = /^\d{1,2}\/\d{1,2} 出題$/;
 
 // 從 AI 回傳的試卷標題抽出主題前綴(≤15 字),拼到預設標題前面變成
-// 「光合作用 - AI 出題 4/26」這種有辨識度的命名
+// 「光合作用 - 4/26 出題」這種有辨識度的命名
 function deriveTopicPrefix(aiTitle: string): string {
   if (!aiTitle) {
     return '';
@@ -408,7 +409,8 @@ export function QuizEditor({
     setPendingQuestions(
       aiQuestions.map((q, i) => ({
         tempId: `pending-${batchId}-${i}`,
-        body: q.question,
+        // 克漏字題 preview 先去掉 [[標記]]，避免灰階卡片直接顯示原始標記符號
+        body: q.type === 'cloze' ? stripClozeMarkers(q.question) : q.question,
         hasOptions: !!q.options && q.options.length > 0,
         options: (q.options ?? []).map((text, j) => ({
           id: String.fromCharCode(65 + j), // A / B / C / D
@@ -439,7 +441,7 @@ export function QuizEditor({
       await distributePoints(initialQuiz.id);
     }
 
-    // 預設標題「AI 出題 M/D」太空泛,把 AI 回傳的試卷標題擷取 ≤15 字放在前面;
+    // 預設標題「M/D 出題」太空泛,把 AI 回傳的試卷標題擷取 ≤15 字放在前面;
     // 若用戶已手動改過標題就不覆蓋(避免改掉 user 的命名)
     const topicPrefix = deriveTopicPrefix(aiTitle);
     if (topicPrefix && DEFAULT_AI_TITLE_RE.test(title)) {

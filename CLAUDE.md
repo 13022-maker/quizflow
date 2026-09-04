@@ -311,3 +311,11 @@ production Vercel env 目前**完全沒有 PADDLE_*** 變數，正式上線當�
    - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`
    - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`
 6. 更新 Paddle **Production** Dashboard webhook destination 指到 `https://quizflow-psi.vercel.app/api/webhook`（與 sandbox 那條不同個）
+
+## Agent 任務工作流
+1. 開場先跑 `gh issue list --label "狀態:待處理" --json number,title,body` 找任務
+2. 認領：`gh issue edit <N> --add-label "狀態:進行中" --remove-label "狀態:待處理"`
+3. 開分支：`gh issue develop <N> --checkout`
+4. 每做一個關鍵決策，就 `gh issue comment <N> --body "..."` 記錄原因（給下個 session / 給人）
+5. 卡住 → 加「狀態:阻塞」label 並留言說明卡在哪，不要瞎猜硬幹
+6. 完成 → 開 PR，描述寫 `Closes #<N>`，不要自己 merge（等人審）

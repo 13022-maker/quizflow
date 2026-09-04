@@ -10,7 +10,7 @@ import { createQuiz } from '@/actions/quizActions';
 // 失敗時(quota 超額 / 其他)在畫面顯示錯誤 + 返回連結
 function getDefaultTitle(): string {
   const d = new Date();
-  return `AI 出題 ${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getMonth() + 1}/${d.getDate()} 出題`;
 }
 
 export function AiPrefillTrigger({ prefill }: { prefill: string }) {

@@ -130,6 +130,7 @@ const TYPE_LABELS: Record<string, string> = {
   fill: '填空題（用 ___ 標空格，附答案）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
+  cloze: '克漏字題（80-150 字短文，挑 3-5 個關鍵詞彙用 [[詞彙]] 標記挖空，question 欄位放整段含標記的文章，不需要 answer 欄位）',
 };
 
 // 過載自動重試
@@ -230,7 +231,8 @@ ${typesPrompt}
     { "type": "tf", "question": "敘述句題目", "answer": "○", "explanation": "說明" },
     { "type": "fill", "question": "含 ___ 的題目", "answer": "答案", "explanation": "" },
     { "type": "short", "question": "簡答題目", "answer": "參考答案", "explanation": "" },
-    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["事件A","事件B","事件C","事件D"], "answer": ["事件A","事件B","事件C","事件D"], "explanation": "說明" }
+    { "type": "rank", "question": "請依時間先後排列下列事件", "options": ["事件A","事件B","事件C","事件D"], "answer": ["事件A","事件B","事件C","事件D"], "explanation": "說明" },
+    { "type": "cloze", "question": "光合作用是植物利用[[葉綠素]]吸收[[陽光]]，將二氧化碳和水轉化成養分與氧氣的過程。", "explanation": "說明" }
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。

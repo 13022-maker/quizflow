@@ -10,7 +10,7 @@ import { createQuiz } from '@/actions/quizActions';
 // 省略原本要先進 /dashboard/quizzes/new 填標題再跳轉的那一步。
 function getDefaultTitle(): string {
   const d = new Date();
-  return `AI 出題 ${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getMonth() + 1}/${d.getDate()} 出題`;
 }
 
 export function QuickCreateAIButton() {

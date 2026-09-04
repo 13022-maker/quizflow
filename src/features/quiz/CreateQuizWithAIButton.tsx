@@ -11,7 +11,7 @@ import { createQuiz } from '@/actions/quizActions';
 
 function getDefaultTitle(): string {
   const d = new Date();
-  return `AI 出題 ${d.getMonth() + 1}/${d.getDate()}`;
+  return `${d.getMonth() + 1}/${d.getDate()} 出題`;
 }
 
 export function CreateQuizWithAIButton({
