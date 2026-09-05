@@ -6,6 +6,19 @@
 - 範圍：只加這一個匯出按鈕；不動一般測驗（`/dashboard/quizzes/statistics`）既有的 CSV 匯出，
   那條路徑跟適性學習是分開的兩套功能（見 2026-09-05 稍早討論）。
 
+## 實作修正（實作時對本文件的偏離）
+
+實作的 plan（`docs/superpowers/plans/2026-09-05-adaptive-export-google-sheet.md`，
+以此為準）跟本文件較早草稿有以下三處出入，日後閱讀本 spec 時請以下列修正為準，
+不要照本文件較早草稿的寫法「修回去」：
+
+1. Clerk 的 provider 字串用 `'google'`，不是本文件稍早草稿寫的 `'oauth_google'`
+   （已對照實際安裝的 `@clerk/nextjs` 套件與 Clerk 官方文件確認；`'oauth_google'`
+   格式的方法已標記 deprecated）。
+2. Sheets API 失敗時回傳 HTTP 502，不是本文件較早草稿裡寫的 500。
+3. 老師端「重新連接 Google 帳號」用 Clerk 內建的 `useClerk().openUserProfile({ additionalOAuthScopes: {...} })`，
+   不需要像本文件稍早草稿設想的那樣自己做一個 OAuth callback 頁面。
+
 ## 使用者決策（brainstorming 階段已確認）
 
 1. 老師目前登入 QuizFlow **有**開放 Google 社群登入（Clerk 後台已設定）。
@@ -181,3 +194,5 @@ implementation plan 時列成一個要先查文件確認的步驟。
 - Sheets 讀寫是 Google 的敏感 scope：應用未通過 Google 審核前，只有 OAuth 同意畫面測試
   名單內的帳號能成功授權；要開放給所有老師使用需要走 Google 應用程式審核（含隱私權政策、
   使用情境說明等），這次不做，等真的要對所有老師開放時再處理
+- 如果 Sheets API 建表成功但寫入資料那一步失敗，老師的 Google Drive 裡會留下一份空白的
+  試算表（沒有自動清理機制）

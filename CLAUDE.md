@@ -237,6 +237,7 @@ STRIPE_SECRET_KEY=any_fake_value
   - dashboard/vocab 列表卡片右上「⋯」menu（`VocabActionsMenu.tsx`）：上架/下架（`PublishVocabDialog.tsx` 選 category/grade）、複製公開連結、刪除
   - 卡片顯示「✅ 已上架市集 · N 人複製」徽章；forkCount 用原子 SQL increment 跟 quiz 對齊
   - **不**做 description / tags / slug / publishedAt（scope 簡化，未來需要再補）
+- 適性學習班級儀表板「匯出班級成績」新增 Google Sheet 匯出選項（借用 Clerk 既有 Google 登入連線 + Sheets API v4，每次建一張新表；CSV 下載維持原樣）
 
 ### 🔥 下一步優先順序（依序開發）
 1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補

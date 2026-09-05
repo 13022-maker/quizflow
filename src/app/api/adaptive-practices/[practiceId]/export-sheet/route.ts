@@ -42,9 +42,17 @@ export async function POST(
 
   // 用 Clerk 既有的 Google 連線拿 access token；查無 token（從沒用 Google 登入過，
   // 或 scope 是舊的沒有 Sheets 權限）都算「未連接」，前端走同一套「重新連接」引導
-  const clerk = await clerkClient();
-  const tokenResponse = await clerk.users.getUserOauthAccessToken(userId, 'google');
-  const accessToken = tokenResponse.data[0]?.token;
+  let accessToken: string | undefined;
+  try {
+    const clerk = await clerkClient();
+    const tokenResponse = await clerk.users.getUserOauthAccessToken(userId, 'google');
+    accessToken = tokenResponse.data[0]?.token;
+  } catch (err) {
+    // Clerk 在「沒連過 Google」「token 已被使用者在 Google 端撤銷」等情況會 throw，
+    // 不是回空陣列 → 一律視為未連接，走前端同一套「重新連接」引導
+    console.error('[export-sheet] 取得 Google access token 失敗', err);
+    return NextResponse.json({ error: 'GOOGLE_NOT_CONNECTED' }, { status: 409 });
+  }
   if (!accessToken) {
     return NextResponse.json({ error: 'GOOGLE_NOT_CONNECTED' }, { status: 409 });
   }

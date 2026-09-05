@@ -7,10 +7,11 @@ import { useState } from 'react';
 // 連線多要哪個權限（不管是「從沒連過」還是「連過但沒有這個 scope」都適用）
 const GOOGLE_SHEETS_SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
 
-type ExportState = 'idle' | 'loading' | 'not_connected' | 'error';
+type ExportState = 'idle' | 'loading' | 'not_connected' | 'error' | 'done';
 
 export function AdaptiveExportButtons({ csvHref, sheetHref }: { csvHref: string; sheetHref: string }) {
   const [state, setState] = useState<ExportState>('idle');
+  const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const clerk = useClerk();
 
   async function exportToSheet() {
@@ -26,8 +27,12 @@ export function AdaptiveExportButtons({ csvHref, sheetHref }: { csvHref: string;
         return;
       }
       const data = await res.json() as { url: string };
-      window.open(data.url, '_blank');
-      setState('idle');
+      // 這裡已經是兩次 API 往返之後，瀏覽器可能不再認定還在「使用者點擊」的手勢窗口內，
+      // Safari/Firefox 常會直接擋掉 window.open 且不提示 → 除了嘗試開新分頁，
+      // 一定要把連結留在畫面上讓老師自己點，避免試算表建好了卻完全沒反應
+      setSheetUrl(data.url);
+      setState('done');
+      window.open(data.url, '_blank', 'noopener');
     } catch {
       setState('error');
     }
@@ -68,6 +73,11 @@ export function AdaptiveExportButtons({ csvHref, sheetHref }: { csvHref: string;
         </span>
       )}
       {state === 'error' && <span className="text-xs text-red-600">匯出失敗，請重試</span>}
+      {state === 'done' && sheetUrl && (
+        <a href={sheetUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-green-700 underline">
+          開啟試算表 ↗
+        </a>
+      )}
     </div>
   );
 }
