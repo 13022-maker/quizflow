@@ -2,19 +2,13 @@ import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
-import { filterActiveStudentKeys, parseDateRangeParams } from '@/libs/adaptive/dateRangeFilter';
+import { buildClassScoreReport } from '@/libs/adaptive/classScoreReport';
+import { parseDateRangeParams } from '@/libs/adaptive/dateRangeFilter';
 import { getAdaptiveService } from '@/libs/adaptive/service';
 import { db } from '@/libs/DB';
-import { adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
+import { adaptivePracticeSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
-
-// 知識點狀態中文標籤（與班級儀表板頁面 STATUS_META 對齊）
-const STATUS_LABEL: Record<string, string> = {
-  mastered: '已精熟',
-  learning: '學習中',
-  locked: '鎖定中',
-};
 
 export async function GET(
   request: Request,
@@ -45,75 +39,22 @@ export async function GET(
     return NextResponse.json({ error: '找不到練習或無權限' }, { status: 404 });
   }
 
-  const service = await getAdaptiveService(practice.id, practice.subjectId);
-  const states = await service.repo.list();
-  const names = await service.repo.getDisplayNames();
-
-  const students = await Promise.all(
-    states.map(async s => ({
-      studentKey: s.studentId,
-      displayName: names.get(s.studentId) ?? s.studentId,
-      diagnosis: await service.engine.getDiagnosis(s.studentId),
-    })),
-  );
-
-  // 日期區間篩選（簡易版，與儀表板頁面 dateRangeFilter.ts 邏輯一致）：
-  // 沒帶 ?start=&end= 時 dateRange 為 null，行為與改動前完全相同（匯出全部）
   const { searchParams } = new URL(request.url);
   const dateRange = parseDateRangeParams({
     start: searchParams.get('start') ?? undefined,
     end: searchParams.get('end') ?? undefined,
   });
-  const updatedAtRows = await db
-    .select({
-      studentKey: adaptiveStudentStateSchema.studentKey,
-      updatedAt: adaptiveStudentStateSchema.updatedAt,
-    })
-    .from(adaptiveStudentStateSchema)
-    .where(eq(adaptiveStudentStateSchema.practiceId, practice.id));
-  const updatedAtByKey = new Map(updatedAtRows.map(r => [r.studentKey, r.updatedAt]));
-  const activeKeys = filterActiveStudentKeys(updatedAtByKey, dateRange);
-  const visibleStudents = activeKeys
-    ? students.filter(s => activeKeys.has(s.studentKey))
-    : students;
 
-  // 知識點欄位以第一位學生的診斷排序為準，與儀表板頁面邏輯一致
-  // （用未篩選的 students，避免篩選後第一位學生不同導致欄位順序跳動）
-  const knowledgeColumns = students[0]?.diagnosis ?? [];
-
-  // 學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100，排除鎖定中知識點
-  const scoredStudents = visibleStudents.map((s) => {
-    const unlocked = s.diagnosis.filter(d => d.status !== 'locked');
-    return {
-      ...s,
-      score: unlocked.length > 0
-        ? Math.round(
-          (unlocked.reduce((sum, d) => sum + d.mastery, 0) / unlocked.length) * 100,
-        )
-        : null,
-      totalAttempts: s.diagnosis.reduce((sum, d) => sum + d.attempts, 0),
-    };
-  });
-
-  const header = ['姓名', '學號', ...knowledgeColumns.map(k => k.name), '學習後分數', '總作答次數'];
-  const rows = scoredStudents.map((s) => {
-    const knowledgeCells = s.diagnosis.map(d =>
-      `${STATUS_LABEL[d.status] ?? d.status} ${Math.round(d.mastery * 100)}%（作答${d.attempts}次）`,
-    );
-    return [
-      s.displayName,
-      s.studentKey,
-      ...knowledgeCells,
-      s.score === null ? '—' : String(s.score),
-      String(s.totalAttempts),
-    ];
-  });
+  const { header, rows } = await buildClassScoreReport(practice, dateRange);
+  const service = await getAdaptiveService(practice.id, practice.subjectId);
 
   const csvContent = [header, ...rows]
     .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     .join('\n');
 
   const bom = '\uFEFF';
+  // \u6A94\u540D\u540C\u6642\u5E36\u7DF4\u7FD2\u6A19\u984C\u8207\u5B78\u79D1\u540D\u7A31\uFF08\u4F8B\u5982\u300C\u8CC7\u8A0A\u4E09\u620A_\u5E38\u6578\u8B8A\u6578\u5BA3\u544A_\u73ED\u7D1A\u6210\u7E3E.csv\u300D\uFF09\uFF0C
+  // \u907F\u514D\u540C\u4E00\u73ED\u591A\u500B\u7DF4\u7FD2\uFF08\u4E0D\u540C\u55AE\u5143\uFF09\u90FD\u53EB\u540C\u540D\u6A94\u6848\uFF0C\u4E0B\u8F09\u5F8C\u5206\u4E0D\u6E05\u695A\u662F\u54EA\u4E00\u4EFD
   const safeTitle = practice.title.replace(/[^a-z0-9\u4E00-\u9FFF]/gi, '_');
   // 檔名同時帶練習標題與學科名稱（例如「資訊三戊_常數變數宣告_班級成績.csv」），
   // 避免同一班多個練習（不同單元）都叫同名檔案，下載後分不清楚是哪一份
