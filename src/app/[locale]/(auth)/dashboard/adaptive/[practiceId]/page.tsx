@@ -3,10 +3,18 @@ import { and, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import {
+  filterActiveStudentKeys,
+  lastMonthRangeInTaipei,
+  mondayInTaipei,
+  monthStartInTaipei,
+  parseDateRangeParams,
+  todayInTaipei,
+} from '@/libs/adaptive/dateRangeFilter';
 import type { KnowledgeDiagnosis } from '@/libs/adaptive/engine';
 import { getAdaptiveService } from '@/libs/adaptive/service';
 import { db } from '@/libs/DB';
-import { adaptiveEventSchema, adaptivePracticeSchema } from '@/models/Schema';
+import { adaptiveEventSchema, adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
 
 import { AutoRefresh } from '../AutoRefresh';
 import { CopyLinkButton } from '../CopyLinkButton';
@@ -38,7 +46,7 @@ export default async function AdaptiveBoardPage({
   searchParams,
 }: {
   params: { practiceId: string };
-  searchParams: { sort?: string };
+  searchParams: { sort?: string; start?: string; end?: string };
 }) {
   const { userId } = await auth();
   if (!userId) {
@@ -116,6 +124,49 @@ export default async function AdaptiveBoardPage({
     scoredStudents.sort((a, b) => (a.score ?? -1) - (b.score ?? -1));
   }
 
+  // 日期區間篩選（簡易版）：依 updated_at 判斷「這段期間有沒有活動過」，
+  // 分數仍是累計精熟度，不是該區間單獨算出來的成績（見 dateRangeFilter.ts 說明）
+  const dateRange = parseDateRangeParams(searchParams);
+  const updatedAtRows = await db
+    .select({
+      studentKey: adaptiveStudentStateSchema.studentKey,
+      updatedAt: adaptiveStudentStateSchema.updatedAt,
+    })
+    .from(adaptiveStudentStateSchema)
+    .where(eq(adaptiveStudentStateSchema.practiceId, practice.id));
+  const updatedAtByKey = new Map(updatedAtRows.map(r => [r.studentKey, r.updatedAt]));
+  const activeKeys = filterActiveStudentKeys(updatedAtByKey, dateRange);
+  const visibleStudents = activeKeys
+    ? scoredStudents.filter(s => activeKeys.has(s.studentKey))
+    : scoredStudents;
+
+  // 產生查詢字串：預設沿用目前的 sort／start／end，傳 null 明確清掉該欄位
+  // （quick 連結、排序連結、匯出按鈕共用，避免互相覆蓋掉彼此的參數）
+  const buildQuery = (overrides: { sort?: string | null; start?: string | null; end?: string | null }) => {
+    const nextSort = overrides.sort !== undefined ? overrides.sort : sort;
+    const nextStart = overrides.start !== undefined ? overrides.start : searchParams.start;
+    const nextEnd = overrides.end !== undefined ? overrides.end : searchParams.end;
+    const qs = new URLSearchParams();
+    if (nextSort) {
+      qs.set('sort', nextSort);
+    }
+    if (nextStart) {
+      qs.set('start', nextStart);
+    }
+    if (nextEnd) {
+      qs.set('end', nextEnd);
+    }
+    const str = qs.toString();
+    return str ? `?${str}` : '';
+  };
+  const today = todayInTaipei();
+  const quickPresets: { label: string; start: string; end: string }[] = [
+    { label: '本週', start: mondayInTaipei(), end: today },
+    { label: '本月', start: monthStartInTaipei(), end: today },
+    { label: '上個月', ...lastMonthRangeInTaipei() },
+  ];
+  const exportHref = `/api/adaptive-practices/${practice.id}/export-csv${buildQuery({})}`;
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
       <AutoRefresh />
@@ -129,7 +180,7 @@ export default async function AdaptiveBoardPage({
         <div className="flex items-center gap-2">
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
           <a
-            href={`/api/adaptive-practices/${practice.id}/export-csv`}
+            href={exportHref}
             download
             className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
           >
@@ -147,102 +198,162 @@ export default async function AdaptiveBoardPage({
         <Link href="/dashboard/adaptive" className="hover:underline">← 回練習清單</Link>
       </p>
 
+      {/* 日期區間篩選（簡易版）：依 updated_at 篩「這段期間有活動的學生」，分數仍是累計精熟度 */}
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 p-3">
+        <div className="flex flex-wrap gap-1.5">
+          {quickPresets.map(p => (
+            <Link
+              key={p.label}
+              href={buildQuery({ start: p.start, end: p.end })}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                searchParams.start === p.start && searchParams.end === p.end
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'hover:bg-muted'
+              }`}
+            >
+              {p.label}
+            </Link>
+          ))}
+          {dateRange && (
+            <Link
+              href={buildQuery({ start: null, end: null })}
+              className="rounded-full border px-3 py-1 text-xs font-medium transition-colors hover:bg-muted"
+            >
+              全部
+            </Link>
+          )}
+        </div>
+        <form method="GET" className="flex flex-wrap items-center gap-1.5 text-xs">
+          {sort && <input type="hidden" name="sort" value={sort} />}
+          <input
+            type="date"
+            name="start"
+            defaultValue={searchParams.start ?? ''}
+            className="rounded-md border px-2 py-1"
+          />
+          <span className="text-muted-foreground">～</span>
+          <input
+            type="date"
+            name="end"
+            defaultValue={searchParams.end ?? ''}
+            className="rounded-md border px-2 py-1"
+          />
+          <button
+            type="submit"
+            className="rounded-md border px-3 py-1 font-medium transition-colors hover:bg-muted"
+          >
+            查詢
+          </button>
+        </form>
+        {dateRange && (
+          <p className="w-full text-xs text-muted-foreground">
+            💡 只顯示區間內有活動的學生，分數仍為累計精熟度，非該區間單獨成績
+          </p>
+        )}
+      </div>
+
       {students.length === 0
         ? (
             <div className="rounded-lg border p-6 text-sm text-muted-foreground">
               還沒有學生加入——把上面的學生連結發給班上，輸入姓名＋學號即可開始。
             </div>
           )
-        : (
-            <div className="overflow-x-auto rounded-lg border">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50 text-left">
-                  <tr>
-                    <th className="px-4 py-2 font-medium">學生</th>
-                    {knowledgeColumns.map(k => (
-                      <th key={k.knowledgeId} className="px-4 py-2 font-medium">{k.name}</th>
-                    ))}
-                    <th className="px-4 py-2 font-medium">
-                      {/* 點擊切換排序：高→低 ⇄ 低→高（router.refresh 會保留網址，與 10 秒自動刷新相容） */}
-                      <Link
-                        href={sort === 'score_desc' ? '?sort=score_asc' : '?sort=score_desc'}
-                        className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
-                        title="依學習後分數排序"
-                      >
-                        學習後分數
-                        <span className="text-xs text-muted-foreground">
-                          {sort === 'score_desc' ? '▼' : sort === 'score_asc' ? '▲' : '⇅'}
-                        </span>
-                      </Link>
-                    </th>
-                    <th className="px-4 py-2 font-medium">總作答次數</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scoredStudents.map((s) => {
-                    const score = s.score;
-                    // 分數區間配色：≥80 綠（大致精熟）、≥60 藍（過半）、其餘灰
-                    const scoreColor = score === null
-                      ? 'text-muted-foreground'
-                      : score >= 80
-                        ? 'text-green-600'
-                        : score >= 60
-                          ? 'text-blue-600'
-                          : 'text-gray-500';
-                    return (
-                      <tr key={s.studentKey} className="border-t">
-                        <td className="px-4 py-3">
-                          <span className="font-medium">{s.displayName}</span>
-                          <span className="ml-1 text-xs text-muted-foreground">
-                            （
-                            {s.studentKey}
-                            ）
+        : visibleStudents.length === 0
+          ? (
+              <div className="rounded-lg border p-6 text-sm text-muted-foreground">
+                這段期間沒有學生的活動紀錄。
+              </div>
+            )
+          : (
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 text-left">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">學生</th>
+                      {knowledgeColumns.map(k => (
+                        <th key={k.knowledgeId} className="px-4 py-2 font-medium">{k.name}</th>
+                      ))}
+                      <th className="px-4 py-2 font-medium">
+                        {/* 點擊切換排序：高→低 ⇄ 低→高（router.refresh 會保留網址，與 10 秒自動刷新相容） */}
+                        <Link
+                          href={buildQuery({ sort: sort === 'score_desc' ? 'score_asc' : 'score_desc' })}
+                          className="inline-flex items-center gap-1 hover:text-foreground hover:underline"
+                          title="依學習後分數排序"
+                        >
+                          學習後分數
+                          <span className="text-xs text-muted-foreground">
+                            {sort === 'score_desc' ? '▼' : sort === 'score_asc' ? '▲' : '⇅'}
                           </span>
-                        </td>
-                        {s.diagnosis.map((d) => {
-                          const meta = STATUS_META[d.status];
-                          return (
-                            <td key={d.knowledgeId} className="px-4 py-3">
-                              <div className="text-xs">
-                                {meta.label}
-                                {' '}
-                                {(d.mastery * 100).toFixed(0)}
-                                %
-                              </div>
-                              <div className="my-1.5 h-1.5 w-24 overflow-hidden rounded bg-muted">
-                                <div
-                                  className={`h-full ${meta.bar}`}
-                                  style={{ width: `${Math.round(d.mastery * 100)}%` }}
-                                />
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                作答
-                                {' '}
-                                {d.attempts}
-                                {' '}
-                                次
-                              </div>
-                            </td>
-                          );
-                        })}
-                        <td className="px-4 py-3">
-                          <span className={`text-base font-bold tabular-nums ${scoreColor}`}>
-                            {score === null ? '—' : score}
-                          </span>
-                          {score !== null && (
-                            <span className="ml-0.5 text-xs text-muted-foreground">分</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="tabular-nums text-muted-foreground">{s.totalAttempts}</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                        </Link>
+                      </th>
+                      <th className="px-4 py-2 font-medium">總作答次數</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleStudents.map((s) => {
+                      const score = s.score;
+                      // 分數區間配色：≥80 綠（大致精熟）、≥60 藍（過半）、其餘灰
+                      const scoreColor = score === null
+                        ? 'text-muted-foreground'
+                        : score >= 80
+                          ? 'text-green-600'
+                          : score >= 60
+                            ? 'text-blue-600'
+                            : 'text-gray-500';
+                      return (
+                        <tr key={s.studentKey} className="border-t">
+                          <td className="px-4 py-3">
+                            <span className="font-medium">{s.displayName}</span>
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              （
+                              {s.studentKey}
+                              ）
+                            </span>
+                          </td>
+                          {s.diagnosis.map((d) => {
+                            const meta = STATUS_META[d.status];
+                            return (
+                              <td key={d.knowledgeId} className="px-4 py-3">
+                                <div className="text-xs">
+                                  {meta.label}
+                                  {' '}
+                                  {(d.mastery * 100).toFixed(0)}
+                                  %
+                                </div>
+                                <div className="my-1.5 h-1.5 w-24 overflow-hidden rounded bg-muted">
+                                  <div
+                                    className={`h-full ${meta.bar}`}
+                                    style={{ width: `${Math.round(d.mastery * 100)}%` }}
+                                  />
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  作答
+                                  {' '}
+                                  {d.attempts}
+                                  {' '}
+                                  次
+                                </div>
+                              </td>
+                            );
+                          })}
+                          <td className="px-4 py-3">
+                            <span className={`text-base font-bold tabular-nums ${scoreColor}`}>
+                              {score === null ? '—' : score}
+                            </span>
+                            {score !== null && (
+                              <span className="ml-0.5 text-xs text-muted-foreground">分</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="tabular-nums text-muted-foreground">{s.totalAttempts}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
       {/* 學習日誌時間軸 */}
       <h2 className="mb-2 mt-8 font-semibold">🕐 學習日誌時間軸</h2>

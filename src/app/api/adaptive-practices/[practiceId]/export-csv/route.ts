@@ -2,9 +2,10 @@ import { auth } from '@clerk/nextjs/server';
 import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { filterActiveStudentKeys, parseDateRangeParams } from '@/libs/adaptive/dateRangeFilter';
 import { getAdaptiveService } from '@/libs/adaptive/service';
 import { db } from '@/libs/DB';
-import { adaptivePracticeSchema } from '@/models/Schema';
+import { adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
 
@@ -16,7 +17,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { practiceId: string } },
 ) {
   const { userId } = await auth();
@@ -56,11 +57,32 @@ export async function GET(
     })),
   );
 
+  // 日期區間篩選（簡易版，與儀表板頁面 dateRangeFilter.ts 邏輯一致）：
+  // 沒帶 ?start=&end= 時 dateRange 為 null，行為與改動前完全相同（匯出全部）
+  const { searchParams } = new URL(request.url);
+  const dateRange = parseDateRangeParams({
+    start: searchParams.get('start') ?? undefined,
+    end: searchParams.get('end') ?? undefined,
+  });
+  const updatedAtRows = await db
+    .select({
+      studentKey: adaptiveStudentStateSchema.studentKey,
+      updatedAt: adaptiveStudentStateSchema.updatedAt,
+    })
+    .from(adaptiveStudentStateSchema)
+    .where(eq(adaptiveStudentStateSchema.practiceId, practice.id));
+  const updatedAtByKey = new Map(updatedAtRows.map(r => [r.studentKey, r.updatedAt]));
+  const activeKeys = filterActiveStudentKeys(updatedAtByKey, dateRange);
+  const visibleStudents = activeKeys
+    ? students.filter(s => activeKeys.has(s.studentKey))
+    : students;
+
   // 知識點欄位以第一位學生的診斷排序為準，與儀表板頁面邏輯一致
+  // （用未篩選的 students，避免篩選後第一位學生不同導致欄位順序跳動）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
 
   // 學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100，排除鎖定中知識點
-  const scoredStudents = students.map((s) => {
+  const scoredStudents = visibleStudents.map((s) => {
     const unlocked = s.diagnosis.filter(d => d.status !== 'locked');
     return {
       ...s,
