@@ -18,6 +18,7 @@ import { adaptiveEventSchema, adaptivePracticeSchema, adaptiveStudentStateSchema
 
 import { AutoRefresh } from '../AutoRefresh';
 import { CopyLinkButton } from '../CopyLinkButton';
+import { AdaptiveExportButtons } from './AdaptiveExportButtons';
 import { DeletePracticeButton } from './DeleteButton';
 
 export const dynamic = 'force-dynamic';
@@ -166,6 +167,7 @@ export default async function AdaptiveBoardPage({
     { label: '上個月', ...lastMonthRangeInTaipei() },
   ];
   const exportHref = `/api/adaptive-practices/${practice.id}/export-csv${buildQuery({})}`;
+  const sheetHref = `/api/adaptive-practices/${practice.id}/export-sheet${buildQuery({})}`;
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-8">
@@ -179,13 +181,7 @@ export default async function AdaptiveBoardPage({
         </h1>
         <div className="flex items-center gap-2">
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
-          <a
-            href={exportHref}
-            download
-            className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-muted"
-          >
-            ↓ 匯出班級成績
-          </a>
+          <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />
           <DeletePracticeButton id={practice.id} />
         </div>
       </div>
