@@ -115,7 +115,12 @@ export async function GET(
 
   const bom = '\uFEFF';
   const safeTitle = practice.title.replace(/[^a-z0-9\u4E00-\u9FFF]/gi, '_');
-  const filename = `${safeTitle}_班級成績.csv`;
+  // 檔名同時帶練習標題與學科名稱（例如「資訊三戊_常數變數宣告_班級成績.csv」），
+  // 避免同一班多個練習（不同單元）都叫同名檔案，下載後分不清楚是哪一份
+  // CJK Unified Ideographs: U+4E00-U+9FFF（同 safeTitle 的字元範圍，見 src/lib/cloze.ts CJK_PHRASE 前例）
+  // eslint-disable-next-line regexp/no-obscure-range
+  const safeSubject = service.subject.name.replace(/[^a-z0-9一-鿿]/gi, '_');
+  const filename = `${safeTitle}_${safeSubject}_班級成績.csv`;
 
   return new Response(bom + csvContent, {
     headers: {
