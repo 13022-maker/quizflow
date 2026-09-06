@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>電腦、電子及電機機械識圖 練習 | QuizFlow</title>
+<style>
+  :root{
+    --ink:#0f2540; --blue:#1e5a8a; --blue-dark:#17466b;
+    --blue-soft:#dceaf5; --blue-line:#b9d3e8; --paper:#f4f7fb; --card:#fff;
+    --ok:#15803d; --ok-soft:#e7f6ec; --err:#c62828; --err-soft:#fdecec;
+    --muted:#5a6b7d; --hint:#8091a1; --radius:10px;
+    --shadow:0 1px 2px rgba(15,37,64,.06),0 8px 24px rgba(15,37,64,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Noto Sans TC","Segoe UI",Roboto,sans-serif;color:var(--ink);background:radial-gradient(1200px 400px at 100% -10%,rgba(30,90,138,.10),transparent 60%),var(--paper);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:760px;margin:0 auto;padding:24px 18px 60px}
+  [hidden]{display:none!important}
+
+  .masthead{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;border-radius:14px;padding:18px 22px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .masthead::after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%)}
+  .masthead .kick{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:700}
+  .masthead h1{margin:6px 0 4px;font-size:22px;font-weight:800}
+  .masthead .en{opacity:.9;font-size:13px;font-weight:500}
+  .note{margin-top:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 14px;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;position:relative;z-index:2}
+  .note b{color:#fff}
+
+  .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
+  .dock-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px}
+  .bar{flex:1;height:9px;border-radius:99px;background:#e3ebf3;overflow:hidden}
+  .bar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2f8fd6,var(--ok));transition:width .35s ease}
+  .count{font-size:13px;font-weight:700;color:var(--blue-dark);white-space:nowrap}
+  .count b{color:var(--ok);font-size:15px}
+  .count b.ok{color:var(--ok)}
+
+  .qcard{margin-top:18px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;animation:pop .2s ease}
+  @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+  .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
+  .qbody{padding:20px 22px 6px}
+  .qtext{font-size:16px;font-weight:700;margin:0 0 14px}
+  .qimg{margin:0 0 16px;display:flex;justify-content:center}
+  .qimg svg{max-width:100%;height:auto}
+  .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line)}
+
+  .opts{padding:2px 22px 20px;display:flex;flex-direction:column;gap:10px}
+  .opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--blue-line);border-radius:12px;background:#fff;cursor:pointer;font-size:14.5px;transition:.15s;text-align:left}
+  .opt:hover{border-color:var(--blue);background:var(--blue-soft)}
+  .opt .num{flex:none;width:26px;height:26px;border-radius:50%;background:#eef4fa;color:var(--blue-dark);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .opt.correct{border-color:var(--ok);background:var(--ok-soft)}
+  .opt.correct .num{background:var(--ok);color:#fff}
+  .opt.wrong{border-color:var(--err);background:var(--err-soft)}
+  .opt.wrong .num{background:var(--err);color:#fff}
+  .qcard.answered .opt:not(.correct):not(.wrong){opacity:.55}
+  .qcard.answered .opt{cursor:default}
+  .qcard.answered .opt:hover{background:#fff}
+  .qcard.answered .opt.correct:hover,.qcard.answered .opt.wrong:hover{background:inherit}
+
+  .explain{margin:0 22px 20px;padding:14px 16px;border-radius:12px;background:#fff8e6;border:1.5px solid #e6c65b;color:#6b551a;font-size:13.5px;display:none}
+  .explain.show{display:block;animation:pop .2s ease}
+  .explain b{color:var(--ink)}
+
+  .navbar{margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .btn{border:none;border-radius:var(--radius);font-weight:800;font-size:14.5px;padding:10px 20px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn.primary{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;box-shadow:0 4px 12px rgba(30,90,138,.3)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.primary:disabled{opacity:.4;cursor:not-allowed;filter:none}
+  .btn.sub{background:#eef4fa;color:var(--blue-dark);border:1.5px solid var(--blue-line)}
+  .btn.sub:hover{background:var(--blue-soft)}
+  .btn.sub:disabled{opacity:.4;cursor:not-allowed}
+  .jump{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:center}
+  .jbtn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--blue-line);background:#fff;color:var(--blue-dark);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .jbtn.cur{border-color:var(--blue);background:var(--blue);color:#fff}
+  .jbtn.done{border-color:var(--ok);color:var(--ok)}
+  .jbtn.done.cur{background:var(--ok);border-color:var(--ok);color:#fff}
+
+  .kbdhint{margin-top:14px;text-align:center;font-size:12px;color:var(--hint)}
+  .kbdhint kbd{background:#fff;border:1px solid var(--blue-line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11.5px;color:var(--blue-dark)}
+  .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--hint)}
+
+  @media (max-width:480px){
+    .masthead h1{font-size:19px}
+    .qbody{padding:16px 16px 4px}
+    .opts{padding:2px 16px 16px}
+    .explain{margin:0 16px 16px}
+    .navbar{justify-content:center}
+    .jump{order:3;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="kick">技能檢定學科題庫練習 · 電腦、電子及電機機械識圖</div>
+    <h1>電腦、電子及電機機械識圖 練習</h1>
+    <div class="en">Circuit &amp; Symbol Reading Practice</div>
+    <div class="note"><span>📘</span><div><b>免登入、不計時</b>,答題後立即顯示對錯與詳解。這裡先放 5 題範例,正式題庫可替換成勞動部技能檢定學科題庫公開題目。</div></div>
+  </header>
+
+  <div class="dock">
+    <div class="dock-inner">
+      <div class="bar"><span id="progressBar"></span></div>
+      <div class="count">第 <b id="curNum">1</b> / <span id="totalNum">-</span> 題　答對 <b class="ok" id="correctNum">0</b></div>
+    </div>
+  </div>
+
+  <div class="qcard" id="qcard"></div>
+
+  <div class="navbar">
+    <button class="btn sub" id="prevBtn">← 上一題</button>
+    <div class="jump" id="jump"></div>
+    <button class="btn primary" id="nextBtn">下一題 →</button>
+  </div>
+
+  <div class="kbdhint">鍵盤操作　<kbd>←</kbd>/<kbd>→</kbd> 或 <kbd>↑</kbd>/<kbd>↓</kbd> 切換題目　·　<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> 選擇選項</div>
+  <div class="foot">由 QuizFlow 提供 · 題庫練習範例</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+  /* ---------- 題目資料(範例佔位內容,正式上線請換成勞動部技能檢定學科題庫題目) ----------
+     每題的 id 建議直接用題庫本身的題號(之後不確定格式的話,先用自己編的流水號也行)。
+     image 欄位有三種用法:
+     1. 不寫(預設)—— 自動依 id 去 images/ 資料夾嘗試 <id>.jpg / .jpeg / .png / .svg / .webp,
+        載得到就顯示,載不到就自動隱藏(不會出現破圖示)。這樣题庫圖片只要照題號命名丟進
+        images/ 資料夾就好,不用每題手動寫 <img> 標籤。
+     2. 內嵌 SVG 字串(像下面 FLIPFLOP_SVG)—— 適合自己畫的電路符號,會直接顯示,不走自動載入
+     3. image:false —— 明確標記此題本來就沒有圖,不嘗試自動載入(省掉無謂的 404)
+  ---------------------------------------------------------------------------- */
+  var FLIPFLOP_SVG = '<svg viewBox="0 0 220 150" width="220" height="150" xmlns="http://www.w3.org/2000/svg">'+
+    '<rect x="40" y="20" width="110" height="90" fill="#fff" stroke="#0f2540" stroke-width="2.5"/>'+
+    '<text x="55" y="45" font-size="18" font-weight="700" fill="#0f2540">D</text>'+
+    '<text x="118" y="45" font-size="18" font-weight="700" fill="#0f2540">Q</text>'+
+    '<text x="50" y="95" font-size="18" font-weight="700" fill="#0f2540">CK</text>'+
+    '<text x="112" y="95" font-size="16" font-weight="700" fill="#0f2540">Q̅</text>'+
+    '<path d="M40 78 L52 85 L40 92 Z" fill="none" stroke="#0f2540" stroke-width="2"/>'+
+    '<line x1="10" y1="30" x2="40" y2="30" stroke="#0f2540" stroke-width="2.5"/>'+
+    '<line x1="10" y1="85" x2="40" y2="85" stroke="#0f2540" stroke-width="2.5"/>'+
+    '<line x1="150" y1="30" x2="180" y2="30" stroke="#0f2540" stroke-width="2.5"/>'+
+    '<line x1="150" y1="85" x2="180" y2="85" stroke="#0f2540" stroke-width="2.5"/>'+
+    '</svg>';
+
+  var QUESTIONS=[
+    {
+      id:'q1',
+      groupLabel:'題組1 電腦、電子及電機機械識圖',
+      question:'下圖所示之D型正反器,Clock採何種觸發方式?',
+      image:FLIPFLOP_SVG,
+      options:['正準位觸發','負準位觸發','正緣觸發','負緣觸發'],
+      correctIndex:2,
+      explanation:'CK 輸入端只有三角形符號、沒有反相小圓圈,代表是<b>正緣觸發(rising-edge triggered)</b>;若三角形前多一個小圓圈,才是負緣觸發。'
+    },
+    {
+      id:'q2',
+      groupLabel:'題組1 電腦、電子及電機機械識圖',
+      question:'二極體處於「順向偏壓」時,下列敘述何者正確?',
+      options:['P極接電源負端、N極接電源正端','P極接電源正端、N極接電源負端','P、N兩極皆接電源正端','P、N兩極皆接電源負端'],
+      correctIndex:1,
+      explanation:'順向偏壓(forward bias)是讓 P 型半導體接電源正端、N 型接電源負端,此時空乏區變窄,電流可順利通過。'
+    },
+    {
+      id:'q3',
+      groupLabel:'題組1 電腦、電子及電機機械識圖',
+      question:'電阻色碼依序為「棕、黑、紅、金」,代表電阻值與誤差為何?',
+      options:['1kΩ ± 5%','10Ω ± 5%','1kΩ ± 10%','100Ω ± 5%'],
+      correctIndex:0,
+      explanation:'棕=1、黑=0、紅=×100,前兩碼組成 10,再乘以 100 倍率得 1000Ω = 1kΩ;金色誤差碼代表 ±5%。'
+    },
+    {
+      id:'q4',
+      groupLabel:'題組1 電腦、電子及電機機械識圖',
+      question:'NPN 電晶體的電路符號中,射極(E)上的箭頭方向為何?',
+      options:['箭頭朝內,指向基極','箭頭朝外,離開基極','依電路而定,方向不固定','NPN 電晶體符號沒有箭頭'],
+      correctIndex:1,
+      explanation:'口訣「Not Pointing iN」:NPN 電晶體射極箭頭朝外(離開基極);PNP 則是箭頭朝內。'
+    },
+    {
+      id:'q5',
+      groupLabel:'題組1 電腦、電子及電機機械識圖',
+      question:'使用三用電表(歐姆檔)量測電阻前,先進行「歸零調整」的主要目的為何?',
+      options:['校正電表所量測的電壓值','校正電表所量測的電流值','消除電表內部電阻與電池電壓誤差,確保讀值準確','擴大電表的量測範圍'],
+      correctIndex:2,
+      explanation:'歐姆檔歸零是把兩支測試棒短路,調整指針指到 0Ω,藉此抵銷電表內部電阻與電池電壓隨使用耗損造成的誤差。'
+    }
+  ];
+
+  /* ---------- state ---------- */
+  var cur=0;
+  var answered=new Array(QUESTIONS.length).fill(-1); /* -1=未作答,否則為選擇的 index */
+
+  var qcard=document.getElementById('qcard');
+  var jumpEl=document.getElementById('jump');
+  var prevBtn=document.getElementById('prevBtn');
+  var nextBtn=document.getElementById('nextBtn');
+
+  document.getElementById('totalNum').textContent=QUESTIONS.length;
+
+  function correctCount(){
+    var n=0;
+    for(var i=0;i<QUESTIONS.length;i++){ if(answered[i]===QUESTIONS[i].correctIndex) n++; }
+    return n;
+  }
+  function answeredCount(){
+    var n=0;
+    for(var i=0;i<answered.length;i++){ if(answered[i]!==-1) n++; }
+    return n;
+  }
+
+  function renderJump(){
+    jumpEl.innerHTML=QUESTIONS.map(function(_,i){
+      var cls='jbtn'+(i===cur?' cur':'')+(answered[i]!==-1?' done':'');
+      return '<button type="button" class="'+cls+'" data-i="'+i+'">'+(i+1)+'</button>';
+    }).join('');
+  }
+
+  var AUTO_IMG_EXTS=['jpg','jpeg','png','svg','webp'];
+  function imageHtml(q){
+    if(q.image===false) return ''; /* 明確標記此題沒有圖 */
+    if(q.image) return '<div class="qimg">'+q.image+'</div>'; /* 手動指定(內嵌 SVG 或自己寫的 <img>) */
+    return '<div class="qimg"><img data-auto-id="'+esc(q.id)+'" alt=""></div>'; /* 依題號自動嘗試載入 */
+  }
+  function bindAutoImages(root){
+    root.querySelectorAll('.qimg img[data-auto-id]').forEach(function(img){
+      var id=img.getAttribute('data-auto-id');
+      var exts=AUTO_IMG_EXTS.slice();
+      function tryNext(){
+        if(!exts.length){ var wrap=img.closest('.qimg'); if(wrap) wrap.remove(); return; }
+        img.src='images/'+id+'.'+exts.shift();
+      }
+      img.addEventListener('error',tryNext);
+      tryNext();
+    });
+  }
+
+  function renderQuestion(){
+    var q=QUESTIONS[cur];
+    var picked=answered[cur];
+    var isAnswered=picked!==-1;
+    var imgHtml=imageHtml(q);
+    var optsHtml=q.options.map(function(opt,i){
+      var cls='opt';
+      if(isAnswered){
+        if(i===q.correctIndex) cls+=' correct';
+        else if(i===picked) cls+=' wrong';
+      }
+      return '<button type="button" class="'+cls+'" data-i="'+i+'"><span class="num">'+(i+1)+'</span><span>'+esc(opt)+'</span></button>';
+    }).join('');
+    var explainHtml=isAnswered?('<div class="explain show">'+(picked===q.correctIndex?'✅ 答對了!':'❌ 答錯了,正確答案是「'+esc(q.options[q.correctIndex])+'」。')+'<br><b>詳解:</b>'+q.explanation+'</div>'):'<div class="explain"></div>';
+
+    qcard.className='qcard'+(isAnswered?' answered':'');
+    qcard.innerHTML=
+      '<div class="grouplabel">'+esc(q.groupLabel)+'</div>'+
+      '<div class="qbody"><p class="qtext">'+esc(q.question)+'</p>'+imgHtml+'</div>'+
+      '<div class="opts">'+optsHtml+'</div>'+
+      explainHtml;
+
+    qcard.querySelectorAll('.opt').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        selectOption(cur,+btn.getAttribute('data-i'));
+      });
+    });
+    bindAutoImages(qcard);
+
+    document.getElementById('curNum').textContent=cur+1;
+    document.getElementById('correctNum').textContent=correctCount();
+    document.getElementById('progressBar').style.width=(answeredCount()/QUESTIONS.length*100)+'%';
+    prevBtn.disabled=(cur===0);
+    nextBtn.disabled=(cur===QUESTIONS.length-1);
+    renderJump();
+  }
+
+  function selectOption(qi,oi){
+    if(answered[qi]!==-1) return; /* 已作答過就不能再改,維持第一次作答的結果 */
+    answered[qi]=oi;
+    if(qi===cur) renderQuestion();
+    else renderJump();
+  }
+
+  function goTo(i){
+    if(i<0||i>=QUESTIONS.length) return;
+    cur=i;
+    renderQuestion();
+    qcard.scrollIntoView({block:'nearest',behavior:'smooth'});
+  }
+
+  prevBtn.addEventListener('click',function(){ goTo(cur-1); });
+  nextBtn.addEventListener('click',function(){ goTo(cur+1); });
+  jumpEl.addEventListener('click',function(e){
+    var b=e.target.closest('.jbtn');
+    if(!b) return;
+    goTo(+b.getAttribute('data-i'));
+  });
+
+  document.addEventListener('keydown',function(e){
+    if(e.metaKey||e.ctrlKey||e.altKey) return;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); goTo(cur+1); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); goTo(cur-1); }
+    else if(e.key>='1'&&e.key<='9'){
+      var idx=+e.key-1;
+      if(idx<QUESTIONS[cur].options.length){ selectOption(cur,idx); }
+    }
+  });
+
+  renderQuestion();
+})();
+</script>
+</body>
+</html>
