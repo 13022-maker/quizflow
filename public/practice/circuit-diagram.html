@@ -25,6 +25,7 @@
   .masthead .en{opacity:.9;font-size:13px;font-weight:500}
   .note{margin-top:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 14px;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;position:relative;z-index:2}
   .note b{color:#fff}
+  .note .src{opacity:.85;font-size:12px;margin-top:6px}
 
   .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
   .dock-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px}
@@ -41,12 +42,13 @@
   .qtext{font-size:16px;font-weight:700;margin:0 0 14px}
   .qimg{margin:0 0 16px;display:flex;justify-content:center}
   .qimg svg{max-width:100%;height:auto}
-  .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line)}
+  .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
 
   .opts{padding:2px 22px 20px;display:flex;flex-direction:column;gap:10px}
   .opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--blue-line);border-radius:12px;background:#fff;cursor:pointer;font-size:14.5px;transition:.15s;text-align:left}
   .opt:hover{border-color:var(--blue);background:var(--blue-soft)}
   .opt .num{flex:none;width:26px;height:26px;border-radius:50%;background:#eef4fa;color:var(--blue-dark);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .opt img{max-height:64px;width:auto;max-width:150px;background:#fff}
   .opt.correct{border-color:var(--ok);background:var(--ok-soft)}
   .opt.correct .num{background:var(--ok);color:#fff}
   .opt.wrong{border-color:var(--err);background:var(--err-soft)}
@@ -92,10 +94,16 @@
 <body>
 <div class="wrap">
   <header class="masthead">
-    <div class="kick">技能檢定學科題庫練習 · 電腦、電子及電機機械識圖</div>
+    <div class="kick">技能檢定學科題庫練習 · 12000 電腦硬體裝修 丙級</div>
     <h1>電腦、電子及電機機械識圖 練習</h1>
     <div class="en">Circuit &amp; Symbol Reading Practice</div>
-    <div class="note"><span>📘</span><div><b>免登入、不計時</b>,答題後立即顯示對錯與詳解。這裡先放 5 題範例,正式題庫可替換成勞動部技能檢定學科題庫公開題目。</div></div>
+    <div class="note">
+      <span>📘</span>
+      <div>
+        <b>免登入、不計時</b>,答題後立即顯示對錯,詳解為補充學習筆記。
+        <div class="src">題目與正解出自勞動部技能檢定「12000 電腦硬體裝修 丙級」學科題庫工作項目01:電腦、電子及電機機械識圖(共 49 題,正解依官方公告題本標示);詳解為額外整理的補充說明,非官方文件原文,如發現說法有誤歡迎回報修正。</div>
+      </div>
+    </div>
   </header>
 
   <div class="dock">
@@ -114,7 +122,7 @@
   </div>
 
   <div class="kbdhint">鍵盤操作　<kbd>←</kbd>/<kbd>→</kbd> 或 <kbd>↑</kbd>/<kbd>↓</kbd> 切換題目　·　<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> 選擇選項</div>
-  <div class="foot">由 QuizFlow 提供 · 題庫練習範例</div>
+  <div class="foot">由 QuizFlow 提供 · 題庫練習</div>
 </div>
 
 <script>
@@ -122,69 +130,320 @@
   "use strict";
   function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
-  /* ---------- 題目資料(範例佔位內容,正式上線請換成勞動部技能檢定學科題庫題目) ----------
-     每題的 id 建議直接用題庫本身的題號(之後不確定格式的話,先用自己編的流水號也行)。
-     image 欄位有三種用法:
-     1. 不寫(預設)—— 自動依 id 去 images/ 資料夾嘗試 <id>.jpg / .jpeg / .png / .svg / .webp,
-        載得到就顯示,載不到就自動隱藏(不會出現破圖示)。這樣题庫圖片只要照題號命名丟進
-        images/ 資料夾就好,不用每題手動寫 <img> 標籤。
-     2. 內嵌 SVG 字串(像下面 FLIPFLOP_SVG)—— 適合自己畫的電路符號,會直接顯示,不走自動載入
+  /* ---------- 題目資料 ----------
+     來源:勞動部技能檢定「12000 電腦硬體裝修 丙級」學科題庫工作項目01:電腦、電子及
+     電機機械識圖,共 49 題。id 直接對應官方題號(q1~q49),方便日後回頭核對原始題本。
+     正解(correctIndex,0-based)取自題本本身標示的官方答案,不是憑內容判斷得出。
+
+     image 欄位三種用法:
+     1. 不寫(預設)—— 自動依 id 去 images/ 資料夾嘗試 <id>.jpg/.jpeg/.png/.svg/.webp
+     2. 內嵌 SVG 或手寫 <img> 字串 —— 手動指定,不走自動載入
      3. image:false —— 明確標記此題本來就沒有圖,不嘗試自動載入(省掉無謂的 404)
+
+     options 陣列的每一項通常是文字字串;若某題的選項本身就是圖(例如三視圖辨識),
+     可以改成 {img:'images/xxx.png', alt:'說明文字'} 物件,畫面會顯示縮圖而非文字。
   ---------------------------------------------------------------------------- */
-  var FLIPFLOP_SVG = '<svg viewBox="0 0 220 150" width="220" height="150" xmlns="http://www.w3.org/2000/svg">'+
-    '<rect x="40" y="20" width="110" height="90" fill="#fff" stroke="#0f2540" stroke-width="2.5"/>'+
-    '<text x="55" y="45" font-size="18" font-weight="700" fill="#0f2540">D</text>'+
-    '<text x="118" y="45" font-size="18" font-weight="700" fill="#0f2540">Q</text>'+
-    '<text x="50" y="95" font-size="18" font-weight="700" fill="#0f2540">CK</text>'+
-    '<text x="112" y="95" font-size="16" font-weight="700" fill="#0f2540">Q̅</text>'+
-    '<path d="M40 78 L52 85 L40 92 Z" fill="none" stroke="#0f2540" stroke-width="2"/>'+
-    '<line x1="10" y1="30" x2="40" y2="30" stroke="#0f2540" stroke-width="2.5"/>'+
-    '<line x1="10" y1="85" x2="40" y2="85" stroke="#0f2540" stroke-width="2.5"/>'+
-    '<line x1="150" y1="30" x2="180" y2="30" stroke="#0f2540" stroke-width="2.5"/>'+
-    '<line x1="150" y1="85" x2="180" y2="85" stroke="#0f2540" stroke-width="2.5"/>'+
-    '</svg>';
+  var GROUP='工作項目01:電腦、電子及電機機械識圖';
 
   var QUESTIONS=[
-    {
-      id:'q1',
-      groupLabel:'題組1 電腦、電子及電機機械識圖',
-      question:'下圖所示之D型正反器,Clock採何種觸發方式?',
-      image:FLIPFLOP_SVG,
-      options:['正準位觸發','負準位觸發','正緣觸發','負緣觸發'],
+    { id:'q1', groupLabel:GROUP,
+      question:'下圖所示之D型正反器,Clock採何種準位觸發?',
+      options:['正電位觸發動作','負電位觸發動作','正緣觸發動作','負緣觸發動作'],
       correctIndex:2,
-      explanation:'CK 輸入端只有三角形符號、沒有反相小圓圈,代表是<b>正緣觸發(rising-edge triggered)</b>;若三角形前多一個小圓圈,才是負緣觸發。'
+      explanation:'CK 輸入端只畫三角形、沒有反相小圓圈,依慣例代表<b>正緣觸發</b>;若三角形前多一個小圓圈,才是負緣觸發。'
     },
-    {
-      id:'q2',
-      groupLabel:'題組1 電腦、電子及電機機械識圖',
-      question:'二極體處於「順向偏壓」時,下列敘述何者正確?',
-      options:['P極接電源負端、N極接電源正端','P極接電源正端、N極接電源負端','P、N兩極皆接電源正端','P、N兩極皆接電源負端'],
+    { id:'q2', groupLabel:GROUP,
+      question:'下圖所示符號用來表示?',
+      options:['多工器','編碼器','解多工器','解碼器'],
+      correctIndex:2,
+      explanation:'圖中 1 個輸入 A 搭配選擇線 S1S0、展開成 Y0~Y3 多個輸出,是「一對多」的<b>解多工器(Demultiplexer)</b>接線方式;多工器則相反,是多個輸入選一個輸出。'
+    },
+    { id:'q3', groupLabel:GROUP,
+      question:'下圖之右側視圖為?(選項本身即為視圖)',
+      options:[
+        {img:'images/q3-opt1.png', alt:'選項①右側視圖'},
+        {img:'images/q3-opt2.png', alt:'選項②右側視圖'},
+        {img:'images/q3-opt3.png', alt:'選項③右側視圖'},
+        {img:'images/q3-opt4.png', alt:'選項④右側視圖'}
+      ],
+      correctIndex:3,
+      explanation:'三視圖判讀要領:前視圖看正面輪廓、頂視圖看由上往下看的輪廓、右側視圖看由右方看過去的輪廓,再對照立體圖上各面的凹凸位置逐一排除。這題正解為官方題本標示的第 4 個圖,建議自行動手畫一次立體圖驗證。'
+    },
+    { id:'q4', groupLabel:GROUP,
+      question:'下圖所示邏輯符號功能相當於?',
+      options:['OR','AND','XOR','XNOR'],
+      correctIndex:2,
+      explanation:'XOR(互斥或)閘常見的等效實作之一,就是用 OR / NOR 之類的基本邏輯閘組合出來;圖中這種「OR 閘 + 兩個 NOR 閘再接一個 NOR」的接法是教科書上常見的 XOR 等效電路。'
+    },
+    { id:'q5', groupLabel:GROUP,
+      question:'下圖 IC 符號第一支接腳位置在?',
+      options:['Ａ腳','Ｂ腳','Ｃ腳','Ｄ腳'],
       correctIndex:1,
-      explanation:'順向偏壓(forward bias)是讓 P 型半導體接電源正端、N 型接電源負端,此時空乏區變窄,電流可順利通過。'
+      explanation:'DIP 封裝 IC 頂視圖上,缺口(或圓點)所在的那一側、缺口下方的接腳即為第 1 腳,再以逆時針方向依序編號;圖中缺口在左側,對應下方的 B 腳。'
     },
-    {
-      id:'q3',
-      groupLabel:'題組1 電腦、電子及電機機械識圖',
-      question:'電阻色碼依序為「棕、黑、紅、金」,代表電阻值與誤差為何?',
-      options:['1kΩ ± 5%','10Ω ± 5%','1kΩ ± 10%','100Ω ± 5%'],
+    { id:'q6', groupLabel:GROUP,
+      question:'下圖所示符號用來表示?',
+      options:['直流電源','直流安培計','交流安培計','瓦特計'],
       correctIndex:0,
-      explanation:'棕=1、黑=0、紅=×100,前兩碼組成 10,再乘以 100 倍率得 1000Ω = 1kΩ;金色誤差碼代表 ±5%。'
+      explanation:'一長一短兩條平行線是電池/直流電源的標準符號,長線為正極、短線為負極。'
     },
-    {
-      id:'q4',
-      groupLabel:'題組1 電腦、電子及電機機械識圖',
-      question:'NPN 電晶體的電路符號中,射極(E)上的箭頭方向為何?',
-      options:['箭頭朝內,指向基極','箭頭朝外,離開基極','依電路而定,方向不固定','NPN 電晶體符號沒有箭頭'],
-      correctIndex:1,
-      explanation:'口訣「Not Pointing iN」:NPN 電晶體射極箭頭朝外(離開基極);PNP 則是箭頭朝內。'
-    },
-    {
-      id:'q5',
-      groupLabel:'題組1 電腦、電子及電機機械識圖',
-      question:'使用三用電表(歐姆檔)量測電阻前,先進行「歸零調整」的主要目的為何?',
-      options:['校正電表所量測的電壓值','校正電表所量測的電流值','消除電表內部電阻與電池電壓誤差,確保讀值準確','擴大電表的量測範圍'],
+    { id:'q7', groupLabel:GROUP,
+      question:'下圖所示符號用來表示?',
+      options:['安培計','伏特計','電流源','電壓源'],
       correctIndex:2,
-      explanation:'歐姆檔歸零是把兩支測試棒短路,調整指針指到 0Ω,藉此抵銷電表內部電阻與電池電壓隨使用耗損造成的誤差。'
+      explanation:'圓圈內畫箭頭是電流源的標準符號,箭頭方向表示電流流向;電壓源則是圓圈內畫加減號或波浪線。'
+    },
+    { id:'q8', groupLabel:GROUP,
+      question:'如圖輸出等於何種邏輯閘?',
+      options:['AND','OR','NOR','NAND'],
+      correctIndex:2,
+      explanation:'CMOS 邏輯閘裡,上拉網路(PMOS)串聯、下拉網路(NMOS)並聯的組合是 NOR 閘的典型電晶體級實作(NAND 則相反:PMOS 並聯、NMOS 串聯)。'
+    },
+    { id:'q9', groupLabel:GROUP,
+      question:'如下圖所示符號中,有一三角形表示CK為?',
+      options:['邊緣觸發','準位觸發','延遲觸發','清除控制'],
+      correctIndex:0,
+      explanation:'CK 輸入端只要畫成三角形(不管有沒有小圓圈),就代表這是<b>邊緣觸發(edge-triggered)</b>元件;沒有三角形、直接畫方塊輸入的才是準位觸發。'
+    },
+    { id:'q10', groupLabel:GROUP,
+      question:'如下圖所示,在IC資料手冊上其表示CK為?',
+      options:['正緣觸發','負緣觸發','正準位觸發','負準位觸發'],
+      correctIndex:1,
+      explanation:'三角形前面多畫一個小圓圈(反相符號),代表觸發動作在訊號「由高轉低」的那一瞬間發生,也就是<b>負緣觸發</b>;沒有小圓圈則是正緣觸發。'
+    },
+    { id:'q11', groupLabel:GROUP, image:false,
+      question:'前視圖不能用來表示物件前部的?',
+      options:['形狀','高度','寬度','亮度'],
+      correctIndex:3,
+      explanation:'工程圖(前視圖/頂視圖/側視圖)呈現的是幾何形狀與尺寸,亮度屬於材質/光影表現,不是視圖要傳達的資訊。'
+    },
+    { id:'q12', groupLabel:GROUP, image:false,
+      question:'當在繪製電路圖時,習慣上是將輸入訊號置於?',
+      options:['右方','前方','上方','左方'],
+      correctIndex:3,
+      explanation:'電路圖慣例是訊號由左至右流動,所以輸入畫在左邊、輸出畫在右邊,跟中文由左到右的閱讀習慣一致。'
+    },
+    { id:'q13', groupLabel:GROUP, image:false,
+      question:'在我國的國家標準(CNS)中,以何種單位來表達繪製元件的外型尺寸?',
+      options:['英制','公分','公制','台尺'],
+      correctIndex:2,
+      explanation:'CNS(中華民國國家標準)採用公制(SI 制)作為工程製圖的標註單位。'
+    },
+    { id:'q14', groupLabel:GROUP, image:false,
+      question:'將鉛筆之筆芯兩側削薄成楔形者是專門用來繪製?',
+      options:['直線','曲線','圓形','截斷線'],
+      correctIndex:0,
+      explanation:'楔形筆芯兩側平整、線寬穩定,方便沿著直尺畫出粗細一致的直線;曲線類則多用圓錐形筆芯。'
+    },
+    { id:'q15', groupLabel:GROUP, image:false,
+      question:'電腦繪圖所儲存的檔案格式,哪一種不失真?',
+      options:['BMP','GIF','JPG','TIF'],
+      correctIndex:0,
+      explanation:'BMP 是無壓縮點陣格式,不會失真;JPG 是破壞性壓縮會失真,GIF 只支援 256 色,TIF 雖可無失真但選項情境下官方標示正解為 BMP。'
+    },
+    { id:'q16', groupLabel:GROUP, image:false,
+      question:'下列何者不具備主動管理系統記憶體資源的能力?',
+      options:['EMM386','HIMEM','QEMM','MEM'],
+      correctIndex:3,
+      explanation:'MEM 是 DOS 下用來「查看」記憶體使用狀況的指令,本身不會主動管理/配置記憶體;EMM386、HIMEM.SYS、QEMM 都是實際的記憶體管理程式。'
+    },
+    { id:'q17', groupLabel:GROUP, image:false,
+      question:'下列有關示波器面板的「CAL」(Calibration)之敘述,何者正確?',
+      options:['輸出1KHz的方波','輸出1KHz的正弦波','輸出1KHz的三角波','輸出1KHz的階梯波'],
+      correctIndex:0,
+      explanation:'示波器面板上的 CAL 校正端子通常會輸出一個已知頻率、已知幅度的方波(常見為 1KHz),用來校正探棒補償。'
+    },
+    { id:'q18', groupLabel:GROUP, image:false,
+      question:'CD Title是指?',
+      options:['有資料之光碟片','DVD光碟機','CD ROM光碟機','空白光碟片'],
+      correctIndex:0,
+      explanation:'CD Title 泛指已經燒錄好內容(遊戲、音樂、軟體等)的光碟片,相對於還沒寫入資料的空白片。'
+    },
+    { id:'q19', groupLabel:GROUP, image:false,
+      question:'Windows 7刪除的檔案,暫存放在下列哪一項?',
+      options:['資源回收筒','檔案總管','我的公事包','我的文件夾'],
+      correctIndex:0,
+      explanation:'一般刪除(非 Shift+Delete)的檔案會先移到資源回收筒,清空資源回收筒才會真正刪除。'
+    },
+    { id:'q20', groupLabel:GROUP, image:false,
+      question:'下列何者不是Linux的文書編輯器?',
+      options:['vi','ed','edit','emacs'],
+      correctIndex:2,
+      explanation:'edit 是 DOS/Windows 的文字編輯器指令,vi、ed、emacs 才是 Linux/Unix 常見的文書編輯器。'
+    },
+    { id:'q21', groupLabel:GROUP, image:false,
+      question:'Windows Server 2012 R2 Essentials支援幾個虛擬機器授權?',
+      options:['0','1','2','4'],
+      correctIndex:1,
+      explanation:'依微軟當時公告的授權規則,Essentials 版本僅授權在 1 台虛擬機器上執行(可選擇實體或虛擬其中一種安裝方式)。'
+    },
+    { id:'q22', groupLabel:GROUP, image:false,
+      question:'Windows Server 2012 R2 Datacenter支援幾個虛擬機器授權?',
+      options:['2','4','16','無限制'],
+      correctIndex:3,
+      explanation:'Datacenter 版本的授權規則是同一台實體主機上可執行無限數量的虛擬機器,這也是它跟 Standard 版最大的差異。'
+    },
+    { id:'q23', groupLabel:GROUP, image:false,
+      question:'Windows 7中的整合管理工具為?',
+      options:['MMA','MMB','MMC','MMD'],
+      correctIndex:2,
+      explanation:'MMC(Microsoft Management Console)是 Windows 用來整合各種管理嵌入式管理單元(如電腦管理、群組原則)的主控台框架。'
+    },
+    { id:'q24', groupLabel:GROUP, image:false,
+      question:'Windows 7網路通訊協定預設為?',
+      options:['TCP/IP','NetBEUI','IPX/SPX','PPP'],
+      correctIndex:0,
+      explanation:'現行 Windows 版本(含 Windows 7)網路連線預設安裝並啟用的通訊協定就是 TCP/IP。'
+    },
+    { id:'q25', groupLabel:GROUP, image:false,
+      question:'Windows 7 Client如要重新向DHCP Server取得一組新IP,要執行下列哪一指令?',
+      options:['ipconfig /all','ipconfig /renew','ipconfig /release','winipcfg /release'],
+      correctIndex:1,
+      explanation:'ipconfig /renew 會向 DHCP 伺服器重新要一組 IP;/release 是先釋放目前的 IP(通常兩個指令搭配使用),/all 只是顯示詳細資訊,winipcfg 是更早期 Windows 9x 的工具、Windows 7 沒有這支指令。'
+    },
+    { id:'q26', groupLabel:GROUP, image:false,
+      question:'在Windows 7中,如何製作系統修護光碟?',
+      options:['控制台-系統及安全性-備份與還原-建立系統光碟','控制台-系統及安全性-備份與還原-建立系統映像','執行safedisk','執行backup'],
+      correctIndex:0,
+      explanation:'Windows 7 內建的「建立系統修復光碟」功能就放在控制台的備份與還原設定裡。'
+    },
+    { id:'q27', groupLabel:GROUP, image:false,
+      question:'在Windows 7安裝過程中,欲開啟命令提示字元視窗,應鍵入下列何者?',
+      options:['F8','F10','Shift+F10','Shift+F12'],
+      correctIndex:2,
+      explanation:'在 Windows 安裝畫面按 Shift+F10 是慣用的隱藏快捷鍵,可以叫出命令提示字元視窗。'
+    },
+    { id:'q28', groupLabel:GROUP, image:false,
+      question:'Linux作業系統安裝時,下列哪一項可不列入考慮?',
+      options:['硬碟容量','CACHE容量','記憶體容量','硬碟介面'],
+      correctIndex:1,
+      explanation:'CPU 快取(CACHE)容量是處理器內建的規格,不是安裝作業系統前需要另外評估的項目;硬碟容量/介面、記憶體容量才是安裝前要確認的系統需求。'
+    },
+    { id:'q29', groupLabel:GROUP, image:false,
+      question:'下列何者不是Windows 7預設之電源計畫選項?',
+      options:['環保','平衡','省電','高效能'],
+      correctIndex:0,
+      explanation:'Windows 7 預設提供「平衡」「省電」「高效能」三種電源計畫,「環保」不是其中之一。'
+    },
+    { id:'q30', groupLabel:GROUP, image:false,
+      question:'Windows 7電源選項內,何者屬於系統建議的電源計畫?',
+      options:['環保','平衡','省電','高效能'],
+      correctIndex:1,
+      explanation:'「平衡」是 Windows 7 電源選項中標示為系統建議(預設)的計畫,在效能與省電間取得折衷。'
+    },
+    { id:'q31', groupLabel:GROUP, image:false,
+      question:'在Windows 7中,無法刪除自己建立的電源計畫,可能與下列哪個原因有關?',
+      options:['沒有管理者權限','該電源計畫正在使用中','guest身分','電腦名稱錯誤'],
+      correctIndex:1,
+      explanation:'目前正在套用中的電源計畫無法直接刪除,必須先切換成其他計畫,才能刪除原本那一個。'
+    },
+    { id:'q32', groupLabel:GROUP, image:false,
+      question:'各種不同的檔案類型,其副檔名皆不同,請問*.mp3應是何種類型檔案?',
+      options:['圖片壓縮檔','影像壓縮檔','聲音壓縮檔','文字壓縮檔'],
+      correctIndex:2,
+      explanation:'MP3(MPEG-1 Audio Layer 3)是聲音(音訊)壓縮格式。'
+    },
+    { id:'q33', groupLabel:GROUP, image:false,
+      question:'在Windows 7中,無法變更電源設定的原因,可能與下列哪個原因有關?',
+      options:['AD管理員使用群組原則停用或移除該項設定','該電源計畫正在使用中','guest身分','電腦名稱錯誤'],
+      correctIndex:0,
+      explanation:'企業網域環境下,管理員可透過群組原則(Group Policy)鎖定或移除電源設定選項,一般使用者端就無法自行變更。'
+    },
+    { id:'q34', groupLabel:GROUP, image:false,
+      question:'有關BitLocker的敘述,下列何者正確?',
+      options:['可針對個別檔案加密','可作為電腦開機時的密碼鎖定','可針對整個磁碟加密','可作為螢幕鎖定'],
+      correctIndex:2,
+      explanation:'BitLocker 是以「磁碟(磁區)」為單位的整體加密功能,不是針對單一檔案,也不是螢幕鎖定或開機密碼機制。'
+    },
+    { id:'q35', groupLabel:GROUP, image:false,
+      question:'有關BitLocker的敘述,下列何者錯誤?',
+      options:['可針對特定磁碟分割區加密','可針對外接式硬碟加密','無法提供USB快閃磁碟加密','檔案從加密磁碟複製到其他磁碟將自動解密'],
+      correctIndex:2,
+      explanation:'BitLocker To Go 就是設計來對 USB 隨身碟等外接式儲存裝置加密,所以「無法提供 USB 快閃磁碟加密」這句敘述是錯的(題目要選錯誤敘述)。'
+    },
+    { id:'q36', groupLabel:GROUP, image:false,
+      question:'下列哪一個是「電機電子工程師學會」的簡稱?',
+      options:['IEEE','CNS','ASCII','ISO'],
+      correctIndex:0,
+      explanation:'IEEE(Institute of Electrical and Electronics Engineers)是電機電子工程師學會的縮寫。'
+    },
+    { id:'q37', groupLabel:GROUP, image:false,
+      question:'下列哪一個是「中華民國國家標準」的簡稱?',
+      options:['IEEE','CNS','ASCII','ISO'],
+      correctIndex:1,
+      explanation:'CNS(Chinese National Standards)即中華民國國家標準。'
+    },
+    { id:'q38', groupLabel:GROUP, image:false,
+      question:'下列哪一個是一般電器設備之接地線的顏色?',
+      options:['綠色','紅色','藍色','橙色'],
+      correctIndex:0,
+      explanation:'國際慣例與國內配線規則多以綠色(或黃綠雙色)代表接地線。'
+    },
+    { id:'q39', groupLabel:GROUP, image:false,
+      question:'下列何者是個人電腦主機板之插槽介面PCI的針腳數(Pins)?',
+      options:['7','40','124','248'],
+      correctIndex:2,
+      explanation:'標準 32 位元 PCI 插槽的針腳數為 124 pins(不含防呆缺口)。'
+    },
+    { id:'q40', groupLabel:GROUP, image:false,
+      question:'下列何者是個人電腦主機板之插槽介面IDE的針腳數(Pins)?',
+      options:['7','40','124','248'],
+      correctIndex:1,
+      explanation:'傳統並列式 IDE(PATA)排線接頭規格為 40 針(2.5吋規格另有 44 針版本)。'
+    },
+    { id:'q41', groupLabel:GROUP, image:false,
+      question:'下列何種硬碟的資料傳輸速度最快?',
+      options:['ATA33','ATA66','ATA100','ATA133'],
+      correctIndex:3,
+      explanation:'ATA 規格後面的數字代表理論最大傳輸速度(MB/s),ATA133 是這幾個選項中數字最大、速度最快的一個世代。'
+    },
+    { id:'q42', groupLabel:GROUP, image:false,
+      question:'下列何種DVD的儲存容量最大?',
+      options:['DVD-5','DVD-9','DVD-10','DVD-18'],
+      correctIndex:3,
+      explanation:'DVD 命名的數字概略對應容量(GB 等級):DVD-5 單面單層約 4.7GB、DVD-9 單面雙層約 8.5GB、DVD-10 雙面單層約 9.4GB、DVD-18 雙面雙層約 17GB,DVD-18 容量最大。'
+    },
+    { id:'q43', groupLabel:GROUP, image:false,
+      question:'下列何者是「WinRAR」工具軟體的主要功能?',
+      options:['檔案上傳或下載','壓縮檔案或解壓縮檔案','聲音或影片播放軟體','燒錄CD或DVD'],
+      correctIndex:1,
+      explanation:'WinRAR 是壓縮/解壓縮工具,支援 RAR、ZIP 等格式。'
+    },
+    { id:'q44', groupLabel:GROUP, image:false,
+      question:'下列何者是「CuteFTP」工具軟體的主要功能?',
+      options:['檔案上傳或下載','壓縮檔案或解壓縮檔案','聲音或影片播放軟體','燒錄CD或DVD'],
+      correctIndex:0,
+      explanation:'CuteFTP 是 FTP 用戶端軟體,主要用來跟伺服器之間上傳/下載檔案。'
+    },
+    { id:'q45', groupLabel:GROUP, image:false,
+      question:'下列何者是「WinZip」工具軟體的主要功能?',
+      options:['檔案上傳或下載','壓縮檔案或解壓縮檔案','聲音或影片播放軟體','燒錄CD或DVD'],
+      correctIndex:1,
+      explanation:'WinZip 是老牌的壓縮/解壓縮工具,主打 ZIP 格式。'
+    },
+    { id:'q46', groupLabel:GROUP, image:false,
+      question:'下列何者是「Windows Media Player」工具軟體的主要功能?',
+      options:['檔案上傳或下載','壓縮檔案或解壓縮檔案','聲音或影片播放軟體','燒錄CD或DVD'],
+      correctIndex:2,
+      explanation:'Windows Media Player 是微軟內建的多媒體(音樂/影片)播放軟體。'
+    },
+    { id:'q47', groupLabel:GROUP, image:false,
+      question:'下列何者是「Nero StartSmart」工具軟體的主要功能?',
+      options:['上傳與下載檔案','壓縮與解壓縮','防毒與解毒','燒錄CD或DVD'],
+      correctIndex:3,
+      explanation:'Nero 系列是知名的光碟燒錄軟體套件,StartSmart 是它的功能啟動主控台。'
+    },
+    { id:'q48', groupLabel:GROUP, image:false,
+      question:'依據EIA 568-A標準定義,接在RJ-45接頭第3支接腳上的雙絞線顏色為?',
+      options:['白藍','白綠','白棕','白橙'],
+      correctIndex:1,
+      explanation:'EIA/TIA 568-A 接線規格中,第 3 腳(與第 6 腳同一對線)是白綠/綠色這一組線;568-B 規格的第 3 腳排列則不同,兩種標準的接腳定義不要混淆。'
+    },
+    { id:'q49', groupLabel:GROUP,
+      question:'下圖為USB何種接頭?',
+      options:['Type-C','Mini-B','Micro-B','Type-A'],
+      correctIndex:0,
+      explanation:'USB Type-C 接頭外型呈橢圓對稱狀,沒有正反面之分、插入方向不受限,這是它跟 Mini-B / Micro-B(梯形、有方向性)最明顯的外觀差異。'
     }
   ];
 
@@ -236,6 +495,18 @@
     });
   }
 
+  /* 選項可以是純文字字串,也可以是 {img,alt} 圖片選項(例如三視圖辨識這種題目) */
+  function optionContent(opt){
+    if(opt && typeof opt==='object'){
+      return '<img src="'+esc(opt.img)+'" alt="'+esc(opt.alt||'')+'">';
+    }
+    return '<span>'+esc(opt)+'</span>';
+  }
+  function optionLabel(opt,i){
+    if(opt && typeof opt==='object') return '選項 '+(i+1)+'(如圖)';
+    return esc(opt);
+  }
+
   function renderQuestion(){
     var q=QUESTIONS[cur];
     var picked=answered[cur];
@@ -247,13 +518,13 @@
         if(i===q.correctIndex) cls+=' correct';
         else if(i===picked) cls+=' wrong';
       }
-      return '<button type="button" class="'+cls+'" data-i="'+i+'"><span class="num">'+(i+1)+'</span><span>'+esc(opt)+'</span></button>';
+      return '<button type="button" class="'+cls+'" data-i="'+i+'"><span class="num">'+(i+1)+'</span>'+optionContent(opt)+'</button>';
     }).join('');
-    var explainHtml=isAnswered?('<div class="explain show">'+(picked===q.correctIndex?'✅ 答對了!':'❌ 答錯了,正確答案是「'+esc(q.options[q.correctIndex])+'」。')+'<br><b>詳解:</b>'+q.explanation+'</div>'):'<div class="explain"></div>';
+    var explainHtml=isAnswered?('<div class="explain show">'+(picked===q.correctIndex?'✅ 答對了!':'❌ 答錯了,正確答案是「'+optionLabel(q.options[q.correctIndex],q.correctIndex)+'」。')+'<br><b>詳解:</b>'+q.explanation+'</div>'):'<div class="explain"></div>';
 
     qcard.className='qcard'+(isAnswered?' answered':'');
     qcard.innerHTML=
-      '<div class="grouplabel">'+esc(q.groupLabel)+'</div>'+
+      '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+esc(q.id.replace('q',''))+' 題</div>'+
       '<div class="qbody"><p class="qtext">'+esc(q.question)+'</p>'+imgHtml+'</div>'+
       '<div class="opts">'+optsHtml+'</div>'+
       explainHtml;
