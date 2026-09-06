@@ -21,7 +21,10 @@ import { buildChapters, type PdfChapter } from './pdfChapters';
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
 type Difficulty = 'easy' | 'medium' | 'hard';
-type Mode = 'text' | 'file' | 'url';
+type Mode = 'text' | 'file' | 'url' | 'exambank';
+
+// 題庫匯入模式的解析結果報告（AI 只補詳解，題幹/選項/正解由 examBankParser 解析，見後端 route 註解）
+type ParseReport = { total: number; imported: number; failed: string[]; truncated: boolean };
 
 type GeneratedQuestion = {
   type: QuestionType;
@@ -169,6 +172,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   // URL mode（YouTube / Google Docs）
   const [sourceUrl, setSourceUrl] = useState('');
+
+  // 題庫匯入模式（貼上文字 或 上傳題庫 PDF，二選一）
+  const [examBankInput, setExamBankInput] = useState<'paste' | 'pdf'>('paste');
+  const [examBankText, setExamBankText] = useState('');
+  const [examBankFile, setExamBankFile] = useState<File | null>(null);
+  const [parseReport, setParseReport] = useState<ParseReport | null>(null);
 
   // File mode
   // 支援多檔上傳（多張照片）；PDF / 音檔仍維持單檔（覆寫）
@@ -380,27 +389,39 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   // ── Generate ──
   async function generate() {
-    if (!types.length) {
-      setError('請至少選擇一種題型');
-      return;
-    }
-    if (mode === 'text' && !topic.trim()) {
-      setError('請輸入主題或課文內容');
-      return;
-    }
-    if (mode === 'file' && files.length === 0) {
-      setError('請上傳一份教材檔案');
-      return;
-    }
-    if (mode === 'url' && !sourceUrl.trim()) {
-      setError('請貼入 YouTube 或 Google Docs 連結');
-      return;
+    if (mode === 'exambank') {
+      if (examBankInput === 'paste' && !examBankText.trim()) {
+        setError('請貼上題庫文字');
+        return;
+      }
+      if (examBankInput === 'pdf' && !examBankFile) {
+        setError('請上傳題庫 PDF 檔案');
+        return;
+      }
+    } else {
+      if (!types.length) {
+        setError('請至少選擇一種題型');
+        return;
+      }
+      if (mode === 'text' && !topic.trim()) {
+        setError('請輸入主題或課文內容');
+        return;
+      }
+      if (mode === 'file' && files.length === 0) {
+        setError('請上傳一份教材檔案');
+        return;
+      }
+      if (mode === 'url' && !sourceUrl.trim()) {
+        setError('請貼入 YouTube 或 Google Docs 連結');
+        return;
+      }
     }
 
     setLoading(true);
     setError('');
     setUpgradeRequired(false);
     setResult(null);
+    setParseReport(null);
     startStepTimer();
 
     try {
@@ -495,6 +516,42 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           throw new Error(errMsg);
         }
         data = await res.json();
+      } else if (mode === 'exambank') {
+        // 題庫匯入模式：貼上文字 或 上傳題庫 PDF，題幹/選項/正解由後端 examBankParser
+        // 直接解析，AI 只補詳解（見 parse-exam-bank/route.ts 開頭註解）
+        setStep(examBankInput === 'pdf' ? '讀取 PDF 文字中…' : 'AI 補寫詳解中…');
+        const res = examBankInput === 'pdf' && examBankFile
+          ? await fetch('/api/ai/parse-exam-bank', {
+            method: 'POST',
+            credentials: 'include',
+            body: (() => {
+              const fd = new FormData();
+              fd.append('file', examBankFile);
+              return fd;
+            })(),
+          })
+          : await fetch('/api/ai/parse-exam-bank', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ text: examBankText }),
+          });
+        if (!res.ok) {
+          let errMsg = '題庫解析失敗';
+          try {
+            const errData = await res.json();
+            if (errData.upgradeRequired) {
+              setUpgradeRequired(true);
+            }
+            if (errData.error) {
+              errMsg = errData.error;
+            }
+          } catch { /* 回應非 JSON */ }
+          throw new Error(errMsg);
+        }
+        const parsed = await res.json();
+        setParseReport(parsed.parseReport ?? null);
+        data = { title: parsed.title, questions: parsed.questions };
       } else {
         // URL 模式（YouTube / Google Docs）
         setStep('抓取連結內容中…');
@@ -585,24 +642,33 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   const totalFileSize = files.reduce((sum, f) => sum + f.size, 0);
   const allImages = files.length > 0 && files.every(isImageFile);
-  const canGenerate = types.length > 0
-    && (mode === 'text'
-      ? topic.trim().length > 0
-      : mode === 'file'
-        ? files.length > 0
-        : sourceUrl.trim().length > 0);
+  // 題庫匯入模式不用選題型（永遠是選擇題）、不用設題數/難度（題數由貼的內容決定）
+  const canGenerate = mode === 'exambank'
+    ? (examBankInput === 'paste' ? examBankText.trim().length > 0 : examBankFile !== null)
+    : types.length > 0
+      && (mode === 'text'
+        ? topic.trim().length > 0
+        : mode === 'file'
+          ? files.length > 0
+          : sourceUrl.trim().length > 0);
 
   // 按鈕 disabled 時告訴使用者還缺什麼，避免誤以為是 bug
 
-  const disabledReason = !types.length
-    ? '請至少選擇一種題型'
-    : mode === 'text' && !topic.trim()
-      ? '請輸入主題，或點上方範例快速開始'
-      : mode === 'file' && files.length === 0
-        ? '請上傳一份教材檔案'
-        : mode === 'url' && !sourceUrl.trim()
-          ? '請貼入 YouTube 或 Google Docs 連結'
-          : '';
+  const disabledReason = mode === 'exambank'
+    ? (examBankInput === 'paste' && !examBankText.trim()
+        ? '請貼上題庫文字'
+        : examBankInput === 'pdf' && !examBankFile
+          ? '請上傳題庫 PDF 檔案'
+          : '')
+    : !types.length
+        ? '請至少選擇一種題型'
+        : mode === 'text' && !topic.trim()
+          ? '請輸入主題，或點上方範例快速開始'
+          : mode === 'file' && files.length === 0
+            ? '請上傳一份教材檔案'
+            : mode === 'url' && !sourceUrl.trim()
+              ? '請貼入 YouTube 或 Google Docs 連結'
+              : '';
 
   // ─── Render ────────────────────────────────────────────
   return (
@@ -640,6 +706,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               onClick={() => {
                 setMode('text');
                 setResult(null);
+                setParseReport(null);
                 setError('');
               }}
               className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
@@ -654,6 +721,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               onClick={() => {
                 setMode('file');
                 setResult(null);
+                setParseReport(null);
                 setError('');
               }}
               className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
@@ -668,6 +736,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               onClick={() => {
                 setMode('url');
                 setResult(null);
+                setParseReport(null);
                 setError('');
               }}
               className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
@@ -677,6 +746,21 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               }`}
             >
               🔗 連結
+            </button>
+            <button
+              onClick={() => {
+                setMode('exambank');
+                setResult(null);
+                setParseReport(null);
+                setError('');
+              }}
+              className={`flex-1 rounded-lg py-2 text-sm font-semibold transition-all ${
+                mode === 'exambank'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              📋 題庫
             </button>
           </div>
         </div>
@@ -704,6 +788,81 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-600">Google 文件</span>
                 <span className="text-gray-300">｜</span>
                 <span>自動偵測連結類型並抓取內容</span>
+              </div>
+            </div>
+          )}
+
+          {/* ── EXAM BANK MODE：貼上題庫文字 或 上傳題庫 PDF，二選一 ── */}
+          {mode === 'exambank' && (
+            <div className="space-y-3">
+              <div className="flex gap-1 rounded-xl bg-gray-100 p-1">
+                <button
+                  type="button"
+                  onClick={() => setExamBankInput('paste')}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+                    examBankInput === 'paste'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  ✍️ 貼上文字
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExamBankInput('pdf')}
+                  className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${
+                    examBankInput === 'pdf'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  📄 上傳 PDF
+                </button>
+              </div>
+
+              {examBankInput === 'paste'
+                ? (
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">
+                        貼上題庫文字（含正確答案）
+                      </p>
+                      <textarea
+                        value={examBankText}
+                        onChange={e => setExamBankText(e.target.value)}
+                        rows={8}
+                        placeholder={'例：\n1. (3) 下列何者不是微處理機的內部基本架構？①控制單元②算術邏輯單元③輸入輸出單元④暫存器。\n或\n(3) 1. 下列何者不是微處理機的內部基本架構？ (1)控制單元 (2)算術邏輯單元 (3)輸入輸出單元 (4)暫存器。'}
+                        className="w-full rounded-xl border border-gray-200 px-4 py-3 font-mono text-xs leading-relaxed placeholder:text-gray-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                      />
+                    </div>
+                  )
+                : (
+                    <div>
+                      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">
+                        上傳題庫 PDF（限文字型 PDF，掃描圖檔請改用貼上文字）
+                      </p>
+                      {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                      <label className="block">
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={e => setExamBankFile(e.target.files?.[0] ?? null)}
+                          className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-amber-700 hover:file:bg-amber-100"
+                        />
+                      </label>
+                      {examBankFile && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          {examBankFile.name}
+                          {' '}
+                          ·
+                          {' '}
+                          {fmtSize(examBankFile.size)}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+              <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
+                💡 題目、選項、正確答案完全依你貼的文字 / PDF 為準，AI 只會幫忙補寫詳解，不會更改題目或答案。
               </div>
             </div>
           )}
@@ -1100,98 +1259,102 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             </div>
           )}
 
-          {/* ── Question types ── */}
-          <div>
-            {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-            <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
-              選擇題型（可複選）
-            </label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {QUESTION_TYPES.map((t) => {
-                const checked = types.includes(t.value);
-                // 聽力題選中時，其他題型按鈕 disabled；其他題型選中時，聽力題按鈕 disabled
-                const isListeningSelected = types.includes('listening');
-                const hasNonListening = types.some(x => x !== 'listening');
-                const disabled = (t.value === 'listening' && hasNonListening)
-                  || (t.value !== 'listening' && isListeningSelected);
-                return (
-                  <button
-                    key={t.value}
-                    onClick={() => toggleType(t.value)}
-                    disabled={disabled}
-                    className={`flex items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all sm:gap-3 sm:p-3 ${
-                      checked
-                        ? 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
-                        : disabled
-                          ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-40'
-                          : 'border-gray-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md'
-                    }`}
-                  >
-                    <div className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors ${
-                      checked ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300'
-                    }`}
+          {/* ── Question types（題庫匯入模式永遠是選擇題，不用選）── */}
+          {mode !== 'exambank' && (
+            <div>
+              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                選擇題型（可複選）
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {QUESTION_TYPES.map((t) => {
+                  const checked = types.includes(t.value);
+                  // 聽力題選中時，其他題型按鈕 disabled；其他題型選中時，聽力題按鈕 disabled
+                  const isListeningSelected = types.includes('listening');
+                  const hasNonListening = types.some(x => x !== 'listening');
+                  const disabled = (t.value === 'listening' && hasNonListening)
+                    || (t.value !== 'listening' && isListeningSelected);
+                  return (
+                    <button
+                      key={t.value}
+                      onClick={() => toggleType(t.value)}
+                      disabled={disabled}
+                      className={`flex items-center gap-2 rounded-2xl border-2 p-2.5 text-left transition-all sm:gap-3 sm:p-3 ${
+                        checked
+                          ? 'border-amber-400 bg-amber-50 shadow-sm shadow-amber-100'
+                          : disabled
+                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 opacity-40'
+                            : 'border-gray-200 hover:-translate-y-0.5 hover:border-amber-300 hover:shadow-md'
+                      }`}
                     >
-                      {checked && '✓'}
-                    </div>
-                    <span className="shrink-0 text-lg">{t.emoji}</span>
-                    {/* min-w-0 + break-keep 防止 Chinese label 被切成單字一行 */}
-                    <div className="min-w-0 flex-1">
-                      <p className="break-keep text-sm font-bold leading-tight text-gray-800">{t.label}</p>
-                      <p className="break-keep text-xs text-gray-400">{t.sub}</p>
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className={`flex size-5 shrink-0 items-center justify-center rounded-md border-2 text-xs font-bold transition-colors ${
+                        checked ? 'border-amber-500 bg-amber-500 text-white' : 'border-gray-300'
+                      }`}
+                      >
+                        {checked && '✓'}
+                      </div>
+                      <span className="shrink-0 text-lg">{t.emoji}</span>
+                      {/* min-w-0 + break-keep 防止 Chinese label 被切成單字一行 */}
+                      <div className="min-w-0 flex-1">
+                        <p className="break-keep text-sm font-bold leading-tight text-gray-800">{t.label}</p>
+                        <p className="break-keep text-xs text-gray-400">{t.sub}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* ── Count + Difficulty ── */}
+          {/* ── Count + Difficulty（題庫匯入模式題數由貼的內容決定，不用設） ── */}
           {/* 手機 < 640px 上下堆疊，避免 slider 數字徽章與右欄按鈕擠壓重疊 */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
-                每種題型出幾題
-              </label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min={1}
-                  max={maxCount}
-                  value={effectiveCount}
-                  onChange={e => setCount(Number(e.target.value))}
-                  className="h-2 flex-1 accent-amber-500"
-                />
-                <span className="inline-flex min-w-10 items-center justify-center rounded-lg bg-amber-50 px-2 py-1 text-base font-bold tabular-nums text-amber-600">
-                  {effectiveCount}
-                </span>
+          {mode !== 'exambank' && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                  每種題型出幾題
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={1}
+                    max={maxCount}
+                    value={effectiveCount}
+                    onChange={e => setCount(Number(e.target.value))}
+                    className="h-2 flex-1 accent-amber-500"
+                  />
+                  <span className="inline-flex min-w-10 items-center justify-center rounded-lg bg-amber-50 px-2 py-1 text-base font-bold tabular-nums text-amber-600">
+                    {effectiveCount}
+                  </span>
+                </div>
+                {hasListening && (
+                  <p className="mt-1 text-xs text-amber-600">聽力題上限 5 題</p>
+                )}
               </div>
-              {hasListening && (
-                <p className="mt-1 text-xs text-amber-600">聽力題上限 5 題</p>
-              )}
-            </div>
-            <div>
-              {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
-              <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
-                難度等級
-              </label>
-              <div className="flex gap-1.5">
-                {DIFFICULTIES.map(d => (
-                  <button
-                    key={d.value}
-                    onClick={() => setDifficulty(d.value)}
-                    className={`flex-1 rounded-lg border-2 py-2 text-xs font-bold transition-all ${
-                      difficulty === d.value
-                        ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
-                        : 'border-gray-200 text-gray-600 hover:border-gray-400'
-                    }`}
-                  >
-                    {d.label}
-                  </button>
-                ))}
+              <div>
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                  難度等級
+                </label>
+                <div className="flex gap-1.5">
+                  {DIFFICULTIES.map(d => (
+                    <button
+                      key={d.value}
+                      onClick={() => setDifficulty(d.value)}
+                      className={`flex-1 rounded-lg border-2 py-2 text-xs font-bold transition-all ${
+                        difficulty === d.value
+                          ? 'border-gray-900 bg-gray-900 text-white shadow-sm'
+                          : 'border-gray-200 text-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      {d.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── Error / Warning ── */}
           {error && (
@@ -1229,6 +1392,44 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 {' '}
                 題，確認後匯入編輯器
               </p>
+            </div>
+          )}
+
+          {/* ── 題庫匯入的解析報告：有解析不出來的段落，列出來讓老師自己確認 ── */}
+          {result && parseReport && (parseReport.failed.length > 0 || parseReport.truncated) && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
+              {parseReport.truncated && (
+                <p className="mb-1">
+                  ⚠️ 題庫共
+                  {parseReport.total}
+                  {' '}
+                  題，超過單次匯入上限，只匯入前
+                  {parseReport.imported}
+                  {' '}
+                  題
+                </p>
+              )}
+              {parseReport.failed.length > 0 && (
+                <>
+                  <p className="mb-1 font-bold">
+                    ⚠️ 有
+                    {parseReport.failed.length}
+                    {' '}
+                    段格式看不懂，沒有匯入，麻煩自己確認：
+                  </p>
+                  <ul className="list-disc space-y-0.5 pl-4">
+                    {parseReport.failed.slice(0, 5).map(f => <li key={f}>{f}</li>)}
+                  </ul>
+                  {parseReport.failed.length > 5 && (
+                    <p className="mt-1">
+                      ……還有
+                      {parseReport.failed.length - 5}
+                      {' '}
+                      段
+                    </p>
+                  )}
+                </>
+              )}
             </div>
           )}
         </div>

@@ -94,6 +94,12 @@ export const Footer = () => {
             <Link href="/pricing">{t('pricing')}</Link>
           </li>
         )}
+        {/* 免登入靜態練習頁放在 public/practice/,不是 App Router 路由,用一般 <a> 連結、開新分頁 */}
+        <li>
+          <a href="/practice/circuit-diagram.html" target="_blank" rel="noopener noreferrer">
+            {t('practice')}
+          </a>
+        </li>
       </CenteredFooter>
     </Section>
   );
