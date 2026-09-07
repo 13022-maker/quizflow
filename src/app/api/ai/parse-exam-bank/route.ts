@@ -6,13 +6,20 @@
  * AI 完全不碰這三樣東西，只負責幫已經確定答案的題目補寫詳解——避免像一般
  * 「主題出題」那樣讓 AI 自己生成題目與答案，這裡的正解必須 100% 對應題庫
  * 本身標示的官方答案，不容許 AI 判斷或修改。
+ *
+ * PDF 模式額外做圖片擷取（pdfImageExtract.ts + pdfImageMatch.ts）：只在「同一頁
+ * 剛好 1 題疑似需要圖、剛好 1 張圖」時才自動配對上傳；配不上的題目（多張圖、
+ * 數量對不上）一律不猜，列在 parseReport.imagesNeedManualCheck 交給老師自己補，
+ * 猜錯圖片比沒有圖片更容易誤導學生。
  */
 import { auth } from '@clerk/nextjs/server';
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { type ParsedQuestion, parseExamBankText } from '@/lib/ai/examBankParser';
-import { extractPdfText } from '@/lib/ai/pdfTextExtract';
+import { extractPdfPageContent, type PageImage } from '@/lib/ai/pdfImageExtract';
+import { computePageStartOffsets, matchImagesToQuestions } from '@/lib/ai/pdfImageMatch';
 import { generateAIText } from '@/lib/ai/textModel';
 
 export const runtime = 'nodejs';
@@ -64,6 +71,31 @@ function parseExplanationResponse(raw: string, expectedCount: number): Record<nu
   return result;
 }
 
+async function uploadMatchedImages(
+  userId: string,
+  matched: Map<ParsedQuestion, PageImage>,
+): Promise<Map<ParsedQuestion, string>> {
+  const urls = new Map<ParsedQuestion, string>();
+  let n = 0;
+  for (const [question, image] of matched) {
+    n++;
+    try {
+      const pathname = `exam-bank-images/${userId}/${Date.now()}-${n}.png`;
+
+      const blob = await put(pathname, image.buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: image.contentType,
+      });
+      urls.set(question, blob.url);
+    } catch (err) {
+      // 單張圖上傳失敗不該連累整批匯入，該題就沒有圖，跟「配不上」的處理一致
+      console.warn('[parse-exam-bank] 圖片上傳失敗，該題略過圖片：', err instanceof Error ? err.message : err);
+    }
+  }
+  return urls;
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -80,6 +112,8 @@ export async function POST(request: Request) {
 
   const contentType = request.headers.get('content-type') ?? '';
   let rawText = '';
+  let pageImages: PageImage[] = [];
+  let pageStartOffsets: number[] = [];
 
   if (contentType.includes('multipart/form-data')) {
     const formData = await request.formData();
@@ -92,11 +126,14 @@ export async function POST(request: Request) {
     }
     try {
       const data = new Uint8Array(await file.arrayBuffer());
-      rawText = await extractPdfText(data);
+      const { pageTexts, images } = await extractPdfPageContent(data);
+      rawText = pageTexts.join('\n');
+      pageImages = images;
+      pageStartOffsets = computePageStartOffsets(pageTexts);
     } catch (err) {
-      console.error('[parse-exam-bank] PDF 文字擷取失敗：', err);
+      console.error('[parse-exam-bank] PDF 擷取失敗：', err);
       return NextResponse.json(
-        { error: 'PDF 文字擷取失敗，可能是掃描圖檔式 PDF（沒有可反白複製的文字層），請改用「貼上文字」模式手動貼題目' },
+        { error: 'PDF 擷取失敗，可能是掃描圖檔式 PDF（沒有可反白複製的文字層），請改用「貼上文字」模式手動貼題目' },
         { status: 400 },
       );
     }
@@ -124,6 +161,19 @@ export async function POST(request: Request) {
     );
   }
 
+  // 圖片配對：只有 PDF 模式才有 pageImages 可用，貼上文字模式這裡自然是空陣列、全部跳過
+  const imagesByPage = new Map<number, PageImage[]>();
+  for (const img of pageImages) {
+    const list = imagesByPage.get(img.pageNumber);
+    if (list) {
+      list.push(img);
+    } else {
+      imagesByPage.set(img.pageNumber, [img]);
+    }
+  }
+  const { matched, unmatchedQuestions } = matchImagesToQuestions(questions, pageStartOffsets, imagesByPage);
+  const imageUrlByQuestion = matched.size > 0 ? await uploadMatchedImages(userId, matched) : new Map<ParsedQuestion, string>();
+
   const truncated = questions.length > MAX_QUESTIONS;
   const limited = questions.slice(0, MAX_QUESTIONS);
 
@@ -147,6 +197,7 @@ export async function POST(request: Request) {
     options: q.options.map((opt, oi) => `(${letterOf(oi)})${opt}`),
     answer: letterOf(q.correctIndex),
     explanation: explanations[i] ?? '',
+    imageUrl: imageUrlByQuestion.get(q),
   }));
 
   return NextResponse.json({
@@ -157,6 +208,8 @@ export async function POST(request: Request) {
       imported: outQuestions.length,
       failed: failedSegments,
       truncated,
+      imagesMatched: imageUrlByQuestion.size,
+      imagesNeedManualCheck: unmatchedQuestions.map(q => `第 ${q.number} 題：${q.question.slice(0, 40)}`),
     },
   });
 }

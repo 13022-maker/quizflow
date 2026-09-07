@@ -23,6 +23,7 @@ type GeneratedQuestion = {
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題已生成的音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
+  imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶）
 };
 
 // 題型對應：AIQuizModal → DB enum
@@ -152,6 +153,7 @@ export async function POST(
       quizId,
       type,
       body: q.question,
+      imageUrl: q.imageUrl || null,
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
       audioUrl: q.audioUrl || null,

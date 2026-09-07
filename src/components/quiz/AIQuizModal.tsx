@@ -24,7 +24,14 @@ type Difficulty = 'easy' | 'medium' | 'hard';
 type Mode = 'text' | 'file' | 'url' | 'exambank';
 
 // 題庫匯入模式的解析結果報告（AI 只補詳解，題幹/選項/正解由 examBankParser 解析，見後端 route 註解）
-type ParseReport = { total: number; imported: number; failed: string[]; truncated: boolean };
+type ParseReport = {
+  total: number;
+  imported: number;
+  failed: string[];
+  truncated: boolean;
+  imagesMatched?: number; // PDF 模式才有：自動配對成功並上傳的圖片數
+  imagesNeedManualCheck?: string[]; // 疑似需要圖但沒能安全配對，交給老師自己附加
+};
 
 type GeneratedQuestion = {
   type: QuestionType;
@@ -35,6 +42,7 @@ type GeneratedQuestion = {
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
+  imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶，自動比對出的圖已上傳到 Blob）
 };
 
 type GeneratedResult = {
@@ -1395,8 +1403,13 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             </div>
           )}
 
-          {/* ── 題庫匯入的解析報告：有解析不出來的段落，列出來讓老師自己確認 ── */}
-          {result && parseReport && (parseReport.failed.length > 0 || parseReport.truncated) && (
+          {/* ── 題庫匯入的解析報告：有解析不出來的段落 / 圖片配對結果，列出來讓老師自己確認 ── */}
+          {result && parseReport && (
+            parseReport.failed.length > 0
+            || parseReport.truncated
+            || Boolean(parseReport.imagesMatched)
+            || Boolean(parseReport.imagesNeedManualCheck?.length)
+          ) && (
             <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700">
               {parseReport.truncated && (
                 <p className="mb-1">
@@ -1407,6 +1420,15 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   {parseReport.imported}
                   {' '}
                   題
+                </p>
+              )}
+              {Boolean(parseReport.imagesMatched) && (
+                <p className="mb-1">
+                  🖼️ 自動配對並上傳了
+                  {' '}
+                  {parseReport.imagesMatched}
+                  {' '}
+                  張圖片
                 </p>
               )}
               {parseReport.failed.length > 0 && (
@@ -1426,6 +1448,27 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       {parseReport.failed.length - 5}
                       {' '}
                       段
+                    </p>
+                  )}
+                </>
+              )}
+              {Boolean(parseReport.imagesNeedManualCheck?.length) && (
+                <>
+                  <p className="my-1 font-bold">
+                    🖼️ 有
+                    {parseReport.imagesNeedManualCheck!.length}
+                    {' '}
+                    題疑似需要圖片，但沒能自動安全配對（同頁圖片數量對不上），麻煩自己附加：
+                  </p>
+                  <ul className="list-disc space-y-0.5 pl-4">
+                    {parseReport.imagesNeedManualCheck!.slice(0, 5).map(f => <li key={f}>{f}</li>)}
+                  </ul>
+                  {parseReport.imagesNeedManualCheck!.length > 5 && (
+                    <p className="mt-1">
+                      ……還有
+                      {parseReport.imagesNeedManualCheck!.length - 5}
+                      {' '}
+                      題
                     </p>
                   )}
                 </>

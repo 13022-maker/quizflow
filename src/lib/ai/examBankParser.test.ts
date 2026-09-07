@@ -11,7 +11,7 @@ describe('parseExamBankText', () => {
 
     expect(failedSegments).toEqual([]);
     expect(questions).toHaveLength(2);
-    expect(questions[0]).toEqual({
+    expect(questions[0]).toMatchObject({
       number: 1,
       question: '下圖所示之D型正反器，Clock採何種準位觸發？',
       options: ['正電位觸發動作', '負電位觸發動作', '正緣觸發動作', '負緣觸發動作'],
@@ -28,7 +28,7 @@ describe('parseExamBankText', () => {
 
     expect(failedSegments).toEqual([]);
     expect(questions).toHaveLength(2);
-    expect(questions[0]).toEqual({
+    expect(questions[0]).toMatchObject({
       number: 1,
       question: '下列何者不是微處理機的內部基本架構？',
       options: ['控制單元', '算術邏輯單元', '輸入輸出單元', '暫存器'],
@@ -108,11 +108,21 @@ describe('parseExamBankText', () => {
     // 第 3 題(三視圖選擇題,選項本身是圖)刻意沒放進這段測試文字,只驗證純文字題能正確解析
     expect(failedSegments).toEqual([]);
     expect(questions.map(q => q.number)).toEqual([1, 2, 4, 5]);
-    expect(questions[3]).toEqual({
+    expect(questions[3]).toMatchObject({
       number: 5,
       question: '下圖 IC 符號第一支接腳位置在',
       options: ['Ａ腳', 'Ｂ腳', 'Ｃ腳', 'Ｄ腳'],
       correctIndex: 1,
     });
+  });
+
+  it('每題記錄 sourceOffset(anchor 在輸入文字裡的起始位置)，給圖片配對用', () => {
+    const text = '1. (1) 第一題？ ①甲 ②乙 ③丙 ④丁 。2. (1) 第二題？ ①甲 ②乙 ③丙 ④丁 。';
+    const { questions } = parseExamBankText(text);
+
+    expect(questions[0]!.sourceOffset).toBe(0);
+    // 第二題的 anchor「2. (1)」要出現在第一題完整結束之後
+    expect(questions[1]!.sourceOffset).toBeGreaterThan(questions[0]!.sourceOffset);
+    expect(text.slice(questions[1]!.sourceOffset, questions[1]!.sourceOffset + 6)).toBe('2. (1)');
   });
 });

@@ -16,6 +16,7 @@ export type ParsedQuestion = {
   question: string;
   options: string[]; // 固定 4 個，已去除標記符號
   correctIndex: number; // 0-based
+  sourceOffset: number; // 這題在輸入文字裡的起始字元位置（anchor 開始處），給 pdfImageMatch.ts 對應頁碼用
 };
 
 export type ParseResult = {
@@ -113,6 +114,7 @@ export function parseExamBankText(raw: string): ParseResult {
       question: parsed.stem,
       options: parsed.options,
       correctIndex: anchor.answerIdx,
+      sourceOffset: anchor.start,
     });
   });
 
