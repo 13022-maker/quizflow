@@ -114,6 +114,7 @@ export async function POST(request: Request) {
   let rawText = '';
   let pageImages: PageImage[] = [];
   let pageStartOffsets: number[] = [];
+  let requestedMaxCount: number | null = null;
 
   if (contentType.includes('multipart/form-data')) {
     const formData = await request.formData();
@@ -124,6 +125,8 @@ export async function POST(request: Request) {
     if (file.type !== 'application/pdf') {
       return NextResponse.json({ error: '目前只支援 PDF 檔案' }, { status: 400 });
     }
+    const maxCountRaw = formData.get('maxCount');
+    requestedMaxCount = typeof maxCountRaw === 'string' && maxCountRaw.trim() ? Number(maxCountRaw) : null;
     try {
       const data = new Uint8Array(await file.arrayBuffer());
       const { pageTexts, images } = await extractPdfPageContent(data);
@@ -140,6 +143,7 @@ export async function POST(request: Request) {
   } else {
     const body = await request.json().catch(() => null);
     rawText = typeof body?.text === 'string' ? body.text : '';
+    requestedMaxCount = typeof body?.maxCount === 'number' ? body.maxCount : null;
   }
 
   if (!rawText.trim()) {
@@ -174,8 +178,12 @@ export async function POST(request: Request) {
   const { matched, unmatchedQuestions } = matchImagesToQuestions(questions, pageStartOffsets, imagesByPage);
   const imageUrlByQuestion = matched.size > 0 ? await uploadMatchedImages(userId, matched) : new Map<ParsedQuestion, string>();
 
-  const truncated = questions.length > MAX_QUESTIONS;
-  const limited = questions.slice(0, MAX_QUESTIONS);
+  // 老師可以自己設更小的匯入題數上限（例如只要前 20 題），但不能超過伺服器端硬上限
+  const effectiveMax = requestedMaxCount && requestedMaxCount > 0
+    ? Math.min(requestedMaxCount, MAX_QUESTIONS)
+    : MAX_QUESTIONS;
+  const truncated = questions.length > effectiveMax;
+  const limited = questions.slice(0, effectiveMax);
 
   // AI 只負責補詳解；就算 AI 呼叫整個失敗，題目本身(題幹/選項/正解)已經解析好了，
   // 不要讓詳解生成失敗連累整個匯入流程 —— 留白讓老師自己補即可。

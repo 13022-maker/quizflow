@@ -185,6 +185,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [examBankInput, setExamBankInput] = useState<'paste' | 'pdf'>('paste');
   const [examBankText, setExamBankText] = useState('');
   const [examBankFile, setExamBankFile] = useState<File | null>(null);
+  // 最多匯入幾題；空字串 = 不限制（解析出幾題就匯入幾題，上限仍受伺服器端 60 題保護）
+  const [examBankMaxCount, setExamBankMaxCount] = useState<number | ''>('');
   const [parseReport, setParseReport] = useState<ParseReport | null>(null);
 
   // File mode
@@ -535,6 +537,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             body: (() => {
               const fd = new FormData();
               fd.append('file', examBankFile);
+              if (examBankMaxCount) {
+                fd.append('maxCount', String(examBankMaxCount));
+              }
               return fd;
             })(),
           })
@@ -542,7 +547,10 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ text: examBankText }),
+            body: JSON.stringify({
+              text: examBankText,
+              maxCount: examBankMaxCount || undefined,
+            }),
           });
         if (!res.ok) {
           let errMsg = '題庫解析失敗';
@@ -868,6 +876,25 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                       )}
                     </div>
                   )}
+
+              <div>
+                {/* eslint-disable-next-line jsx-a11y/label-has-associated-control */}
+                <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
+                  最多匯入幾題（留空 = 解析出幾題就匯入幾題，上限 60 題）
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={examBankMaxCount}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setExamBankMaxCount(v === '' ? '' : Math.max(1, Math.min(60, Number(v))));
+                  }}
+                  placeholder="例如 20（依內容出現順序取前 N 題）"
+                  className="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm placeholder:text-gray-400 focus:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-100"
+                />
+              </div>
 
               <div className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-700">
                 💡 題目、選項、正確答案完全依你貼的文字 / PDF 為準，AI 只會幫忙補寫詳解，不會更改題目或答案。
