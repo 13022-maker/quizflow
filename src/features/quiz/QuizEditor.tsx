@@ -31,6 +31,7 @@ import {
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
+import { ExportPracticePageDialog } from '@/components/quiz/ExportPracticePageDialog';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
 import ShareModal from '@/components/quiz/ShareModal';
@@ -365,6 +366,9 @@ export function QuizEditor({
 
   // 控制 QR Code Modal 顯示
   const [showQRModal, setShowQRModal] = useState(false);
+
+  // 控制「匯出成靜態練習頁」Dialog 顯示
+  const [showExportPracticeDialog, setShowExportPracticeDialog] = useState(false);
 
   // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
   // 不自動彈 ShareModal，避免打斷老師審題
@@ -791,6 +795,9 @@ export function QuizEditor({
                     📝 段考考卷（老師卷）
                   </a>
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)}>
+                  🌐 匯出成靜態練習頁
+                </DropdownMenuItem>
               </>
             )}
             {status === 'published' && (
@@ -820,6 +827,15 @@ export function QuizEditor({
           currentSlug={initialQuiz.slug}
           status={initialQuiz.status}
           onClose={() => setShowQRModal(false)}
+        />
+      )}
+
+      {/* 匯出成靜態練習頁 Dialog */}
+      {showExportPracticeDialog && (
+        <ExportPracticePageDialog
+          quizId={initialQuiz.id}
+          totalQuestions={questions.length}
+          onClose={() => setShowExportPracticeDialog(false)}
         />
       )}
 

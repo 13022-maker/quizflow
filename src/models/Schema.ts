@@ -193,6 +193,10 @@ export const questionSchema = pgTable('question', {
   correctAnswers: jsonb('correct_answers').$type<string[]>(),
   // 簡答題的參考答案 / 評分要點（老師可選填，AI 自動評分時當 reference；其他題型不用）
   referenceAnswer: text('reference_answer'),
+  // 詳解（AI 出題時若有生成就存下來；老師手動新增的題目通常是 null）。
+  // 補這欄之前，AIQuizModal 產生的 explanation 只存在匯入預覽當下，儲存進測驗後就遺失，
+  // 匯出成靜態練習頁（src/lib/exportPracticePage.ts）想帶詳解也無資料可用。
+  explanation: text('explanation'),
   points: integer('points').default(1).notNull(),
   position: integer('position').notNull(), // 排列順序
   aiHint: text('ai_hint'), // AI 助教解題提示（≤57 字，國中程度），首次查詢時 lazy 生成並快取

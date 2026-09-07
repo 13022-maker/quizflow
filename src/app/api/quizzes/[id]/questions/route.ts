@@ -157,6 +157,7 @@ export async function POST(
       audioUrl: q.audioUrl || null,
       audioDurationSec: q.audioDurationSec ?? null,
       audioTranscript: q.listeningText || null,
+      explanation: q.explanation || null,
       points: 1,
       position: nextPosition++,
     };
