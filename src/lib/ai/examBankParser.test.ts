@@ -76,6 +76,18 @@ describe('parseExamBankText', () => {
     expect(failedSegments).toHaveLength(1);
   });
 
+  it('unpdf 在 PDF 原始換行處插入的 \\n 剛好斷在中文詞中間時，選項文字要合併回去，不留空格', () => {
+    // 真實踩過的坑：官方題庫 PDF 排版把「壓縮檔案」斷行成「壓縮檔」/「案」兩行，
+    // unpdf 擷取文字層時在斷行處插入 \n，若不處理，畫面上會顯示成「壓縮檔 案」
+    const text = '45. (2) 下列何者是「WinZip」工具軟體的主要功能？ ①檔案上傳或下載 ②壓縮檔\n案或解壓縮檔案 ③聲音或影片播放軟體 ④燒錄 CD 或 DVD 。';
+    const { questions, failedSegments } = parseExamBankText(text);
+
+    expect(failedSegments).toEqual([]);
+    expect(questions[0]!.options[1]).toBe('壓縮檔案或解壓縮檔案');
+    // 中文跟英文交界的正常空格(「燒錄 CD」)要保留，不能一併被吃掉
+    expect(questions[0]!.options[3]).toBe('燒錄 CD 或 DVD');
+  });
+
   it('空字串輸入回傳空結果，不拋錯', () => {
     const { questions, failedSegments } = parseExamBankText('');
 

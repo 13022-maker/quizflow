@@ -45,13 +45,30 @@ const ANCHOR_RE = /(\d+)\.\s*[(（]\s*([1-4A-D])\s*[)）]|[(（]\s*([1-4A-D])\s*
 // 選項標記：圈選數字，或括號包住的數字/字母
 const OPTION_MARKER_RE = /[①②③④]|[(（]\s*[1-4A-D]\s*[)）]/i;
 
+// 踩過的坑：PDF 文字擷取(unpdf)會在原始文件的換行處插入 \n，如果 PDF 排版剛好把一個
+// 中文詞從中間斷行(例如「壓縮檔」跟「案」分兩行、合起來才是「壓縮檔案」)，這個 \n
+// 會卡在詞中間，畫面上就會顯示成一個不該存在的空格。中文字跟中文字之間本來就不會
+// 有空白，所以兩個中文字中間的空白/換行一律整段拿掉；其餘空白(通常是中英文交界處
+// 「燒錄 CD」這種正常空格，或英數字之間的空格)收斂成一個空格，不整段刪除。
+// CJK Unified Ideographs 範圍(U+4E00-U+9FFF)，用跳脫寫法而不是直接寫中文字元範圍，
+// 避免 eslint regexp/no-obscure-range 抱怨「範圍邊界肉眼看不出來是什麼」
+function normalizeWhitespace(s: string): string {
+  return s
+    .replace(/([\u4E00-\u9FFF])\s+(?=[\u4E00-\u9FFF])/g, '$1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function parseBody(body: string): { stem: string; options: string[] } | null {
   const parts = body.split(OPTION_MARKER_RE);
   if (parts.length !== 5) {
     return null; // 沒有剛好切出「題幹 + 4 個選項」就視為解析失敗，交回人工確認
   }
-  const stem = parts[0]!.trim().replace(/[:：]\s*$/, '');
-  const options = parts.slice(1).map(s => s.trim().replace(/^[。\s]+|[。\s]+$/g, ''));
+  const stem = normalizeWhitespace(parts[0]!).replace(/[:：]\s*$/, '');
+  // 先把開頭/結尾的「。」與空白一起清掉，再做中文斷行合併，順序不能反過來——
+  // 不然「Ｄ腳 。」會先合併成「Ｄ腳 。」(句號前的空白不在中文字之間、不會被合併)，
+  // 之後只拿掉句號卻留下句號前那個空白，變成尾端多一格的「Ｄ腳 」。
+  const options = parts.slice(1).map(s => normalizeWhitespace(s.replace(/^[。\s]+|[。\s]+$/g, '')));
   if (!stem || options.some(o => !o)) {
     return null;
   }
