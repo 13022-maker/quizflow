@@ -8,31 +8,17 @@
  * 只吃「文字型 PDF」(文字可反白複製的那種)；掃描圖檔式 PDF 沒有文字層，會回傳
  * 空字串或極少字元，呼叫端要處理「解析不到題目」的情況並提示老師改用貼上文字。
  *
- * 用 legacy build 是因為這支只在 Vercel Node runtime(伺服器端)執行，沒有瀏覽器
- * DOM/Worker 環境；client 端(AIQuizModal.tsx)另外用 build/pdf.min.mjs + Worker，
- * 兩邊用途不同、不要混用。
+ * 踩過的坑：直接用 pdfjs-dist/legacy/build/pdf.mjs 在 Vercel Node runtime 跑，
+ * 遇到某些內嵌字型（例如 Type3 字型）會在文字擷取過程中觸發
+ * 「ReferenceError: DOMMatrix is not defined」而整支 API 500——pdfjs-dist 本身
+ * 只有在偵測到 optional 的 `canvas` 套件時才會自動 polyfill DOMMatrix，沒裝就
+ * 直接炸。改用 unpdf：它內建一份專為 serverless/edge 環境編譯的 PDF.js，已經
+ * 處理好這類瀏覽器專屬全域變數的相容性問題，不用自己手動 polyfill。
  */
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { extractText, getDocumentProxy } from 'unpdf';
 
 export async function extractPdfText(data: Uint8Array): Promise<string> {
-  // Node 環境沒有 Worker/DOM，pdfjs 偵測不到就自動退回同執行緒的 fake worker，
-  // 不需要(也不能)手動指定 disableWorker 之類的選項。
-  const doc = await getDocument({
-    data,
-    isEvalSupported: false,
-    useSystemFonts: true,
-  }).promise;
-
-  const pageTexts: string[] = [];
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-
-    const content = await page.getTextContent();
-    const pageText = content.items
-      .map(item => ('str' in item ? item.str : ''))
-      .join('');
-    pageTexts.push(pageText);
-  }
-
-  return pageTexts.join('\n');
+  const doc = await getDocumentProxy(data);
+  const { text } = await extractText(doc, { mergePages: true });
+  return text;
 }
