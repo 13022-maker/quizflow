@@ -536,7 +536,7 @@ export function AdaptiveLearnClient({
               )}
               {!feedback && hintsUsed > 0 && (
                 <p className="mt-2 text-xs text-muted-foreground">
-                  （MVP 示意：提示內容之後由正式題庫提供；使用提示會降低本題的精熟度收益）
+                  （使用提示會降低本題的精熟度收益）
                 </p>
               )}
 

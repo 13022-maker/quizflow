@@ -16,6 +16,13 @@ type VocabCard = {
   phonetic: string;
 };
 
+// 單字清單模式的可點擊範例標籤：新手不知道該填什麼時，點一下直接帶入
+const EXAMPLE_WORDS = [
+  { emoji: '🍎', word: 'apple' },
+  { emoji: '🍌', word: 'banana' },
+  { emoji: '🍓', word: 'strawberry' },
+];
+
 function SpeakerButton({ text }: { text: string }) {
   const [loading, setLoading] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -131,6 +138,19 @@ export default function NewVocabPage() {
   };
 
   const card = cards[previewIndex];
+  // 生成按鈕動態文案用：算目前輸入了幾個非空白單字（一行一個）
+  const wordCount = words.split('\n').map(l => l.trim()).filter(Boolean).length;
+
+  // 點範例標籤 → 直接加進 textarea（已存在就不重複加）；「一鍵填入範例」= 依序點完全部三個
+  const addExampleWord = (word: string) => {
+    setWords((prev) => {
+      const lines = prev.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.includes(word)) {
+        return prev;
+      }
+      return [...lines, word].join('\n');
+    });
+  };
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
@@ -213,12 +233,34 @@ export default function NewVocabPage() {
                 className="mt-1 w-full resize-none rounded-xl border px-4 py-3 text-sm placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400"
               />
             </label>
+            {/* 不知道打什麼時可點範例標籤直接帶入，或一鍵全部填入 */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {EXAMPLE_WORDS.map(w => (
+                <button
+                  key={w.word}
+                  type="button"
+                  onClick={() => addExampleWord(w.word)}
+                  className="rounded-full border border-dashed px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:border-blue-400 hover:text-blue-600"
+                >
+                  {w.emoji}
+                  {' '}
+                  {w.word}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => EXAMPLE_WORDS.forEach(w => addExampleWord(w.word))}
+                className="rounded-full px-2.5 py-1 text-xs font-medium text-blue-600 transition-colors hover:bg-blue-50"
+              >
+                一鍵填入範例
+              </button>
+            </div>
           </div>
 
           {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
 
           <Button onClick={handleGenerate} disabled={loading || !words.trim()} className="mb-6 w-full">
-            {loading ? '生成中…' : '✨ AI 生成卡片'}
+            {loading ? '生成中…' : wordCount > 0 ? `✨ 生成 ${wordCount} 張卡片` : '✨ AI 生成卡片'}
           </Button>
         </>
       )}
