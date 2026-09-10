@@ -55,7 +55,7 @@ export default async function AdaptiveListPage() {
     <div className="mx-auto max-w-4xl px-4 py-8">
       <TitleBar
         title="🎯 適性學習"
-        description="BKT 動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。"
+        description="動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。"
         action={(
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Link
