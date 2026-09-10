@@ -20,6 +20,7 @@ import { AutoRefresh } from '../AutoRefresh';
 import { CopyLinkButton } from '../CopyLinkButton';
 import { AdaptiveExportButtons } from './AdaptiveExportButtons';
 import { DeletePracticeButton } from './DeleteButton';
+import { GenerateWeakpointFlashcardsButton } from './GenerateWeakpointFlashcardsButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,10 +34,28 @@ const EVENT_META: Record<string, { icon: string; label: string }> = {
 };
 
 const STATUS_META = {
-  mastered: { label: '✅ 已精熟', bar: 'bg-green-500' },
-  learning: { label: '📖 學習中', bar: 'bg-blue-500' },
-  locked: { label: '🔒 鎖定中', bar: 'bg-gray-400' },
+  mastered: { label: '✅ 已精熟' },
+  learning: { label: '📖 學習中' },
+  locked: { label: '🔒 鎖定中' },
 } as const;
+
+/**
+ * 依掌握率分級上色（熱力圖概念：綠=已掌握／黃=不穩定／紅=需加強），讓老師一眼看出誰卡在哪。
+ * 鎖定中的知識點還沒派過題，mastery 只是引擎初始值、不代表學生真的卡住，維持中性灰不分級。
+ */
+function masteryColorMeta(mastery: number, status: keyof typeof STATUS_META) {
+  if (status === 'locked') {
+    return { bar: 'bg-gray-300' };
+  }
+  const pct = mastery * 100;
+  if (pct >= 80) {
+    return { bar: 'bg-green-500' };
+  }
+  if (pct >= 50) {
+    return { bar: 'bg-amber-400' };
+  }
+  return { bar: 'bg-red-500' };
+}
 
 /**
  * 適性練習 — 班級儀表板
@@ -98,6 +117,26 @@ export default async function AdaptiveBoardPage({
 
   // 知識點欄位以第一位學生的診斷排序為準（引擎回傳已按學習路徑排序）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
+
+  // 全班弱點知識點：依 knowledgeId 彙總所有「已作答過、非鎖定中」的掌握率，平均 <50% 才算弱點
+  // （鎖定中代表還沒派過題，mastery 只是初始值，不能算弱點，跟 masteryColorMeta 的判斷一致）
+  const weakConceptStats = new Map<string, { name: string; masteries: number[] }>();
+  for (const s of students) {
+    for (const d of s.diagnosis) {
+      if (d.status === 'locked' || d.attempts === 0) {
+        continue;
+      }
+      const entry = weakConceptStats.get(d.knowledgeId) ?? { name: d.name, masteries: [] };
+      entry.masteries.push(d.mastery);
+      weakConceptStats.set(d.knowledgeId, entry);
+    }
+  }
+  const weakConcepts = [...weakConceptStats.values()]
+    .map(({ name, masteries }) => ({
+      name,
+      masteryPct: Math.round((masteries.reduce((sum, m) => sum + m, 0) / masteries.length) * 100),
+    }))
+    .filter(c => c.masteryPct < 50);
 
   // 每位學生先算好學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100
   // 鎖定中的知識點從未派過題、mastery 永遠停在初始值，排除在外才能反映個別學生的實際差異
@@ -180,6 +219,7 @@ export default async function AdaptiveBoardPage({
           {practice.title}
         </h1>
         <div className="flex items-center gap-2">
+          <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} weakConcepts={weakConcepts} />
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
           <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />
           <DeletePracticeButton id={practice.id} />
@@ -250,8 +290,16 @@ export default async function AdaptiveBoardPage({
 
       {students.length === 0
         ? (
-            <div className="rounded-lg border p-6 text-sm text-muted-foreground">
-              還沒有學生加入——把上面的學生連結發給班上，輸入姓名＋學號即可開始。
+            // 空狀態：老師剛建好練習、還沒人加入時，讓他先看懂這頁之後會長怎樣，並把連結遞給他
+            <div className="rounded-xl border-2 border-dashed py-12 text-center">
+              <div className="mb-3 text-4xl">👥</div>
+              <p className="mb-1.5 text-sm font-semibold">還沒有學生加入</p>
+              <p className="mx-auto mb-5 max-w-sm text-sm text-muted-foreground">
+                學生開始作答後，這裡會自動顯示每個人對各知識點的掌握程度（✅已精熟／📖學習中／🔒鎖定中），並記錄學習日誌時間軸。
+              </p>
+              <div className="flex justify-center">
+                <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
+              </div>
             </div>
           )
         : visibleStudents.length === 0
@@ -308,6 +356,7 @@ export default async function AdaptiveBoardPage({
                           </td>
                           {s.diagnosis.map((d) => {
                             const meta = STATUS_META[d.status];
+                            const colorMeta = masteryColorMeta(d.mastery, d.status);
                             return (
                               <td key={d.knowledgeId} className="px-4 py-3">
                                 <div className="text-xs">
@@ -318,7 +367,7 @@ export default async function AdaptiveBoardPage({
                                 </div>
                                 <div className="my-1.5 h-1.5 w-24 overflow-hidden rounded bg-muted">
                                   <div
-                                    className={`h-full ${meta.bar}`}
+                                    className={`h-full ${colorMeta.bar}`}
                                     style={{ width: `${Math.round(d.mastery * 100)}%` }}
                                   />
                                 </div>
