@@ -95,6 +95,7 @@ export async function GET(
       groupLabel: quiz.title,
       question: q.body,
       image: q.imageUrl ? `<img src="${q.imageUrl.replace(/"/g, '&quot;')}">` : false,
+      diagramSvg: q.diagramSvg || undefined,
       options: options.map(o => o.text),
       correctIndex,
       explanation: q.explanation ?? undefined,

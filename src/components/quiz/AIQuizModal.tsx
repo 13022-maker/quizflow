@@ -43,6 +43,7 @@ type GeneratedQuestion = {
   audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
   imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶，自動比對出的圖已上傳到 Blob）
+  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有;由 generate-questions/generate-from-file 附上)
 };
 
 type GeneratedResult = {

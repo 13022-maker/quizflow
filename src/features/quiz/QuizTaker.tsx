@@ -163,6 +163,15 @@ function QuestionItem({
         </div>
       )}
 
+      {/* 題目圖解 SVG —— 這裡放的是 server 端 renderDiagramSvg 產生、
+          已過 escapeSvgText + assertSvgSafe 的字串,禁止改成顯示使用者原始輸入 */}
+      {question.diagramSvg && (
+        <div
+          className="mb-4 flex items-center justify-center overflow-hidden rounded-lg border border-[#e0e0e0] bg-white p-3"
+          dangerouslySetInnerHTML={{ __html: question.diagramSvg }}
+        />
+      )}
+
       {/* 聽力題音檔播放器 */}
       {question.audioUrl && (
         <div className="mb-4 rounded-lg border bg-muted/30 p-3">

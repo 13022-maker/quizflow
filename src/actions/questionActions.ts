@@ -5,6 +5,7 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
+import { sanitizeStoredDiagramSvg } from '@/lib/ai/diagramSvg';
 import { extractClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
@@ -26,6 +27,7 @@ const QuestionInputSchema = z.object({
   type: z.enum(['single_choice', 'multiple_choice', 'true_false', 'short_answer', 'ranking', 'listening', 'cloze']),
   body: z.string().min(1, '請輸入題目內���'),
   imageUrl: z.string().url().optional().or(z.literal('')), // 題目圖片網址
+  diagramSvg: z.string().optional(), // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
   audioUrl: z.string().url().optional().or(z.literal('')), // 聽力題音檔網��
   audioDurationSec: z.number().int().nonnegative().optional(), // 聽力題音檔秒數（前端探測後帶入）
   audioTranscript: z.string().optional(), // 音檔逐字稿
@@ -77,6 +79,7 @@ export async function createQuestion(quizId: number, data: QuestionInput) {
     type: parsed.data.type,
     body: parsed.data.body,
     imageUrl: parsed.data.imageUrl || null,
+    diagramSvg: sanitizeStoredDiagramSvg(parsed.data.diagramSvg),
     audioUrl: parsed.data.audioUrl || null,
     audioDurationSec: parsed.data.audioDurationSec ?? null,
     audioTranscript: parsed.data.audioTranscript || null,
@@ -113,6 +116,10 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       type: parsed.data.type,
       body: parsed.data.body,
       imageUrl: parsed.data.imageUrl || null,
+      // 現有編輯 UI(手動編輯題目表單)從未帶入 diagramSvg 欄位,若無條件覆寫成
+      // parsed.data.diagramSvg || null,只要老師手動編輯一次 AI 出題產生的題目,
+      // 圖解就會被無聲洗掉。改成只有呼叫端真的帶了這個欄位才更新該欄位。
+      ...(parsed.data.diagramSvg !== undefined && { diagramSvg: sanitizeStoredDiagramSvg(parsed.data.diagramSvg) }),
       audioUrl: parsed.data.audioUrl || null,
       audioDurationSec: parsed.data.audioDurationSec ?? null,
       audioTranscript: parsed.data.audioTranscript || null,

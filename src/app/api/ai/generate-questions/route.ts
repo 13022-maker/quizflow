@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -234,6 +235,17 @@ export async function POST(request: Request) {
     ? `\n${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（mc）'}的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`
     : '';
 
+  // 圖解規則:只套用到 mc/tf/fill 題型,4 種範本形狀由 code 端 renderDiagramSvg 鎖死,
+  // AI 只出結構化資料,不出 SVG markup(見 src/lib/ai/diagramSvg.ts)
+  const diagramNote = `
+
+若某題(限選擇題 mc、是非題 tf、填空題 fill)的內容適合用圖表輔助理解（流程步驟、兩者比較、時間先後、概念之間的關係），在該題 JSON 加一個 "diagram" 欄位，格式為以下 4 種之一（不適合就完全不要加這個欄位，不是每題都需要圖，大部分題目不需要）：
+- 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）
+- 比較：{"type":"compare","leftTitle":"...","leftPoints":["..."],"rightTitle":"...","rightPoints":["..."]}（每欄 1-5 點）
+- 時間軸：{"type":"timeline","events":[{"label":"...","note":"..."}]}（2-6 個事件，note 可省略）
+- 概念關係：{"type":"concept","nodes":["A","B",...],"edges":[{"from":"A","to":"B","label":"..."}]}（2-6 節點，最多 8 條關係，label 可省略）
+（每個文字欄位——步驟、標題、要點、標籤、節點名稱——請控制在 8 個字以內，避免版面擠爆或文字重疊）`;
+
   const prompt = `${frameworkPrefix}你是台灣高中的出題專家，請根據以下主題或課文內容出題。
 
 主題／內容：
@@ -259,7 +271,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${diagramNote}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
@@ -372,6 +384,11 @@ ${questionsExample}
         q.type = 'listening';
       }
     }
+  }
+
+  // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
+  if (result.questions) {
+    attachDiagramSvgs(result.questions);
   }
 
   return NextResponse.json(result);

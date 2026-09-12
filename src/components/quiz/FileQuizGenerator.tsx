@@ -10,6 +10,7 @@ type GeneratedQuestion = {
   options?: string[];
   answer: string;
   explanation?: string;
+  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有;由 generate-questions/generate-from-file 附上)
 };
 
 type GeneratedResult = {

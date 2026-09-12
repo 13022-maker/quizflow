@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { sanitizeStoredDiagramSvg } from '@/lib/ai/diagramSvg';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { extractClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
@@ -24,6 +25,7 @@ type GeneratedQuestion = {
   audioUrl?: string; // 聽力題已生成的音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
   imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶）
+  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
 };
 
 // 題型對應：AIQuizModal → DB enum
@@ -154,6 +156,7 @@ export async function POST(
       type,
       body: q.question,
       imageUrl: q.imageUrl || null,
+      diagramSvg: sanitizeStoredDiagramSvg(q.diagramSvg),
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
       audioUrl: q.audioUrl || null,
