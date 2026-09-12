@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertSvgSafe, escapeSvgText } from './diagramSvg';
+import { assertSvgSafe, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
 
 describe('escapeSvgText', () => {
   it('把 < > & " \' 都轉成 XML entity', () => {
@@ -41,5 +41,124 @@ describe('assertSvgSafe', () => {
     const svg = '<svg><a href="javascript:alert(1)">x</a></svg>';
 
     expect(() => assertSvgSafe(svg)).toThrow();
+  });
+});
+
+describe('renderDiagramSvg - flow', () => {
+  it('產生含 3 個步驟文字的 SVG', () => {
+    const svg = renderDiagramSvg({ type: 'flow', steps: ['吸收陽光', '產生葡萄糖', '釋放氧氣'] });
+
+    expect(svg).toContain('<svg');
+    expect(svg).toContain('吸收陽光');
+    expect(svg).toContain('產生葡萄糖');
+    expect(svg).toContain('釋放氧氣');
+  });
+
+  it('步驟數少於 2 或多於 6 會丟 DiagramTooComplexError', () => {
+    expect(() => renderDiagramSvg({ type: 'flow', steps: ['只有一步'] })).toThrow(DiagramTooComplexError);
+
+    expect(() => renderDiagramSvg({
+      type: 'flow',
+      steps: ['1', '2', '3', '4', '5', '6', '7'],
+    })).toThrow(DiagramTooComplexError);
+  });
+
+  it('步驟文字含惡意內容時,輸出裡的 < > 已被 escape,不會出現可執行的 <script>', () => {
+    const svg = renderDiagramSvg({
+      type: 'flow',
+      steps: ['正常步驟', '"><script>alert(1)</script>'],
+    });
+
+    expect(svg).not.toContain('<script>');
+    expect(svg).toContain('&lt;script&gt;');
+  });
+});
+
+describe('renderDiagramSvg - compare', () => {
+  it('產生含左右兩欄標題與要點的 SVG', () => {
+    const svg = renderDiagramSvg({
+      type: 'compare',
+      leftTitle: '光合作用',
+      leftPoints: ['吸收 CO2', '釋放 O2'],
+      rightTitle: '呼吸作用',
+      rightPoints: ['吸收 O2', '釋放 CO2'],
+    });
+
+    expect(svg).toContain('光合作用');
+    expect(svg).toContain('呼吸作用');
+    expect(svg).toContain('吸收 CO2');
+  });
+
+  it('每欄點數超過 5 會丟 DiagramTooComplexError', () => {
+    expect(() => renderDiagramSvg({
+      type: 'compare',
+      leftTitle: 'A',
+      leftPoints: ['1', '2', '3', '4', '5', '6'],
+      rightTitle: 'B',
+      rightPoints: ['1'],
+    })).toThrow(DiagramTooComplexError);
+  });
+});
+
+describe('renderDiagramSvg - timeline', () => {
+  it('產生含事件標籤與備註的 SVG', () => {
+    const svg = renderDiagramSvg({
+      type: 'timeline',
+      events: [
+        { label: '文藝復興' },
+        { label: '工業革命', note: '18 世紀' },
+      ],
+    });
+
+    expect(svg).toContain('文藝復興');
+    expect(svg).toContain('工業革命');
+    expect(svg).toContain('18 世紀');
+  });
+
+  it('事件數少於 2 或多於 6 會丟 DiagramTooComplexError', () => {
+    expect(() => renderDiagramSvg({ type: 'timeline', events: [{ label: '只有一個' }] }))
+      .toThrow(DiagramTooComplexError);
+  });
+});
+
+describe('renderDiagramSvg - concept', () => {
+  it('產生含節點與關係標籤的 SVG', () => {
+    const svg = renderDiagramSvg({
+      type: 'concept',
+      nodes: ['光合作用', '葡萄糖', '氧氣'],
+      edges: [
+        { from: '光合作用', to: '葡萄糖', label: '產生' },
+        { from: '光合作用', to: '氧氣', label: '釋放' },
+      ],
+    });
+
+    expect(svg).toContain('光合作用');
+    expect(svg).toContain('葡萄糖');
+    expect(svg).toContain('產生');
+  });
+
+  it('節點數超過 6 或關係數超過 8 會丟 DiagramTooComplexError', () => {
+    expect(() => renderDiagramSvg({
+      type: 'concept',
+      nodes: ['1', '2', '3', '4', '5', '6', '7'],
+      edges: [],
+    })).toThrow(DiagramTooComplexError);
+  });
+
+  it('edge 參照到不存在的節點會丟 DiagramTooComplexError', () => {
+    expect(() => renderDiagramSvg({
+      type: 'concept',
+      nodes: ['A', 'B'],
+      edges: [{ from: 'A', to: '不存在的節點' }],
+    })).toThrow(DiagramTooComplexError);
+  });
+});
+
+describe('renderDiagramSvg - 輸出一定通過 assertSvgSafe', () => {
+  it.each([
+    { type: 'flow' as const, steps: ['a', 'b'] },
+    { type: 'timeline' as const, events: [{ label: 'a' }, { label: 'b' }] },
+  ])('$type 型別產生的 SVG 不會被 assertSvgSafe 擋下', (data) => {
+    expect(() => assertSvgSafe(renderDiagramSvg(data))).not.toThrow();
   });
 });
