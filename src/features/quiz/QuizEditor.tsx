@@ -63,6 +63,7 @@ type FileGeneratedQuestion = {
   options?: string[];
   answer: string;
   explanation?: string;
+  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
 };
 
 // AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
@@ -76,6 +77,7 @@ type AIGeneratedQuestion = {
   listeningText?: string; // 聽力題口語化文字
   audioUrl?: string; // 聽力題 TTS 音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
+  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
 };
 
 // 匯入中的 pending 題目（灰階 preview 用，API 未完成前暫代）
@@ -532,6 +534,7 @@ export function QuizEditor({
           body: q.question,
           options,
           correctAnswers: matched ? [matched.id] : undefined,
+          diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });
       } else if (q.type === 'tf') {
@@ -546,6 +549,7 @@ export function QuizEditor({
             { id: 'tf-false', text: '錯誤' },
           ],
           correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
+          diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });
       } else {
@@ -554,6 +558,7 @@ export function QuizEditor({
           type,
           body: q.question,
           correctAnswers: q.answer ? [q.answer] : undefined,
+          diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });
       }
