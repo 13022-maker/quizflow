@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { assertSvgSafe, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
+import { assertSvgSafe, attachDiagramSvgs, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
 
 describe('escapeSvgText', () => {
   it('把 < > & " \' 都轉成 XML entity', () => {
@@ -160,5 +160,52 @@ describe('renderDiagramSvg - 輸出一定通過 assertSvgSafe', () => {
     { type: 'timeline' as const, events: [{ label: 'a' }, { label: 'b' }] },
   ])('$type 型別產生的 SVG 不會被 assertSvgSafe 擋下', (data) => {
     expect(() => assertSvgSafe(renderDiagramSvg(data))).not.toThrow();
+  });
+});
+
+// attachDiagramSvgs 會 mutate 傳入陣列(拿掉 diagram、加上 diagramSvg),
+// 測試用的陣列型別要跟函式簽章一致,不然 TS 會用字面值型別推斷,讀不到 mutate 後新增的欄位
+type TestQuestion = { type: string; diagram?: unknown; diagramSvg?: string };
+
+describe('attachDiagramSvgs', () => {
+  it('mc 題型帶合法 diagram → 附上 diagramSvg,拿掉 diagram', () => {
+    const questions: TestQuestion[] = [
+      { type: 'mc', diagram: { type: 'flow', steps: ['A', 'B'] } },
+    ];
+    attachDiagramSvgs(questions);
+
+    expect(questions[0]!.diagramSvg).toContain('<svg');
+    expect(questions[0]!.diagram).toBeUndefined();
+  });
+
+  it('short 題型即使帶 diagram 也不附圖(不在適用題型內)', () => {
+    const questions: TestQuestion[] = [
+      { type: 'short', diagram: { type: 'flow', steps: ['A', 'B'] } },
+    ];
+    attachDiagramSvgs(questions);
+
+    expect(questions[0]!.diagramSvg).toBeUndefined();
+    expect(questions[0]!.diagram).toBeUndefined();
+  });
+
+  it('diagram 資料超出範本上限 → fail-open,不附圖也不拋出', () => {
+    // 預期會觸發 console.warn(fail-open 的提示訊息),故意 mock 掉避免測試環境的
+    // console.warn 攔截器(vitest-fail-on-console)誤判成未預期的錯誤
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const questions: TestQuestion[] = [
+      { type: 'mc', diagram: { type: 'flow', steps: ['只有一步'] } },
+    ];
+
+    expect(() => attachDiagramSvgs(questions)).not.toThrow();
+    expect(questions[0]!.diagramSvg).toBeUndefined();
+
+    warnSpy.mockRestore();
+  });
+
+  it('沒有 diagram 欄位的題目不受影響', () => {
+    const questions: TestQuestion[] = [{ type: 'mc' }];
+    attachDiagramSvgs(questions);
+
+    expect(questions[0]!.diagramSvg).toBeUndefined();
   });
 });

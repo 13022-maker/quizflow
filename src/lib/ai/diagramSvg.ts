@@ -237,3 +237,32 @@ export function renderDiagramSvg(data: DiagramData): string {
   assertSvgSafe(svg);
   return svg;
 }
+
+// mc(選擇題)、tf(是非題)、fill(填空題)才可能附圖,對應兩條出題路由的 type code
+const DIAGRAM_ELIGIBLE_TYPES = new Set(['mc', 'tf', 'fill']);
+
+/**
+ * 兩條出題路由(generate-questions / generate-from-file)共用:
+ * 把 AI 回傳的 result.questions 裡帶 "diagram" 欄位的題目轉成 diagramSvg 字串,
+ * mutate 傳入的陣列。失敗(超出範本上限/型別不符/安全檢查未過)一律 fail-open:
+ * 該題單純不附圖,不拋出、不影響其他題目。
+ */
+export function attachDiagramSvgs(
+  questions: Array<{ type: string; diagram?: unknown; diagramSvg?: string }>,
+): void {
+  for (const q of questions) {
+    if (!q.diagram || !DIAGRAM_ELIGIBLE_TYPES.has(q.type)) {
+      delete q.diagram;
+      continue;
+    }
+    try {
+      q.diagramSvg = renderDiagramSvg(q.diagram as DiagramData);
+    } catch (err) {
+      console.warn(
+        '[diagramSvg] 圖解生成失敗,該題不附圖:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+    delete q.diagram;
+  }
+}
