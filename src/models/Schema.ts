@@ -186,6 +186,7 @@ export const questionSchema = pgTable('question', {
   // 任何會讓學生／AI／匯出文件看到 body 的地方，都必須先過 stripClozeMarkers()，不能原樣輸出
   body: text('body').notNull(),
   imageUrl: text('image_url'), // 題目圖片網址
+  diagramSvg: text('diagram_svg'), // AI 自動生成的圖解 SVG(4 種範本之一:流程/比較/時間軸/概念關係;無則 null)
   audioUrl: text('audio_url'), // 聽力題音檔網址（Vercel Blob）
   audioDurationSec: integer('audio_duration_sec'), // 音檔秒數，上傳/生成時前端偵測寫入，nullable（Live Mode 用來延長作答時間）
   audioTranscript: text('audio_transcript'), // 音檔逐字稿（老師可選填，供 AI 出題 / 輔助）
