@@ -72,4 +72,27 @@ describe('buildPracticePageHtml', () => {
     // render 邏輯要用 q.explanation ? ... : '' 的寫法防呆，不是直接假設一定有字串
     expect(html).toContain('q.explanation?');
   });
+
+  it('題目若有 diagramSvg,會內嵌進 QUESTIONS 資料,且畫面渲染邏輯有處理這個欄位', () => {
+    const html = buildPracticePageHtml({
+      title: '測試',
+      kick: 'k',
+      noteHtml: 'n',
+      questions: [
+        {
+          groupLabel: 'g',
+          question: '流程圖題',
+          diagramSvg: '<svg viewBox="0 0 100 50"><text x="10" y="20">A</text></svg>',
+          options: ['a', 'b'],
+          correctIndex: 0,
+        },
+      ],
+    });
+
+    // JSON 裡的 "<" 全部跳脫成 <(既有機制,見 toEmbeddableJson),
+    // 所以檢查跳脫後的字樣,不是原始 "<svg>"
+    expect(html).toContain('"diagramSvg":"\\u003csvg');
+    // 渲染邏輯要處理這個新欄位
+    expect(html).toContain('function diagramHtml');
+  });
 });

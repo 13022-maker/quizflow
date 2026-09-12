@@ -17,6 +17,7 @@ export type PracticePageQuestion = {
   groupLabel: string;
   question: string;
   image?: string | false; // '<img src="...">' 字串,或 false 表示無圖
+  diagramSvg?: string; // AI 出題附的圖解 SVG(完整 <svg>...</svg> 字串,無則不填)
   options: PracticePageOption[];
   correctIndex: number;
   explanation?: string; // 目前 QuizFlow 題目資料庫不存詳解，通常是空字串
@@ -208,6 +209,11 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     return '<div class="qimg">'+q.image+'</div>';
   }
 
+  function diagramHtml(q){
+    if(!q.diagramSvg) return ''; /* 沒有圖解就不顯示 */
+    return '<div class="qimg">'+q.diagramSvg+'</div>';
+  }
+
   /* 選項可以是純文字字串,也可以是 {img,alt} 圖片選項 */
   function optionContent(opt){
     if(opt && typeof opt==='object'){
@@ -224,7 +230,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     var q=QUESTIONS[cur];
     var picked=answered[cur];
     var isAnswered=picked!==-1;
-    var imgHtml=imageHtml(q);
+    var imgHtml=imageHtml(q)+diagramHtml(q);
     var optsHtml=q.options.map(function(opt,i){
       var cls='opt';
       if(isAnswered){
