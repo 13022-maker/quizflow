@@ -52,10 +52,10 @@ Run: `npm run db:generate`
 - 只保留 `ALTER TABLE "question" ADD COLUMN "diagram_svg" text;` 這一條（加上 `--> statement-breakpoint`）
 - 若檔案裡出現任何跟這次改動無關的 `CREATE TABLE` / `ALTER TABLE`（已知的 migration snapshot 脫鉤問題），手動刪除，只留 diagram_svg 那一條
 
-- [ ] **Step 3: 型別檢查**
+- [ ] **Step 3: 全項驗證**
 
-Run: `npm run check-types`
-Expected: 0 errors
+Run: `npm run build && npm run check-types && npm run lint && npm run test`
+Expected: 0 failures（貼出完整輸出）
 
 - [ ] **Step 4: Commit**
 
@@ -183,7 +183,12 @@ export function assertSvgSafe(svg: string): void {
 Run: `npx vitest run src/lib/ai/diagramSvg.test.ts`
 Expected: PASS（8 個測試）
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: 全項驗證**
+
+Run: `npm run build && npm run check-types && npm run lint && npm run test`
+Expected: 0 failures（貼出完整輸出）
+
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/lib/ai/diagramSvg.ts src/lib/ai/diagramSvg.test.ts
@@ -610,7 +615,19 @@ export function attachDiagramSvgs(
 
 - [ ] **Step 2: 寫測試**
 
-在 `src/lib/ai/diagramSvg.test.ts` 加入（import 加上 `attachDiagramSvgs`）：
+在 `src/lib/ai/diagramSvg.test.ts` 頂端，把 Task 3 留下的：
+
+```ts
+import { assertSvgSafe, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
+```
+
+改成：
+
+```ts
+import { assertSvgSafe, attachDiagramSvgs, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
+```
+
+然後加入：
 
 ```ts
 describe('attachDiagramSvgs', () => {
