@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { assertSvgSafe, attachDiagramSvgs, DiagramTooComplexError, escapeSvgText, renderDiagramSvg } from './diagramSvg';
+import { assertSvgSafe, attachDiagramSvgs, DiagramTooComplexError, escapeSvgText, renderDiagramSvg, sanitizeStoredDiagramSvg } from './diagramSvg';
 
 describe('escapeSvgText', () => {
   it('把 < > & " \' 都轉成 XML entity', () => {
@@ -207,5 +207,47 @@ describe('attachDiagramSvgs', () => {
     attachDiagramSvgs(questions);
 
     expect(questions[0]!.diagramSvg).toBeUndefined();
+  });
+
+  it('傳入非陣列(物件)不會 throw,也不做任何處理', () => {
+    // AI 回傳的 JSON 形狀跑掉時(regex 抽取失敗等)questions 可能不是陣列,
+    // 這裡模擬呼叫端誤傳的情況,確保 fail-open 不炸整批出題
+    const notAnArray = { type: 'mc', diagram: { type: 'flow', steps: ['A', 'B'] } };
+
+    expect(() => attachDiagramSvgs(notAnArray as unknown as TestQuestion[])).not.toThrow();
+  });
+
+  it('傳入非陣列(字串)不會 throw', () => {
+    expect(() => attachDiagramSvgs('not an array' as unknown as TestQuestion[])).not.toThrow();
+  });
+});
+
+describe('sanitizeStoredDiagramSvg', () => {
+  it('合法的 <svg> 字串原樣回傳', () => {
+    const svg = '<svg viewBox="0 0 10 10"><text x="1" y="1">安全</text></svg>';
+
+    expect(sanitizeStoredDiagramSvg(svg)).toBe(svg);
+  });
+
+  it('null / undefined / 空字串都回傳 null', () => {
+    expect(sanitizeStoredDiagramSvg(null)).toBeNull();
+    expect(sanitizeStoredDiagramSvg(undefined)).toBeNull();
+    expect(sanitizeStoredDiagramSvg('')).toBeNull();
+  });
+
+  it('不是以 <svg 開頭的字串回傳 null', () => {
+    expect(sanitizeStoredDiagramSvg('<div>不是 svg</div>')).toBeNull();
+  });
+
+  it('超過 20000 字元回傳 null', () => {
+    const tooLong = `<svg>${'x'.repeat(20_000)}</svg>`;
+
+    expect(sanitizeStoredDiagramSvg(tooLong)).toBeNull();
+  });
+
+  it('未通過 assertSvgSafe(含 <script)的字串回傳 null', () => {
+    const malicious = '<svg><script>alert(1)</script></svg>';
+
+    expect(sanitizeStoredDiagramSvg(malicious)).toBeNull();
   });
 });

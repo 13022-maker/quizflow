@@ -40,6 +40,28 @@ export function assertSvgSafe(svg: string): void {
   }
 }
 
+const MAX_DIAGRAM_SVG_LENGTH = 20_000;
+
+/**
+ * 存檔前的第二道信任邊界檢查:diagramSvg 會先回到瀏覽器再由使用者送回 server,
+ * 不能只信任 AI 生成當下跑過的 assertSvgSafe,存檔前一定要再驗一次。
+ * 驗證失敗一律回傳 null(fail-open,不擋整筆題目儲存,只是不存這張圖)。
+ */
+export function sanitizeStoredDiagramSvg(svg: string | null | undefined): string | null {
+  if (!svg) {
+    return null;
+  }
+  if (svg.length > MAX_DIAGRAM_SVG_LENGTH || !svg.startsWith('<svg')) {
+    return null;
+  }
+  try {
+    assertSvgSafe(svg);
+    return svg;
+  } catch {
+    return null;
+  }
+}
+
 export type FlowDiagram = { type: 'flow'; steps: string[] };
 export type CompareDiagram = {
   type: 'compare';
@@ -250,6 +272,9 @@ const DIAGRAM_ELIGIBLE_TYPES = new Set(['mc', 'tf', 'fill']);
 export function attachDiagramSvgs(
   questions: Array<{ type: string; diagram?: unknown; diagramSvg?: string }>,
 ): void {
+  if (!Array.isArray(questions)) {
+    return;
+  }
   for (const q of questions) {
     if (!q.diagram || !DIAGRAM_ELIGIBLE_TYPES.has(q.type)) {
       delete q.diagram;

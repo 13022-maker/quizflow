@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
+import { sanitizeStoredDiagramSvg } from '@/lib/ai/diagramSvg';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { extractClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
@@ -155,7 +156,7 @@ export async function POST(
       type,
       body: q.question,
       imageUrl: q.imageUrl || null,
-      diagramSvg: q.diagramSvg || null,
+      diagramSvg: sanitizeStoredDiagramSvg(q.diagramSvg),
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
       audioUrl: q.audioUrl || null,

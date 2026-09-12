@@ -243,7 +243,8 @@ export async function POST(request: Request) {
 - 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）
 - 比較：{"type":"compare","leftTitle":"...","leftPoints":["..."],"rightTitle":"...","rightPoints":["..."]}（每欄 1-5 點）
 - 時間軸：{"type":"timeline","events":[{"label":"...","note":"..."}]}（2-6 個事件，note 可省略）
-- 概念關係：{"type":"concept","nodes":["A","B",...],"edges":[{"from":"A","to":"B","label":"..."}]}（2-6 節點，最多 8 條關係，label 可省略）`;
+- 概念關係：{"type":"concept","nodes":["A","B",...],"edges":[{"from":"A","to":"B","label":"..."}]}（2-6 節點，最多 8 條關係，label 可省略）
+（每個文字欄位——步驟、標題、要點、標籤、節點名稱——請控制在 8 個字以內，避免版面擠爆或文字重疊）`;
 
   const prompt = `${frameworkPrefix}你是台灣高中的出題專家，請根據以下主題或課文內容出題。
 
