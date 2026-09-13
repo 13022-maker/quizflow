@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 
 import { publishVocabToMarketplace, unpublishVocabFromMarketplace } from '@/actions/marketplaceActions';
 import { Button } from '@/components/ui/button';
-import { GRADE_LEVELS, MARKETPLACE_CATEGORIES } from '@/utils/MarketplaceConfig';
+import { GRADE_LEVELS, MARKETPLACE_CATEGORY_GROUPS } from '@/utils/MarketplaceConfig';
 
 type Props = {
   setId: number;
@@ -84,7 +84,11 @@ export function PublishVocabDialog({
                       className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                       <option value="">請選擇</option>
-                      {MARKETPLACE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {MARKETPLACE_CATEGORY_GROUPS.map(group => (
+                        <optgroup key={group.label} label={group.label}>
+                          {group.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                   </label>
                 </div>

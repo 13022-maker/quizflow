@@ -6,7 +6,7 @@ import { MarketplaceEmptyCTA } from '@/features/marketplace/MarketplaceEmptyCTA'
 import { MarketplaceVocabCard } from '@/features/marketplace/MarketplaceVocabCard';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema, vocabCardSchema, vocabSetSchema } from '@/models/Schema';
-import { GRADE_LEVELS, MARKETPLACE_CATEGORIES } from '@/utils/MarketplaceConfig';
+import { GRADE_LEVELS, MARKETPLACE_CATEGORY_GROUPS } from '@/utils/MarketplaceConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,14 +123,19 @@ export default async function MarketplacePage({
         >
           全部
         </Link>
-        {MARKETPLACE_CATEGORIES.map(c => (
-          <Link
-            key={c}
-            href={buildHref({ category: c })}
-            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${category === c ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-          >
-            {c}
-          </Link>
+        {MARKETPLACE_CATEGORY_GROUPS.map(group => (
+          <div key={group.label} className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-foreground">{group.label}</span>
+            {group.categories.map(c => (
+              <Link
+                key={c}
+                href={buildHref({ category: c })}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${category === c ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+              >
+                {c}
+              </Link>
+            ))}
+          </div>
         ))}
       </div>
 

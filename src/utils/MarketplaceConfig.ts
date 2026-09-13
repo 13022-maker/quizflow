@@ -1,16 +1,14 @@
-export const MARKETPLACE_CATEGORIES = [
-  '國文',
-  '英語',
-  '華語檢測',
-  '數學',
-  '自然',
-  '社會',
-  '藝術',
-  '健體',
-  '科技',
-  '綜合',
-  '其他',
+// 科目學群分組：科目數量持續增加，用學群把相近科目歸在一起，方便篩選列 / 下拉選單好找
+// 新增科目時只改這裡，MARKETPLACE_CATEGORIES 會自動同步（別再手動維護兩份清單）
+export const MARKETPLACE_CATEGORY_GROUPS = [
+  { label: '語文類', categories: ['國文', '英語', '華語檢測'] },
+  { label: '數理科技', categories: ['數學', '自然', '科技'] },
+  { label: '人文社會', categories: ['社會', '綜合'] },
+  { label: '藝術體育', categories: ['藝術', '健體'] },
+  { label: '其他', categories: ['其他'] },
 ] as const;
+
+export const MARKETPLACE_CATEGORIES = MARKETPLACE_CATEGORY_GROUPS.flatMap(g => g.categories);
 
 export const GRADE_LEVELS = [
   '國小一年級',
