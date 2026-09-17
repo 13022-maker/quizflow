@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>表單填寫練習 | QuizFlow</title>
+<style>
+  :root{
+    --ink:#0f2540; --blue:#1e5a8a; --blue-dark:#17466b;
+    --blue-soft:#dceaf5; --blue-line:#b9d3e8; --paper:#f4f7fb; --card:#fff;
+    --ok:#15803d; --ok-soft:#e7f6ec; --err:#c62828; --err-soft:#fdecec;
+    --muted:#5a6b7d; --hint:#8091a1; --radius:10px;
+    --shadow:0 1px 2px rgba(15,37,64,.06),0 8px 24px rgba(15,37,64,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Microsoft JhengHei","Noto Sans TC","Segoe UI",Roboto,sans-serif;color:var(--ink);background:radial-gradient(1200px 400px at 100% -10%,rgba(30,90,138,.10),transparent 60%),var(--paper);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:960px;margin:0 auto;padding:24px 18px 120px}
+  [hidden]{display:none!important}
+
+  .hub-head{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;border-radius:16px;padding:30px 26px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .hub-head::after{content:"";position:absolute;right:-50px;top:-50px;width:220px;height:220px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%)}
+  .hub-head .kick{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:700;opacity:.85}
+  .hub-head h1{margin:8px 0 6px;font-size:27px;font-weight:800}
+  .hub-head p{margin:0;opacity:.92;font-size:14px;max-width:52ch}
+  .modebar{display:flex;gap:10px;align-items:center;margin-top:18px;flex-wrap:wrap;position:relative;z-index:2}
+  .seg{display:inline-flex;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:3px}
+  .seg button{border:none;background:transparent;color:#fff;font-weight:700;font-size:13.5px;padding:7px 16px;border-radius:99px;cursor:pointer;font-family:inherit;opacity:.85}
+  .seg button.active{background:#fff;color:var(--blue-dark);opacity:1;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+  .seg.light{background:#eef4fa;border:1px solid var(--blue-line)}
+  .seg.light button{color:var(--blue-dark);opacity:.7}
+  .seg.light button.active{background:var(--blue);color:#fff;opacity:1}
+  .toolbtns{margin-left:auto;display:flex;gap:8px}
+  .lb-link{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.3);color:#fff;font-weight:700;font-size:13.5px;padding:7px 14px;border-radius:99px;cursor:pointer;font-family:inherit}
+  .lb-link:hover{background:rgba(255,255,255,.26)}
+  .mode-desc{margin:10px 0 0;font-size:13.5px;opacity:.92;position:relative;z-index:2}
+  .conn-line{margin:8px 0 0;font-size:12.5px;opacity:.9;position:relative;z-index:2}
+  .cards{margin-top:20px;display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .xcard{text-align:left;cursor:pointer;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;padding:16px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;transition:transform .15s,box-shadow .15s,border-color .15s;font-family:inherit}
+  .xcard:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgba(15,37,64,.14);border-color:var(--blue)}
+  .xtop{display:flex;align-items:center;gap:10px}
+  .xnum{width:30px;height:30px;border-radius:9px;background:var(--blue);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex:none}
+  .xicon{font-size:24px}
+  .xtitle{font-size:16px;font-weight:800}
+  .xen{font-size:11.5px;color:var(--muted);font-weight:600}
+  .xdesc{font-size:13px;color:var(--muted);flex:1}
+  .xtags{display:flex;flex-wrap:wrap;gap:6px}
+  .xtags span{font-size:11px;font-weight:700;color:var(--blue-dark);background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:99px;padding:2px 9px}
+  .xgo{align-self:flex-end;font-size:13px;font-weight:800;color:var(--blue)}
+  .hub-foot{margin-top:22px;text-align:center;font-size:12px;color:var(--hint)}
+
+  .masthead{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;border-radius:14px;padding:18px 22px 20px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+  .masthead::after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,255,255,.14),transparent 70%)}
+  .back{display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:99px;padding:5px 13px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:12px;font-family:inherit;position:relative;z-index:2}
+  .back:hover{background:rgba(255,255,255,.26)}
+  .masthead .kick{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:700}
+  .masthead h1{margin:6px 0 4px;font-size:22px;font-weight:800}
+  .masthead .en{opacity:.9;font-size:13px;font-weight:500}
+  .note{margin-top:14px;background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:12px;padding:12px 14px;font-size:13.5px;color:var(--blue-dark);display:flex;gap:10px;align-items:flex-start;position:relative;z-index:2}
+  .note b{color:var(--ink)}
+
+  .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
+  .dock-inner{max-width:960px;margin:0 auto;display:flex;align-items:center;gap:14px}
+  .bar{flex:1;height:9px;border-radius:99px;background:#e3ebf3;overflow:hidden}
+  .bar>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#2f8fd6,var(--ok));transition:width .35s ease}
+  .count{font-size:13px;font-weight:700;color:var(--blue-dark);white-space:nowrap}
+  .count b{color:var(--ok);font-size:15px}
+  .timer{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px;color:var(--blue-dark);background:#fff;border:1.5px solid var(--blue-line);border-radius:99px;padding:3px 12px;white-space:nowrap}
+  .timer::before{content:"\23F1 "}
+  .timer.warn{color:var(--err);border-color:#f0b4b4;background:#fff3f3}
+
+  form{margin-top:18px}
+  .card{background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .card-head{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 16px;font-weight:700;color:var(--blue-dark);font-size:14px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--blue-line)}
+  .field{background:var(--card);padding:14px 16px}
+  .field.full{grid-column:1 / -1}
+  label{display:block;font-weight:700;font-size:13.5px;margin-bottom:6px;color:var(--ink)}
+  label .en{font-weight:500;color:var(--muted);font-size:12px}
+  .req{color:var(--err);margin-right:2px}
+  input[type=text],input[type=email],input[type=password],select,textarea{width:100%;padding:9px 11px;font-size:14px;color:var(--ink);border:1.5px solid #cbd8e6;border-radius:var(--radius);background:#fff;transition:border-color .15s,box-shadow .15s;font-family:inherit}
+  textarea{resize:vertical;min-height:88px;line-height:1.6}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(30,90,138,.15)}
+  input::placeholder,textarea::placeholder{color:#a9b7c6}
+  input:disabled,select:disabled,textarea:disabled{background:#f1f4f8;color:#9aa8b6}
+  .field.valid input,.field.valid select,.field.valid textarea{border-color:var(--ok)}
+  .field.invalid input,.field.invalid select,.field.invalid textarea{border-color:var(--err);background:var(--err-soft)}
+  .hintline{font-size:11.5px;color:var(--hint);margin-top:5px}
+  .counter{font-weight:700;color:var(--blue-dark)}
+  .counter.ok{color:var(--ok)}
+  .msg{font-size:12px;margin-top:5px;min-height:16px;display:flex;align-items:center;gap:5px}
+  .field.valid .msg{color:var(--ok)}
+  .field.invalid .msg{color:var(--err)}
+  .msg .ic{font-weight:800}
+  .radios{display:flex;gap:18px;padding-top:4px;flex-wrap:wrap}
+  .radios label{display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer;margin:0}
+  .radios input{width:16px;height:16px;accent-color:var(--blue)}
+  .pwlist{margin:8px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:3px 14px}
+  .pwlist li{list-style:none;font-size:11.5px;color:var(--hint);display:flex;align-items:center;gap:6px}
+  .pwlist li .dot{width:14px;height:14px;border-radius:50%;border:1.5px solid #c3cfdb;display:inline-flex;align-items:center;justify-content:center;font-size:9px;color:#fff;transition:.15s}
+  .pwlist li.done{color:var(--ok)}
+  .pwlist li.done .dot{background:var(--ok);border-color:var(--ok)}
+
+  .actions{position:sticky;bottom:0;margin-top:20px;padding:14px 16px;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border:1px solid var(--blue-line);border-radius:14px;box-shadow:0 -6px 20px rgba(15,37,64,.06);display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{border:none;border-radius:var(--radius);font-weight:800;font-size:15px;padding:11px 22px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn.primary{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;box-shadow:0 4px 12px rgba(30,90,138,.3)}
+  .btn.primary:hover{filter:brightness(1.06)}
+  .btn.sub{background:#eef4fa;color:var(--blue-dark);border:1.5px solid var(--blue-line)}
+  .btn.sub:hover{background:var(--blue-soft)}
+  .btn.danger{background:var(--err-soft);color:var(--err);border:1.5px solid #f0b4b4}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .spacer{flex:1}
+  .status-text{font-size:13.5px;font-weight:700;color:var(--muted)}
+  .result{margin-top:16px;border-radius:14px;padding:16px 18px;display:none;font-size:14px;box-shadow:var(--shadow)}
+  .result.show{display:block;animation:pop .3s ease}
+  .result.pass{background:var(--ok-soft);border:1.5px solid var(--ok);color:var(--ok)}
+  .result.fail{background:var(--err-soft);border:1.5px solid var(--err);color:var(--err)}
+  .result.wait{background:#fff8e6;border:1.5px solid #e6c65b;color:#8a6d1a}
+  .result h3{margin:0 0 8px;font-size:16px}
+  .result .sub{font-size:13px;opacity:.9;margin-top:4px}
+  .result ul{margin:6px 0 0;padding-left:20px}
+  .result li{margin:2px 0}
+  .result a{color:inherit;font-weight:700;cursor:pointer;text-decoration:underline}
+  .lb-actions{margin-top:12px;display:flex;gap:18px;flex-wrap:wrap}
+  @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
+
+  .intro{margin-top:18px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);padding:22px}
+  .intro h3{margin:0 0 4px;font-size:17px}
+  .best{background:var(--blue-soft);border:1px solid var(--blue-line);border-radius:12px;padding:12px 16px;margin:16px 0}
+  .best h4{margin:0 0 8px;font-size:13px;color:var(--blue-dark)}
+  .best ol{margin:0;padding-left:22px}
+  .best li{font-size:14px;margin:3px 0}
+  .best .empty{font-size:13px;color:var(--hint)}
+  .rules{background:#fff;border:1px solid var(--blue-line);border-radius:12px;padding:14px 16px;margin:16px 0}
+  .rules h4{margin:0 0 8px;font-size:13px;color:var(--blue-dark)}
+  .rules-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0}
+  .rules-row .lbl{font-size:13px;font-weight:700;color:var(--muted);min-width:78px}
+  .intro label{display:block;font-weight:700;font-size:14px;margin:4px 0 6px}
+  .intro input[type=text]{width:100%;max-width:380px}
+  .intro-msg{color:var(--err);font-size:12.5px;min-height:16px;margin:6px 0}
+  .intro .link{display:inline-block;margin-left:14px;color:var(--blue);font-weight:700;font-size:13.5px;cursor:pointer;text-decoration:underline}
+
+  .lb-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  .lb-tabs button{border:1.5px solid var(--blue-line);background:#fff;color:var(--blue-dark);font-weight:700;font-size:12.5px;padding:7px 12px;border-radius:99px;cursor:pointer;font-family:inherit}
+  .lb-tabs button.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+  .lb-mode{margin-top:12px;font-size:12.5px;font-weight:700;color:var(--blue-dark)}
+  .lb-mode.err{color:var(--err)}
+  .lb-body{margin-top:10px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .lb-row{display:grid;grid-template-columns:56px 1fr auto auto;gap:12px;align-items:center;padding:11px 16px;border-bottom:1px solid #eef2f7;font-size:14px}
+  .lb-row:last-child{border-bottom:none}
+  .lb-row.head{background:var(--blue-soft);font-weight:700;color:var(--blue-dark);font-size:12.5px}
+  .lb-rank{font-weight:800;font-size:15px}
+  .lb-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .lb-time{font-variant-numeric:tabular-nums;font-weight:800;color:var(--blue-dark)}
+  .lb-date{font-size:12px;color:var(--hint)}
+  .lb-empty{padding:30px 16px;text-align:center;color:var(--hint)}
+  .lb-tools{margin-top:14px;display:flex;gap:10px;flex-wrap:wrap}
+  .lb-tools .btn{font-size:13.5px;padding:9px 16px}
+  .csvbox{margin-top:12px}
+  .csvbox textarea{width:100%;height:120px;font-family:monospace;font-size:12px;resize:vertical}
+  .set-msg{font-size:13px;font-weight:700;margin-top:10px;min-height:18px}
+  .set-msg.ok{color:var(--ok)}
+  .set-msg.err{color:var(--err)}
+
+  @media (max-width:640px){
+    .grid{grid-template-columns:1fr}
+    .field.full,.field{grid-column:auto}
+    .pwlist{grid-template-columns:1fr}
+    .cards{grid-template-columns:1fr}
+    .hub-head h1{font-size:22px}
+    .masthead h1{font-size:19px}
+    .toolbtns{margin-left:0;width:100%}
+  }
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="hub">
+    <header class="hub-head">
+      <div class="kick">中文輸入 · 表單填寫練習</div>
+      <h1>僑生表單填寫練習</h1>
+      <p>模擬台灣校園與生活中常見的各種表單,練習中文輸入與格式規則。可切換「練習模式」或「計時挑戰」;挑戰可設倒數限時與答錯罰時,成績即時彙整到班級排行榜。</p>
+      <div class="modebar">
+        <div class="seg" id="seg">
+          <button data-mode="practice" class="active">🎓 練習模式</button>
+          <button data-mode="challenge">🏆 計時挑戰</button>
+        </div>
+        <div class="toolbtns">
+          <button class="lb-link" id="openBoard">🏆 排行榜</button>
+        </div>
+      </div>
+      <p class="mode-desc" id="modeDesc">慢慢練習,即時檢查對錯,沒有時間壓力。</p>
+      <p class="conn-line" id="connLine"></p>
+    </header>
+    <div class="cards" id="cards"></div>
+    <div class="hub-foot">共 6 份練習 · 由 QuizFlow 提供 · 挑戰成績即時彙整到班級排行榜</div>
+  </div>
+  <div id="stage" hidden></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  function parseDate(s){var m=/^(\d{4})\/(\d{2})\/(\d{2})$/.exec((''+s).trim());if(!m)return null;var y=+m[1],mo=+m[2],d=+m[3];if(mo<1||mo>12||d<1||d>31)return null;var dt=new Date(y,mo-1,d);if(dt.getFullYear()!==y||dt.getMonth()!==mo-1||dt.getDate()!==d)return null;return dt;}
+  function today(){var t=new Date();t.setHours(0,0,0,0);return t;}
+  function cjkCount(v){return (('' +v).match(/[\u4e00-\u9fff]/g)||[]).length;}
+  function fmt(ms){if(ms<0)ms=0;var s=Math.round(ms/100)/10;var m=Math.floor(s/60);var r=s-m*60;var rs=r.toFixed(1);if(r<10)rs='0'+rs;return m+':'+rs;}
+  function shortDate(ts){var d=new Date(ts);return (d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);}
+  function lsGet(k,def){try{var r=localStorage.getItem(k);return r?JSON.parse(r):def;}catch(e){return def;}}
+  function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+
+  /* local leaderboard (fallback) */
+  var Store=(function(){var KEY='form_practice_lb_v1',mem=null;function read(){if(mem)return mem;mem=lsGet(KEY,{});return mem;}function write(d){mem=d;lsSet(KEY,d);}return{all:function(){return read();},add:function(id,r){var d=read();(d[id]=d[id]||[]).push(r);write(d);},clearAll:function(){write({});},clearOne:function(id){var d=read();delete d[id];write(d);}};})();
+
+  /* config + rules */
+  var CFG=lsGet('form_practice_cfg_v1',{apiBase:'',classCode:''});
+  /* --- QuizFlow 嵌入版:自動從網址帶入班級與 API(同源) --- */
+  var EMBED=(function(){
+    var qp=new URLSearchParams(location.search);
+    var cls=(qp.get('class')||'').trim();
+    if(cls){ CFG.classCode=cls; CFG.apiBase=(qp.get('api')||'').trim()||location.origin; try{localStorage.setItem('form_practice_cfg_v1',JSON.stringify(CFG));}catch(e){} }
+    return { hideBoard:(qp.get('board')||'').toLowerCase()==='off' };
+  })();
+  var RULES=lsGet('form_practice_rules_v1',{limitSec:0,penaltySec:0});
+  function saveCfg(){lsSet('form_practice_cfg_v1',CFG);}
+  function saveRules(){lsSet('form_practice_rules_v1',RULES);}
+  function onlineOn(){return !!(CFG.apiBase&&CFG.classCode);}
+  function apiURL(p){return CFG.apiBase.replace(/\/+$/,'')+p;}
+  async function apiSubmit(exId,rec){
+    var res=await fetch(apiURL('/api/practice/score'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({classCode:CFG.classCode,exerciseId:exId,name:rec.name,timeMs:rec.t,rawMs:rec.rawMs,penaltyMs:rec.penaltyMs})});
+    if(!res.ok)throw new Error('HTTP '+res.status);return await res.json();
+  }
+  async function apiBoard(exId){
+    var res=await fetch(apiURL('/api/practice/board?classCode='+encodeURIComponent(CFG.classCode)+'&exerciseId='+encodeURIComponent(exId)));
+    if(!res.ok)throw new Error('HTTP '+res.status);var j=await res.json();
+    return (j.scores||[]).map(function(r){return {name:r.name,t:r.timeMs,ts:r.ts};});
+  }
+  function localRank(exId,t){var a=Store.all()[exId]||[];return a.filter(function(r){return r.t<t;}).length+1;}
+  async function saveScore(exId,rec){
+    if(onlineOn()){try{var r=await apiSubmit(exId,rec);return {online:true,rank:r.rank};}catch(e){Store.add(exId,rec);return {online:false,failed:true,rank:localRank(exId,rec.t)};}}
+    Store.add(exId,rec);return {online:false,rank:localRank(exId,rec.t)};
+  }
+  async function getBoard(exId){
+    if(onlineOn()){try{var s=await apiBoard(exId);s.sort(function(a,b){return a.t-b.t;});return {rows:s,online:true};}catch(e){var l=(Store.all()[exId]||[]).slice().sort(function(a,b){return a.t-b.t;});return {rows:l,online:false,error:true};}}
+    var l2=(Store.all()[exId]||[]).slice().sort(function(a,b){return a.t-b.t;});return {rows:l2,online:false};
+  }
+
+  var NOTE='這是模擬真實表單的<b>練習頁</b>,輸入的資料<b>不會送出、不會儲存</b>。綠色代表格式正確,紅色代表需要修正;全部填對後按「確定 Confirm」看結果。';
+
+  var EX_ORDER=['01','02','03','04','05','06'];
+  var EX={
+    '01':{icon:'🪪',title:'學生個人資料維護',en:'Student Personal Information Maintenance',desc:'帳號、密碼強度、護照與統一證號、日期格式等基本個資填寫。',tags:['格式驗證','日期','證件號碼'],kick:'305 · 基本資料維護',head:'學生個人資料維護　Student personal information maintenance',note:NOTE,fields:[
+      {name:'loginId',zh:'帳號(英文)',en:'Login ID',full:true,ph:'例:wda1234',hint:'僅限英數,第一碼須為字母,至少 4 碼。',validate:V=>0,example:'wda1234'},
+      {name:'password',zh:'密碼',en:'New password',type:'password',ph:'至少 8 碼',checklist:true,example:'Aa#12345'},
+      {name:'confirmPassword',zh:'確認密碼',en:'Confirm password',type:'password',ph:'再輸入一次密碼',hint:'須與上方密碼完全相同。',dependsOn:'password',example:'Aa#12345'},
+      {name:'email',zh:'電子信箱',en:'Email',type:'email',full:true,ph:'例:student@mail.com',example:'student@mail.com'},
+      {name:'nameChinese',zh:'申請人姓名(中文)',en:'Name (Chinese)',ph:'例:王小明',example:'王小明'},
+      {name:'gender',zh:'性別',en:'Gender',type:'radio',opts:[{v:'male',t:'男 Male'},{v:'female',t:'女 Female'}],example:'male'},
+      {name:'nameEnglish',zh:'申請人姓名(英文)',en:'Name (English)',ph:'例:Wang, Xiao-Ming',hint:'與護照相同的英文姓名。',example:'Wang, Xiao-Ming'},
+      {name:'nationality',zh:'國籍(地區)',en:'Nationality',ph:'例:澳門 Macau',example:'澳門 Macau'},
+      {name:'identity',zh:'身分別',en:'Identity',type:'select',full:true,opts:[{v:'a',t:'外國僑學生-學士(四年制) foreign students'},{v:'b',t:'外國僑學生-碩士 foreign students (Master)'},{v:'c',t:'僑生 overseas Chinese student'},{v:'d',t:'外國學生 foreign student'}],example:'a'},
+      {name:'passport',zh:'護照號碼',en:'Passport number',ph:'例:AB1234567',hint:'英數 6–12 碼。',example:'AB1234567'},
+      {name:'passportExpiry',zh:'護照號碼有效期限',en:'Passport expiration',ph:'yyyy/MM/dd 例 2028/06/30',hint:'格式 yyyy/MM/dd,須為未來日期。',example:'2028/06/30'},
+      {name:'uiNumber',zh:'統一證號',en:'UI number',ph:'例:AB12345678',hint:'2 字母+8 數字,或 1 字母+9 數字。',example:'AB12345678'},
+      {name:'birthDate',zh:'出生年月日',en:'Date of birth',ph:'yyyy/MM/dd 例 1993/02/26',hint:'格式 yyyy/MM/dd,須為過去日期。',example:'1993/02/26'},
+      {name:'school',zh:'就讀學校',en:'School attended',ph:'例:線上申辦網科技大學',example:'線上申辦網科技大學'},
+      {name:'phone',zh:'聯絡電話',en:'Phone number',full:true,ph:'例:0912345678',hint:'手機 09 開頭共 10 碼,或市話含區碼。',example:'0912345678'}
+    ]},
+    '02':{icon:'🏠',title:'宿舍住宿申請表',en:'Dormitory Application',desc:'學號、房型選擇、緊急聯絡人與通訊地址,並練習填寫備註。',tags:['選單','地址','中文輸入'],kick:'學務處 · 住宿服務',head:'學生宿舍住宿申請　Dormitory application',note:NOTE,fields:[
+      {name:'studentId',zh:'學號',en:'Student ID',ph:'例:S1120123',hint:'英數 4–12 碼。',example:'S1120123'},
+      {name:'nameChinese',zh:'姓名(中文)',en:'Name',ph:'例:陳美玲',example:'陳美玲'},
+      {name:'gender',zh:'性別',en:'Gender',type:'radio',opts:[{v:'male',t:'男 Male'},{v:'female',t:'女 Female'}],example:'female'},
+      {name:'department',zh:'系級 / 班級',en:'Department & year',ph:'例:資訊工程系一年級',example:'資訊工程系一年級'},
+      {name:'roomType',zh:'房型偏好',en:'Room preference',type:'select',opts:[{v:'quad',t:'四人房 4-person'},{v:'double',t:'雙人房 2-person'},{v:'single',t:'單人房 1-person'}],example:'quad'},
+      {name:'checkInDate',zh:'預計入住日',en:'Check-in date',ph:'yyyy/MM/dd 例 2026/09/01',hint:'格式 yyyy/MM/dd,須為未來日期。',example:'2026/09/01'},
+      {name:'emergencyName',zh:'緊急聯絡人',en:'Emergency contact',ph:'例:陳志明',example:'陳志明'},
+      {name:'emergencyPhone',zh:'緊急聯絡電話',en:'Emergency phone',ph:'例:0922333444',example:'0922333444'},
+      {name:'address',zh:'通訊地址',en:'Mailing address',full:true,ph:'例:桃園市中壢區中大路300號',hint:'請填完整地址(至少 10 字)。',example:'桃園市中壢區中大路300號'},
+      {name:'note',zh:'特殊需求 / 備註',en:'Special needs / notes',type:'textarea',full:true,min:8,ph:'例:希望安排低樓層,方便進出。',hint:'請用中文簡短說明。',example:'希望安排低樓層,方便進出,謝謝安排。'}
+    ]},
+    '03':{icon:'📝',title:'學生請假申請單',en:'Student Leave Request',desc:'班級、請假別、起訖日期(結束不可早於開始)與請假事由寫作。',tags:['日期區間','中文寫作','選單'],kick:'教務處 · 學生請假',head:'學生請假申請　Leave request',note:NOTE,fields:[
+      {name:'className',zh:'班級',en:'Class',ph:'例:高一忠班',example:'高一忠班'},
+      {name:'studentId',zh:'學號',en:'Student ID',ph:'例:S1120088',example:'S1120088'},
+      {name:'nameChinese',zh:'姓名',en:'Name',ph:'例:阮文雄',example:'阮文雄'},
+      {name:'leaveType',zh:'請假別',en:'Leave type',type:'select',opts:[{v:'personal',t:'事假 Personal'},{v:'sick',t:'病假 Sick'},{v:'official',t:'公假 Official'},{v:'funeral',t:'喪假 Bereavement'}],example:'personal'},
+      {name:'startDate',zh:'起始日期',en:'Start date',ph:'yyyy/MM/dd 例 2026/08/10',hint:'格式 yyyy/MM/dd。',example:'2026/08/10'},
+      {name:'endDate',zh:'結束日期',en:'End date',ph:'yyyy/MM/dd 例 2026/08/12',hint:'不可早於起始日期。',example:'2026/08/12'},
+      {name:'days',zh:'請假天數',en:'Days',ph:'例:3',hint:'整數,1–30 天。',example:'3'},
+      {name:'reason',zh:'請假事由',en:'Reason',type:'textarea',full:true,min:10,ph:'請說明請假原因…',hint:'請用中文說明(至少 10 字)。',example:'家中有事需返回家鄉處理,預計三天後返校上課。'},
+      {name:'guardianName',zh:'家長 / 監護人姓名',en:'Guardian',ph:'例:阮文山',example:'阮文山'},
+      {name:'guardianPhone',zh:'聯絡電話',en:'Guardian phone',ph:'例:0933444555',example:'0933444555'}
+    ]},
+    '04':{icon:'🎽',title:'社團活動報名表',en:'Club Sign-up',desc:'社團、經驗、尺寸、飲食等多個下拉選擇,並練習填寫報名動機。',tags:['選單','中文寫作'],kick:'學生活動 · 社團報名',head:'社團活動報名　Club registration',note:NOTE,fields:[
+      {name:'nameChinese',zh:'姓名',en:'Name',ph:'例:林佳穎',example:'林佳穎'},
+      {name:'studentId',zh:'學號',en:'Student ID',ph:'例:S1120200',example:'S1120200'},
+      {name:'email',zh:'電子信箱',en:'Email',type:'email',ph:'例:jia@mail.com',example:'jia@mail.com'},
+      {name:'phone',zh:'手機',en:'Mobile',ph:'例:0955666777',example:'0955666777'},
+      {name:'club',zh:'報名社團',en:'Club',type:'select',opts:[{v:'dance',t:'熱舞社 Dance'},{v:'bball',t:'籃球社 Basketball'},{v:'photo',t:'攝影社 Photography'},{v:'info',t:'資訊社 Computer'},{v:'music',t:'國樂社 Chinese music'}],example:'photo'},
+      {name:'level',zh:'相關經驗',en:'Experience',type:'select',opts:[{v:'none',t:'無 None'},{v:'beginner',t:'初學 Beginner'},{v:'inter',t:'中級 Intermediate'},{v:'adv',t:'進階 Advanced'}],example:'beginner'},
+      {name:'tshirt',zh:'T恤尺寸',en:'T-shirt size',type:'select',opts:[{v:'S',t:'S'},{v:'M',t:'M'},{v:'L',t:'L'},{v:'XL',t:'XL'},{v:'XXL',t:'XXL'}],example:'M'},
+      {name:'diet',zh:'飲食習慣',en:'Dietary',type:'select',opts:[{v:'meat',t:'葷食'},{v:'veg',t:'素食 Vegetarian'},{v:'halal',t:'清真 Halal'},{v:'other',t:'其他 Other'}],example:'veg'},
+      {name:'motivation',zh:'報名動機',en:'Motivation',type:'textarea',full:true,min:15,ph:'為什麼想參加這個社團?',hint:'請用中文說明(至少 15 字)。',example:'我從小就喜歡攝影,希望在攝影社學習構圖與後製,也想認識同好一起出去拍照。'}
+    ]},
+    '05':{icon:'📦',title:'郵局包裹寄件單',en:'Post Office Parcel Form',desc:'寄件人與收件人的中文姓名、電話、郵遞區號與完整地址。',tags:['地址','郵遞區號','中文輸入'],kick:'中華郵政 · 包裹寄件',head:'包裹寄件單　Parcel dispatch form',note:NOTE,fields:[
+      {name:'senderName',zh:'寄件人姓名',en:'Sender name',ph:'例:王大同',example:'王大同'},
+      {name:'senderPhone',zh:'寄件人電話',en:'Sender phone',ph:'例:0912888999',example:'0912888999'},
+      {name:'senderAddress',zh:'寄件人地址',en:'Sender address',full:true,ph:'例:新竹市東區光復路一段101號5樓',hint:'請填完整地址(至少 10 字)。',example:'新竹市東區光復路一段101號5樓'},
+      {name:'receiverName',zh:'收件人姓名',en:'Recipient name',ph:'例:李小華',example:'李小華'},
+      {name:'receiverPhone',zh:'收件人電話',en:'Recipient phone',ph:'例:0987654321',example:'0987654321'},
+      {name:'receiverZip',zh:'收件人郵遞區號',en:'Recipient ZIP',ph:'例:320',hint:'3 或 5 碼數字。',example:'320'},
+      {name:'receiverAddress',zh:'收件人地址',en:'Recipient address',full:true,ph:'例:桃園市中壢區環中東路二段88號3樓',hint:'請填完整地址(至少 10 字)。',example:'桃園市中壢區環中東路二段88號3樓'},
+      {name:'content',zh:'內容物',en:'Contents',ph:'例:書籍與衣物',hint:'請用中文簡述。',example:'書籍與衣物'},
+      {name:'weight',zh:'重量(公斤)',en:'Weight (kg)',ph:'例:1.5',hint:'數字,可含小數。',example:'1.5'},
+      {name:'service',zh:'寄送方式',en:'Service',type:'select',opts:[{v:'normal',t:'普通 Standard'},{v:'express',t:'限時 Express'},{v:'registered',t:'掛號 Registered'},{v:'parcel',t:'國內包裹 Domestic parcel'}],example:'registered'}
+    ]},
+    '06':{icon:'🙋',title:'自我介紹卡',en:'Self-Introduction Card',desc:'以中文寫作為主:自我介紹 50 字、未來目標 20 字,實作長句輸入。',tags:['中文寫作','字數練習'],kick:'新生資料 · 自我介紹',head:'自我介紹卡　Self-introduction',note:'這一份著重<b>中文寫作</b>練習,文字欄位下方會顯示目前字數。達到字數且格式正確就會變綠。資料<b>不會送出、不會儲存</b>。',fields:[
+      {name:'nameChinese',zh:'中文姓名',en:'Name (Chinese)',ph:'例:黃志遠',example:'黃志遠'},
+      {name:'nameEnglish',zh:'英文姓名',en:'Name (English)',ph:'例:Huang, Zhi-Yuan',example:'Huang, Zhi-Yuan'},
+      {name:'nationality',zh:'國籍',en:'Nationality',ph:'例:馬來西亞',example:'馬來西亞'},
+      {name:'hometown',zh:'家鄉城市',en:'Hometown',ph:'例:吉隆坡',hint:'請用中文填寫。',example:'吉隆坡'},
+      {name:'birthDate',zh:'生日',en:'Birthday',ph:'yyyy/MM/dd 例 2007/05/18',hint:'格式 yyyy/MM/dd,須為過去日期。',example:'2007/05/18'},
+      {name:'hobby',zh:'興趣',en:'Hobbies',ph:'例:打籃球、看電影',hint:'請用中文填寫。',example:'打籃球、看電影'},
+      {name:'selfIntro',zh:'自我介紹',en:'Self-introduction',type:'textarea',full:true,rows:5,min:50,ph:'介紹一下你自己吧…',hint:'請用中文寫作(至少 50 字)。',example:'大家好,我叫黃志遠,來自馬來西亞吉隆坡。我今年十七歲,目前就讀高中二年級。我平常很喜歡打籃球和看電影,也對電腦程式設計很有興趣。希望在台灣可以認識更多好朋友,一起學習、一起進步。'},
+      {name:'goal',zh:'未來目標',en:'Future goal',type:'textarea',full:true,min:20,ph:'你希望未來做什麼?',hint:'請用中文寫作(至少 20 字)。',example:'我希望未來能考上理想的大學,主修資訊工程,將來成為一名軟體工程師,回到家鄉貢獻所學。'},
+      {name:'food',zh:'最喜歡的台灣食物',en:'Favorite Taiwanese food',ph:'例:珍珠奶茶',hint:'請用中文填寫。',example:'珍珠奶茶'},
+      {name:'motto',zh:'座右銘',en:'Motto',full:true,ph:'例:天下無難事,只怕有心人',example:'天下無難事,只怕有心人'}
+    ]}
+  };
+
+  /* attach validators (kept separate so EX config stays readable) */
+  var VAL={
+    loginId:function(v){return !v?"必填 Required":(/^[A-Za-z][A-Za-z0-9]{3,}$/.test(v)?"":"須以英文字母開頭,英數至少 4 碼");},
+    password:function(v){if(!v)return"必填 Required";if(v.length<8)return"長度不足 8 碼";if(!/[A-Za-z]/.test(v))return"須含英文字母";if(!/[0-9]/.test(v))return"須含數字";if(!/[^A-Za-z0-9]/.test(v))return"須含特殊符號";return"";},
+    confirmPassword:function(v,all){return !v?"必填 Required":(v===all.password?"":"與密碼不一致 Does not match");},
+    email:function(v){return !v?"必填 Required":(/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)?"":"Email 格式不正確");},
+    cname2:function(v){return !v?"必填 Required":(/^[\u4e00-\u9fff\u00b7]{2,}$/.test(v)?"":"請輸入中文(至少 2 字)");},
+    ename:function(v){return !v?"必填 Required":(/^[A-Za-z][A-Za-z ,.\-']{1,}$/.test(v)?"":"僅限英文字母(可含空格、逗號、連字號)");},
+    sel:function(v){return v?"":"請選擇 Please select";},
+    phone:function(v){if(!v)return"必填 Required";var p=(''+v).replace(/[\s\-]/g,'');if(/^09\d{8}$/.test(p))return"";if(/^0\d{1,2}\d{6,8}$/.test(p))return"";return"電話格式不正確";},
+    ui:function(v){if(!v)return"必填 Required";var u=(''+v).toUpperCase();return(/^[A-Z]{2}\d{8}$/.test(u)||/^[A-Z]\d{9}$/.test(u))?"":"格式應為 2 字母+8 數字,或 1 字母+9 數字";},
+    passport:function(v){return !v?"必填 Required":(/^[A-Za-z0-9]{6,12}$/.test(v)?"":"護照號碼格式不正確(6–12 碼英數)");},
+    sid:function(v){return !v?"必填 Required":(/^[A-Za-z0-9]{4,12}$/.test(v)?"":"學號格式不正確(4–12 碼英數)");},
+    dFuture:function(v){if(!v)return"必填 Required";var d=parseDate(v);if(!d)return"格式須為 yyyy/MM/dd";return d>today()?"":"須為未來日期";},
+    dPast:function(v){if(!v)return"必填 Required";var d=parseDate(v);if(!d)return"格式須為 yyyy/MM/dd";return d<today()?"":"須為過去日期";},
+    dValid:function(v){if(!v)return"必填 Required";return parseDate(v)?"":"格式須為 yyyy/MM/dd";},
+    endDate:function(v,all){if(!v)return"必填 Required";var d=parseDate(v);if(!d)return"格式須為 yyyy/MM/dd";var s=parseDate(all.startDate);if(s&&d<s)return"不可早於起始日期";return"";},
+    days:function(v){if(!v)return"必填 Required";if(!/^\d+$/.test(v))return"請輸入整數數字";var n=+v;return(n>=1&&n<=30)?"":"須介於 1–30";},
+    numPos:function(v){if(!v)return"必填 Required";if(!/^\d+(\.\d+)?$/.test(v))return"請輸入數字";return +v>0?"":"須大於 0";},
+    zip:function(v){return !v?"必填 Required":(/^\d{3}(\d{2})?$/.test(v)?"":"郵遞區號為 3 或 5 碼數字");},
+    text2:function(v){return !v||!(''+v).trim()?"必填 Required":((''+v).trim().length>=2?"":"至少 2 字");},
+    text3:function(v){return !v||!(''+v).trim()?"必填 Required":((''+v).trim().length>=3?"":"至少 3 字");},
+    text4:function(v){return !v||!(''+v).trim()?"必填 Required":((''+v).trim().length>=4?"":"至少 4 字");},
+    addr10:function(v){return !v?"必填 Required":((''+v).trim().length>=10?"":"請輸入完整地址(至少 10 字)");},
+    ctextMin:function(min){return function(v){if(!v||!(''+v).trim())return"必填 Required";var c=cjkCount(v);return c>=min?"":("請至少輸入 "+min+" 個中文字(目前 "+c+" 字)");};}
+  };
+  /* map each field to a validator by name/exercise */
+  var VMAP={
+    '01':{loginId:VAL.loginId,password:VAL.password,confirmPassword:VAL.confirmPassword,email:VAL.email,nameChinese:VAL.cname2,gender:VAL.sel,nameEnglish:VAL.ename,nationality:VAL.text2,identity:VAL.sel,passport:VAL.passport,passportExpiry:VAL.dFuture,uiNumber:VAL.ui,birthDate:VAL.dPast,school:VAL.text2,phone:VAL.phone},
+    '02':{studentId:VAL.sid,nameChinese:VAL.cname2,gender:VAL.sel,department:VAL.text3,roomType:VAL.sel,checkInDate:VAL.dFuture,emergencyName:VAL.cname2,emergencyPhone:VAL.phone,address:VAL.addr10,note:VAL.ctextMin(8)},
+    '03':{className:VAL.text2,studentId:VAL.sid,nameChinese:VAL.cname2,leaveType:VAL.sel,startDate:VAL.dValid,endDate:VAL.endDate,days:VAL.days,reason:VAL.ctextMin(10),guardianName:VAL.cname2,guardianPhone:VAL.phone},
+    '04':{nameChinese:VAL.cname2,studentId:VAL.sid,email:VAL.email,phone:VAL.phone,club:VAL.sel,level:VAL.sel,tshirt:VAL.sel,diet:VAL.sel,motivation:VAL.ctextMin(15)},
+    '05':{senderName:VAL.cname2,senderPhone:VAL.phone,senderAddress:VAL.addr10,receiverName:VAL.cname2,receiverPhone:VAL.phone,receiverZip:VAL.zip,receiverAddress:VAL.addr10,content:VAL.ctextMin(2),weight:VAL.numPos,service:VAL.sel},
+    '06':{nameChinese:VAL.cname2,nameEnglish:VAL.ename,nationality:VAL.text2,hometown:VAL.ctextMin(2),birthDate:VAL.dPast,hobby:VAL.ctextMin(2),selfIntro:VAL.ctextMin(50),goal:VAL.ctextMin(20),food:VAL.ctextMin(2),motto:VAL.text4}
+  };
+  EX_ORDER.forEach(function(id){EX[id].fields.forEach(function(f){f.validate=VMAP[id][f.name];});});
+
+  /* ---------- render ---------- */
+  function fieldHTML(f){
+    var full=f.full?' full':'';var req='<span class="req">*</span>';var en=f.en?' <span class="en">'+esc(f.en)+'</span>':'';var control='';
+    if(f.type==='select'){control='<select id="'+f.name+'"><option value="">請選擇 Please select…</option>'+f.opts.map(function(o){return '<option value="'+esc(o.v)+'">'+esc(o.t)+'</option>';}).join('')+'</select>';}
+    else if(f.type==='radio'){control='<div class="radios">'+f.opts.map(function(o){return '<label><input type="radio" name="'+f.name+'" value="'+esc(o.v)+'">'+esc(o.t)+'</label>';}).join('')+'</div>';}
+    else if(f.type==='textarea'){control='<textarea id="'+f.name+'" rows="'+(f.rows||4)+'" placeholder="'+esc(f.ph||'')+'"></textarea>';}
+    else{control='<input type="'+(f.type||'text')+'" id="'+f.name+'" autocomplete="off" placeholder="'+esc(f.ph||'')+'">';}
+    var extra=f.checklist?'<ul class="pwlist" data-for="'+f.name+'"><li data-rule="len"><span class="dot">✓</span>長度至少 8 碼</li><li data-rule="alpha"><span class="dot">✓</span>含英文字母</li><li data-rule="num"><span class="dot">✓</span>含數字</li><li data-rule="sym"><span class="dot">✓</span>含特殊符號</li></ul>':'';
+    var counter=(f.type==='textarea'&&f.min)?' <span class="counter" data-for="'+f.name+'">目前 0 / 至少 '+f.min+' 字</span>':'';
+    var hint=(f.hint||counter)?'<div class="hintline">'+(f.hint?esc(f.hint):'')+counter+'</div>':'';
+    return '<div class="field'+full+'" data-name="'+f.name+'"><label>'+req+esc(f.zh)+en+'</label>'+control+extra+hint+'<div class="msg"></div></div>';
+  }
+  function exerciseHTML(cfg,challenge){
+    var timer=challenge?'<div class="timer" id="timer">0:00.0</div>':'';
+    var fill=challenge?'':'<button type="button" class="btn sub" id="fillBtn">填入範例 Fill example</button>';
+    var kick=(challenge?'🏆 計時挑戰 · ':'')+esc(cfg.kick||'表單填寫練習');
+    return '<header class="masthead"><button class="back" id="backBtn">← 返回題目選單 Back to menu</button>'+
+    '<div class="kick">'+kick+'</div><h1>'+esc(cfg.title)+'</h1><div class="en">'+esc(cfg.en)+'</div>'+
+    '<div class="note"><span>📝</span><div>'+cfg.note+'</div></div></header>'+
+    '<div class="dock"><div class="dock-inner"><div class="bar"><span id="progressBar"></span></div>'+
+    '<div class="count">已完成 <b id="okCount">0</b> / <span id="totalCount">0</span> 欄</div>'+timer+'</div></div>'+
+    '<form id="pf-form" novalidate><div class="card"><div class="card-head">'+esc(cfg.head)+'</div>'+
+    '<div class="grid">'+cfg.fields.map(fieldHTML).join('')+'</div></div>'+
+    '<div class="result" id="result"></div>'+
+    '<div class="actions"><button type="submit" class="btn primary" id="confirmBtn">確定 Confirm</button>'+fill+
+    '<button type="button" class="btn sub" id="clearBtn">清除 Clear</button>'+
+    '<div class="spacer"></div><div class="status-text" id="statusText">請開始填寫 Start filling in</div></div></form>';
+  }
+
+  function setup(root,cfg,opts){
+    opts=opts||{};
+    var fields=cfg.fields,names=fields.map(function(f){return f.name;}),byName={};
+    fields.forEach(function(f){byName[f.name]=f;});
+    var q=function(s){return root.querySelector(s);};
+    q('#totalCount').textContent=names.length;
+    var finished=false,startTs=0,iv=null,timerEl=null,wrong=0;
+    var limitMs=(RULES.limitSec||0)*1000, penMs=(RULES.penaltySec||0)*1000;
+
+    function getVal(n){var f=byName[n];if(f.type==='radio'){var g=root.querySelector('input[name="'+n+'"]:checked');return g?g.value:'';}var el=q('#'+n);return el?el.value:'';}
+    function allVals(){var o={};names.forEach(function(n){o[n]=getVal(n);});return o;}
+    function updateCounter(f){if(f.type!=='textarea'||!f.min)return;var span=root.querySelector('.counter[data-for="'+f.name+'"]');if(!span)return;var c=cjkCount(getVal(f.name));span.textContent='目前 '+c+' / 至少 '+f.min+' 字';span.classList.toggle('ok',c>=f.min);}
+    function updatePw(f){if(!f.checklist)return;var v=getVal(f.name);var r={len:v.length>=8,alpha:/[A-Za-z]/.test(v),num:/[0-9]/.test(v),sym:/[^A-Za-z0-9]/.test(v)};root.querySelectorAll('.pwlist[data-for="'+f.name+'"] li').forEach(function(li){li.classList.toggle('done',!!r[li.getAttribute('data-rule')]);});}
+    function checkField(n,force){var f=byName[n],wrap=root.querySelector('.field[data-name="'+n+'"]'),msg=wrap.querySelector('.msg');var v=getVal(n),err=f.validate(v,allVals());if(!v&&!force){wrap.classList.remove('valid','invalid');msg.textContent='';return false;}if(err){wrap.classList.add('invalid');wrap.classList.remove('valid');msg.innerHTML='<span class="ic">✕</span>'+esc(err);return false;}wrap.classList.add('valid');wrap.classList.remove('invalid');msg.innerHTML='<span class="ic">✓</span>正確 OK';return true;}
+    function penHint(){if(!penMs||!opts.challenge)return'';return wrong>0?(' · 答錯 '+wrong+' 次,罰時 +'+(wrong*RULES.penaltySec)+'s'):'';}
+    function refresh(){var vals=allVals(),ok=0;names.forEach(function(n){if(byName[n].validate(vals[n],vals)==='')ok++;});q('#okCount').textContent=ok;q('#progressBar').style.width=(ok/names.length*100)+'%';var st=q('#statusText');st.textContent=(ok===0?'請開始填寫 Start filling in':ok<names.length?('還差 '+(names.length-ok)+' 欄'):'全部完成,可以按確定 ✅')+penHint();return ok;}
+
+    fields.forEach(function(f){
+      if(f.type==='radio'){root.querySelectorAll('input[name="'+f.name+'"]').forEach(function(r){r.addEventListener('change',function(){checkField(f.name,true);refresh();});});return;}
+      var el=q('#'+f.name);
+      el.addEventListener('input',function(){updatePw(f);updateCounter(f);checkField(f.name,false);names.forEach(function(n){if(byName[n].dependsOn===f.name){var w=root.querySelector('.field[data-name="'+n+'"]');if(w.classList.contains('valid')||w.classList.contains('invalid'))checkField(n,true);}});refresh();});
+      el.addEventListener('blur',function(){checkField(f.name,true);refresh();});
+    });
+
+    function lockForm(){root.querySelectorAll('#pf-form input,#pf-form select,#pf-form textarea,#pf-form .btn').forEach(function(x){x.disabled=true;});}
+    function timeUp(){
+      finished=true;if(iv)clearInterval(iv);if(timerEl){timerEl.textContent='0:00.0';timerEl.classList.add('warn');}
+      var box=q('#result');box.className='result fail show';
+      box.innerHTML='<h3>⏰ 時間到!未在時限內完成</h3><div class="sub">這次成績不列入排行榜,休息一下再挑戰一次吧!</div>'+
+        '<div class="lb-actions"><a data-act="retry">🔁 再挑戰一次</a><a data-act="hub">← 返回選單</a></div>';
+      box.querySelector('[data-act="retry"]').addEventListener('click',function(){showChallengeIntro(opts.id);});
+      box.querySelector('[data-act="hub"]').addEventListener('click',showHub);
+      lockForm();box.scrollIntoView({block:'nearest'});
+    }
+
+    async function finishChallenge(){
+      finished=true;if(iv)clearInterval(iv);
+      var raw=Date.now()-startTs, penalty=wrong*penMs, final=raw+penalty;
+      if(timerEl)timerEl.textContent=fmt(limitMs>0?Math.max(0,limitMs-raw):raw);
+      var before=Store.all()[opts.id]||[],prevBest=Infinity;
+      before.forEach(function(r){if(r.name===opts.name&&r.t<prevBest)prevBest=r.t;});
+      var rec={name:opts.name,t:final,rawMs:raw,penaltyMs:penalty,ts:Date.now()};
+      var box=q('#result');box.className='result wait show';box.innerHTML='<h3>⏳ 完成!正在'+(onlineOn()?'上傳到班級排行榜':'記錄成績')+'…</h3>';
+      var res=await saveScore(opts.id,rec);
+      var medal=['','🥇','🥈','🥉'][res.rank]||'';
+      var pbLine=(!onlineOn())?(final<prevBest?(prevBest===Infinity?' ｜ 首次完成 ✨':' ｜ 🎉 個人新紀錄!'):(' ｜ 個人最佳 '+fmt(prevBest))):'';
+      var breakdown=penalty>0?('<div class="sub">計時 '+fmt(raw)+' ＋ 罰時 '+(wrong*RULES.penaltySec)+'s(答錯 '+wrong+' 次) ＝ 總成績 <b>'+fmt(final)+'</b></div>'):'';
+      var netLine=onlineOn()?(res.failed?'<div class="sub">⚠️ 連線失敗,成績已暫存本機。</div>':'<div class="sub">🌐 已上傳到班級「'+esc(CFG.classCode)+'」共用排行榜。</div>'):'';
+      box.className='result pass show';
+      box.innerHTML='<h3>✅ 完成!總成績 '+fmt(final)+'</h3>'+
+        '<div class="sub">'+esc(opts.name)+' ｜ 排名第 <b>'+res.rank+'</b> 名 '+medal+pbLine+'</div>'+breakdown+netLine+
+        '<div class="lb-actions"><a data-act="board">🏆 查看排行榜</a><a data-act="retry">🔁 再挑戰一次</a><a data-act="hub">← 返回選單</a></div>';
+      box.querySelector('[data-act="board"]').addEventListener('click',function(){showLeaderboard(opts.id);});
+      box.querySelector('[data-act="retry"]').addEventListener('click',function(){showChallengeIntro(opts.id);});
+      box.querySelector('[data-act="hub"]').addEventListener('click',showHub);
+      lockForm();box.scrollIntoView({block:'nearest'});
+    }
+
+    q('#pf-form').addEventListener('submit',function(e){
+      e.preventDefault();if(finished)return;
+      var bad=[];names.forEach(function(n){if(!checkField(n,true))bad.push(n);});refresh();
+      var box=q('#result');
+      if(bad.length===0){
+        if(opts.challenge){finishChallenge();return;}
+        box.className='result pass show';box.innerHTML='<h3>✅ 全部正確!格式檢查通過</h3><div class="sub">做得很好!在真實系統中,此時就會送出資料。這裡是練習頁,不會實際送出。</div>';
+      }else{
+        if(opts.challenge){wrong++;refresh();}
+        var lis=bad.map(function(n){return '<li><a data-jump="'+n+'">'+esc(byName[n].zh)+'</a> — '+esc(byName[n].validate(getVal(n),allVals()))+'</li>';}).join('');
+        var penNote=(opts.challenge&&penMs)?'<div class="sub">本次答錯,罰時 +'+RULES.penaltySec+'s(目前累計 +'+(wrong*RULES.penaltySec)+'s)</div>':'';
+        box.className='result fail show';box.innerHTML='<h3>⚠️ 還有 '+bad.length+' 個欄位需要修正</h3>'+penNote+'<ul>'+lis+'</ul>';
+        box.querySelectorAll('[data-jump]').forEach(function(a){a.addEventListener('click',function(){var n=a.getAttribute('data-jump');var t=q('#'+n)||root.querySelector('.field[data-name="'+n+'"]');t.scrollIntoView({block:'center'});if(t.focus)t.focus();});});
+      }
+      box.scrollIntoView({block:'nearest'});
+    });
+
+    var fb=q('#fillBtn');
+    if(fb)fb.addEventListener('click',function(){fields.forEach(function(f){if(f.example===undefined)return;if(f.type==='radio'){var r=root.querySelector('input[name="'+f.name+'"][value="'+f.example+'"]');if(r)r.checked=true;}else{var el=q('#'+f.name);if(el)el.value=f.example;}});fields.forEach(function(f){updatePw(f);updateCounter(f);});names.forEach(function(n){checkField(n,true);});refresh();q('#result').className='result';});
+    q('#clearBtn').addEventListener('click',function(){if(finished)return;q('#pf-form').reset();root.querySelectorAll('.field').forEach(function(w){w.classList.remove('valid','invalid');w.querySelector('.msg').textContent='';});fields.forEach(function(f){updatePw(f);updateCounter(f);});q('#result').className='result';refresh();});
+
+    fields.forEach(function(f){updatePw(f);updateCounter(f);});refresh();
+
+    if(opts.challenge){
+      timerEl=q('#timer');startTs=Date.now();
+      iv=setInterval(function(){
+        if(finished)return;var el=Date.now()-startTs;
+        if(limitMs>0){var rem=limitMs-el;if(rem<=0){timeUp();return;}timerEl.textContent=fmt(rem);timerEl.classList.toggle('warn',rem<30000);}
+        else{timerEl.textContent=fmt(el);}
+      },100);
+    }
+  }
+
+  /* ---------- navigation / screens ---------- */
+  var hub=document.getElementById('hub'),stage=document.getElementById('stage'),mode='practice',boardPoll=null;
+  function clearPoll(){if(boardPoll){clearInterval(boardPoll);boardPoll=null;}}
+
+  function buildForm(id,opts){
+    clearPoll();opts=opts||{};var cfg=EX[id];
+    stage.innerHTML=exerciseHTML(cfg,!!opts.challenge);hub.hidden=true;stage.hidden=false;window.scrollTo(0,0);
+    document.getElementById('backBtn').addEventListener('click',function(){opts.challenge?showChallengeIntro(id):showHub();});
+    setup(stage,cfg,{id:id,challenge:opts.challenge,name:opts.name});
+    document.title=cfg.title+' — '+(opts.challenge?'計時挑戰':'練習');
+  }
+
+  function showChallengeIntro(id){
+    clearPoll();var cfg=EX[id];
+    var lim=RULES.limitSec,pen=RULES.penaltySec;
+    stage.innerHTML=
+      '<header class="masthead"><button class="back" id="backBtn">← 返回題目選單</button>'+
+      '<div class="kick">🏆 計時挑戰 · '+esc(cfg.kick||'')+'</div><h1>'+esc(cfg.title)+'</h1><div class="en">'+esc(cfg.en)+'</div>'+
+      '<div class="note"><span>⏱</span><div>輸入姓名後按「開始」計時,把整份表單<b>正確填完</b>並按「確定」即完成。'+(lim>0?'限時 '+(lim/60)+' 分鐘,':'')+(pen>0?'每按錯一次「確定」罰時 +'+pen+' 秒。':'')+'</div></div></header>'+
+      '<div class="intro"><h3>'+esc(cfg.title)+' — 準備挑戰</h3>'+
+      '<div class="rules"><h4>挑戰規則(老師可調整,對全部題目生效)</h4>'+
+        '<div class="rules-row"><span class="lbl">時間限制</span><div class="seg light" id="segLimit">'+
+          [['0','無限時'],['180','3 分鐘'],['300','5 分鐘']].map(function(o){return '<button data-v="'+o[0]+'"'+(String(lim)===o[0]?' class="active"':'')+'>'+o[1]+'</button>';}).join('')+'</div></div>'+
+        '<div class="rules-row"><span class="lbl">答錯罰時</span><div class="seg light" id="segPen">'+
+          [['0','0 秒'],['5','+5 秒'],['10','+10 秒']].map(function(o){return '<button data-v="'+o[0]+'"'+(String(pen)===o[0]?' class="active"':'')+'>'+o[1]+'</button>';}).join('')+'</div></div>'+
+      '</div>'+
+      '<div class="best" id="bestBox"><h4>目前最佳成績 Top 3</h4><div class="empty">載入中…</div></div>'+
+      '<label>你的姓名 / 座號 Your name</label><input type="text" id="challengeName" placeholder="例:1號 王小明" autocomplete="off">'+
+      '<div class="intro-msg" id="introMsg"></div>'+
+      '<button class="btn primary" id="startBtn">開始計時挑戰 ▶</button>'+
+      '<span class="link" id="toBoard">查看本題排行榜</span></div>';
+    hub.hidden=true;stage.hidden=false;window.scrollTo(0,0);
+    document.getElementById('backBtn').addEventListener('click',showHub);
+    document.getElementById('toBoard').addEventListener('click',function(){showLeaderboard(id);});
+    stage.querySelectorAll('#segLimit button').forEach(function(b){b.addEventListener('click',function(){RULES.limitSec=+b.getAttribute('data-v');saveRules();stage.querySelectorAll('#segLimit button').forEach(function(x){x.classList.toggle('active',x===b);});});});
+    stage.querySelectorAll('#segPen button').forEach(function(b){b.addEventListener('click',function(){RULES.penaltySec=+b.getAttribute('data-v');saveRules();stage.querySelectorAll('#segPen button').forEach(function(x){x.classList.toggle('active',x===b);});});});
+    var nameEl=document.getElementById('challengeName');nameEl.focus();
+    function go(){var name=(nameEl.value||'').trim();if(!name){document.getElementById('introMsg').textContent='請先輸入姓名 / 座號 Please enter your name';nameEl.focus();return;}buildForm(id,{challenge:true,name:name});}
+    document.getElementById('startBtn').addEventListener('click',go);
+    nameEl.addEventListener('keydown',function(e){if(e.key==='Enter')go();});
+    getBoard(id).then(function(d){var box=document.getElementById('bestBox');if(!box)return;var top=d.rows.slice(0,3);box.innerHTML='<h4>目前最佳成績 Top 3'+(d.online?'(班級共用)':'')+'</h4>'+(top.length?'<ol>'+top.map(function(r,i){return '<li>'+['🥇','🥈','🥉'][i]+' '+esc(r.name)+' — <b>'+fmt(r.t)+'</b></li>';}).join('')+'</ol>':'<div class="empty">目前尚無紀錄,成為第一個吧!</div>');});
+    document.title=cfg.title+' — 計時挑戰';
+  }
+
+  function showLeaderboard(exId){
+    clearPoll();exId=exId||'01';
+    var tabs=EX_ORDER.map(function(id){return '<button data-tab="'+id+'"'+(id===exId?' class="active"':'')+'>'+id+' '+esc(EX[id].title)+'</button>';}).join('');
+    stage.innerHTML=
+      '<header class="masthead"><button class="back" id="backBtn">← 返回題目選單</button>'+
+      '<div class="kick">🏆 班級計時挑戰</div><h1>排行榜 Leaderboard</h1>'+
+      '<div class="en">'+esc(EX[exId].title)+' · '+esc(EX[exId].en)+'</div></header>'+
+      '<div class="lb-tabs">'+tabs+'</div><div class="lb-mode" id="lbMode"></div><div class="lb-body" id="lbBody"><div class="lb-empty">載入中…</div></div>'+
+      '<div class="lb-tools"><button class="btn sub" id="csvBtn">⬇ 匯出全部成績 (CSV)</button>'+
+      (onlineOn()?'':'<button class="btn danger" id="clrOne">清除本題</button><button class="btn danger" id="clrAll">清除全部</button>')+'</div>'+
+      '<div class="csvbox" id="csvbox"></div>';
+    hub.hidden=true;stage.hidden=false;window.scrollTo(0,0);
+    document.getElementById('backBtn').addEventListener('click',showHub);
+    stage.querySelectorAll('.lb-tabs button').forEach(function(b){b.addEventListener('click',function(){showLeaderboard(b.getAttribute('data-tab'));});});
+    document.getElementById('csvBtn').addEventListener('click',exportCSV);
+    var one=document.getElementById('clrOne'),all=document.getElementById('clrAll');
+    if(one)one.addEventListener('click',function(){if(confirm('確定清除「'+EX[exId].title+'」的所有成績?')){Store.clearOne(exId);renderBody(exId);}});
+    if(all)all.addEventListener('click',function(){if(confirm('確定清除所有題目的所有成績?此動作無法復原。')){Store.clearAll();renderBody(exId);}});
+    renderBody(exId);
+    if(onlineOn())boardPoll=setInterval(function(){renderBody(exId,true);},3000);
+    document.title='排行榜 — '+EX[exId].title;
+  }
+  function renderBody(exId,silent){
+    getBoard(exId).then(function(d){
+      var modeEl=document.getElementById('lbMode'),body=document.getElementById('lbBody');
+      if(!body)return;
+      if(modeEl){modeEl.className='lb-mode'+(d.error?' err':'');modeEl.textContent=d.online?('🌐 即時共用 · 班級 '+CFG.classCode+'(每 3 秒更新)'):(d.error?'⚠️ 連線失敗,顯示本機暫存成績':'💾 本機模式(僅存這台電腦)');}
+      var rows=d.rows;
+      if(!rows.length){body.innerHTML='<div class="lb-empty">這一題還沒有人挑戰,快去試試看!</div>';return;}
+      body.innerHTML='<div class="lb-row head"><div>名次</div><div>姓名</div><div>用時</div><div>日期</div></div>'+rows.map(function(r,i){var medal=['🥇','🥈','🥉'][i]||('#'+(i+1));return '<div class="lb-row"><div class="lb-rank">'+medal+'</div><div class="lb-name">'+esc(r.name)+'</div><div class="lb-time">'+fmt(r.t)+'</div><div class="lb-date">'+shortDate(r.ts)+'</div></div>';}).join('');
+    });
+  }
+
+  function exportCSV(){
+    var box=document.getElementById('csvbox');if(box)box.innerHTML='<div class="hintline">整理成績中…</div>';
+    (async function(){
+      var rows=[['題目','姓名','秒數','用時','日期時間']],any=false;
+      for(var i=0;i<EX_ORDER.length;i++){var id=EX_ORDER[i];var d=await getBoard(id);d.rows.forEach(function(r){any=true;rows.push([EX[id].title,r.name,(r.t/1000).toFixed(1),fmt(r.t),new Date(r.ts).toLocaleString()]);});}
+      if(!any){if(box)box.innerHTML='<div class="hintline">目前沒有任何成績可以匯出。</div>';return;}
+      var csv='\ufeff'+rows.map(function(r){return r.map(function(c){return '"'+(''+c).replace(/"/g,'""')+'"';}).join(',');}).join('\r\n');
+      var ok=false;try{var blob=new Blob([csv],{type:'text/csv;charset=utf-8'});var url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='班級挑戰成績.csv';document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(url);a.remove();},200);ok=true;}catch(e){ok=false;}
+      if(box)box.innerHTML='<div class="hintline" style="margin-bottom:6px">'+(ok?'已嘗試下載 CSV 檔。':'')+'若沒有自動下載,可全選下方文字複製貼到 Excel / Google 試算表:</div><textarea readonly>'+esc(csv)+'</textarea>';
+    })();
+  }
+
+  function showSettings(){
+    clearPoll();
+    stage.innerHTML=
+      '<header class="masthead"><button class="back" id="backBtn">← 返回題目選單</button>'+
+      '<div class="kick">⚙️ 連線設定</div><h1>班級共用排行榜</h1>'+
+      '<div class="en">連線後,不同電腦的挑戰成績會即時彙整到同一個班級排行榜</div>'+
+      '<div class="note"><span>🌐</span><div>把成績送到你自架的 API(例如 QuizFlow 的 <b>/api/practice</b> 端點)。留空則使用<b>本機模式</b>,成績只存這台電腦。</div></div></header>'+
+      '<div class="intro">'+
+      '<label>API 網址 API base URL</label><input type="text" id="apiBase" placeholder="例:https://quizflow.app" value="'+esc(CFG.apiBase||'')+'">'+
+      '<label style="margin-top:12px">班級代碼 Class code</label><input type="text" id="classCode" placeholder="例:305A" value="'+esc(CFG.classCode||'')+'">'+
+      '<div class="set-msg" id="setMsg"></div>'+
+      '<div style="margin-top:6px;display:flex;gap:10px;flex-wrap:wrap"><button class="btn primary" id="saveBtn">儲存 Save</button><button class="btn sub" id="testBtn">測試連線 Test</button><button class="btn danger" id="clrBtn">清除設定(改用本機)</button></div>'+
+      '<div class="hintline" style="margin-top:14px">同一個「班級代碼」的成績會彙整在一起;換班就換代碼。後端串接方式請見一併提供的說明檔。</div>'+
+      '</div>';
+    hub.hidden=true;stage.hidden=false;window.scrollTo(0,0);
+    document.getElementById('backBtn').addEventListener('click',showHub);
+    document.getElementById('saveBtn').addEventListener('click',function(){CFG.apiBase=(document.getElementById('apiBase').value||'').trim();CFG.classCode=(document.getElementById('classCode').value||'').trim();saveCfg();var m=document.getElementById('setMsg');m.className='set-msg ok';m.textContent=onlineOn()?'已儲存,目前為連線模式。':'已儲存,目前為本機模式(欄位留空)。';updateConnLine();});
+    document.getElementById('testBtn').addEventListener('click',function(){var base=(document.getElementById('apiBase').value||'').trim(),code=(document.getElementById('classCode').value||'').trim();var m=document.getElementById('setMsg');if(!base||!code){m.className='set-msg err';m.textContent='請先填寫 API 網址與班級代碼。';return;}m.className='set-msg';m.textContent='測試中…';fetch(base.replace(/\/+$/,'')+'/api/practice/board?classCode='+encodeURIComponent(code)+'&exerciseId=01').then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(j){m.className='set-msg ok';m.textContent='✅ 連線成功!目前這題有 '+((j.scores||[]).length)+' 筆成績。';}).catch(function(e){m.className='set-msg err';m.textContent='❌ 連線失敗:'+e.message+'。請確認網址、CORS 與端點是否正確。';});});
+    document.getElementById('clrBtn').addEventListener('click',function(){CFG.apiBase='';CFG.classCode='';saveCfg();document.getElementById('apiBase').value='';document.getElementById('classCode').value='';var m=document.getElementById('setMsg');m.className='set-msg ok';m.textContent='已清除,改用本機模式。';updateConnLine();});
+    document.title='連線設定';
+  }
+
+  function showHub(){clearPoll();stage.hidden=true;stage.innerHTML='';hub.hidden=false;window.scrollTo(0,0);updateConnLine();document.title='僑生表單填寫練習 · 班級計時挑戰';}
+
+  function updateConnLine(){var el=document.getElementById('connLine');if(!el)return;el.innerHTML=onlineOn()?('🌐 班級 <b>'+esc(CFG.classCode)+'</b> · 挑戰成績即時共用':'💾 本機模式 · 成績僅存這台電腦(老師請用含 ?class=班級 的連結開啟以啟用共用)');}
+
+  function renderCards(){
+    document.getElementById('cards').innerHTML=EX_ORDER.map(function(id){var c=EX[id];var cta=mode==='challenge'?'開始挑戰 ▶':'開始作答 →';return '<button class="xcard" data-ex="'+id+'"><div class="xtop"><div class="xnum">'+id+'</div><div class="xicon">'+c.icon+'</div></div><div class="xtitle">'+esc(c.title)+'</div><div class="xen">'+esc(c.en)+'</div><div class="xdesc">'+esc(c.desc)+'</div><div class="xtags">'+c.tags.map(function(t){return '<span>'+esc(t)+'</span>';}).join('')+'</div><div class="xgo">'+cta+'</div></button>';}).join('');
+    document.querySelectorAll('.xcard').forEach(function(b){b.addEventListener('click',function(){var id=b.getAttribute('data-ex');mode==='challenge'?showChallengeIntro(id):buildForm(id,{});});});
+  }
+  document.querySelectorAll('#seg button').forEach(function(b){b.addEventListener('click',function(){mode=b.getAttribute('data-mode');document.querySelectorAll('#seg button').forEach(function(x){x.classList.toggle('active',x===b);});document.getElementById('modeDesc').textContent=mode==='challenge'?'輸入姓名後開始計時,完成後成績會記錄到班級排行榜!':'慢慢練習,即時檢查對錯,沒有時間壓力。';renderCards();});});
+  var boardBtn=document.getElementById('openBoard');
+  if(EMBED.hideBoard){boardBtn.style.display='none';}
+  else{boardBtn.addEventListener('click',function(){showLeaderboard('01');});}
+  renderCards();updateConnLine();
+})();
+</script>
+</body>
+</html>
