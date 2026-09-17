@@ -84,6 +84,34 @@ npm run db:studio              # 開啟 Drizzle Studio
 - 所有 API Route 最頂端加 `export const runtime = 'nodejs'`
 - 所有回應使用 `NextResponse.json()`
 
+## Engineering Skills（強制流程）
+
+本專案已安裝 3 個方法論 skill，位於 skills 目錄。以下情境**必須**先呼叫對應 skill，再動手：
+
+### `systematic-debugging`
+遇到**任何** bug / test 失敗 / build 失敗 / 非預期行為時，先跑此 skill 的四階段，**禁止**未找到 root cause 就提 fix。
+QuizFlow 專屬觸發：
+- production 的 Server Components render error（提交流程）→ 先照 Phase 1 抓 Vercel logs（Observability → Logs → Error filter）定位是哪一層，再談修法
+- 多層系統(API → scoring → Neon)出錯 → 用 `root-cause-tracing.md` 往回追資料流,別在症狀點修
+- 同一問題修 3 次以上還在跳 → 停,依 Phase 4.5 質疑架構,不要修第 4 次
+
+### `test-driven-development`
+實作**任何** feature / bugfix 前,先寫會失敗的 test 並親眼看它 red,再寫最小 code 轉 green。
+QuizFlow 專屬觸發:
+- Fork API(Phase 1 Commit 2)→ 仿 `src/libs/scoring.ts` 的 19-test 模式,test-first
+- 動到 `src/libs/scoring.ts`(protected)→ 一律先補/跑 test
+- 寫 test 時讀 `writing-good-tests.md`:期望值用 hand-derived literal,不要用被測 code 自己算;斷言真實行為,不要斷言 mock
+
+### `verification-before-completion`
+在宣稱「完成 / 修好 / pass」**之前**,一定要在當下這則訊息裡跑過驗證指令並貼出輸出。
+QuizFlow 專屬觸發:
+- 對應你的 "you run, I verify" 與 checkpoint verification gate:我(agent)宣稱前先列出「哪個指令能證明」,你跑完貼 output,確認 0 failures 才算數
+- commit / PR / 進下一個 checkpoint 前,build + type check + lint + test 四項都要有 fresh 輸出證據
+- subagent 回報 success 不採信,要看 VCS diff 驗證
+
+> 三個 skill 會互相呼叫:debugging 的 Phase 4 會要求先寫 failing test(→ TDD),
+> 修完宣稱成功前會要求驗證(→ verification)。維持這個鏈,不要單獨跳過任一環。
+
 ## AI 出題核心規則（最重要部分）
 
 AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗）。
