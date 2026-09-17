@@ -63,3 +63,6 @@ tmp/
 
 # git worktrees（subagent-driven-development 隔離工作區用）
 .worktrees/
+
+# repomix 生成輸出
+repomix-output.xml
