@@ -10,6 +10,7 @@
  * 負責把每一頁的文字跟每一頁的圖片都撈出來。
  */
 import { Buffer } from 'node:buffer';
+import { createHash } from 'node:crypto';
 
 import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 
@@ -28,7 +29,7 @@ export async function extractPdfPageContent(data: Uint8Array): Promise<PdfPageCo
   const doc = await getDocumentProxy(data);
   const { text: pageTexts } = await extractText(doc, { mergePages: false });
 
-  const images: PageImage[] = [];
+  const rawImages: PageImage[] = [];
   for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {
     const pageImages = await extractImages(doc, pageNumber);
     for (const img of pageImages) {
@@ -36,11 +37,32 @@ export async function extractPdfPageContent(data: Uint8Array): Promise<PdfPageCo
       // unpdf 回傳的型別剛好就是這三種，可以直接餵進去不用額外轉換色彩空間。
 
       const png = await sharpEncodePng(img.data, img.width, img.height, img.channels);
-      images.push({ pageNumber, buffer: png, contentType: 'image/png' });
+      rawImages.push({ pageNumber, buffer: png, contentType: 'image/png' });
     }
   }
 
-  return { pageTexts, images };
+  return { pageTexts, images: removeRepeatedDecorationImages(rawImages) };
+}
+
+// 踩過的坑：很多題庫 PDF 每頁都嵌了同一張校徽/浮水印/裝訂線圖片，這種裝飾圖跟
+// pdfImageMatch.ts「這頁圖片數量剛好等於這頁疑似需要圖的題目數」的配對假設完全
+// 無關，卻會把每頁的圖片數量灌水，害真正該配對成功的頁面也被誤判成「數量對不
+// 上」而放棄配對。用內容 hash 偵測：同一張圖片（byte 完全相同）出現在 2 頁以上，
+// 視為裝飾圖，直接濾掉不參與配對——一張圖逐 byte 相同又橫跨多頁通常不會是真的
+// 題目附圖（不同題目的圖幾乎不可能完全一樣）。
+export function removeRepeatedDecorationImages(images: PageImage[]): PageImage[] {
+  const pagesByHash = new Map<string, Set<number>>();
+  const hashByImage = images.map((img) => {
+    const hash = createHash('md5').update(img.buffer).digest('hex');
+    const pages = pagesByHash.get(hash);
+    if (pages) {
+      pages.add(img.pageNumber);
+    } else {
+      pagesByHash.set(hash, new Set([img.pageNumber]));
+    }
+    return hash;
+  });
+  return images.filter((_, i) => (pagesByHash.get(hashByImage[i]!)?.size ?? 1) <= 1);
 }
 
 async function sharpEncodePng(
