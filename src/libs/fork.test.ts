@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   assertCanFork,
+  buildDuplicateQuizValues,
   buildForkedQuestions,
   buildNewQuizValues,
   ForkError,
@@ -48,6 +49,9 @@ const mkQuestion = (overrides: Partial<SourceQuestion> = {}): SourceQuestion => 
   points: 10,
   position: 1,
   aiHint: '光合作用需要光與葉綠素',
+  diagramSvg: null,
+  referenceAnswer: null,
+  explanation: null,
   ...overrides,
 });
 
@@ -136,6 +140,78 @@ describe('buildNewQuizValues', () => {
   });
 });
 
+// ─── buildDuplicateQuizValues（同帳號複製給其他班級用,8 個）─────────────────
+// 跟 buildNewQuizValues 的差異:owner 不變、標題後綴不同、不留 marketplace 血緣
+
+describe('buildDuplicateQuizValues', () => {
+  it('title 加「（複製）」後綴（與 fork 的「（副本）」區分）', () => {
+    const source = mkSource({ title: '光合作用測驗' });
+    const values = buildDuplicateQuizValues(source, codes);
+
+    expect(values.title).toBe('光合作用測驗（複製）');
+  });
+
+  it('ownerId 維持跟 source 相同（同帳號複製,不是 fork 給別人）', () => {
+    const source = mkSource({ ownerId: 'user_source' });
+    const values = buildDuplicateQuizValues(source, codes);
+
+    expect(values.ownerId).toBe('user_source');
+  });
+
+  it('accessCode / roomCode 用注入的新值（不沿用來源,避免 unique 衝突）', () => {
+    const values = buildDuplicateQuizValues(mkSource(), codes);
+
+    expect(values.accessCode).toBe('ABCDEFGH');
+    expect(values.roomCode).toBe('AB12CD');
+  });
+
+  it('status 強制 draft（複製後先草稿,讓老師檢查再發佈）', () => {
+    const values = buildDuplicateQuizValues(mkSource(), codes);
+
+    expect(values.status).toBe('draft');
+  });
+
+  it('visibility 強制 private（不論 source 是否已公開上架市集）', () => {
+    const values = buildDuplicateQuizValues(mkSource({ visibility: 'public' }), codes);
+
+    expect(values.visibility).toBe('private');
+  });
+
+  it('forkedFromId 為 null（不是 marketplace 血緣,不計入 forkCount 統計）', () => {
+    const values = buildDuplicateQuizValues(mkSource({ id: 999 }), codes);
+
+    expect(values.forkedFromId).toBeNull();
+  });
+
+  it('slug / publishedAt / expiresAt 全清空,forkCount 重置為 0', () => {
+    const values = buildDuplicateQuizValues(mkSource(), codes);
+
+    expect(values.slug).toBeNull();
+    expect(values.publishedAt).toBeNull();
+    expect(values.expiresAt).toBeNull();
+    expect(values.forkCount).toBe(0);
+  });
+
+  it('可繼承欄位（description / category / gradeLevel / tags / 教學設定）直接拷貝', () => {
+    const source = mkSource();
+    const values = buildDuplicateQuizValues(source, codes);
+
+    expect(values.description).toBe(source.description);
+    expect(values.category).toBe(source.category);
+    expect(values.gradeLevel).toBe(source.gradeLevel);
+    expect(values.tags).toEqual(source.tags);
+    expect(values.quizMode).toBe(source.quizMode);
+    expect(values.shuffleQuestions).toBe(source.shuffleQuestions);
+    expect(values.shuffleOptions).toBe(source.shuffleOptions);
+    expect(values.allowedAttempts).toBe(source.allowedAttempts);
+    expect(values.showAnswers).toBe(source.showAnswers);
+    expect(values.timeLimitSeconds).toBe(source.timeLimitSeconds);
+    expect(values.preventLeave).toBe(source.preventLeave);
+    expect(values.scoringMode).toBe(source.scoringMode);
+    expect(values.attemptDecayRate).toBe(source.attemptDecayRate);
+  });
+});
+
 // ─── buildForkedQuestions（4 個）────────────────────────────────────────────
 
 describe('buildForkedQuestions', () => {
@@ -174,6 +250,19 @@ describe('buildForkedQuestions', () => {
     const out = buildForkedQuestions(qs, 1);
 
     expect(out.map(q => q.position)).toEqual([3, 1, 2]);
+  });
+
+  it('diagramSvg / referenceAnswer / explanation 直接拷（修現況漏拷的 bug）', () => {
+    const q = mkQuestion({
+      diagramSvg: '<svg>光合作用示意圖</svg>',
+      referenceAnswer: '光合作用發生在葉綠體',
+      explanation: '因為葉綠體含有葉綠素，可以吸收光能',
+    });
+    const [out] = buildForkedQuestions([q], 555);
+
+    expect(out!.diagramSvg).toBe('<svg>光合作用示意圖</svg>');
+    expect(out!.referenceAnswer).toBe('光合作用發生在葉綠體');
+    expect(out!.explanation).toBe('因為葉綠體含有葉綠素，可以吸收光能');
   });
 });
 

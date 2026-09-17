@@ -8,7 +8,7 @@ import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
 import { createLiveGame } from '@/actions/liveActions';
-import { deleteQuiz } from '@/actions/quizActions';
+import { deleteQuiz, duplicateQuiz } from '@/actions/quizActions';
 import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +43,7 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
   const [liveError, setLiveError] = useState<string | null>(null);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const handleStartLive = () => {
     setLiveError(null);
@@ -66,6 +67,17 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
   const handleDelete = () => {
     startTransition(async () => {
       await deleteQuiz(quiz.id);
+    });
+  };
+
+  // 複製給其他班級：成功時 server-side redirect 到新測驗編輯頁，此分支只有失敗才會走到
+  const handleDuplicate = () => {
+    setDuplicateError(null);
+    startTransition(async () => {
+      const result = await duplicateQuiz(quiz.id);
+      if (result?.error) {
+        setDuplicateError(t('duplicate_error'));
+      }
     });
   };
 
@@ -101,6 +113,9 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
           <DropdownMenuItem onClick={handleCopyLink}>
             {copied ? t('copy_link_copied') : t('copy_link')}
           </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDuplicate} disabled={isPending}>
+            {t('duplicate')}
+          </DropdownMenuItem>
           {/* QR Code：僅在有 accessCode 時顯示 */}
           {quiz.accessCode && (
             <DropdownMenuItem onClick={() => setShowQR(true)}>
@@ -126,6 +141,9 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
 
       {liveError && (
         <p className="mt-1 text-right text-xs text-destructive">{liveError}</p>
+      )}
+      {duplicateError && (
+        <p className="mt-1 text-right text-xs text-destructive">{duplicateError}</p>
       )}
 
       {/* 分享 Modal */}

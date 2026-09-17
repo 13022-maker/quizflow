@@ -131,6 +131,8 @@
     "copy_link_copied": "コピーしました！",
     "qr_code": "📱 QRコード",
     "start_live": "Live Mode を開始",
+    "duplicate": "別のクラス用に複製",
+    "duplicate_error": "複製に失敗しました。もう一度お試しください",
     "delete": "削除",
     "status_draft": "下書き",
     "status_published": "公開中",

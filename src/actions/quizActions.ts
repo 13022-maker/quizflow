@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
 import { db } from '@/libs/DB';
+import { insertDuplicatedQuiz, loadSourceQuiz } from '@/libs/fork-dao';
 import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
@@ -116,6 +117,32 @@ export async function createQuiz(data: CreateQuizInput) {
     ? `&prefill=${encodeURIComponent(parsed.data.prefill)}`
     : '';
   redirect(`/dashboard/quizzes/${inserted.id}/edit?ai=1&just_created=1${prefillParam}`);
+}
+
+/**
+ * 複製自己的測驗給其他班級/場次使用。
+ * 新測驗：新房間碼/學生連結、標題加「（複製）」、狀態草稿，不帶舊的作答紀錄。
+ * 只能複製自己 ownerId 底下的測驗；找不到或不是自己的一律回「找不到此測驗」（不洩漏是否存在）。
+ */
+export async function duplicateQuiz(quizId: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('Unauthorized');
+  }
+
+  const source = await loadSourceQuiz(quizId);
+  if (!source || source.ownerId !== userId) {
+    return { error: '找不到此測驗' };
+  }
+
+  const roomCode = await generateUniqueRoomCode();
+  const { newQuizId } = await insertDuplicatedQuiz({
+    source,
+    codes: { accessCode: nanoid(8), roomCode },
+  });
+
+  revalidatePath('/dashboard/quizzes');
+  redirect(`/dashboard/quizzes/${newQuizId}/edit`);
 }
 
 export async function updateQuiz(

@@ -131,6 +131,8 @@
     "copy_link_copied": "Copied!",
     "qr_code": "📱 QR Code",
     "start_live": "Start Live Mode",
+    "duplicate": "Duplicate for Another Class",
+    "duplicate_error": "Duplicate failed, please try again",
     "delete": "Delete",
     "status_draft": "Draft",
     "status_published": "Published",

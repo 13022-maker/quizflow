@@ -50,6 +50,9 @@ export type SourceQuestion = {
   points: number;
   position: number;
   aiHint: string | null;
+  diagramSvg: string | null;
+  referenceAnswer: string | null;
+  explanation: string | null;
 };
 
 // 業務錯誤代碼;route layer 對應到 HTTP status
@@ -152,6 +155,57 @@ export function buildNewQuizValues(
 }
 
 /**
+ * 建構「同帳號複製給其他班級使用」的 quiz insert values。
+ * 跟 buildNewQuizValues（marketplace fork 給別人）的差異：
+ *   - ownerId 不變（同一位老師自己複製）
+ *   - 標題後綴「（複製）」而非「（副本）」，方便跟 fork 來的區分
+ *   - forkedFromId 固定 null：不是 marketplace 血緣，複製時也不動 source.forkCount
+ * codes（accessCode / roomCode）由 caller 注入，理由同 buildNewQuizValues。
+ */
+export function buildDuplicateQuizValues(
+  source: SourceQuiz,
+  codes: { accessCode: string; roomCode: string },
+) {
+  return {
+    ownerId: source.ownerId,
+    title: `${source.title}（複製）`,
+    accessCode: codes.accessCode,
+    roomCode: codes.roomCode,
+
+    description: source.description,
+    category: source.category,
+    gradeLevel: source.gradeLevel,
+    tags: source.tags,
+    quizMode: source.quizMode,
+    shuffleQuestions: source.shuffleQuestions,
+    shuffleOptions: source.shuffleOptions,
+    allowedAttempts: source.allowedAttempts,
+    showAnswers: source.showAnswers,
+    timeLimitSeconds: source.timeLimitSeconds,
+    preventLeave: source.preventLeave,
+    scoringMode: source.scoringMode,
+    attemptDecayRate: source.attemptDecayRate,
+
+    // 強制重置：複製出來的新 quiz 先草稿、不公開、無到期，讓老師檢查後再發佈
+    status: 'draft' as const,
+    visibility: 'private' as const,
+    slug: null,
+    publishedAt: null,
+    expiresAt: null,
+    forkCount: 0,
+
+    // 不是 marketplace fork，不留血緣
+    forkedFromId: null,
+
+    // 不繼承書商欄位（防徽章污染，同 buildNewQuizValues）
+    publisherId: null,
+    isbn: null,
+    chapter: null,
+    bookTitle: null,
+  };
+}
+
+/**
  * 建構新 question 的 insert values。
  * 維持原 position（不重新編號,避免老師看到順序意外變動）;
  * aiHint 直接拷貝（修現況 copyQuizFromMarketplace 漏拷的 bug）。
@@ -173,5 +227,8 @@ export function buildForkedQuestions(
     points: q.points,
     position: q.position,
     aiHint: q.aiHint,
+    diagramSvg: q.diagramSvg,
+    referenceAnswer: q.referenceAnswer,
+    explanation: q.explanation,
   }));
 }

@@ -131,6 +131,8 @@
     "copy_link_copied": "已複製！",
     "qr_code": "📱 QR Code",
     "start_live": "開始 Live Mode",
+    "duplicate": "複製給其他班級",
+    "duplicate_error": "複製失敗，請再試一次",
     "delete": "刪除",
     "status_draft": "草稿",
     "status_published": "已發佈",

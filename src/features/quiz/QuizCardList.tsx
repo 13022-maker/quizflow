@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
-import { deleteQuiz } from '@/actions/quizActions';
+import { deleteQuiz, duplicateQuiz } from '@/actions/quizActions';
 import ShareModal from '@/components/quiz/ShareModal';
 import type { quizSchema } from '@/models/Schema';
 
@@ -44,6 +44,7 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
   const [isPending, startTransition] = useTransition();
   const [showShare, setShowShare] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [duplicateError, setDuplicateError] = useState<string | null>(null);
 
   const status = STATUS_CONFIG[quiz.status];
   const dateStr = quiz.createdAt.toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' });
@@ -53,6 +54,17 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
       await deleteQuiz(quiz.id);
       setShowDelete(false);
       router.refresh();
+    });
+  };
+
+  // 複製給其他班級：成功時 server-side redirect 到新測驗編輯頁，此分支只有失敗才會走到
+  const handleDuplicate = () => {
+    setDuplicateError(null);
+    startTransition(async () => {
+      const result = await duplicateQuiz(quiz.id);
+      if (result?.error) {
+        setDuplicateError('複製失敗，請再試一次');
+      }
     });
   };
 
@@ -130,6 +142,14 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
           )}
           <button
             type="button"
+            onClick={handleDuplicate}
+            disabled={isPending}
+            className="rounded-lg border px-3.5 py-2 text-sm font-medium transition-colors hover:bg-muted"
+          >
+            複製給其他班級
+          </button>
+          <button
+            type="button"
             onClick={() => setShowDelete(true)}
             disabled={isPending}
             className="ml-auto rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600"
@@ -137,6 +157,10 @@ function QuizCard({ quiz, responseCount }: { quiz: Quiz; responseCount: number }
             {isPending ? '刪除中…' : '刪除'}
           </button>
         </div>
+
+        {duplicateError && (
+          <p className="mt-2 text-xs text-red-600">{duplicateError}</p>
+        )}
 
         {/* 刪除確認 */}
         {showDelete && (

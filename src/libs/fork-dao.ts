@@ -7,6 +7,7 @@ import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 import {
+  buildDuplicateQuizValues,
   buildForkedQuestions,
   buildNewQuizValues,
   type SourceQuestion,
@@ -79,6 +80,9 @@ async function loadSourceQuestions(sourceId: number): Promise<SourceQuestion[]> 
       points: questionSchema.points,
       position: questionSchema.position,
       aiHint: questionSchema.aiHint,
+      diagramSvg: questionSchema.diagramSvg,
+      referenceAnswer: questionSchema.referenceAnswer,
+      explanation: questionSchema.explanation,
     })
     .from(questionSchema)
     .where(eq(questionSchema.quizId, sourceId))
@@ -122,6 +126,40 @@ export async function insertForkedQuiz(args: {
       .update(quizSchema)
       .set({ forkCount: sql`${quizSchema.forkCount} + 1` })
       .where(eq(quizSchema.id, source.id));
+
+    return { newQuizId: newQuiz.id };
+  });
+}
+
+/**
+ * 「同帳號複製給其他班級使用」版本：
+ *   1. insert 新 quiz（ownerId 跟 source 相同）
+ *   2. 拷貝所有 questions
+ * 跟 insertForkedQuiz 的差異：不更新 source.forkCount——那是 marketplace 公開複製數統計，
+ * 同帳號內部複製不該算進去。
+ */
+export async function insertDuplicatedQuiz(args: {
+  source: SourceQuiz;
+  codes: { accessCode: string; roomCode: string };
+}): Promise<{ newQuizId: number }> {
+  const { source, codes } = args;
+  const questions = await loadSourceQuestions(source.id);
+
+  return db.transaction(async (tx) => {
+    const [newQuiz] = await tx
+      .insert(quizSchema)
+      .values(buildDuplicateQuizValues(source, codes))
+      .returning();
+
+    if (!newQuiz) {
+      throw new Error('insert duplicated quiz returned no row');
+    }
+
+    if (questions.length > 0) {
+      await tx
+        .insert(questionSchema)
+        .values(buildForkedQuestions(questions, newQuiz.id));
+    }
 
     return { newQuizId: newQuiz.id };
   });
