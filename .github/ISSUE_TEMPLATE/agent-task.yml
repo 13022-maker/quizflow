@@ -1,0 +1,38 @@
+name: Agent 任務
+description: 給 AI agent 認領的開發任務（結構化到能讓冷啟動 agent 直接開工）
+title: '[task] '
+labels: ['狀態:待處理']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        每一格都要填。agent 只讀這張表就要能開工——別依賴對話 context。
+  - type: dropdown
+    id: area
+    attributes:
+      label: 模組
+      options: [quiz-gen, billing, live-session, 其他]
+    validations: {required: true}
+  - type: textarea
+    id: goal
+    attributes:
+      label: 目標
+      placeholder: 修復 Paddle webhook 收到 subscription.updated 時 pro 額度沒即時刷新
+    validations: {required: true}
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 驗收條件 (acceptance criteria)
+      description: agent 判斷「做完了沒」的唯一依據，用 checkbox
+    validations: {required: true}
+  - type: textarea
+    id: context
+    attributes:
+      label: 相關檔案 / 上下文
+      description: 讓 agent 不用掃整個 repo 就能定位
+    validations: {required: true}
+  - type: textarea
+    id: constraints
+    attributes:
+      label: 限制與注意事項
+    validations: {required: false}
