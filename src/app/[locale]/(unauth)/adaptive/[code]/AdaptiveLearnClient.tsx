@@ -51,6 +51,44 @@ const PROMPT_BODY_CLASS = `text-base leading-6 ${MARKDOWN_BODY_CLASS}`;
 /** 判題解析 explanation Markdown 容器樣式（同樣可能含程式碼片段） */
 const EXPLANATION_BODY_CLASS = `mt-2 text-sm leading-6 ${MARKDOWN_BODY_CLASS}`;
 
+declare global {
+  // eslint-disable-next-line ts/consistent-type-definitions -- 補強全域 Window 型別必須用 interface merging，type 無法達成
+  interface Window {
+    YT?: {
+      Player: new (
+        el: HTMLElement | string,
+        opts: {
+          videoId: string;
+          playerVars?: { start?: number; end?: number; autoplay?: number };
+        }
+      ) => unknown;
+    };
+    onYouTubeIframeAPIReady?: () => void;
+  }
+}
+
+let youtubeApiPromise: Promise<void> | null = null;
+
+/** 動態載入 YouTube IFrame Player API，全站只載一次（多個補強課文畫面共用同一個 promise） */
+function loadYoutubeIframeApi(): Promise<void> {
+  if (typeof window === 'undefined') {
+    return Promise.resolve();
+  }
+  if (window.YT?.Player) {
+    return Promise.resolve();
+  }
+  if (youtubeApiPromise) {
+    return youtubeApiPromise;
+  }
+  youtubeApiPromise = new Promise((resolve) => {
+    window.onYouTubeIframeAPIReady = () => resolve();
+    const script = document.createElement('script');
+    script.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(script);
+  });
+  return youtubeApiPromise;
+}
+
 export function AdaptiveLearnClient({
   code,
   title,
@@ -70,6 +108,31 @@ export function AdaptiveLearnClient({
   const [storageChecked, setStorageChecked] = useState(false);
 
   const [step, setStep] = useState<NextStep | null>(null);
+  const [showVideo, setShowVideo] = useState(false); // 補強課文「重看關鍵片段」播放器展開狀態
+  const videoContainerRef = useRef<HTMLDivElement>(null);
+
+  // 展開播放器時動態載入 YouTube IFrame Player API 並初始化，seek 到知識點對應片段
+  useEffect(() => {
+    if (!showVideo || step?.type !== 'lesson' || !step.lesson.videoRef || !videoContainerRef.current) {
+      return;
+    }
+    const { videoId, startSec, endSec } = step.lesson.videoRef;
+    let cancelled = false;
+    void loadYoutubeIframeApi().then(() => {
+      if (cancelled || !videoContainerRef.current || !window.YT) {
+        return;
+      }
+      // eslint-disable-next-line no-new -- YT.Player 建構後透過內部事件自行掛載播放器，不需要保留參照
+      new window.YT.Player(videoContainerRef.current, {
+        videoId,
+        playerVars: { start: Math.floor(startSec), end: Math.ceil(endSec), autoplay: 1 },
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showVideo, step]);
+
   const [diagnosis, setDiagnosis] = useState<KnowledgeDiagnosis[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [streamingText, setStreamingText] = useState(''); // 課文串流生成中的即時內容
@@ -164,6 +227,7 @@ export function AdaptiveLearnClient({
             setExchanges([]);
             setSelectedText(null);
             setQuestion('');
+            setShowVideo(false); // 新的一篇課文，收合上一篇可能展開的播放器
           }
         } else {
           throw new Error(msg.error);
@@ -579,7 +643,22 @@ export function AdaptiveLearnClient({
                 <span className="text-xs text-muted-foreground">
                   看不懂的地方，用滑鼠選取文字即可劃線提問
                 </span>
+                {step.lesson.videoRef && (
+                  <button
+                    type="button"
+                    onClick={() => setShowVideo(v => !v)}
+                    className="rounded bg-red-50 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-100"
+                  >
+                    {showVideo ? '收合影片' : '▶️ 重看關鍵片段'}
+                  </button>
+                )}
               </div>
+
+              {showVideo && step.lesson.videoRef && (
+                <div className="mb-3 aspect-video w-full max-w-lg">
+                  <div ref={videoContainerRef} className="size-full" />
+                </div>
+              )}
               {/* onMouseUp 用來抓「劃線選取」的文字，是文字選取而非點擊互動，
                   沒有對應的鍵盤操作可替代，故停用靜態元素互動規則 */}
               {/* eslint-disable-next-line jsx-a11y/no-static-element-interactions */}
