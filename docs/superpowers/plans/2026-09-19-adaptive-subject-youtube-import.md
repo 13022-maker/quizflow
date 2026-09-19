@@ -320,12 +320,13 @@ describe('validateYoutubeImportUrls', () => {
   });
 
   it('1~5 支合法網址：放行', () => {
-    const urls = Array.from({ length: 5 }, (_, i) => `https://youtu.be/vid${i}aaaaaa`);
+    // video id 必須是 extractYouTubeId 認得的 11 碼（[\w-]{11}），"vid" + 1 碼數字 + 7 個 "a" = 11 碼
+    const urls = Array.from({ length: 5 }, (_, i) => `https://youtu.be/vid${i}aaaaaaa`);
     expect(validateYoutubeImportUrls(urls)).toEqual({ ok: true });
   });
 
   it('超過 5 支：拒絕', () => {
-    const urls = Array.from({ length: 6 }, (_, i) => `https://youtu.be/vid${i}aaaaaa`);
+    const urls = Array.from({ length: 6 }, (_, i) => `https://youtu.be/vid${i}aaaaaaa`);
     const result = validateYoutubeImportUrls(urls);
     expect(result.ok).toBe(false);
   });
