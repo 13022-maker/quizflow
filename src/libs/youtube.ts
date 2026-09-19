@@ -62,10 +62,10 @@ export function validateYoutubeImportUrls(urls: string[]): { ok: true } | { ok: 
 export async function fetchYouTubeTranscriptSegments(
   videoId: string,
 ): Promise<{ text: string; offset: number }[]> {
-  // 動態 import 以相容 vitest ESM 環境
-  const { YoutubeTranscript } = await import('youtube-transcript');
   let items;
   try {
+    // 動態 import 在 try 內部，確保 import 失敗也被 classifyYouTubeError 處理
+    const { YoutubeTranscript } = await import('youtube-transcript');
     items = await YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh-TW' })
       .catch(() => YoutubeTranscript.fetchTranscript(videoId, { lang: 'zh' }))
       .catch(() => YoutubeTranscript.fetchTranscript(videoId));
