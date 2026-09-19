@@ -60,6 +60,7 @@ export type RemedialLesson = {
   title: string;
   content: string; // Markdown 課文內容
   thoughtQuestions: string[]; // 思考題（Bloom 的間隔檢索：下次作答前先複盤）
+  videoRef?: { videoId: string; startSec: number; endSec: number }; // YouTube 匯入學科才有值：對應的來源影片關鍵片段，前端顯示「重看關鍵片段」用
 };
 
 /** 一輪劃線問答：劃了哪段、問了什麼、導師答了什麼 */
@@ -300,6 +301,9 @@ export class BloomTutorLayer {
         },
         onLessonDelta,
       );
+      // 課文生成本身不知道影片來源，這裡事後把知識點的 videoRef 貼上去
+      // （TutorProvider 實作完全不用改，見設計文件「答題端」一節）
+      lesson.videoRef = node.videoRef;
       this.pendingLessons.set(studentId, { lesson, dialog: [] });
       this.log({
         studentId,
