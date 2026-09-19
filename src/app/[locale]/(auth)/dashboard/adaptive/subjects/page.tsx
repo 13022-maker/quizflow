@@ -73,6 +73,11 @@ export default async function AdaptiveSubjectsPage() {
                                       📌 已釘選
                                     </span>
                                   )}
+                                  {s.status === 'draft' && (
+                                    <span className="ml-1.5 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                      📝 草稿
+                                    </span>
+                                  )}
                                 </div>
                                 {/* 來源主題（老師當初輸入的原始主題，重生成／追溯用）跟名稱常常高度重複，
                                     降級為次要小字並在不同於名稱時才顯示，避免每列重複兩次一樣的內容 */}

@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react';
 import {
   archiveAdaptiveSubject,
   deleteAdaptiveSubject,
+  publishAdaptiveSubject,
   setAdaptiveSubjectPinned,
   unarchiveAdaptiveSubject,
 } from '@/actions/adaptiveActions';
@@ -24,6 +25,7 @@ type Props = {
     name: string;
     pinned: boolean;
     archivedAt: Date | null;
+    status: 'draft' | 'published';
   };
 };
 
@@ -46,6 +48,12 @@ export function SubjectActionsMenu({ subject }: Props) {
       } else {
         await archiveAdaptiveSubject(subject.id);
       }
+    });
+  };
+
+  const handlePublish = () => {
+    startTransition(async () => {
+      await publishAdaptiveSubject(subject.id);
     });
   };
 
@@ -74,6 +82,11 @@ export function SubjectActionsMenu({ subject }: Props) {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-44">
+          {subject.status === 'draft' && (
+            <DropdownMenuItem onClick={handlePublish}>
+              ✅ 審核並發佈
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => setShowRenameDialog(true)}>
             重新命名
           </DropdownMenuItem>
