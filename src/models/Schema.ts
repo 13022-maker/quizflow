@@ -581,34 +581,53 @@ export const adaptiveEventSchema = pgTable(
 
 // 老師自建學科（AI 生成）：知識圖譜＋題庫＋導師風格整包存 JSONB。
 // 內建學科（cpp/python/calculus）在程式碼裡；自建學科的 practice.subject_id 存 "db:<id>"。
-export const adaptiveSubjectSchema = pgTable('adaptive_subject', {
-  id: serial('id').primaryKey(),
-  ownerId: text('owner_id').notNull(), // Clerk user ID（建立學科的老師）
-  name: text('name').notNull(), // 學科顯示名稱（AI 取名，例如「二次函數」）
-  sourceTopic: text('source_topic').notNull(), // 老師輸入的主題（重生成／追溯用）
-  graph: jsonb('graph').notNull().$type<{
-    nodes: { id: string; name: string; prerequisites: string[] }[];
-  }>(),
-  itemBank: jsonb('item_bank').notNull().$type<{
-    items: {
-      id: string;
-      knowledgeId: string;
-      difficulty: number;
-      prompt: string;
-      options: string[];
-      answerIndex: number;
-      explanation?: string;
-    }[];
-  }>(),
-  tutor: jsonb('tutor').notNull().$type<{
-    lessonExampleRule: string;
-    formatRule: string;
-  }>(),
-  archivedAt: timestamp('archived_at', { mode: 'date' }), // null = 未封存；封存後從「建立新練習」下拉選單消失，但既有練習不受影響
-  pinned: boolean('pinned').default(false).notNull(), // 釘選：下拉選單與管理頁排最前面
-  updatedAt: timestamp('updated_at', { mode: 'date' })
-    .defaultNow()
-    .$onUpdate(() => new Date())
-    .notNull(),
-  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
-});
+export const adaptiveSubjectSchema = pgTable(
+  'adaptive_subject',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: text('owner_id').notNull(), // Clerk user ID（建立學科的老師）
+    name: text('name').notNull(), // 學科顯示名稱（AI 取名，例如「二次函數」）
+    sourceTopic: text('source_topic').notNull(), // 老師輸入的主題（重生成／追溯用）
+    graph: jsonb('graph').notNull().$type<{
+      nodes: {
+        id: string;
+        name: string;
+        prerequisites: string[];
+        videoRef?: { videoId: string; startSec: number; endSec: number }; // YouTube 匯入才有值：該知識點對應的來源影片關鍵片段
+      }[];
+    }>(),
+    itemBank: jsonb('item_bank').notNull().$type<{
+      items: {
+        id: string;
+        knowledgeId: string;
+        difficulty: number;
+        prompt: string;
+        options: string[];
+        answerIndex: number;
+        explanation?: string;
+        bloomLevel?: '記憶' | '理解' | '應用' | '分析' | '評鑑' | '創造'; // YouTube 匯入才有值：Bloom's Taxonomy 認知層次
+      }[];
+    }>(),
+    tutor: jsonb('tutor').notNull().$type<{
+      lessonExampleRule: string;
+      formatRule: string;
+    }>(),
+    archivedAt: timestamp('archived_at', { mode: 'date' }), // null = 未封存；封存後從「建立新練習」下拉選單消失，但既有練習不受影響
+    pinned: boolean('pinned').default(false).notNull(), // 釘選：下拉選單與管理頁排最前面
+    // 草稿/發佈狀態：預設 published 讓既有文字/檔案模式行為不變；只有 YouTube 匯入會明確寫入 draft
+    status: text('status').$type<'draft' | 'published'>().default('published').notNull(),
+    sourceUrls: jsonb('source_urls').$type<string[]>(), // YouTube 匯入的來源影片網址；其餘模式維持 null
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    // status 限定兩態（用 text + CHECK，避免 PG enum 加新值要 ALTER TYPE 的痛，比照 quizSchema.visibility 既有寫法）
+    statusCheck: check(
+      'adaptive_subject_status_check',
+      sql`${table.status} IN ('draft', 'published')`,
+    ),
+  }),
+);

@@ -26,6 +26,7 @@ export type KnowledgeNode = {
   id: string;
   name: string;
   prerequisites: string[]; // 前置知識點 id 清單（空陣列 = 起點知識點）
+  videoRef?: { videoId: string; startSec: number; endSec: number }; // YouTube 匯入才有值：該知識點對應的來源影片關鍵片段
 };
 
 /** 知識圖譜：以節點清單表示的有向無環圖（DAG） */
@@ -42,6 +43,7 @@ export type Item = {
   options: string[]; // 選項（單選）
   answerIndex: number; // 正確選項索引——只存在伺服器端，派題 API 會剝除後才回傳前端
   explanation?: string; // 作答後顯示的一句話解析（也隨派題剝除，判題後才回傳）
+  bloomLevel?: '記憶' | '理解' | '應用' | '分析' | '評鑑' | '創造'; // YouTube 匯入才有值：Bloom's Taxonomy 認知層次
 };
 
 /** 題庫 */
