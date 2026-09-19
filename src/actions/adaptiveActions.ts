@@ -65,6 +65,7 @@ export async function listAvailableSubjects(): Promise<{
       and(
         eq(adaptiveSubjectSchema.ownerId, userId),
         isNull(adaptiveSubjectSchema.archivedAt), // 已封存的不進下拉選單
+        eq(adaptiveSubjectSchema.status, 'published'), // 草稿學科（例如還沒審核的 YouTube 匯入）不進下拉選單
       ),
     )
     .orderBy(desc(adaptiveSubjectSchema.pinned), desc(adaptiveSubjectSchema.createdAt)); // 釘選優先，其餘新到舊
@@ -80,7 +81,7 @@ export async function listAvailableSubjects(): Promise<{
   ];
 }
 
-/** 驗證 subjectId 是老師可用的學科（內建，或自己擁有的自建學科） */
+/** 驗證 subjectId 是老師可用的學科（內建，或自己擁有、已發佈的自建學科） */
 async function assertSubjectUsable(subjectId: string, userId: string): Promise<void> {
   if (!subjectId.startsWith(DB_SUBJECT_PREFIX)) {
     if (!listSubjects().some(s => s.id === subjectId)) {
@@ -90,11 +91,14 @@ async function assertSubjectUsable(subjectId: string, userId: string): Promise<v
   }
   const id = Number(subjectId.slice(DB_SUBJECT_PREFIX.length));
   const [row] = await db
-    .select({ ownerId: adaptiveSubjectSchema.ownerId })
+    .select({ ownerId: adaptiveSubjectSchema.ownerId, status: adaptiveSubjectSchema.status })
     .from(adaptiveSubjectSchema)
     .where(eq(adaptiveSubjectSchema.id, id));
   if (!row || row.ownerId !== userId) {
     throw new Error('學科不存在或非本人建立');
+  }
+  if (row.status !== 'published') {
+    throw new Error('這個學科尚未發佈，請先到「學科管理」頁審核發佈');
   }
 }
 
@@ -335,6 +339,7 @@ export async function listMySubjectsForManagement(): Promise<{
   createdAt: Date;
   knowledgeCount: number;
   itemCount: number;
+  status: 'draft' | 'published';
 }[]> {
   const { userId } = await auth();
   if (!userId) {
@@ -356,6 +361,7 @@ export async function listMySubjectsForManagement(): Promise<{
     createdAt: r.createdAt,
     knowledgeCount: r.graph.nodes.length,
     itemCount: r.itemBank.items.length,
+    status: r.status,
   }));
 }
 
@@ -368,6 +374,24 @@ async function assertOwnSubject(subjectId: number, userId: string) {
   if (!row || row.ownerId !== userId) {
     throw new Error('學科不存在或非本人建立');
   }
+}
+
+/** 審核發佈：草稿學科改成已發佈，之後才能出現在「建立適性練習」下拉選單。重複呼叫視同 no-op，不拋錯 */
+export async function publishAdaptiveSubject(subjectId: number): Promise<{ error?: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+  await assertOwnSubject(subjectId, userId);
+
+  await db
+    .update(adaptiveSubjectSchema)
+    .set({ status: 'published' })
+    .where(and(eq(adaptiveSubjectSchema.id, subjectId), eq(adaptiveSubjectSchema.ownerId, userId)));
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+  return {};
 }
 
 const renameSubjectSchema = z.object({
