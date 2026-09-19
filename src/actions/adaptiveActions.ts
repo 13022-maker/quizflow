@@ -13,10 +13,18 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
+import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { friendlyAIGenerationError, generateSubject, generateSubjectSchema, toSubject } from '@/libs/adaptive/generate-subject';
+import { generateSubjectFromYoutube } from '@/libs/adaptive/generate-subject-from-youtube';
 import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
+import {
+  buildTimestampedTranscript,
+  extractYouTubeId,
+  fetchYouTubeTranscriptSegments,
+  validateYoutubeImportUrls,
+} from '@/libs/youtube';
 import { adaptivePracticeSchema, adaptiveSubjectSchema } from '@/models/Schema';
 
 const createPracticeSchema = z.object({
@@ -181,6 +189,110 @@ export async function saveGeneratedSubject(
     knowledgeCount: subject.graph.nodes.length,
     itemCount: subject.itemBank.items.length,
   };
+}
+
+/**
+ * YouTube 匯入模式的存檔邏輯，跟 saveGeneratedSubject 平行、刻意不共用：
+ * saveGeneratedSubject 內部呼叫的 toSubject() 組 graph.nodes 時只挑
+ * {id, name, prerequisites} 三個欄位，會把 videoRef 悄悄丟掉，因此這裡手動組裝
+ * 保留 videoRef／bloomLevel，並多寫入 sourceUrls／status='draft'。
+ */
+async function saveGeneratedYoutubeSubject(
+  userId: string,
+  topic: string,
+  generated: Awaited<ReturnType<typeof generateSubjectFromYoutube>>,
+  videoUrls: string[],
+): Promise<SavedSubjectResult> {
+  const { userId: authedUserId } = await auth();
+  if (!authedUserId || authedUserId !== userId) {
+    throw new Error('未授權：userId 與登入身份不符');
+  }
+
+  const graph = {
+    nodes: generated.knowledgePoints.map(k => ({
+      id: k.id,
+      name: k.name,
+      prerequisites: k.prerequisites,
+      videoRef: k.videoRef,
+    })),
+  };
+  const itemBank = { items: generated.items };
+
+  const [row] = await db
+    .insert(adaptiveSubjectSchema)
+    .values({
+      ownerId: userId,
+      name: generated.name,
+      sourceTopic: topic,
+      graph,
+      itemBank,
+      tutor: generated.tutor,
+      sourceUrls: videoUrls,
+      status: 'draft',
+    })
+    .returning();
+
+  revalidatePath('/dashboard/adaptive');
+  revalidatePath('/dashboard/adaptive/subjects');
+  return {
+    id: row!.id,
+    name: row!.name,
+    knowledgeCount: graph.nodes.length,
+    itemCount: itemBank.items.length,
+  };
+}
+
+const generateFromYoutubeSchema = z.object({
+  topic: z.string().trim().min(2, '請輸入單元主題').max(100),
+  videoUrls: z.array(z.string()).min(1).max(5),
+});
+
+/**
+ * AI 生成一個新學科（YouTube 匯入模式）：抽字幕（保留 timestamp）→ 清洗合併 → AI 生成 → 存成草稿。
+ * 整個匯入只算一次 AI quota；任一支影片抽字幕失敗就整批中止。
+ */
+export async function generateAdaptiveSubjectFromYoutube(
+  input: { topic: string; videoUrls: string[] },
+): Promise<SavedSubjectResult | { error: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    throw new Error('請先登入');
+  }
+
+  const parsed = generateFromYoutubeSchema.parse(input);
+  const urlCheck = validateYoutubeImportUrls(parsed.videoUrls);
+  if (!urlCheck.ok) {
+    return { error: urlCheck.error };
+  }
+
+  const usage = await checkAndIncrementAiUsage(userId);
+  if (!usage.allowed) {
+    return { error: usage.reason };
+  }
+
+  const videoIds = parsed.videoUrls.map(url => extractYouTubeId(url)!);
+
+  const videos: { videoId: string; segments: { text: string; offset: number }[] }[] = [];
+  for (const videoId of videoIds) {
+    try {
+      const segments = await fetchYouTubeTranscriptSegments(videoId);
+      videos.push({ videoId, segments });
+    } catch (err) {
+      return { error: `影片 ${videoId} 抽字幕失敗：${(err as Error).message}` };
+    }
+  }
+
+  const transcript = buildTimestampedTranscript(videos);
+
+  let generated: Awaited<ReturnType<typeof generateSubjectFromYoutube>>;
+  try {
+    generated = await generateSubjectFromYoutube(parsed.topic, transcript, videoIds);
+  } catch (err) {
+    console.error('[generateAdaptiveSubjectFromYoutube] AI 生成失敗：', err);
+    return { error: friendlyAIGenerationError(err) };
+  }
+
+  return saveGeneratedYoutubeSubject(userId, parsed.topic, generated, parsed.videoUrls);
 }
 
 /**
