@@ -185,8 +185,8 @@ function validateSemantics(generated: GeneratedSubject): void {
   void new AdaptiveEngine(graph, itemBank);
 }
 
-/** 從模型輸出取出 JSON（容錯：剝掉可能的 Markdown 圍欄） */
-function extractJson(text: string): unknown {
+/** 從模型輸出取出 JSON（容錯：剝掉可能的 Markdown 圍欄）。export 給 generate-subject-from-youtube.ts 共用 */
+export function extractJson(text: string): unknown {
   const stripped = text.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
   return JSON.parse(stripped);
 }
