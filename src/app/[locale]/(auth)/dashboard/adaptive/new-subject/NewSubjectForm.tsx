@@ -10,8 +10,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
-import { generateAdaptiveSubject } from '@/actions/adaptiveActions';
+import { generateAdaptiveSubject, generateAdaptiveSubjectFromYoutube } from '@/actions/adaptiveActions';
 import { validateSubjectUploadFiles } from '@/libs/adaptive/subjectFileValidation';
+import { validateYoutubeImportUrls } from '@/libs/youtube';
 
 type Result = {
   id: number;
@@ -20,7 +21,7 @@ type Result = {
   itemCount: number;
 };
 
-type Mode = 'text' | 'file';
+type Mode = 'text' | 'file' | 'youtube';
 
 // Vercel Serverless request body 上限 ~4.5MB，超過就要在前端裁切（比照 FileQuizGenerator.tsx）
 const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
@@ -56,6 +57,9 @@ export function NewSubjectForm() {
   const [startPage, setStartPage] = useState(1);
   const [endPage, setEndPage] = useState(1);
   const [pageLoading, setPageLoading] = useState(false);
+
+  // YouTube 匯入模式：一行一支影片網址
+  const [youtubeUrlsText, setYoutubeUrlsText] = useState('');
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -116,6 +120,14 @@ export function NewSubjectForm() {
     if (mode === 'file' && files.length === 0) {
       return;
     }
+    if (mode === 'youtube') {
+      const urls = youtubeUrlsText.split('\n').map(u => u.trim()).filter(Boolean);
+      const check = validateYoutubeImportUrls(urls);
+      if (!check.ok) {
+        setError(check.error);
+        return;
+      }
+    }
 
     setGenerating(true);
     setError(null);
@@ -133,6 +145,18 @@ export function NewSubjectForm() {
         }
         setResult(res);
         router.refresh(); // 讓清單頁的學科下拉即時更新
+        return;
+      }
+
+      if (mode === 'youtube') {
+        const urls = youtubeUrlsText.split('\n').map(u => u.trim()).filter(Boolean);
+        const res = await generateAdaptiveSubjectFromYoutube({ topic: topic.trim(), videoUrls: urls });
+        if ('error' in res) {
+          setError(res.error);
+          return;
+        }
+        setResult(res);
+        router.refresh();
         return;
       }
 
@@ -200,6 +224,11 @@ export function NewSubjectForm() {
           {' '}
           道題目。
         </p>
+        {mode === 'youtube' && (
+          <p className="mt-2 text-sm text-amber-600">
+            ⚠️ 這是草稿，請到「學科管理」頁審核發佈後才能建立適性練習。
+          </p>
+        )}
         <div className="mt-4 flex gap-2">
           <Link
             href="/dashboard/adaptive"
@@ -257,135 +286,164 @@ export function NewSubjectForm() {
         >
           上傳檔案
         </button>
+        <button
+          type="button"
+          onClick={() => switchMode('youtube')}
+          disabled={generating}
+          className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${mode === 'youtube' ? 'border-primary bg-primary/10 text-primary' : 'border-gray-200 text-gray-500'}`}
+        >
+          從 YouTube 匯入
+        </button>
       </div>
 
-      {mode === 'text'
-        ? (
-            <div className="flex flex-col gap-1">
-              <label htmlFor="subject-material" className="text-sm font-medium">
-                教材內容（選填）
-              </label>
-              <textarea
-                id="subject-material"
-                value={material}
-                onChange={e => setMaterial(e.target.value)}
-                maxLength={20000}
-                disabled={generating}
-                rows={6}
-                placeholder="貼上課本段落或講義文字，AI 會依此劃分知識點與出題範圍（不填則依主題自由發揮）。"
-                className="rounded-md border px-3 py-2 text-sm"
-              />
-            </div>
-          )
-        : (
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium">教材檔案</span>
-              {files.length === 0
-                ? (
-                    // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
-                    <div
-                      className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/60'}`}
-                      onClick={() => inputRef.current?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        setDragOver(true);
-                      }}
-                      onDragLeave={() => setDragOver(false)}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        setDragOver(false);
-                        void handleFiles(Array.from(e.dataTransfer.files));
-                      }}
-                    >
-                      <input
-                        ref={inputRef}
-                        type="file"
-                        multiple
-                        className="hidden"
-                        accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
-                        disabled={generating}
-                        onChange={(e) => {
-                          if (e.target.files?.length) {
-                            void handleFiles(Array.from(e.target.files));
-                          }
-                        }}
-                      />
-                      <div className="mb-2 text-3xl">📂</div>
-                      <p className="text-sm font-medium text-gray-700">點擊或拖曳上傳 PDF 或圖片</p>
-                      <p className="mt-1 text-xs text-gray-400">單一 PDF，或多張圖片</p>
-                    </div>
-                  )
-                : (
-                    <div className="space-y-2">
-                      {files.map(f => (
-                        <div key={f.name} className="flex items-center gap-3 rounded-lg border p-2.5">
-                          <span className="text-xl">{getExt(f.name) === 'pdf' ? '📕' : '🖼'}</span>
-                          <span className="min-w-0 flex-1 truncate text-sm">{f.name}</span>
-                          <span className="font-mono text-xs text-gray-500">{formatSize(f.size)}</span>
-                        </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFiles([]);
-                          setPdfPageCount(null);
-                          setError(null);
-                        }}
-                        disabled={generating}
-                        className="text-xs text-gray-400 hover:text-red-500"
-                      >
-                        移除，重新選擇
-                      </button>
+      {mode === 'text' && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="subject-material" className="text-sm font-medium">
+            教材內容（選填）
+          </label>
+          <textarea
+            id="subject-material"
+            value={material}
+            onChange={e => setMaterial(e.target.value)}
+            maxLength={20000}
+            disabled={generating}
+            rows={6}
+            placeholder="貼上課本段落或講義文字，AI 會依此劃分知識點與出題範圍（不填則依主題自由發揮）。"
+            className="rounded-md border px-3 py-2 text-sm"
+          />
+        </div>
+      )}
 
-                      {pageLoading && (
-                        <p className="text-xs text-gray-400">⏳ 讀取 PDF 頁數中…</p>
-                      )}
-                      {pdfPageCount !== null && (
-                        <div className="space-y-2 rounded-lg border bg-gray-50 p-3">
-                          <p className="text-xs font-bold text-gray-700">
-                            📄 共
-                            {' '}
-                            {pdfPageCount}
-                            {' '}
-                            頁，選擇要生成的範圍
-                          </p>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
-                            <span className="text-gray-600">從第</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={pdfPageCount}
-                              value={startPage}
-                              onChange={(e) => {
-                                const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
-                                setStartPage(v);
-                                if (endPage < v) {
-                                  setEndPage(v);
-                                }
-                              }}
-                              className="w-16 rounded-lg border px-2 py-1.5 text-center text-sm"
-                            />
-                            <span className="text-gray-600">頁到第</span>
-                            <input
-                              type="number"
-                              min={startPage}
-                              max={pdfPageCount}
-                              value={endPage}
-                              onChange={(e) => {
-                                const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
-                                setEndPage(v);
-                              }}
-                              className="w-16 rounded-lg border px-2 py-1.5 text-center text-sm"
-                            />
-                            <span className="text-gray-600">頁</span>
-                          </div>
-                          <p className="text-xs text-gray-400">建議不超過 20 頁，避免超過 AI 限制</p>
-                        </div>
-                      )}
+      {mode === 'youtube' && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="subject-youtube-urls" className="text-sm font-medium">
+            YouTube 影片網址（一行一支，最多 5 支）
+          </label>
+          <textarea
+            id="subject-youtube-urls"
+            value={youtubeUrlsText}
+            onChange={e => setYoutubeUrlsText(e.target.value)}
+            disabled={generating}
+            rows={5}
+            placeholder={'https://www.youtube.com/watch?v=xxxxxxxxxxx\nhttps://youtu.be/yyyyyyyyyyy'}
+            className="rounded-md border px-3 py-2 font-mono text-sm"
+          />
+          <p className="text-xs text-gray-400">
+            不支援播放清單網址，請貼單支影片的網址。AI 會用影片字幕內容設計知識點與題目，
+            並可讓學生卡關時「重看關鍵片段」。
+          </p>
+        </div>
+      )}
+
+      {mode === 'file' && (
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">教材檔案</span>
+          {files.length === 0
+            ? (
+                // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+                <div
+                  className={`cursor-pointer rounded-xl border-2 border-dashed p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-gray-200 hover:border-primary/60'}`}
+                  onClick={() => inputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    void handleFiles(Array.from(e.dataTransfer.files));
+                  }}
+                >
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
+                    disabled={generating}
+                    onChange={(e) => {
+                      if (e.target.files?.length) {
+                        void handleFiles(Array.from(e.target.files));
+                      }
+                    }}
+                  />
+                  <div className="mb-2 text-3xl">📂</div>
+                  <p className="text-sm font-medium text-gray-700">點擊或拖曳上傳 PDF 或圖片</p>
+                  <p className="mt-1 text-xs text-gray-400">單一 PDF，或多張圖片</p>
+                </div>
+              )
+            : (
+                <div className="space-y-2">
+                  {files.map(f => (
+                    <div key={f.name} className="flex items-center gap-3 rounded-lg border p-2.5">
+                      <span className="text-xl">{getExt(f.name) === 'pdf' ? '📕' : '🖼'}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm">{f.name}</span>
+                      <span className="font-mono text-xs text-gray-500">{formatSize(f.size)}</span>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFiles([]);
+                      setPdfPageCount(null);
+                      setError(null);
+                    }}
+                    disabled={generating}
+                    className="text-xs text-gray-400 hover:text-red-500"
+                  >
+                    移除，重新選擇
+                  </button>
+
+                  {pageLoading && (
+                    <p className="text-xs text-gray-400">⏳ 讀取 PDF 頁數中…</p>
+                  )}
+                  {pdfPageCount !== null && (
+                    <div className="space-y-2 rounded-lg border bg-gray-50 p-3">
+                      <p className="text-xs font-bold text-gray-700">
+                        📄 共
+                        {' '}
+                        {pdfPageCount}
+                        {' '}
+                        頁，選擇要生成的範圍
+                      </p>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
+                        <span className="text-gray-600">從第</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={pdfPageCount}
+                          value={startPage}
+                          onChange={(e) => {
+                            const v = Math.max(1, Math.min(Number(e.target.value), pdfPageCount));
+                            setStartPage(v);
+                            if (endPage < v) {
+                              setEndPage(v);
+                            }
+                          }}
+                          className="w-16 rounded-lg border px-2 py-1.5 text-center text-sm"
+                        />
+                        <span className="text-gray-600">頁到第</span>
+                        <input
+                          type="number"
+                          min={startPage}
+                          max={pdfPageCount}
+                          value={endPage}
+                          onChange={(e) => {
+                            const v = Math.max(startPage, Math.min(Number(e.target.value), pdfPageCount));
+                            setEndPage(v);
+                          }}
+                          className="w-16 rounded-lg border px-2 py-1.5 text-center text-sm"
+                        />
+                        <span className="text-gray-600">頁</span>
+                      </div>
+                      <p className="text-xs text-gray-400">建議不超過 20 頁，避免超過 AI 限制</p>
                     </div>
                   )}
-            </div>
-          )}
+                </div>
+              )}
+        </div>
+      )}
 
       {error && (
         <p className="text-sm text-red-600">
@@ -404,7 +462,12 @@ export function NewSubjectForm() {
       <button
         type="button"
         onClick={() => void submit()}
-        disabled={generating || !topic.trim() || (mode === 'file' && files.length === 0)}
+        disabled={
+          generating
+          || !topic.trim()
+          || (mode === 'file' && files.length === 0)
+          || (mode === 'youtube' && youtubeUrlsText.trim().length === 0)
+        }
         className="h-10 rounded-lg bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {generating ? '生成中…' : '✨ 開始生成'}
