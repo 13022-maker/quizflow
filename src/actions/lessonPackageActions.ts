@@ -3,6 +3,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
+import { revalidatePath } from 'next/cache';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { formatLessonPackageErrors, lessonPackageSchema } from '@/lib/ai/lessonPackageSchema';
@@ -83,64 +84,73 @@ export async function importLessonPackage(rawJson: string): Promise<ImportLesson
     quizCodes.push({ roomCode: await generateUniqueRoomCode(), accessCode: nanoid(8) });
   }
 
-  const created = await db.transaction(async (tx) => {
-    const createdQuizzes: { id: number; title: string }[] = [];
+  let created;
+  try {
+    created = await db.transaction(async (tx) => {
+      const createdQuizzes: { id: number; title: string }[] = [];
 
-    for (let i = 0; i < pkg.quizzes.length; i++) {
-      const quizEntry = pkg.quizzes[i]!;
-      const codes = quizCodes[i]!;
+      for (let i = 0; i < pkg.quizzes.length; i++) {
+        const quizEntry = pkg.quizzes[i]!;
+        const codes = quizCodes[i]!;
 
-      const [insertedQuiz] = await tx
-        .insert(quizSchema)
+        const [insertedQuiz] = await tx
+          .insert(quizSchema)
+          .values({
+            ownerId: userId,
+            title: quizEntry.title,
+            accessCode: codes.accessCode,
+            roomCode: codes.roomCode,
+            quizMode: 'standard',
+          })
+          .returning();
+
+        if (!insertedQuiz) {
+          throw new Error('建立測驗失敗');
+        }
+
+        const rows = buildQuestionInsertRows(quizEntry.questions, insertedQuiz.id, 1);
+        await tx.insert(questionSchema).values(rows);
+
+        createdQuizzes.push({ id: insertedQuiz.id, title: insertedQuiz.title });
+      }
+
+      const [insertedVocabSet] = await tx
+        .insert(vocabSetSchema)
         .values({
           ownerId: userId,
-          title: quizEntry.title,
-          accessCode: codes.accessCode,
-          roomCode: codes.roomCode,
-          quizMode: 'standard',
+          title: pkg.flashcards.title,
+          accessCode: nanoid(8),
+          status: 'published',
         })
         .returning();
 
-      if (!insertedQuiz) {
-        throw new Error('建立測驗失敗');
+      if (!insertedVocabSet) {
+        throw new Error('建立單字卡集失敗');
       }
 
-      const rows = buildQuestionInsertRows(quizEntry.questions, insertedQuiz.id, 1);
-      await tx.insert(questionSchema).values(rows);
+      await tx.insert(vocabCardSchema).values(
+        pkg.flashcards.cards.map((card, i) => ({
+          setId: insertedVocabSet.id,
+          front: card.front,
+          back: card.back,
+          example: card.example ?? null,
+          position: i,
+        })),
+      );
 
-      createdQuizzes.push({ id: insertedQuiz.id, title: insertedQuiz.title });
-    }
+      return {
+        quizzes: createdQuizzes,
+        vocabSetId: insertedVocabSet.id,
+        vocabTitle: insertedVocabSet.title,
+      };
+    });
+  } catch (err) {
+    console.error('[importLessonPackage] transaction failed', err);
+    return { error: '匯入失敗，請重試' };
+  }
 
-    const [insertedVocabSet] = await tx
-      .insert(vocabSetSchema)
-      .values({
-        ownerId: userId,
-        title: pkg.flashcards.title,
-        accessCode: nanoid(8),
-        status: 'published',
-      })
-      .returning();
-
-    if (!insertedVocabSet) {
-      throw new Error('建立單字卡集失敗');
-    }
-
-    await tx.insert(vocabCardSchema).values(
-      pkg.flashcards.cards.map((card, i) => ({
-        setId: insertedVocabSet.id,
-        front: card.front,
-        back: card.back,
-        example: card.example ?? null,
-        position: i,
-      })),
-    );
-
-    return {
-      quizzes: createdQuizzes,
-      vocabSetId: insertedVocabSet.id,
-      vocabTitle: insertedVocabSet.title,
-    };
-  });
+  revalidatePath('/dashboard/quizzes');
+  revalidatePath('/dashboard/vocab');
 
   return {
     ...created,

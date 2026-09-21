@@ -24,21 +24,25 @@ export default function ImportLessonPackagePage() {
     setDetail([]);
     setResult(null);
 
-    const res = await importLessonPackage(rawJson);
+    try {
+      const res = await importLessonPackage(rawJson);
 
-    if ('error' in res) {
-      if (res.error === 'PRO_REQUIRED' || res.error === 'QUOTA_EXCEEDED') {
-        router.push('/dashboard/billing');
+      if ('error' in res) {
+        if (res.error === 'PRO_REQUIRED' || res.error === 'QUOTA_EXCEEDED') {
+          router.push('/dashboard/billing');
+          return;
+        }
+        setError(res.error);
+        setDetail(res.detail ?? []);
         return;
       }
-      setError(res.error);
-      setDetail(res.detail ?? []);
-      setSubmitting(false);
-      return;
-    }
 
-    setResult(res);
-    setSubmitting(false);
+      setResult(res);
+    } catch {
+      setError('匯入失敗，請重試');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -50,7 +54,9 @@ export default function ImportLessonPackagePage() {
         <h1 className="mt-2 text-xl font-bold">批次匯入備課包</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           把
+          {' '}
           <code className="rounded bg-gray-100 px-1">docs/prompts/lesson-prep-assistant.md</code>
+          {' '}
           的 prompt 貼到外部 AI 聊天工具，把產出的 JSON 貼在下面，一次建立 6 份測驗 + 1 個單字卡集。
         </p>
       </div>
