@@ -3,41 +3,12 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
-import { sanitizeStoredDiagramSvg } from '@/lib/ai/diagramSvg';
-import { stripOptionLabel } from '@/lib/ai/optionText';
-import { extractClozeAnswers } from '@/lib/cloze';
+import { buildQuestionInsertRows, type GeneratedQuestion } from '@/lib/quiz/questionRows';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 // 依 CLAUDE.md 規範：所有 API Route 最頂端加 runtime = 'nodejs'
-// 避免被誤判為 Edge runtime（drizzle pg driver 與 Clerk auth 需要 Node API）
 export const runtime = 'nodejs';
-
-// AIQuizModal 回傳的題目格式
-type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
-type GeneratedQuestion = {
-  type: FileQuestionType;
-  question: string;
-  options?: string[];
-  answer: string | string[];
-  explanation?: string;
-  listeningText?: string; // 聽力題要念的口語化文字
-  audioUrl?: string; // 聽力題已生成的音檔 URL
-  audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
-  imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶）
-  diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
-};
-
-// 題型對應：AIQuizModal → DB enum
-const DB_TYPE_MAP: Record<FileQuestionType, string> = {
-  mc: 'single_choice',
-  tf: 'true_false',
-  fill: 'short_answer',
-  short: 'short_answer',
-  rank: 'ranking',
-  listening: 'listening',
-  cloze: 'cloze',
-};
 
 export async function POST(
   request: Request,
@@ -89,84 +60,11 @@ export async function POST(
     .from(questionSchema)
     .where(eq(questionSchema.quizId, quizId));
 
-  let nextPosition
-    = existing.length > 0
-      ? Math.max(...existing.map(q => q.position)) + 1
-      : 1;
+  const nextPosition = existing.length > 0
+    ? Math.max(...existing.map(q => q.position)) + 1
+    : 1;
 
-  // 將 AIQuizModal 格式轉換為 DB 格式，批次組成 rows
-  const rows = questions.map((q) => {
-    let type = (DB_TYPE_MAP[q.type] ?? 'short_answer') as typeof questionSchema.$inferInsert.type;
-    let options: { id: string; text: string }[] | null = null;
-    let correctAnswers: string[] = [];
-
-    if (q.type === 'cloze') {
-      // 克漏字題：body 直接是 AI 回傳含 [[詞彙]] 標記的文章，答案從標記反推（跟老師手動編輯用同一套函式）
-      correctAnswers = extractClozeAnswers(q.question);
-      // 防呆：AI 沒標記任何空格就退回簡答題，避免建出空白克漏字題
-      if (correctAnswers.length === 0) {
-        type = 'short_answer' as typeof questionSchema.$inferInsert.type;
-      }
-    } else if ((q.type === 'mc' || q.type === 'listening') && q.options?.length) {
-      // 選擇題：將 string[] 轉成 { id, text }[]
-      // stripOptionLabel：去掉 AI 塞在文字裡的「(A)」前綴，避免日後與字母重覆
-      options = q.options.map((text, i) => ({
-        id: String.fromCharCode(97 + i), // a, b, c, d
-        text: stripOptionLabel(text),
-      }));
-      // answer 可能是 "A"/"B" 大寫字母，或選項文字本身
-      const ansStr = typeof q.answer === 'string' ? q.answer : '';
-      const answerKey = ansStr.trim().toLowerCase();
-      const byLetter = options.find(o => o.id === answerKey);
-      // 文字 fallback 比對前同樣剝除前綴，兩邊一致才比得到
-      const byText = options.find(o => o.text === stripOptionLabel(ansStr));
-      const matched = byLetter ?? byText;
-      correctAnswers = matched ? [matched.id] : [];
-    } else if (q.type === 'rank' && q.options?.length) {
-      // 排序題：每個選項配 id，correctAnswers 為依 q.answer 文字順序對映的 id 陣列
-      options = q.options.map((text, i) => ({
-        id: String.fromCharCode(97 + i),
-        text: stripOptionLabel(text),
-      }));
-      const answerArr = Array.isArray(q.answer) ? q.answer : [];
-      correctAnswers = answerArr
-        .map(ansText => options!.find(o => o.text === stripOptionLabel(ansText))?.id)
-        .filter((id): id is string => Boolean(id));
-      // AI 幻覺保險：若對映失敗，回退到輸入順序當正解
-      if (correctAnswers.length !== options.length) {
-        correctAnswers = options.map(o => o.id);
-      }
-    } else if (q.type === 'tf') {
-      // 是非題：將 AI 回傳的 ○/✕ 轉換為標準選項 ID
-      options = [
-        { id: 'tf-true', text: '正確' },
-        { id: 'tf-false', text: '錯誤' },
-      ];
-      const ansStr = typeof q.answer === 'string' ? q.answer.trim() : '';
-      const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
-      correctAnswers = [isTrue ? 'tf-true' : 'tf-false'];
-    } else {
-      // 填空 / 簡答：直接存 answer 字串
-      const ansStr = typeof q.answer === 'string' ? q.answer : '';
-      correctAnswers = ansStr ? [ansStr] : [];
-    }
-
-    return {
-      quizId,
-      type,
-      body: q.question,
-      imageUrl: q.imageUrl || null,
-      diagramSvg: sanitizeStoredDiagramSvg(q.diagramSvg),
-      options,
-      correctAnswers: correctAnswers.length ? correctAnswers : null,
-      audioUrl: q.audioUrl || null,
-      audioDurationSec: q.audioDurationSec ?? null,
-      audioTranscript: q.listeningText || null,
-      explanation: q.explanation || null,
-      points: 1,
-      position: nextPosition++,
-    };
-  });
+  const rows = buildQuestionInsertRows(questions, quizId, nextPosition);
 
   // 一次批次插入，減少 DB round-trip
   await db.insert(questionSchema).values(rows);
