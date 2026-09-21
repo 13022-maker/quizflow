@@ -60,12 +60,17 @@ declare global {
         opts: {
           videoId: string;
           playerVars?: { start?: number; end?: number; autoplay?: number };
+          events?: { onReady?: () => void; onError?: () => void };
         }
       ) => unknown;
     };
     onYouTubeIframeAPIReady?: () => void;
   }
 }
+
+/** 影片內嵌播放器狀態：loading→ready 正常，loading→failed 代表逾時或 YT.Player 回報錯誤（例如校網封鎖 youtube.com） */
+type VideoLoadStatus = 'loading' | 'ready' | 'failed';
+const VIDEO_LOAD_TIMEOUT_MS = 10000;
 
 let youtubeApiPromise: Promise<void> | null = null;
 
@@ -109,15 +114,24 @@ export function AdaptiveLearnClient({
 
   const [step, setStep] = useState<NextStep | null>(null);
   const [showVideo, setShowVideo] = useState(false); // 補強課文「重看關鍵片段」播放器展開狀態
+  const [videoStatus, setVideoStatus] = useState<VideoLoadStatus>('loading');
   const videoContainerRef = useRef<HTMLDivElement>(null);
 
-  // 展開播放器時動態載入 YouTube IFrame Player API 並初始化，seek 到知識點對應片段
+  // 展開播放器時動態載入 YouTube IFrame Player API 並初始化，seek 到知識點對應片段。
+  // 10 秒逾時或 YT.Player 回報 onError（例如校網封鎖 youtube.com）都會轉成 failed，
+  // 畫面改顯示「直接到 YouTube 觀看」的降級連結，而不是讓使用者一直對著空白轉圈。
   useEffect(() => {
     if (!showVideo || step?.type !== 'lesson' || !step.lesson.videoRef || !videoContainerRef.current) {
       return;
     }
+    setVideoStatus('loading');
     const { videoId, startSec, endSec } = step.lesson.videoRef;
     let cancelled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) {
+        setVideoStatus('failed');
+      }
+    }, VIDEO_LOAD_TIMEOUT_MS);
     void loadYoutubeIframeApi().then(() => {
       if (cancelled || !videoContainerRef.current || !window.YT) {
         return;
@@ -126,10 +140,25 @@ export function AdaptiveLearnClient({
       new window.YT.Player(videoContainerRef.current, {
         videoId,
         playerVars: { start: Math.floor(startSec), end: Math.ceil(endSec), autoplay: 1 },
+        events: {
+          onReady: () => {
+            if (!cancelled) {
+              window.clearTimeout(timeoutId);
+              setVideoStatus('ready');
+            }
+          },
+          onError: () => {
+            if (!cancelled) {
+              window.clearTimeout(timeoutId);
+              setVideoStatus('failed');
+            }
+          },
+        },
       });
     });
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutId);
     };
   }, [showVideo, step]);
 
@@ -655,8 +684,27 @@ export function AdaptiveLearnClient({
               </div>
 
               {showVideo && step.lesson.videoRef && (
-                <div className="mb-3 aspect-video w-full max-w-lg">
+                <div className="relative mb-3 aspect-video w-full max-w-lg bg-muted">
                   <div ref={videoContainerRef} className="size-full" />
+                  {videoStatus === 'loading' && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted text-sm text-muted-foreground">
+                      <span className="size-5 animate-spin rounded-full border-2 border-muted-foreground/40 border-t-muted-foreground" />
+                      影片載入中…
+                    </div>
+                  )}
+                  {videoStatus === 'failed' && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-muted px-4 text-center text-sm">
+                      <span>⚠️ 無法載入影片（可能是網路限制）</span>
+                      <a
+                        href={`https://www.youtube.com/watch?v=${step.lesson.videoRef.videoId}&t=${Math.floor(step.lesson.videoRef.startSec)}s`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="font-medium text-primary underline hover:no-underline"
+                      >
+                        直接到 YouTube 觀看 →
+                      </a>
+                    </div>
+                  )}
                 </div>
               )}
               {/* onMouseUp 用來抓「劃線選取」的文字，是文字選取而非點擊互動，
