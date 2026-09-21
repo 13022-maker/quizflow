@@ -34,7 +34,7 @@
 - Consumes: `sanitizeStoredDiagramSvg` from `@/lib/ai/diagramSvg`、`stripOptionLabel` from `@/lib/ai/optionText`、`extractClozeAnswers` from `@/lib/cloze`、`questionSchema` from `@/models/Schema`（既有函式，簽章不變）
 - Produces：
   - `type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze'`
-  - `type GeneratedQuestion = { type: FileQuestionType; question: string; options?: string[]; answer: string | string[]; explanation?: string; listeningText?: string; audioUrl?: string; audioDurationSec?: number; imageUrl?: string; diagramSvg?: string }`
+  - `type GeneratedQuestion = { type: FileQuestionType; question: string; options?: string[]; answer?: string | string[]; explanation?: string; listeningText?: string; audioUrl?: string; audioDurationSec?: number; imageUrl?: string; diagramSvg?: string }`（`answer` 是 optional——Task 2 的 Zod schema 對 cloze 題型不要求 answer，Task 3 會把 Zod 驗證過的資料直接傳進來，兩邊型別必須一致）
   - `type QuestionInsertRow = typeof questionSchema.$inferInsert`
   - `function buildQuestionInsertRows(questions: GeneratedQuestion[], quizId: number, startPosition: number): QuestionInsertRow[]`
   - 後續任務（Task 3）會 import 這三個型別 + 這個函式
@@ -241,7 +241,9 @@ export type GeneratedQuestion = {
   type: FileQuestionType;
   question: string;
   options?: string[];
-  answer: string | string[];
+  // optional：cloze 題型不需要 answer（正解從 body 的 [[ ]] 標記解析），
+  // 跟 src/lib/ai/lessonPackageSchema.ts 的 Zod schema 型別保持一致
+  answer?: string | string[];
   explanation?: string;
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題已生成的音檔 URL
@@ -829,7 +831,6 @@ export async function importLessonPackage(rawJson: string): Promise<ImportLesson
   // 的慣例一致：唯一性檢查用一般查詢，不需要放進 transaction 裡）
   const quizCodes: { roomCode: string; accessCode: string }[] = [];
   for (let i = 0; i < pkg.quizzes.length; i++) {
-    // eslint-disable-next-line no-await-in-loop
     quizCodes.push({ roomCode: await generateUniqueRoomCode(), accessCode: nanoid(8) });
   }
 
@@ -840,7 +841,6 @@ export async function importLessonPackage(rawJson: string): Promise<ImportLesson
       const quizEntry = pkg.quizzes[i]!;
       const codes = quizCodes[i]!;
 
-      // eslint-disable-next-line no-await-in-loop
       const [insertedQuiz] = await tx
         .insert(quizSchema)
         .values({
@@ -857,7 +857,6 @@ export async function importLessonPackage(rawJson: string): Promise<ImportLesson
       }
 
       const rows = buildQuestionInsertRows(quizEntry.questions, insertedQuiz.id, 1);
-      // eslint-disable-next-line no-await-in-loop
       await tx.insert(questionSchema).values(rows);
 
       createdQuizzes.push({ id: insertedQuiz.id, title: insertedQuiz.title });
@@ -904,7 +903,7 @@ export async function importLessonPackage(rawJson: string): Promise<ImportLesson
 - [ ] **Step 2: 型別檢查 + lint**
 
 Run: `npm run check-types && npm run lint`
-Expected: 0 error（`no-await-in-loop` 已用行內 eslint-disable 處理，因為每份測驗的房間碼/題目插入本來就要照順序執行，不能 `Promise.all`）
+Expected: 0 error（這個專案的 eslint 設定沒有開 `no-await-in-loop`，迴圈內 `await` 不需要 disable 註解；每份測驗的房間碼/題目插入本來就要照順序執行，不能 `Promise.all`）
 
 - [ ] **Step 3: Commit**
 
