@@ -11,8 +11,10 @@ import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 import { generateAdaptiveSubject, generateAdaptiveSubjectFromYoutube } from '@/actions/adaptiveActions';
+import { searchYoutubeVideos } from '@/actions/youtubeSearchActions';
 import { validateSubjectUploadFiles } from '@/libs/adaptive/subjectFileValidation';
 import { validateYoutubeImportUrls } from '@/libs/youtube';
+import type { RankedCandidate } from '@/libs/youtubeSearch';
 
 type Result = {
   id: number;
@@ -40,7 +42,7 @@ function formatSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function NewSubjectForm() {
+export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled: boolean }) {
   const router = useRouter();
   const [topic, setTopic] = useState('');
   const [material, setMaterial] = useState('');
@@ -61,9 +63,58 @@ export function NewSubjectForm() {
   // YouTube 匯入模式：一行一支影片網址
   const [youtubeUrlsText, setYoutubeUrlsText] = useState('');
 
+  // YouTube 搜尋教學影片
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<RankedCandidate[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
+  }
+
+  async function handleSearch() {
+    if (!searchQuery.trim() || searching) {
+      return;
+    }
+    setSearching(true);
+    setSearchError(null);
+    setSearchResults([]);
+    const res = await searchYoutubeVideos({ query: searchQuery.trim() });
+    if ('error' in res) {
+      setSearchError(res.error);
+    } else {
+      setSearchResults(res.results);
+    }
+    setSearching(false);
+  }
+
+  /**
+   * 把搜尋結果的影片加進網址欄：重複網址自己擋，支數上限重用既有 validateYoutubeImportUrls，
+   *  不在這裡另外寫死「5」這個數字，避免以後上限調整時兩處要一起改卻忘記一處
+   */
+  function addVideoUrl(videoId: string) {
+    const url = `https://www.youtube.com/watch?v=${videoId}`;
+    const urls = youtubeUrlsText.split('\n').map(u => u.trim()).filter(Boolean);
+    if (urls.includes(url)) {
+      setError('這支影片已經加入過了');
+      return;
+    }
+    const nextUrls = [...urls, url];
+    const check = validateYoutubeImportUrls(nextUrls);
+    if (!check.ok) {
+      setError(check.error);
+      return;
+    }
+    setYoutubeUrlsText(nextUrls.join('\n'));
+    setError(null);
+  }
+
+  function formatDuration(sec: number): string {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m}:${String(s).padStart(2, '0')}`;
   }
 
   async function handleFiles(fileList: File[]) {
@@ -329,23 +380,88 @@ export function NewSubjectForm() {
       )}
 
       {mode === 'youtube' && (
-        <div className="flex flex-col gap-1">
-          <label htmlFor="subject-youtube-urls" className="text-sm font-medium">
-            YouTube 影片網址（一行一支，最多 5 支）
-          </label>
-          <textarea
-            id="subject-youtube-urls"
-            value={youtubeUrlsText}
-            onChange={e => setYoutubeUrlsText(e.target.value)}
-            disabled={generating}
-            rows={5}
-            placeholder={'https://www.youtube.com/watch?v=xxxxxxxxxxx\nhttps://youtu.be/yyyyyyyyyyy'}
-            className="rounded-md border px-3 py-2 font-mono text-sm"
-          />
-          <p className="text-xs text-gray-400">
-            不支援播放清單網址，請貼單支影片的網址。AI 會用影片字幕內容設計知識點與題目，
-            並可讓學生卡關時「重看關鍵片段」。
-          </p>
+        <div className="flex flex-col gap-3">
+          {youtubeSearchEnabled && (
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+              <label htmlFor="subject-youtube-search" className="text-sm font-medium">
+                🔍 搜尋教學影片
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="subject-youtube-search"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && void handleSearch()}
+                  disabled={searching || generating}
+                  placeholder="例如：光合作用"
+                  className="h-9 flex-1 rounded-md border px-3 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSearch()}
+                  disabled={searching || generating || !searchQuery.trim()}
+                  className="h-9 rounded-lg border px-3 text-sm font-medium hover:bg-muted disabled:opacity-50"
+                >
+                  {searching ? '搜尋中…' : '搜尋'}
+                </button>
+              </div>
+              {searchError && (
+                <p className="text-xs text-red-600">
+                  ⚠️
+                  {' '}
+                  {searchError}
+                </p>
+              )}
+              {searchResults.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {searchResults.map(v => (
+                    <div key={v.videoId} className="flex items-center gap-2 rounded-lg border p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={v.thumbnailUrl} alt="" className="h-12 w-20 rounded object-cover" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{v.title}</p>
+                        <p className="truncate text-xs text-gray-400">
+                          {v.channelTitle}
+                          {' · '}
+                          {formatDuration(v.durationSec)}
+                          {' · '}
+                          {v.captionKind === 'manual' ? '✅ 手動字幕' : '🤖 自動字幕'}
+                          {v.categoryId === '27' && ' · 🎓 教育'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => addVideoUrl(v.videoId)}
+                        disabled={generating}
+                        className="shrink-0 rounded-lg border px-2 py-1 text-xs font-medium hover:bg-muted"
+                      >
+                        加入
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-1">
+            <label htmlFor="subject-youtube-urls" className="text-sm font-medium">
+              YouTube 影片網址（一行一支，最多 5 支）
+            </label>
+            <textarea
+              id="subject-youtube-urls"
+              value={youtubeUrlsText}
+              onChange={e => setYoutubeUrlsText(e.target.value)}
+              disabled={generating}
+              rows={5}
+              placeholder={'https://www.youtube.com/watch?v=xxxxxxxxxxx\nhttps://youtu.be/yyyyyyyyyyy'}
+              className="rounded-md border px-3 py-2 font-mono text-sm"
+            />
+            <p className="text-xs text-gray-400">
+              不支援播放清單網址，請貼單支影片的網址。AI 會用影片字幕內容設計知識點與題目，
+              並可讓學生卡關時「重看關鍵片段」。
+            </p>
+          </div>
         </div>
       )}
 

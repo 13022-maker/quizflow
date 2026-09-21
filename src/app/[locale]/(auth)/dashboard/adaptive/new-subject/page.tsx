@@ -6,6 +6,9 @@ export const dynamic = 'force-dynamic';
 
 /** AI 生成學科 — 老師輸入單元主題（可選附教材），Claude 生成知識圖譜＋題庫 */
 export default function NewSubjectPage() {
+  // YOUTUBE_API_KEY 是否存在的判斷留在伺服器端，只有 boolean 跨到 client component
+  const youtubeSearchEnabled = Boolean(process.env.YOUTUBE_API_KEY);
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-1 flex items-center justify-between">
@@ -18,7 +21,7 @@ export default function NewSubjectPage() {
         輸入單元主題，AI 會自動規劃 3～5 個知識點（含前置依賴）與每點 5～8 題單選題。
         生成後可直接用來建立練習。
       </p>
-      <NewSubjectForm />
+      <NewSubjectForm youtubeSearchEnabled={youtubeSearchEnabled} />
     </div>
   );
 }
