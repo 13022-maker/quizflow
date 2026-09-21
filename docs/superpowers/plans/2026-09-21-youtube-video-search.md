@@ -132,11 +132,15 @@ describe('coarseRank', () => {
     expect(ranked[0]!.videoId).toBe('sweet');
   });
 
-  it('教育分類的候選在時長/相關度相同時排更前面', () => {
-    const normal = makeCandidate({ videoId: 'normal', categoryId: '22' });
+  it('教育分類的候選在時長相同時排更前面（即使相關度稍低）', () => {
+    // 只用 2 支候選會讓「相關度排第 2 名的扣分」剛好跟「教育分類加分」打平（都是 0.2），
+    // 造成同分——排序結果在同分時不保證誰在前，測試會不穩定。用 3 支候選把 edu 放在
+    // 中間（idx 1），相關度扣分縮小成 0.4*(1/3)≈0.133，小於教育分類加分 0.2，edu 才會
+    // 明確贏過 first，不會跟任何候選同分。
+    const first = makeCandidate({ videoId: 'first', categoryId: '22' });
     const education = makeCandidate({ videoId: 'edu', categoryId: '27' });
-    // 陣列順序刻意讓 normal 在前（相關度較高），驗證教育分類加分足以逆轉排名
-    const ranked = coarseRank([normal, education]);
+    const third = makeCandidate({ videoId: 'third', categoryId: '22' });
+    const ranked = coarseRank([first, education, third]);
 
     expect(ranked[0]!.videoId).toBe('edu');
   });
