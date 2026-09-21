@@ -168,6 +168,8 @@ NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 STRIPE_SECRET_KEY=any_fake_value
 # ANTHROPIC_API_KEY= （analyze-weak-points / analyze-class-performance 需要）
+# YOUTUBE_API_KEY= （適性學習「搜尋教學影片」需要，Google Cloud Console 啟用 YouTube Data API v3
+#   後建立；未設則「搜尋影片」入口整個隱藏，不影響 YouTube 匯入既有的貼網址流程）
 ```
 
 ## 已修復的問題（Bug Fix 記錄）
