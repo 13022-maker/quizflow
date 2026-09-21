@@ -12,6 +12,7 @@ export const Env = createEnv({
     ANTHROPIC_API_KEY: z.string().optional(), // AI 出題功能（Pro 限定）
     OPENAI_API_KEY: z.string().optional(), // TTS 語音生成（聽力題）
     ABLY_API_KEY: z.string().optional(), // Live Mode realtime（未設則自動 fallback 到 polling）
+    YOUTUBE_API_KEY: z.string().optional(), // 搜尋教學影片功能（未設則「搜尋影片」入口隱藏）
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().optional(),
@@ -34,6 +35,7 @@ export const Env = createEnv({
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     ABLY_API_KEY: process.env.ABLY_API_KEY,
+    YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:
       process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
