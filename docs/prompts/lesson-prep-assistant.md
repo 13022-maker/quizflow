@@ -1,10 +1,11 @@
 # 一鍵備課助手 Prompt
 
 用途：老師把單元資訊填入下方輸入區，交給外部 AI 聊天工具（例如 Claude.ai 網頁版），
-產出的 JSON 目前**尚無**自動匯入 QuizFlow 的入口，仍需手動依 JSON 內容在 QuizEditor
-一題一題輸入。但輸出格式已對齊系統實際匯入邏輯（`src/app/api/quizzes/[id]/questions/route.ts:18-40`
-的 `GeneratedQuestion` 型別與 `DB_TYPE_MAP`），日後若要做「貼上 JSON 匯入」功能，
-`quizzes[i]` 每個元素可直接當成 `{title, questions}` 丟給既有匯入邏輯，不需要再轉換。
+產出的 JSON 可直接貼到 `/dashboard/import`（批次匯入備課包頁面），一次建立 6 份測驗 +
+1 個單字卡集，不需要再手動依 JSON 內容在 QuizEditor 一題一題輸入。輸出格式已對齊系統
+實際匯入邏輯（`src/lib/quiz/questionRows.ts` 的 `GeneratedQuestion` 型別與 `DB_TYPE_MAP`），
+`quizzes[i]` 每個元素會直接當成 `{title, questions}` 丟給 `buildQuestionInsertRows` 處理，
+不需要再轉換。
 
 ## Prompt 內容
 
@@ -59,8 +60,12 @@
   answer 只能是 "正確" 或 "錯誤"（也接受 "true"/"false"，但請一律用「正確」/「錯誤」）
 - **short**（簡答）：**不要輸出 options**；answer 直接給參考答案字串（這裡不是 referenceAnswer 欄位，
   就是這題唯一的正確答案，系統會原字串存起來對照）
-- **rank**（排序）：options 給「題目呈現順序」（建議刻意打亂，不要照正確順序排，否則對學生沒有意義）；
-  answer 給「正確順序」的選項文字陣列，文字要跟 options 裡的完全一致，只是順序不同
+- **rank**（排序）：options 請直接照「正確順序」排列，跟 answer 保持同序即可（學生作答頁的
+  `QuizTaker.tsx` 本來就會在呈現時幫每個學生打亂順序，不需要在資料裡刻意打亂；刻意打亂
+  options 會誘發 `src/features/quiz/QuestionForm.tsx` 一個已知 bug——老師若在編輯器重新儲存
+  一題 options 未依 answer 順序排列的排序題，正確答案會被悄悄改壞，該 bug 待另外修復前，
+  維持「options 跟 answer 同序」是最安全的作法）；
+  answer 給「正確順序」的選項文字陣列，文字要跟 options 裡的完全一致
 - **cloze**（克漏字）：question 內文用 [[答案]] 標記要挖空的詞，**不要輸出 answer**（系統會自己從
   [[ ]] 標記解析出正確答案，你給了也會被忽略）；options 省略
 - **不使用 "listening"**（需音檔，備課階段不產）
@@ -76,19 +81,13 @@
 - 不要輸出 imageUrl / diagramSvg / audioUrl / position 等欄位，交由 QuizFlow pipeline 或匯入時自動處理
 ```
 
-## 跟原稿的差異（對齊 `route.ts:18-40` 實際匯入行為）
+## 跟原稿的差異（對齊 `src/lib/quiz/questionRows.ts` 實際匯入行為）
 
 - 頂層結構：`meta/quizzes(object)/flashcards/teacherNotes` → `quizzes` 改成**陣列**，每個元素是可直接匯入的 `{title, questions}`
 - 題目欄位：`body`→`question`、`correctAnswers`→`answer`、`options` 從 `{id,text}[]` 改成純字串陣列
 - type 值：`single_choice/true_false/short_answer/ranking` → 短碼 `mc/tf/short/rank/cloze`
 - true_false：拿掉 options 規則（系統會忽略，固定用「正確/錯誤」）
 - short_answer：answer 直接放答案，不是 `referenceAnswer`（那欄位是給 AI 批改用的提示，跟正確答案是兩件事）
-- ranking：options＝呈現順序、answer＝正確順序，兩者不再要求同序
+- ranking：options＝呈現順序、answer＝正確順序，建議兩者保持同序（見上方 rank 規則說明）
 - cloze：拿掉 correctAnswers 規則，系統自己從 `[[ ]]` 解析
 - 拿掉 `multiple_choice`：目前匯入邏輯不保證正確處理複選
-
-## 待辦
-
-目前沒有「貼上 JSON 匯入」的 UI 入口（`AIQuizModal.tsx` 四個分頁都是呼叫內部 API 現場產生，
-不接受外部已產好的 JSON）。若之後要做這個功能，可在 `AIQuizModal.tsx` 新增一個貼上 JSON 的
-子模式，`JSON.parse` 後直接走現有的 `handleAIImport` → `/api/quizzes/[id]/questions`。
