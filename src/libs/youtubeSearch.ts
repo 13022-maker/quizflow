@@ -23,7 +23,7 @@ export type RankedCandidate = SearchCandidate & {
 
 const DURATION_SWEET_MIN = 300; // 5 分鐘
 const DURATION_SWEET_MAX = 1200; // 20 分鐘
-const EDUCATION_CATEGORY_ID = '27';
+export const EDUCATION_CATEGORY_ID = '27';
 const COARSE_SHORTLIST_SIZE = 12;
 const FINAL_RESULT_SIZE = 8;
 const SEARCH_MAX_RESULTS = 25;

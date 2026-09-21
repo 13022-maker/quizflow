@@ -13,8 +13,8 @@ import { useRef, useState } from 'react';
 import { generateAdaptiveSubject, generateAdaptiveSubjectFromYoutube } from '@/actions/adaptiveActions';
 import { searchYoutubeVideos } from '@/actions/youtubeSearchActions';
 import { validateSubjectUploadFiles } from '@/libs/adaptive/subjectFileValidation';
-import { validateYoutubeImportUrls } from '@/libs/youtube';
-import type { RankedCandidate } from '@/libs/youtubeSearch';
+import { extractYouTubeId, validateYoutubeImportUrls } from '@/libs/youtube';
+import { EDUCATION_CATEGORY_ID, type RankedCandidate } from '@/libs/youtubeSearch';
 
 type Result = {
   id: number;
@@ -104,18 +104,19 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
   function addVideoUrl(videoId: string) {
     const url = `https://www.youtube.com/watch?v=${videoId}`;
     const urls = youtubeUrlsText.split('\n').map(u => u.trim()).filter(Boolean);
-    if (urls.includes(url)) {
-      setError('這支影片已經加入過了');
+    const alreadyAdded = urls.some(existing => extractYouTubeId(existing) === videoId);
+    if (alreadyAdded) {
+      setSearchError('這支影片已經加入過了');
       return;
     }
     const nextUrls = [...urls, url];
     const check = validateYoutubeImportUrls(nextUrls);
     if (!check.ok) {
-      setError(check.error);
+      setSearchError(check.error);
       return;
     }
     setYoutubeUrlsText(nextUrls.join('\n'));
-    setError(null);
+    setSearchError(null);
   }
 
   function formatDuration(sec: number): string {
@@ -398,7 +399,7 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
                   id="subject-youtube-search"
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && void handleSearch()}
+                  onKeyDown={e => e.key === 'Enter' && !e.nativeEvent.isComposing && void handleSearch()}
                   disabled={searching || generating}
                   maxLength={100}
                   placeholder="例如：光合作用"
@@ -434,7 +435,7 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
                           {formatDuration(v.durationSec)}
                           {' · '}
                           {v.captionKind === 'manual' ? '✅ 手動字幕' : '🤖 自動字幕'}
-                          {v.categoryId === '27' && ' · 🎓 教育'}
+                          {v.categoryId === EDUCATION_CATEGORY_ID && ' · 🎓 教育'}
                         </p>
                       </div>
                       <button
