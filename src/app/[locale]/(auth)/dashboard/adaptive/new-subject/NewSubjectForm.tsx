@@ -230,12 +230,26 @@ export function NewSubjectForm() {
           </p>
         )}
         <div className="mt-4 flex gap-2">
-          <Link
-            href="/dashboard/adaptive"
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            用它建立練習 →
-          </Link>
+          {mode === 'youtube'
+            ? (
+                // YouTube 模式的學科一律是草稿，「建立適性練習」下拉選單看不到它
+                // （見 listAvailableSubjects 的 status='published' 過濾），
+                // 導去建練習頁只會讓老師找不到、誤以為壞掉，改導去學科管理頁審核發佈
+                <Link
+                  href="/dashboard/adaptive/subjects"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  前往學科管理審核發佈 →
+                </Link>
+              )
+            : (
+                <Link
+                  href="/dashboard/adaptive"
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  用它建立練習 →
+                </Link>
+              )}
           <button
             type="button"
             onClick={() => {
