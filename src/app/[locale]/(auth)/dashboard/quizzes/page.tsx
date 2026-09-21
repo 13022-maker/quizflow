@@ -150,6 +150,12 @@ export default async function QuizzesPage() {
                 >
                   手動建立 ↗
                 </Link>
+                <Link
+                  href="/dashboard/import"
+                  className="text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  批次匯入備課包 ↗
+                </Link>
                 <CreateQuizWithAIButton className={buttonVariants({ size: 'sm' })}>
                   {t('add_quiz_button')}
                 </CreateQuizWithAIButton>
