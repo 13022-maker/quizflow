@@ -81,13 +81,20 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
     setSearching(true);
     setSearchError(null);
     setSearchResults([]);
-    const res = await searchYoutubeVideos({ query: searchQuery.trim() });
-    if ('error' in res) {
-      setSearchError(res.error);
-    } else {
-      setSearchResults(res.results);
+    try {
+      const res = await searchYoutubeVideos({ query: searchQuery.trim() });
+      if ('error' in res) {
+        setSearchError(res.error);
+      } else {
+        setSearchResults(res.results);
+      }
+    } catch {
+      // server action 可能在自己的 try/catch 之前就 throw（例如登入過期、Zod 驗證失敗），
+      // 這裡一律接住避免 searching 卡在 true 導致按鈕永久顯示「搜尋中…」
+      setSearchError('搜尋發生錯誤，請稍後再試');
+    } finally {
+      setSearching(false);
     }
-    setSearching(false);
   }
 
   /**
@@ -393,6 +400,7 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
                   onChange={e => setSearchQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && void handleSearch()}
                   disabled={searching || generating}
+                  maxLength={100}
                   placeholder="例如：光合作用"
                   className="h-9 flex-1 rounded-md border px-3 text-sm"
                 />
