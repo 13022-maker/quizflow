@@ -3,6 +3,8 @@
 // 題目欄位跟 src/lib/quiz/questionRows.ts 的 GeneratedQuestion 對齊（同一套匯入邏輯共用）。
 import { z } from 'zod';
 
+import { stripOptionLabel } from '@/lib/ai/optionText';
+
 const questionTypeValues = ['mc', 'tf', 'fill', 'short', 'rank', 'listening', 'cloze'] as const;
 
 const CLOZE_MARKER_REGEX = /\[\[[^[\]]+\]\]/;
@@ -43,6 +45,46 @@ export const lessonPackageQuestionSchema = baseQuestionSchema.superRefine((q, ct
       message: 'cloze 題型的 question 必須至少包含一組 [[ ]] 標記',
       path: ['question'],
     });
+  }
+
+  if (q.type === 'mc' || q.type === 'listening') {
+    if (!q.options || q.options.length < 2) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${q.type} 題型的 options 至少要有 2 個選項`,
+        path: ['options'],
+      });
+    } else {
+      // 跟 src/lib/quiz/questionRows.ts 的 buildQuestionInsertRows 用同一套比對邏輯，
+      // 直接 import stripOptionLabel 而不是自己重寫一份，避免驗證邏輯跟實際匯入邏輯兜不起來
+      const options = q.options.map((text, i) => ({
+        id: String.fromCharCode(97 + i),
+        text: stripOptionLabel(text),
+      }));
+      const ansStr = typeof q.answer === 'string' ? q.answer : '';
+      const answerKey = ansStr.trim().toLowerCase();
+      const byLetter = options.some(o => o.id === answerKey);
+      const byText = options.some(o => o.text === stripOptionLabel(ansStr));
+
+      if (!ansStr.trim() || !(byLetter || byText)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `${q.type} 題型的 answer 必須對應到其中一個選項（選項文字或字母 A/B/C...）`,
+          path: ['answer'],
+        });
+      }
+    }
+  }
+
+  if (q.type === 'tf' || q.type === 'short' || q.type === 'fill') {
+    const ansStr = typeof q.answer === 'string' ? q.answer.trim() : '';
+    if (!ansStr) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `${q.type} 題型的 answer 不可為空`,
+        path: ['answer'],
+      });
+    }
   }
 });
 

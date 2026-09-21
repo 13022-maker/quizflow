@@ -120,6 +120,176 @@ describe('lessonPackageSchema', () => {
     expect(result.success).toBe(false);
   });
 
+  it('mc 題型沒有 answer 時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'mc', question: 'Q', options: ['甲', '乙', '丙', '丁'] },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('mc 題型 answer 對不到任何選項時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'mc', question: 'Q', options: ['甲', '乙', '丙', '丁'], answer: 'Z' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('mc 題型 answer 用字母比對到選項時通過驗證', () => {
+    const ok = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'mc', question: 'Q', options: ['甲', '乙', '丙', '丁'], answer: 'B' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(ok);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('mc 題型 answer 用選項文字本身比對到選項時通過驗證', () => {
+    const ok = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'mc', question: 'Q', options: ['甲', '乙', '丙', '丁'], answer: '丙' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(ok);
+
+    expect(result.success).toBe(true);
+  });
+
+  it('mc 題型只有 1 個選項時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'mc', question: 'Q', options: ['甲'], answer: '甲' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('listening 題型沒有 answer 時驗證失敗（共用 mc 的比對邏輯）', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'listening', question: 'Q', options: ['甲', '乙'] },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('tf 題型沒有 answer 時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'tf', question: 'Q' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('short 題型沒有 answer 時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'short', question: 'Q' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('fill 題型沒有 answer 時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'fill', question: 'Q' },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
+  it('rank 題型完全沒有 answer 欄位時驗證失敗', () => {
+    const bad = {
+      ...validPackage,
+      quizzes: [
+        {
+          title: '測驗',
+          questions: [
+            { type: 'rank', question: 'Q', options: ['甲', '乙', '丙'] },
+          ],
+        },
+      ],
+    };
+    const result = lessonPackageSchema.safeParse(bad);
+
+    expect(result.success).toBe(false);
+  });
+
   it('formatLessonPackageErrors 回傳可讀的 path + message 清單', () => {
     const bad = { ...validPackage, quizzes: [] };
     const result = lessonPackageSchema.safeParse(bad);
