@@ -253,7 +253,8 @@ const generateFromYoutubeSchema = z.object({
 
 /**
  * AI 生成一個新學科（YouTube 匯入模式）：抽字幕（保留 timestamp）→ 清洗合併 → AI 生成 → 存成草稿。
- * 整個匯入只算一次 AI quota；任一支影片抽字幕失敗就整批中止。
+ * 抽字幕不耗 AI quota，因此 quota 要等抽字幕全部成功後、真正呼叫 AI 之前才計入，
+ * 避免老師因單支影片沒字幕/私人影片而整批中止時，白白扣掉一次額度。
  */
 export async function generateAdaptiveSubjectFromYoutube(
   input: { topic: string; videoUrls: string[] },
@@ -269,12 +270,8 @@ export async function generateAdaptiveSubjectFromYoutube(
     return { error: urlCheck.error };
   }
 
-  const usage = await checkAndIncrementAiUsage(userId);
-  if (!usage.allowed) {
-    return { error: usage.reason };
-  }
-
-  const videoIds = parsed.videoUrls.map(url => extractYouTubeId(url)!);
+  // 同一支影片貼兩次（或兩個網址指向同一 video id）不重複抽字幕，也不重複佔逐字稿字元預算
+  const videoIds = [...new Set(parsed.videoUrls.map(url => extractYouTubeId(url)!))];
 
   const videos: { videoId: string; segments: { text: string; offset: number }[] }[] = [];
   for (const videoId of videoIds) {
@@ -286,7 +283,16 @@ export async function generateAdaptiveSubjectFromYoutube(
     }
   }
 
-  const transcript = buildTimestampedTranscript(videos);
+  const { transcript, excludedVideoIds } = buildTimestampedTranscript(videos);
+  if (excludedVideoIds.length > 0) {
+    const includedCount = videoIds.length - excludedVideoIds.length;
+    return { error: `教材長度超過上限，僅前 ${includedCount} 支影片被採用，請減少影片數量或縮短單元範圍再試` };
+  }
+
+  const usage = await checkAndIncrementAiUsage(userId);
+  if (!usage.allowed) {
+    return { error: usage.reason };
+  }
 
   let generated: Awaited<ReturnType<typeof generateSubjectFromYoutube>>;
   try {

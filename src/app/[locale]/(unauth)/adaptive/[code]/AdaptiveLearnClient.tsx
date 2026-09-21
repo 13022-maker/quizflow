@@ -665,7 +665,9 @@ export function AdaptiveLearnClient({
               <div
                 className={LESSON_BODY_CLASS}
                 onMouseUp={handleLessonMouseUp}
-                // 內容來自自家 API（Claude 生成的 Markdown），非使用者輸入
+                // 課文內容由 Claude/Gemini 生成，但 YouTube 匯入學科的知識點/題目命名
+                // 可能間接受第三方影片字幕內容影響；目前信任邊界維持不變（沒有加額外 sanitize），
+                // 如需強化見追蹤事項。
                 dangerouslySetInnerHTML={{ __html: String(marked.parse(step.lesson.content)) }}
               />
 

@@ -75,20 +75,28 @@ export async function fetchYouTubeTranscriptSegments(
   if (!items || items.length === 0) {
     throw new Error('此影片沒有可用的字幕（可能尚未自動產生）。請換一支影片。');
   }
-  return items.map(i => ({ text: i.text, offset: i.offset }));
+  // youtube-transcript 套件回傳的 offset 單位是毫秒（2026-09-21 對真實 YouTube 影片實測確認，
+  // 套件本身 .d.ts 未記載單位）。這裡統一正規化成「秒」，下游（分桶、prompt、影片 seek）
+  // 全部只處理秒數，不用各自轉換。
+  return items.map(i => ({ text: i.text, offset: Math.round(i.offset / 1000) }));
 }
 
 /**
  * 把多支影片的逐字稿合併成一份帶時間戳的教材文字，餵給 LLM。
  * 每支影片依時間分桶（約 20 秒一桶，減少 token 量又保留可定位精度）。
- * 總長度沿用既有文字模式 <教材> 的 20000 字元截斷邏輯。
+ * 總長度沿用既有文字模式 <教材> 的 20000 字元截斷邏輯；
+ * 若截斷點落在某支影片的標頭之前，代表該影片（與其後所有影片）被整支排除，
+ * 回傳 excludedVideoIds 讓呼叫端可以擋下，不要悄悄用不完整教材生成。
  */
 export function buildTimestampedTranscript(
   videos: { videoId: string; segments: { text: string; offset: number }[] }[],
-): string {
+): { transcript: string; excludedVideoIds: string[] } {
   const parts: string[] = [];
+  const headers: { videoId: string; header: string }[] = [];
   videos.forEach((video, index) => {
-    parts.push(`\n=== 影片 ${index + 1}：${video.videoId} ===`);
+    const header = `=== 影片 ${index + 1}：${video.videoId} ===`;
+    headers.push({ videoId: video.videoId, header });
+    parts.push(`\n${header}`);
     let bucketStart = -1;
     let bucketText: string[] = [];
     const flush = () => {
@@ -107,5 +115,16 @@ export function buildTimestampedTranscript(
     }
     flush();
   });
-  return parts.join('\n').trim().slice(0, MAX_TRANSCRIPT_CHARS);
+
+  const fullText = parts.join('\n').trim();
+  const transcript = fullText.slice(0, MAX_TRANSCRIPT_CHARS);
+
+  const excludedVideoIds = headers
+    .filter(({ header }) => {
+      const idx = fullText.indexOf(header);
+      return idx === -1 || idx >= MAX_TRANSCRIPT_CHARS;
+    })
+    .map(({ videoId }) => videoId);
+
+  return { transcript, excludedVideoIds };
 }

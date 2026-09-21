@@ -1,6 +1,17 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { buildTimestampedTranscript, extractYouTubeId, validateYoutubeImportUrls } from './youtube';
+// youtube-transcript 套件在檔案內是動態 import（見 youtube.ts 的 fetchYouTubeTranscriptSegments，
+// 是為了繞開該套件在 vitest 下的 CommonJS/ESM dual-package hazard，之前 review 已定案不可還原成靜態 import）。
+// vi.mock 對動態 import 一樣有效，必須放在 import 目標函式之前設定好。
+const fetchTranscriptMock = vi.fn();
+vi.mock('youtube-transcript', () => ({
+  YoutubeTranscript: {
+    fetchTranscript: (...args: unknown[]) => fetchTranscriptMock(...args),
+  },
+}));
+
+// eslint-disable-next-line import/first -- mock 必須在 import 目標函式之前設定好
+import { buildTimestampedTranscript, extractYouTubeId, fetchYouTubeTranscriptSegments, validateYoutubeImportUrls } from './youtube';
 
 describe('extractYouTubeId', () => {
   it('watch?v= 格式：取出 11 碼 video id', () => {
@@ -60,9 +71,27 @@ describe('validateYoutubeImportUrls', () => {
   });
 });
 
+describe('fetchYouTubeTranscriptSegments', () => {
+  it('套件回傳的 offset 是毫秒，需正規化成秒（四捨五入）', async () => {
+    // 這份 fixture 是 2026-09-21 對真實 YouTube 影片（dQw4w9WgXcQ, 3:33）實測擷取到的
+    // 精簡版：套件的 srv3 解析路徑回傳的 offset 單位是毫秒，不是秒。
+    fetchTranscriptMock.mockResolvedValueOnce([
+      { text: '第一句', duration: 1680, offset: 1360, lang: 'zh-TW' },
+      { text: '最後一句', duration: 2000, offset: 207920, lang: 'zh-TW' },
+    ]);
+
+    const result = await fetchYouTubeTranscriptSegments('dQw4w9WgXcQ');
+
+    expect(result).toEqual([
+      { text: '第一句', offset: 1 }, // Math.round(1360 / 1000)
+      { text: '最後一句', offset: 208 }, // Math.round(207920 / 1000)
+    ]);
+  });
+});
+
 describe('buildTimestampedTranscript', () => {
   it('單支影片：依 20 秒分桶並標記 videoId／時間戳', () => {
-    const result = buildTimestampedTranscript([
+    const { transcript, excludedVideoIds } = buildTimestampedTranscript([
       {
         videoId: 'abc123',
         segments: [
@@ -73,33 +102,48 @@ describe('buildTimestampedTranscript', () => {
       },
     ]);
 
-    expect(result).toContain('abc123');
-    expect(result).toContain('[t=0s]');
-    expect(result).toContain('第一句');
-    expect(result).toContain('第二句');
-    expect(result).toContain('[t=20s]');
-    expect(result).toContain('第三句');
+    expect(transcript).toContain('abc123');
+    expect(transcript).toContain('[t=0s]');
+    expect(transcript).toContain('第一句');
+    expect(transcript).toContain('第二句');
+    expect(transcript).toContain('[t=20s]');
+    expect(transcript).toContain('第三句');
+    expect(excludedVideoIds).toEqual([]);
   });
 
   it('多支影片：依序串接、各自標出 videoId', () => {
-    const result = buildTimestampedTranscript([
+    const { transcript, excludedVideoIds } = buildTimestampedTranscript([
       { videoId: 'vid1', segments: [{ text: '影片一內容', offset: 0 }] },
       { videoId: 'vid2', segments: [{ text: '影片二內容', offset: 0 }] },
     ]);
 
-    const idxVid1 = result.indexOf('vid1');
-    const idxVid2 = result.indexOf('vid2');
+    const idxVid1 = transcript.indexOf('vid1');
+    const idxVid2 = transcript.indexOf('vid2');
 
     expect(idxVid1).toBeGreaterThanOrEqual(0);
     expect(idxVid2).toBeGreaterThan(idxVid1);
+    expect(excludedVideoIds).toEqual([]);
   });
 
   it('超過 20000 字元：截斷', () => {
     const longText = 'x'.repeat(30000);
-    const result = buildTimestampedTranscript([
+    const { transcript } = buildTimestampedTranscript([
       { videoId: 'abc', segments: [{ text: longText, offset: 0 }] },
     ]);
 
-    expect(result.length).toBeLessThanOrEqual(20000);
+    expect(transcript.length).toBeLessThanOrEqual(20000);
+  });
+
+  it('截斷點落在某支影片標頭之前：該影片（與其後影片）被判定為整支排除', () => {
+    // 第一支影片的內容單獨就超過 20000 字元上限，第二、三支影片的標頭必定被截掉
+    const longText = 'x'.repeat(30000);
+    const { transcript, excludedVideoIds } = buildTimestampedTranscript([
+      { videoId: 'vid1', segments: [{ text: longText, offset: 0 }] },
+      { videoId: 'vid2', segments: [{ text: '影片二內容', offset: 0 }] },
+      { videoId: 'vid3', segments: [{ text: '影片三內容', offset: 0 }] },
+    ]);
+
+    expect(transcript.length).toBeLessThanOrEqual(20000);
+    expect(excludedVideoIds).toEqual(['vid2', 'vid3']);
   });
 });
