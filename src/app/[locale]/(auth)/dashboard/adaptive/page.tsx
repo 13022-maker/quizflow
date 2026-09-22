@@ -74,38 +74,10 @@ export default async function AdaptiveListPage() {
         )}
       />
 
-      {/* 建立練習 */}
-      <div className="mb-8 rounded-xl border bg-card p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold">建立新練習</h2>
-        <form
-          action={createAdaptivePractice}
-          className="flex flex-wrap items-end gap-3"
-        >
-          <div className="flex flex-col gap-1">
-            <label htmlFor="adaptive-title" className="text-sm font-medium">練習名稱</label>
-            <input
-              id="adaptive-title"
-              name="title"
-              required
-              maxLength={100}
-              placeholder="例如：一年甲班 迴圈練習"
-              className="h-9 w-56 rounded-lg border px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <SubjectCombobox builtInSubjects={builtInSubjects} customSubjects={customSubjects} />
-          <button
-            type="submit"
-            className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            ＋ 建立練習
-          </button>
-        </form>
-      </div>
-
       {/* 練習清單 */}
       {practices.length > 0
         ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="mb-8 grid gap-4 sm:grid-cols-2">
               {practices.map(p => (
                 <div
                   key={p.id}
@@ -158,11 +130,44 @@ export default async function AdaptiveListPage() {
             </div>
           )
         : (
-            <div className="rounded-xl border-2 border-dashed py-16 text-center text-muted-foreground">
+            <div className="mb-8 rounded-xl border-2 border-dashed py-16 text-center text-muted-foreground">
               <div className="mb-3 text-4xl">🎯</div>
-              <p className="text-sm">還沒有練習——用上面的表單建立第一個吧。</p>
+              <p className="text-sm">還沒有練習——用下面的表單建立第一個吧。</p>
             </div>
           )}
+
+      {/* 建立練習：收合，避免每次進來都要先滑過表單 */}
+      <details className="group rounded-xl border bg-card p-5 shadow-sm" open={practices.length === 0}>
+        <summary className="cursor-pointer list-none text-sm font-semibold marker:content-none">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block transition-transform group-open:rotate-90">▶</span>
+            ＋ 建立新練習
+          </span>
+        </summary>
+        <form
+          action={createAdaptivePractice}
+          className="mt-3 flex flex-wrap items-end gap-3"
+        >
+          <div className="flex flex-col gap-1">
+            <label htmlFor="adaptive-title" className="text-sm font-medium">練習名稱</label>
+            <input
+              id="adaptive-title"
+              name="title"
+              required
+              maxLength={100}
+              placeholder="例如：一年甲班 迴圈練習"
+              className="h-9 w-56 rounded-lg border px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <SubjectCombobox builtInSubjects={builtInSubjects} customSubjects={customSubjects} />
+          <button
+            type="submit"
+            className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            ＋ 建立練習
+          </button>
+        </form>
+      </details>
     </div>
   );
 }

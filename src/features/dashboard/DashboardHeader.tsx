@@ -51,6 +51,7 @@ export const DashboardHeader = (props: {
   menu: {
     href: string;
     label: string;
+    badge?: string;
   }[];
 }) => {
   return (
@@ -64,7 +65,14 @@ export const DashboardHeader = (props: {
           <ul className="flex flex-row items-center gap-x-3 text-lg font-medium [&_a:hover]:opacity-100 [&_a]:opacity-75">
             {props.menu.map(item => (
               <li key={item.href}>
-                <ActiveLink href={item.href}>{item.label}</ActiveLink>
+                <ActiveLink href={item.href}>
+                  {item.label}
+                  {item.badge && (
+                    <span className="ml-1 rounded-full bg-amber-400 px-1.5 py-0.5 align-middle text-[10px] font-semibold leading-none text-amber-950">
+                      {item.badge}
+                    </span>
+                  )}
+                </ActiveLink>
               </li>
             ))}
           </ul>
@@ -82,7 +90,14 @@ export const DashboardHeader = (props: {
                 <DropdownMenuContent>
                   {props.menu.map(item => (
                     <DropdownMenuItem key={item.href} asChild>
-                      <Link href={item.href}>{item.label}</Link>
+                      <Link href={item.href}>
+                        {item.label}
+                        {item.badge && (
+                          <span className="ml-1 rounded-full bg-amber-400 px-1.5 py-0.5 align-middle text-[10px] font-semibold leading-none text-amber-950">
+                            {item.badge}
+                          </span>
+                        )}
+                      </Link>
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>

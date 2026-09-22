@@ -37,16 +37,17 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 label: t('home'),
               },
               {
+                href: '/dashboard/adaptive',
+                label: '適性學習',
+                badge: '熱門',
+              },
+              {
                 href: '/dashboard/quizzes',
                 label: t('quizzes'),
               },
               {
                 href: '/dashboard/vocab',
                 label: '單字卡',
-              },
-              {
-                href: '/dashboard/adaptive',
-                label: '適性學習',
               },
               {
                 href: '/marketplace',
