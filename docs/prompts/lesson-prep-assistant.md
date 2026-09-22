@@ -1,11 +1,16 @@
 # 一鍵備課助手 Prompt
 
 用途：老師把單元資訊填入下方輸入區，交給外部 AI 聊天工具（例如 Claude.ai 網頁版），
-產出的 JSON 可直接貼到 `/dashboard/import`（批次匯入備課包頁面），一次建立 6 份測驗 +
+產出的 JSON 可直接貼到 `/dashboard/import`（批次匯入備課包頁面），一次建立測驗 +
 1 個單字卡集，不需要再手動依 JSON 內容在 QuizEditor 一題一題輸入。輸出格式已對齊系統
 實際匯入邏輯（`src/lib/quiz/questionRows.ts` 的 `GeneratedQuestion` 型別與 `DB_TYPE_MAP`），
 `quizzes[i]` 每個元素會直接當成 `{title, questions}` 丟給 `buildQuestionInsertRows` 處理，
 不需要再轉換。
+
+> **網頁版現在可以自訂各階段的題型／題數**（`/dashboard/import` 頁面展開「查看 / 複製
+> Prompt」後可調整），下方是預設版本（跟老師點開頁面時看到的初始設定一致）；程式邏輯在
+> `src/lib/ai/lessonPrepPromptBuilder.ts`。這份文件是給看得到 repo 的人參考用，一般老師
+> 直接用網頁版即可，不需要看這份文件。
 
 ## Prompt 內容
 
