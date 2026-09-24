@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit *)",
+            "command": "npm run test --silent > /tmp/claude-precommit-test.log 2>&1; code=$?; if [ $code -ne 0 ]; then echo \"{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"deny\\\",\\\"permissionDecisionReason\\\":\\\"npm run test 失敗（exit $code），commit 已擋下。詳細輸出見 /tmp/claude-precommit-test.log，修好測試後再重試。\\\"}}\"; fi",
+            "timeout": 60,
+            "statusMessage": "git commit 前跑 npm run test..."
+          }
+        ]
+      }
+    ]
+  }
+}
