@@ -9,9 +9,10 @@ import { savePlayerSession } from '@/services/live/playerSession';
 
 type Props = {
   initialPin?: string;
+  pinLocked?: boolean;
 };
 
-export function LivePlayerJoin({ initialPin = '' }: Props) {
+export function LivePlayerJoin({ initialPin = '', pinLocked = false }: Props) {
   const router = useRouter();
   const [pin, setPin] = useState(initialPin);
   const [nickname, setNickname] = useState('');
@@ -56,26 +57,28 @@ export function LivePlayerJoin({ initialPin = '' }: Props) {
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">加入直播測驗</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            輸入 6 碼 PIN 與你的暱稱
+            {pinLocked ? '輸入你的暱稱即可加入' : '輸入 6 碼 PIN 與你的暱稱'}
           </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="pin" className="text-sm font-medium">
-              遊戲 PIN
-            </label>
-            <Input
-              id="pin"
-              value={pin}
-              onChange={e => setPin(e.target.value.toUpperCase())}
-              maxLength={6}
-              autoComplete="off"
-              className="h-14 text-center font-mono text-2xl tracking-widest"
-              placeholder="A1B2C3"
-              required
-            />
-          </div>
+          {!pinLocked && (
+            <div className="space-y-2">
+              <label htmlFor="pin" className="text-sm font-medium">
+                遊戲 PIN
+              </label>
+              <Input
+                id="pin"
+                value={pin}
+                onChange={e => setPin(e.target.value.toUpperCase())}
+                maxLength={6}
+                autoComplete="off"
+                className="h-14 text-center font-mono text-2xl tracking-widest"
+                placeholder="A1B2C3"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <label htmlFor="nickname" className="text-sm font-medium">
               你的暱稱

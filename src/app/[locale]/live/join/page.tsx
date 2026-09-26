@@ -10,5 +10,7 @@ export default function LiveJoinPage({
   searchParams: { pin?: string };
 }) {
   const pin = (searchParams.pin ?? '').trim().toUpperCase().slice(0, 6);
-  return <LivePlayerJoin initialPin={pin} />;
+  // 透過分享連結（QR Code / 房間連結）帶完整 6 碼 PIN 進來時，不用再讓學生看到/確認 PIN
+  const pinLocked = pin.length === 6;
+  return <LivePlayerJoin initialPin={pin} pinLocked={pinLocked} />;
 }
