@@ -46,6 +46,19 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // 協作批閱：學生加入、輪詢組狀態、評分/共創/投票/心跳（皆以 playerToken 驗證）
+  '/api/review/join',
+  '/:locale/api/review/join',
+  '/api/review/(.*)/team-state',
+  '/:locale/api/review/(.*)/team-state',
+  '/api/review/(.*)/score',
+  '/:locale/api/review/(.*)/score',
+  '/api/review/(.*)/submission',
+  '/:locale/api/review/(.*)/submission',
+  '/api/review/(.*)/vote',
+  '/:locale/api/review/(.*)/vote',
+  '/api/review/(.*)/heartbeat',
+  '/:locale/api/review/(.*)/heartbeat',
   // 適性學習：學生免登入作答（分享碼防猜測，同 quiz 匿名作答哲學）
   '/api/adaptive/(.*)',
   '/:locale/api/adaptive/(.*)',
@@ -61,6 +74,8 @@ const isPublicApiRoute = createRouteMatcher([
 const isOptionalAuthRoute = createRouteMatcher([
   '/api/live/ably-auth',
   '/:locale/api/live/ably-auth',
+  '/api/review/ably-auth',
+  '/:locale/api/review/ably-auth',
 ]);
 
 // 公開頁但需要 Clerk context 讓 server component 內的 auth() 可選擇性讀 session,
