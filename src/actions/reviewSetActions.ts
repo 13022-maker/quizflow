@@ -8,14 +8,14 @@ import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { reviewGameSchema, reviewSampleSchema, reviewSetSchema } from '@/models/Schema';
 
-const RubricRefSchema = z.object({
+export const RubricRefSchema = z.object({
   correctness: z.number().int().min(0).max(5),
   completeness: z.number().int().min(0).max(5),
   clarity: z.number().int().min(0).max(5),
   creativity: z.number().int().min(0).max(5),
 });
 
-const SampleInputSchema = z.object({
+export const SampleInputSchema = z.object({
   content: z.string().trim().min(1, '範例答案內容不可為空').max(3000, '範例答案最多 3000 字'),
   ref: RubricRefSchema,
 });

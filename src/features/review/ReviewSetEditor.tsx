@@ -42,6 +42,36 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
   const [samples, setSamples] = useState<SampleForm[]>(initial?.samples ?? [EMPTY_SAMPLE]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiUpgradeRequired, setAiUpgradeRequired] = useState(false);
+
+  const handleAiGenerate = async () => {
+    setAiError(null);
+    setAiUpgradeRequired(false);
+    setAiGenerating(true);
+    try {
+      const res = await fetch('/api/ai/generate-review-set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        if (data.upgradeRequired) {
+          setAiUpgradeRequired(true);
+        }
+        setAiError(data.error ?? 'AI 生成失敗，請重試');
+        return;
+      }
+      setTopicPrompt(data.topicPrompt);
+      setSamples(data.samples);
+    } catch {
+      setAiError('網路錯誤，請重試');
+    } finally {
+      setAiGenerating(false);
+    }
+  };
 
   const updateSample = (i: number, patch: Partial<SampleForm>) => {
     setSamples(prev => prev.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
@@ -78,6 +108,29 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="title">標題</label>
         <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required />
+      </div>
+
+      <div className="space-y-2 rounded-lg border border-dashed p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm text-muted-foreground">
+            填好標題後，可以用 AI 一鍵產生延伸創作指示與 3 則品質不同的範例答案（會覆蓋下面目前的內容）
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!title.trim() || aiGenerating}
+            onClick={handleAiGenerate}
+          >
+            {aiGenerating ? '產生中⋯' : '🤖 AI 一鍵產生'}
+          </Button>
+        </div>
+        {aiError && (
+          <p className="text-xs text-destructive">
+            {aiError}
+            {aiUpgradeRequired && '（升級 Pro 方案即可無限使用）'}
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">
