@@ -536,7 +536,17 @@ export async function castVote(params: {
   try {
     await db.insert(reviewVoteSchema).values({ gameId, voterTeamId: player.teamId, votedForTeamId });
   } catch {
-    return { ok: false, error: 'ALREADY_VOTED', status: 409 };
+    // 極少見的 race condition（unique index）：查既有回傳，確認真的是重複投票
+    // 而不是其他原因造成的 insert 失敗（比照 liveStore.ts 的 recordAnswer 寫法）
+    const [again] = await db
+      .select({ id: reviewVoteSchema.id })
+      .from(reviewVoteSchema)
+      .where(and(eq(reviewVoteSchema.gameId, gameId), eq(reviewVoteSchema.voterTeamId, player.teamId)))
+      .limit(1);
+    if (again) {
+      return { ok: false, error: 'ALREADY_VOTED', status: 409 };
+    }
+    return { ok: false, error: 'VOTE_FAILED', status: 500 };
   }
 
   await publishTick(gameId);
