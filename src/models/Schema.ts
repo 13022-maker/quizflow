@@ -493,6 +493,170 @@ export const liveAnswerSchema = pgTable(
   },
 );
 
+// ---------- 小組協作批閱創作題（Team Review & Create） ----------
+// 老師預備範例答案組 + 標準評分 → 學生系統隨機分組即時同步評分/短評 →
+// 小組共創延伸答案 → 組間投票 → 計分排行榜（比照 Live Mode）
+// 獨立於 live_game 系列表，只共用 realtimeAdapter 的 tick-only 機制
+
+export const reviewGameStatusEnum = pgEnum('review_game_status', [
+  'lobby', // 等待玩家加入
+  'team_forming', // 已分組，等待老師開始 reviewing
+  'reviewing', // 評分回合進行中
+  'creating', // 共創回合進行中
+  'voting', // 投票回合進行中
+  'results', // 已計分，顯示排行榜
+  'ended', // 場次已結束
+]);
+
+// 可重複使用的「題組」模板，類似 quiz，一次建立可開多場次
+export const reviewSetSchema = pgTable('review_set', {
+  id: serial('id').primaryKey(),
+  ownerId: text('owner_id').notNull(), // Clerk userId，比照 quizSchema.ownerId
+  title: text('title').notNull(),
+  topicPrompt: text('topic_prompt').notNull(), // 給小組的延伸創作指示
+  teamSize: integer('team_size').default(4).notNull(),
+  reviewDurationSec: integer('review_duration_sec').default(600).notNull(),
+  createDurationSec: integer('create_duration_sec').default(300).notNull(),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// review_set 底下的範例答案 + 老師標準分（4 維度沿用現有 AI rubric 命名，0-5 分）
+export const reviewSampleSchema = pgTable('review_sample', {
+  id: serial('id').primaryKey(),
+  reviewSetId: integer('review_set_id')
+    .notNull()
+    .references(() => reviewSetSchema.id, { onDelete: 'cascade' }),
+  content: text('content').notNull(),
+  orderIndex: integer('order_index').notNull(),
+  refCorrectness: integer('ref_correctness').notNull(),
+  refCompleteness: integer('ref_completeness').notNull(),
+  refClarity: integer('ref_clarity').notNull(),
+  refCreativity: integer('ref_creativity').notNull(),
+});
+
+// 一場直播場次（review_set 的即時執行實例）
+export const reviewGameSchema = pgTable('review_game', {
+  id: serial('id').primaryKey(),
+  reviewSetId: integer('review_set_id')
+    .notNull()
+    .references(() => reviewSetSchema.id, { onDelete: 'cascade' }),
+  hostUserId: text('host_user_id').notNull(), // Clerk userId
+  gamePin: text('game_pin').notNull().unique(),
+  status: reviewGameStatusEnum('status').default('lobby').notNull(),
+  // 目前階段起始時間 + 目標秒數：只給前端算倒數顯示用，不驅動伺服器自動切換階段
+  phaseStartedAt: timestamp('phase_started_at', { mode: 'date' }),
+  phaseDurationSec: integer('phase_duration_sec'),
+  // reviewing 回合實際起訖時間（用來算速度加成；離開 reviewing 後 phaseStartedAt
+  // 會被下個階段覆寫，所以另外存一份）
+  reviewingStartedAt: timestamp('reviewing_started_at', { mode: 'date' }),
+  reviewingEndedAt: timestamp('reviewing_ended_at', { mode: 'date' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  endedAt: timestamp('ended_at', { mode: 'date' }),
+});
+
+export const reviewTeamSchema = pgTable('review_team', {
+  id: serial('id').primaryKey(),
+  gameId: integer('game_id')
+    .notNull()
+    .references(() => reviewGameSchema.id, { onDelete: 'cascade' }),
+  teamName: text('team_name').notNull(), // 「第 1 組」
+  // 三段分數各自存欄位（而非只存加總），讓 results 報表可以直接讀，不用在
+  // 顯示層重算一次公式（避免兩處公式分岔）；score 永遠等於三者加總
+  accuracyScore: integer('accuracy_score').default(0).notNull(),
+  speedBonus: integer('speed_bonus').default(0).notNull(),
+  voteBonus: integer('vote_bonus').default(0).notNull(),
+  score: integer('score').default(0).notNull(),
+});
+
+export const reviewPlayerSchema = pgTable(
+  'review_player',
+  {
+    id: serial('id').primaryKey(),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => reviewGameSchema.id, { onDelete: 'cascade' }),
+    teamId: integer('team_id') // team_forming 前為 null
+      .references(() => reviewTeamSchema.id, { onDelete: 'set null' }),
+    nickname: text('nickname').notNull(),
+    playerToken: text('player_token').notNull(),
+    lastSeenAt: timestamp('last_seen_at', { mode: 'date' }).defaultNow().notNull(),
+    joinedAt: timestamp('joined_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    gameNicknameIdx: uniqueIndex('review_player_game_nickname_idx').on(
+      table.gameId,
+      table.nickname,
+    ),
+    playerTokenIdx: uniqueIndex('review_player_token_idx').on(table.playerToken),
+  }),
+);
+
+// 每位學生對每則範例答案的評分 + 可選短評（短評併進此表，不另開標註表）
+export const reviewScoreSchema = pgTable(
+  'review_score',
+  {
+    id: serial('id').primaryKey(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+    playerId: integer('player_id')
+      .notNull()
+      .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
+    sampleId: integer('sample_id')
+      .notNull()
+      .references(() => reviewSampleSchema.id, { onDelete: 'cascade' }),
+    correctness: integer('correctness').notNull(),
+    completeness: integer('completeness').notNull(),
+    clarity: integer('clarity').notNull(),
+    creativity: integer('creativity').notNull(),
+    comment: text('comment'), // 短評，選填，Zod schema 限 200 字
+    submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    playerSampleIdx: uniqueIndex('review_score_player_sample_idx').on(
+      table.playerId,
+      table.sampleId,
+    ),
+  }),
+);
+
+// 每組最終共同撰寫的延伸創作答案（1 組 1 筆，last-write-wins）
+export const reviewSubmissionSchema = pgTable('review_submission', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .unique()
+    .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+  content: text('content').default('').notNull(),
+  lastEditedByPlayerId: integer('last_edited_by_player_id')
+    .references(() => reviewPlayerSchema.id, { onDelete: 'set null' }),
+  updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
+// 創作回合結束後，組間互投最佳創意答案（禁投自己組，app 層驗證）
+export const reviewVoteSchema = pgTable(
+  'review_vote',
+  {
+    id: serial('id').primaryKey(),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => reviewGameSchema.id, { onDelete: 'cascade' }),
+    voterTeamId: integer('voter_team_id')
+      .notNull()
+      .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+    votedForTeamId: integer('voted_for_team_id')
+      .notNull()
+      .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    oneVotePerTeamIdx: uniqueIndex('review_vote_game_voter_idx').on(
+      table.gameId,
+      table.voterTeamId,
+    ),
+  }),
+);
+
 export const todoSchema = pgTable('todo', {
   id: serial('id').primaryKey(),
   ownerId: text('owner_id').notNull(),
