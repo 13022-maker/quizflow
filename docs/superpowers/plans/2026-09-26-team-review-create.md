@@ -457,8 +457,8 @@ describe('calcSpeedBonus', () => {
     expect(calcSpeedBonus(300, 600)).toBe(750);
   });
 
-  it('即使快超時完成也保底 500', () => {
-    expect(calcSpeedBonus(599, 600)).toBe(500);
+  it('接近時限完成時分數接近 500 但不會低於它（500 是數學上界，非可觸發的保底）', () => {
+    expect(calcSpeedBonus(599, 600)).toBe(501);
   });
 
   it('超過或等於總時長（沒在時限內完成）拿 0', () => {
