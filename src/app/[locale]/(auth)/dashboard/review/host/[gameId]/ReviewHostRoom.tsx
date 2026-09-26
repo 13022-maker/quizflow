@@ -62,7 +62,7 @@ export function ReviewHostRoom({ gameId, title }: Props) {
       )}
 
       {(status === 'results' || status === 'ended') && (
-        <ReviewHostResults gameId={gameId} state={state} />
+        <ReviewHostResults gameId={gameId} state={state} onEnd={actions.end} pending={pending} />
       )}
     </div>
   );

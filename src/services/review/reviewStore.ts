@@ -237,7 +237,10 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
     .where(eq(reviewPlayerSchema.gameId, gameId));
   const joinedPlayerCount = joinedPlayerCountRow?.value ?? 0;
 
-  const resultsDetail = game.status === 'results' ? await getResultsDetail(gameId, samples) : null;
+  // results 之後還會進 ended（老師按「結束活動」），報表資料不能因此消失
+  const resultsDetail = (game.status === 'results' || game.status === 'ended')
+    ? await getResultsDetail(gameId, samples)
+    : null;
 
   return {
     game: {
@@ -361,7 +364,8 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
         .map(s => ({ teamId: s.teamId, content: s.content }));
     }
 
-    if (game.status === 'results') {
+    // 同上：ended 是 results 之後的終態，排名顯示不能因此消失
+    if (game.status === 'results' || game.status === 'ended') {
       const allTeams = await db
         .select({ id: reviewTeamSchema.id, score: reviewTeamSchema.score })
         .from(reviewTeamSchema)

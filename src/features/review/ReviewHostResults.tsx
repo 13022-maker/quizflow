@@ -1,18 +1,29 @@
+import { Button } from '@/components/ui/button';
+
 type Props = {
   gameId: number;
   state: import('@/services/review/types').ReviewHostState;
+  onEnd: () => void;
+  pending: boolean;
 };
 
-export function ReviewHostResults({ gameId, state }: Props) {
+export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
   const ranked = [...state.teams].sort((a, b) => b.score - a.score);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">排行榜</h1>
-        <a href={`/api/review/${gameId}/export-csv`} className="text-sm text-primary hover:underline">
-          匯出 CSV
-        </a>
+        <div className="flex items-center gap-4">
+          <a href={`/api/review/${gameId}/export-csv`} className="text-sm text-primary hover:underline">
+            匯出 CSV
+          </a>
+          {state.game.status !== 'ended' && (
+            <Button variant="outline" size="sm" onClick={onEnd} disabled={pending}>
+              結束活動
+            </Button>
+          )}
+        </div>
       </div>
 
       <ol className="mt-6 space-y-3">

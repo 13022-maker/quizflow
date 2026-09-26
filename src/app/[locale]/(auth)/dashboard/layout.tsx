@@ -46,6 +46,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 label: t('quizzes'),
               },
               {
+                href: '/dashboard/review',
+                label: '批閱',
+              },
+              {
                 href: '/dashboard/vocab',
                 label: '單字卡',
               },

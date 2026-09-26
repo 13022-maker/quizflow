@@ -1,12 +1,12 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
-import { reviewSampleSchema, reviewSetSchema } from '@/models/Schema';
+import { reviewGameSchema, reviewSampleSchema, reviewSetSchema } from '@/models/Schema';
 
 const RubricRefSchema = z.object({
   correctness: z.number().int().min(0).max(5),
@@ -98,6 +98,20 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
   }
   const data = parsed.data;
+
+  // 編輯範例答案前先確認沒有進行中的直播場次：review_score.sample_id 設了
+  // onDelete: 'cascade'，下面砍掉重建 review_sample 會連帶砍光學生已送出的評分
+  const activeGames = await db
+    .select({ id: reviewGameSchema.id })
+    .from(reviewGameSchema)
+    .where(and(
+      eq(reviewGameSchema.reviewSetId, reviewSetId),
+      inArray(reviewGameSchema.status, ['team_forming', 'reviewing', 'creating', 'voting', 'results']),
+    ))
+    .limit(1);
+  if (activeGames.length > 0) {
+    return { error: '這個題組目前有進行中的直播場次，暫時無法編輯範例答案（避免影響學生已送出的評分）' };
+  }
 
   await db.transaction(async (tx) => {
     await tx
