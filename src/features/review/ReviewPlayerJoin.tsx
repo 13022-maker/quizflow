@@ -9,9 +9,10 @@ import { savePlayerSession } from '@/services/review/reviewPlayerSession';
 
 type Props = {
   initialPin?: string;
+  pinLocked?: boolean;
 };
 
-export function ReviewPlayerJoin({ initialPin = '' }: Props) {
+export function ReviewPlayerJoin({ initialPin = '', pinLocked = false }: Props) {
   const router = useRouter();
   const [pin, setPin] = useState(initialPin);
   const [nickname, setNickname] = useState('');
@@ -52,23 +53,27 @@ export function ReviewPlayerJoin({ initialPin = '' }: Props) {
       <div className="space-y-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight">加入協作批閱活動</h1>
-          <p className="mt-2 text-sm text-muted-foreground">輸入 6 碼房間碼與你的暱稱</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {pinLocked ? '輸入你的暱稱即可加入' : '輸入 6 碼房間碼與你的暱稱'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <label htmlFor="pin" className="text-sm font-medium">房間碼</label>
-            <Input
-              id="pin"
-              value={pin}
-              onChange={e => setPin(e.target.value.toUpperCase())}
-              maxLength={6}
-              autoComplete="off"
-              className="h-14 text-center font-mono text-2xl tracking-widest"
-              placeholder="A1B2C3"
-              required
-            />
-          </div>
+          {!pinLocked && (
+            <div className="space-y-2">
+              <label htmlFor="pin" className="text-sm font-medium">房間碼</label>
+              <Input
+                id="pin"
+                value={pin}
+                onChange={e => setPin(e.target.value.toUpperCase())}
+                maxLength={6}
+                autoComplete="off"
+                className="h-14 text-center font-mono text-2xl tracking-widest"
+                placeholder="A1B2C3"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <label htmlFor="nickname" className="text-sm font-medium">你的暱稱</label>
             <Input

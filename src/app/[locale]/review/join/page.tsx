@@ -10,5 +10,7 @@ export default function ReviewJoinPage({
   searchParams: { pin?: string };
 }) {
   const pin = (searchParams.pin ?? '').trim().toUpperCase().slice(0, 6);
-  return <ReviewPlayerJoin initialPin={pin} />;
+  // 透過分享連結（QR Code / 房間連結）帶完整 6 碼房間碼進來時，不用再讓學生看到/確認房間碼
+  const pinLocked = pin.length === 6;
+  return <ReviewPlayerJoin initialPin={pin} pinLocked={pinLocked} />;
 }
