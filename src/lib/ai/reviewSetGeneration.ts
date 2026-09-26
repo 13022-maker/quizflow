@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { SampleInputSchema } from '@/actions/reviewSetActions';
+import { SampleInputSchema } from '@/lib/reviewSetSchema';
 
 export const GeneratedReviewSetSchema = z.object({
   topicPrompt: z.string().trim().min(1).max(1000),

@@ -3,32 +3,13 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { z } from 'zod';
 
+import type { ReviewSetInput } from '@/lib/reviewSetSchema';
+import { ReviewSetInputSchema } from '@/lib/reviewSetSchema';
 import { db } from '@/libs/DB';
 import { reviewGameSchema, reviewSampleSchema, reviewSetSchema } from '@/models/Schema';
 
-export const RubricRefSchema = z.object({
-  correctness: z.number().int().min(0).max(5),
-  completeness: z.number().int().min(0).max(5),
-  clarity: z.number().int().min(0).max(5),
-  creativity: z.number().int().min(0).max(5),
-});
-
-export const SampleInputSchema = z.object({
-  content: z.string().trim().min(1, '範例答案內容不可為空').max(3000, '範例答案最多 3000 字'),
-  ref: RubricRefSchema,
-});
-
-const ReviewSetInputSchema = z.object({
-  title: z.string().trim().min(1, '請輸入標題').max(100, '標題最多 100 字'),
-  topicPrompt: z.string().trim().min(1, '請輸入延伸創作指示').max(1000, '指示最多 1000 字'),
-  teamSize: z.number().int().min(2).max(8),
-  reviewDurationSec: z.number().int().min(60).max(3600),
-  createDurationSec: z.number().int().min(60).max(3600),
-  samples: z.array(SampleInputSchema).min(1, '至少要有 1 則範例答案').max(10, '最多 10 則範例答案'),
-});
-export type ReviewSetInput = z.infer<typeof ReviewSetInputSchema>;
+export type { ReviewSetInput } from '@/lib/reviewSetSchema';
 
 async function verifyOwnership(reviewSetId: number, userId: string) {
   const [row] = await db
