@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { and, count, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 
 import { CheckoutSuccessBanner } from '@/components/billing/CheckoutSuccessBanner';
 import { OnboardingSteps } from '@/components/onboarding/OnboardingSteps';
@@ -46,20 +46,24 @@ export default async function DashboardIndexPage() {
         quizMode: quizSchema.quizMode,
       })
       .from(quizSchema)
-      .where(eq(quizSchema.ownerId, userId))
+      .where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot')))
       .orderBy(desc(quizSchema.createdAt))
       .limit(18);
 
     const [countRow] = await db
       .select({ total: count() })
       .from(quizSchema)
-      .where(eq(quizSchema.ownerId, userId));
+      .where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot')));
     totalQuizCount = countRow?.total ?? 0;
 
     const [pubRow] = await db
       .select({ total: count() })
       .from(quizSchema)
-      .where(and(eq(quizSchema.ownerId, userId), eq(quizSchema.status, 'published')));
+      .where(and(
+        eq(quizSchema.ownerId, userId),
+        eq(quizSchema.status, 'published'),
+        ne(quizSchema.quizMode, 'live_snapshot'),
+      ));
     publishedCount = pubRow?.total ?? 0;
 
     const [respRow] = await db

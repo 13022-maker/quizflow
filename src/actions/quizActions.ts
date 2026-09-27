@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -77,7 +77,7 @@ export async function createQuiz(data: CreateQuizInput) {
       const [row] = await db
         .select({ total: count() })
         .from(quizSchema)
-        .where(eq(quizSchema.ownerId, userId));
+        .where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot')));
       if ((row?.total ?? 0) >= quizLimit) {
         return { error: 'QUOTA_EXCEEDED' };
       }

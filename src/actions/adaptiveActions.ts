@@ -14,9 +14,10 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { createLiveGame } from '@/actions/liveActions';
 import { friendlyAIGenerationError, generateSubject, generateSubjectSchema, toSubject } from '@/libs/adaptive/generate-subject';
 import { generateSubjectFromYoutube } from '@/libs/adaptive/generate-subject-from-youtube';
-import { DB_SUBJECT_PREFIX } from '@/libs/adaptive/service';
+import { DB_SUBJECT_PREFIX, getAdaptiveService } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
 import {
@@ -25,7 +26,7 @@ import {
   fetchYouTubeTranscriptSegments,
   validateYoutubeImportUrls,
 } from '@/libs/youtube';
-import { adaptivePracticeSchema, adaptiveSubjectSchema } from '@/models/Schema';
+import { adaptivePracticeSchema, adaptiveSubjectSchema, questionSchema, quizSchema } from '@/models/Schema';
 
 const createPracticeSchema = z.object({
   title: z.string().trim().min(1, '請輸入練習名稱').max(100),
@@ -146,6 +147,95 @@ export async function deleteAdaptivePractice(practiceId: number) {
     );
 
   revalidatePath('/dashboard/adaptive');
+}
+
+const createLiveGameFromAdaptivePracticeSchema = z.object({
+  questionCount: z.number().int().min(3).max(30),
+  questionDuration: z.number().int().min(5).max(120).optional(),
+});
+export type CreateLiveGameFromAdaptivePracticeInput = z.infer<typeof createLiveGameFromAdaptivePracticeSchema>;
+
+/** Fisher-Yates 洗牌，回傳新陣列（不修改原陣列） */
+function shuffled<T>(arr: T[]): T[] {
+  const result = [...arr];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const temp = result[i]!;
+    result[i] = result[j]!;
+    result[j] = temp;
+  }
+  return result;
+}
+
+/**
+ * 把適性練習所屬學科的題庫隨機抽 N 題，快照成一份 quiz + question
+ * （quizMode: 'live_snapshot'，不進「我的測驗」列表、不計入方案額度），
+ * 再呼叫既有的 createLiveGame 直接開局，完全重用 Live Mode 現有流程。
+ */
+export async function createLiveGameFromAdaptivePractice(
+  practiceId: number,
+  input: CreateLiveGameFromAdaptivePracticeInput,
+) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: 'Unauthorized' as const };
+  }
+
+  const parsed = createLiveGameFromAdaptivePracticeSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
+  }
+
+  const [practice] = await db
+    .select()
+    .from(adaptivePracticeSchema)
+    .where(
+      and(
+        eq(adaptivePracticeSchema.id, practiceId),
+        eq(adaptivePracticeSchema.ownerId, userId),
+      ),
+    );
+  if (!practice) {
+    return { error: '找不到練習或沒有權限' };
+  }
+
+  const service = await getAdaptiveService(practice.id, practice.subjectId);
+  const items = service.subject.itemBank.items;
+  if (items.length === 0) {
+    return { error: '這個學科的題庫是空的，無法開始 Live 測驗' };
+  }
+
+  // 題目數量若超過題庫實際題數，直接 clamp（不擋使用者，靜默取最大可用題數）
+  const count = Math.min(parsed.data.questionCount, items.length);
+  const picked = shuffled(items).slice(0, count);
+
+  const [quiz] = await db
+    .insert(quizSchema)
+    .values({
+      ownerId: userId,
+      title: `${practice.title} · Live 測驗`,
+      status: 'published',
+      quizMode: 'live_snapshot',
+    })
+    .returning();
+  if (!quiz) {
+    return { error: '建立測驗快照失敗' };
+  }
+
+  await db.insert(questionSchema).values(
+    picked.map((item, index) => ({
+      quizId: quiz.id,
+      type: 'single_choice' as const,
+      body: item.prompt,
+      options: item.options.map((text, i) => ({ id: `opt-${i}`, text })),
+      correctAnswers: [`opt-${item.answerIndex}`],
+      explanation: item.explanation,
+      points: 1,
+      position: index + 1,
+    })),
+  );
+
+  return await createLiveGame({ quizId: quiz.id, questionDuration: parsed.data.questionDuration });
 }
 
 type SavedSubjectResult = {

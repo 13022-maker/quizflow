@@ -21,6 +21,7 @@ import { CopyLinkButton } from '../CopyLinkButton';
 import { AdaptiveExportButtons } from './AdaptiveExportButtons';
 import { DeletePracticeButton } from './DeleteButton';
 import { GenerateWeakpointFlashcardsButton } from './GenerateWeakpointFlashcardsButton';
+import { StartLiveModeButton } from './StartLiveModeButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -219,6 +220,7 @@ export default async function AdaptiveBoardPage({
           {practice.title}
         </h1>
         <div className="flex items-center gap-2">
+          <StartLiveModeButton practiceId={practice.id} itemCount={service.subject.itemBank.items.length} />
           <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} weakConcepts={weakConcepts} />
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
           <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />

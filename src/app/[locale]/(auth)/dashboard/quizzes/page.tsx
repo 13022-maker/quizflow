@@ -1,5 +1,5 @@
 import { auth } from '@clerk/nextjs/server';
-import { count, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, inArray, ne } from 'drizzle-orm';
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 
@@ -55,7 +55,7 @@ export default async function QuizzesPage() {
           expiresAt: quizSchema.expiresAt,
           updatedAt: quizSchema.updatedAt,
           createdAt: quizSchema.createdAt,
-        }).from(quizSchema).where(eq(quizSchema.ownerId, userId)).orderBy(quizSchema.createdAt) as any,
+        }).from(quizSchema).where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot'))).orderBy(quizSchema.createdAt) as any,
       ]);
       quizLimit = PricingPlanList[planId]?.features.website ?? 10;
       // 試用中老師享 Pro 待遇（與 quizActions 的 isProOrAbove 待遇一致）
