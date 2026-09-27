@@ -14,6 +14,7 @@ export const RubricRefSchema = z.object({
 export const SampleInputSchema = z.object({
   content: z.string().trim().min(1, '範例答案內容不可為空').max(3000, '範例答案最多 3000 字'),
   ref: RubricRefSchema,
+  isAiAnswer: z.boolean().default(false), // 是否明確標示為「AI 生成的解答」；預設 false 向後相容
 });
 
 export const ReviewSetInputSchema = z.object({

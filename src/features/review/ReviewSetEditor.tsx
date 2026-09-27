@@ -13,6 +13,7 @@ const TEXTAREA_CLASS = 'w-full rounded-md border border-input bg-background px-3
 type SampleForm = {
   content: string;
   ref: { correctness: number; completeness: number; clarity: number; creativity: number };
+  isAiAnswer: boolean;
 };
 
 type Props = {
@@ -23,6 +24,12 @@ type Props = {
 const EMPTY_SAMPLE: SampleForm = {
   content: '',
   ref: { correctness: 3, completeness: 3, clarity: 3, creativity: 3 },
+  isAiAnswer: false,
+};
+
+// 主題/框架選填：比照 quiz AI 出題的 FRAMEWORK_PROMPTS 下拉選單模式，目前只有一個選項
+const FRAMEWORK_OPTIONS: Record<string, string> = {
+  'ai-era-thinking': 'AI 時代思考（挑戰超越 AI 解答）',
 };
 
 const DIMENSION_LABEL: Record<keyof SampleForm['ref'], string> = {
@@ -45,6 +52,7 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiUpgradeRequired, setAiUpgradeRequired] = useState(false);
+  const [framework, setFramework] = useState<string>('');
 
   const handleAiGenerate = async () => {
     setAiError(null);
@@ -54,7 +62,7 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
       const res = await fetch('/api/ai/generate-review-set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, framework: framework || undefined }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -115,15 +123,28 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
           <p className="text-sm text-muted-foreground">
             填好標題後，可以用 AI 一鍵產生延伸創作指示與 3 則品質不同的範例答案（會覆蓋下面目前的內容）
           </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={!title.trim() || aiGenerating}
-            onClick={handleAiGenerate}
-          >
-            {aiGenerating ? '產生中⋯' : '🤖 AI 一鍵產生'}
-          </Button>
+          <div className="flex shrink-0 items-center gap-2">
+            <select
+              value={framework}
+              onChange={e => setFramework(e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+              title="主題／框架（選填）：套用特定教學理念的生成邏輯"
+            >
+              <option value="">不指定主題</option>
+              {Object.entries(FRAMEWORK_OPTIONS).map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={!title.trim() || aiGenerating}
+              onClick={handleAiGenerate}
+            >
+              {aiGenerating ? '產生中⋯' : '🤖 AI 一鍵產生'}
+            </Button>
+          </div>
         </div>
         {aiError && (
           <p className="text-xs text-destructive">
@@ -239,6 +260,14 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
                 </div>
               ))}
             </div>
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={sample.isAiAnswer}
+                onChange={e => updateSample(i, { isAiAnswer: e.target.checked })}
+              />
+              標示為「AI 生成的解答」（學生評分時會看到明顯標示）
+            </label>
           </div>
         ))}
       </div>

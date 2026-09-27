@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildReviewSetPrompt, parseGeneratedReviewSet } from './reviewSetGeneration';
+import { AI_ERA_FRAMEWORK_KEY, buildReviewSetPrompt, parseGeneratedReviewSet } from './reviewSetGeneration';
 
 const VALID_SAMPLE = {
   content: '我覺得可以做一種不會污染空氣的車，這樣就不會塞車也不會空污了。',
   ref: { correctness: 2, completeness: 1, clarity: 2, creativity: 1 },
+  isAiAnswer: false,
 };
 
 function validPayload() {
@@ -82,5 +83,72 @@ describe('buildReviewSetPrompt', () => {
     const prompt = buildReviewSetPrompt('測試標題');
 
     expect(prompt).toContain('JSON');
+  });
+
+  it('要求故事情境用「但是/因此」因果鏈，禁止「然後」流水帳', () => {
+    const prompt = buildReviewSetPrompt('測試標題');
+
+    expect(prompt).toContain('但是');
+    expect(prompt).toContain('因此');
+    expect(prompt).toMatch(/不([要能可])[^。]*然後/);
+  });
+
+  it('限制故事情境閱讀字數，避免吃掉作答時間', () => {
+    const prompt = buildReviewSetPrompt('測試標題');
+
+    expect(prompt).toMatch(/150\s*字/);
+  });
+
+  it('要求以物觀物視角，避免敘事者說教式主觀評論', () => {
+    const prompt = buildReviewSetPrompt('測試標題');
+
+    expect(prompt).toContain('以物觀物');
+  });
+});
+
+describe('buildReviewSetPrompt — framework 參數', () => {
+  it('不傳 framework 時，輸出跟舊版完全一致（向後相容基準線）', () => {
+    const withoutFramework = buildReviewSetPrompt('測試標題');
+    const withUndefined = buildReviewSetPrompt('測試標題', undefined);
+
+    expect(withUndefined).toBe(withoutFramework);
+  });
+
+  it('傳未知的 framework key 時，行為視同不指定（白名單防呆）', () => {
+    const base = buildReviewSetPrompt('測試標題');
+    const unknown = buildReviewSetPrompt('測試標題', 'not-a-real-framework');
+
+    expect(unknown).toBe(base);
+  });
+
+  it('ai-era-thinking 框架會要求其中一則明確標示為 AI 生成解答', () => {
+    const prompt = buildReviewSetPrompt('測試標題', AI_ERA_FRAMEWORK_KEY);
+
+    expect(prompt).toContain('isAiAnswer');
+    expect(prompt).toMatch(/AI\s*生成的?解答/);
+  });
+
+  it('ai-era-thinking 框架要求小組共創內容要超越/挑戰 AI 解答', () => {
+    const prompt = buildReviewSetPrompt('測試標題', AI_ERA_FRAMEWORK_KEY);
+
+    expect(prompt).toMatch(/超越|挑戰/);
+  });
+
+  it('ai-era-thinking 框架依 Polya 解題四步驟引導評斷（理解問題/擬定計畫/執行計畫/回顧與檢討）', () => {
+    const prompt = buildReviewSetPrompt('測試標題', AI_ERA_FRAMEWORK_KEY);
+
+    expect(prompt).toContain('理解問題');
+    expect(prompt).toContain('擬定計畫');
+    expect(prompt).toContain('執行計畫');
+    expect(prompt).toContain('回顧與檢討');
+  });
+
+  it('ai-era-thinking 框架仍保留故事情境三原則（不互相打架）', () => {
+    const prompt = buildReviewSetPrompt('測試標題', AI_ERA_FRAMEWORK_KEY);
+
+    expect(prompt).toContain('但是');
+    expect(prompt).toContain('因此');
+    expect(prompt).toMatch(/150\s*字/);
+    expect(prompt).toContain('以物觀物');
   });
 });

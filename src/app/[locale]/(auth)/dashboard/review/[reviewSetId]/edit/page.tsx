@@ -51,6 +51,7 @@ export default async function EditReviewSetPage({
         clarity: s.refClarity,
         creativity: s.refCreativity,
       },
+      isAiAnswer: s.isAiAnswer,
     })),
   };
 

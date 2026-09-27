@@ -532,6 +532,7 @@ export const reviewSampleSchema = pgTable('review_sample', {
   refCompleteness: integer('ref_completeness').notNull(),
   refClarity: integer('ref_clarity').notNull(),
   refCreativity: integer('ref_creativity').notNull(),
+  isAiAnswer: boolean('is_ai_answer').default(false).notNull(), // 是否明確標示為「AI 生成的解答」（AI 時代思考框架用）
 });
 
 // 一場直播場次（review_set 的即時執行實例）

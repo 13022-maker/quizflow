@@ -75,6 +75,11 @@ export function ReviewPlayerReview({ state, onSubmitScore, submitting }: Props) 
 
         return (
           <div key={sample.id} className="space-y-3 rounded-lg border p-4">
+            {sample.isAiAnswer && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                🤖 這是 AI 生成的解答
+              </span>
+            )}
             <p className="whitespace-pre-wrap text-sm">{sample.content}</p>
 
             <div className="grid grid-cols-4 gap-2">

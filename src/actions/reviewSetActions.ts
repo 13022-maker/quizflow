@@ -58,6 +58,7 @@ export async function createReviewSet(input: ReviewSetInput) {
         refCompleteness: s.ref.completeness,
         refClarity: s.ref.clarity,
         refCreativity: s.ref.creativity,
+        isAiAnswer: s.isAiAnswer,
       })),
     );
     return inserted.id;
@@ -118,6 +119,7 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
         refCompleteness: s.ref.completeness,
         refClarity: s.ref.clarity,
         refCreativity: s.ref.creativity,
+        isAiAnswer: s.isAiAnswer,
       })),
     );
   });

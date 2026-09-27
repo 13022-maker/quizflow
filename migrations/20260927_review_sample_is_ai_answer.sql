@@ -1,0 +1,1 @@
+ALTER TABLE "review_sample" ADD COLUMN "is_ai_answer" boolean DEFAULT false NOT NULL;

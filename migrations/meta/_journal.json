@@ -302,6 +302,13 @@
       "when": 1790385339236,
       "tag": "20260926_review_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1790467694288,
+      "tag": "20260927_review_sample_is_ai_answer",
+      "breakpoints": true
     }
   ]
 }

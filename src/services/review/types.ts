@@ -9,11 +9,13 @@ export type ReviewGameStatus =
   | 'results'
   | 'ended';
 
-// 學生端看到的範例答案：不含老師標準分
+// 學生端看到的範例答案：ref 標準分是老師的答案卷，刻意 strip 掉不給學生看；
+// isAiAnswer 相反，是這個功能要學生「看到」才能達成教學目的的旗標，直接原樣傳遞
 export type ReviewSampleForClient = {
   id: number;
   content: string;
   orderIndex: number;
+  isAiAnswer: boolean;
 };
 
 export type ReviewTeamSummary = {

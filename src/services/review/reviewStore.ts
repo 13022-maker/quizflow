@@ -34,6 +34,7 @@ export type ReviewSampleWithRef = {
   refCompleteness: number;
   refClarity: number;
   refCreativity: number;
+  isAiAnswer: boolean;
 };
 
 // 取得某題組的範例答案（含老師標準分，內部用；學生端回應前一定要 strip 成 ReviewSampleForClient）
@@ -47,6 +48,7 @@ export async function getReviewSamples(reviewSetId: number): Promise<ReviewSampl
       refCompleteness: reviewSampleSchema.refCompleteness,
       refClarity: reviewSampleSchema.refClarity,
       refCreativity: reviewSampleSchema.refCreativity,
+      isAiAnswer: reviewSampleSchema.isAiAnswer,
     })
     .from(reviewSampleSchema)
     .where(eq(reviewSampleSchema.reviewSetId, reviewSetId))
@@ -286,6 +288,7 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
     id: s.id,
     content: s.content,
     orderIndex: s.orderIndex,
+    isAiAnswer: s.isAiAnswer,
   }));
 
   let teammates: { id: number; nickname: string }[] = [];

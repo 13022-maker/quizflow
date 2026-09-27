@@ -10,7 +10,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
-import { buildReviewSetPrompt, parseGeneratedReviewSet } from '@/lib/ai/reviewSetGeneration';
+import { AI_ERA_FRAMEWORK_KEY, buildReviewSetPrompt, parseGeneratedReviewSet } from '@/lib/ai/reviewSetGeneration';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -19,6 +19,8 @@ const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 
 const BodySchema = z.object({
   title: z.string().trim().min(1, '請輸入標題').max(100, '標題最多 100 字'),
+  // 主題/框架選填：白名單檢查在 buildReviewSetPrompt 內部做，未知 key 視為不指定
+  framework: z.string().trim().max(50).optional(),
 });
 
 export async function POST(request: Request) {
@@ -46,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsedBody.error.errors[0]?.message ?? '資料格式錯誤' }, { status: 400 });
   }
 
-  const prompt = buildReviewSetPrompt(parsedBody.data.title);
+  const prompt = buildReviewSetPrompt(parsedBody.data.title, parsedBody.data.framework);
 
   // 主用 Gemini，過載時 fallback OpenAI，再 fallback Claude
   let raw: string;
@@ -135,6 +137,15 @@ export async function POST(request: Request) {
   if (!result) {
     console.error(`[generate-review-set] ${usedModel} 回傳格式錯誤：`, raw.slice(0, 500));
     return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
+  }
+
+  // 防呆：AI 時代思考框架下，若 AI 忽略指示、沒有標示任何一則為 AI 解答，強制標最後一則
+  if (parsedBody.data.framework === AI_ERA_FRAMEWORK_KEY && result.samples.every(s => !s.isAiAnswer)) {
+    console.warn('[generate-review-set] ai-era-thinking 框架但 AI 未標示 isAiAnswer，強制標記最後一則');
+    const lastSample = result.samples[result.samples.length - 1];
+    if (lastSample) {
+      lastSample.isAiAnswer = true;
+    }
   }
 
   return NextResponse.json(result);
