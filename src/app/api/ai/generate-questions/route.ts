@@ -8,6 +8,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 
 export const runtime = 'nodejs';
@@ -234,6 +235,7 @@ export async function POST(request: Request) {
   const answerDistNote = selectedTypes.includes('mc') || hasListening
     ? `\n${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（mc）'}的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`
     : '';
+  const clozeNote = buildClozeCausalChainNote(selectedTypes);
 
   // 圖解規則:只套用到 mc/tf/fill 題型,4 種範本形狀由 code 端 renderDiagramSvg 鎖死,
   // AI 只出結構化資料,不出 SVG markup(見 src/lib/ai/diagramSvg.ts)
@@ -271,7 +273,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${diagramNote}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
