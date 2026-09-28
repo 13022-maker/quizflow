@@ -104,7 +104,7 @@ async function assertSubjectUsable(subjectId: string, userId: string): Promise<v
   }
 }
 
-/** 生成並快取課前重點摘要（quota 檢查在呼叫端做，這裡只負責生成+寫入） */
+/** 生成並快取課前重點摘要（含 AI 用量檢查；兩個 action 共用） */
 async function generateAndCacheSummary(
   subjectId: string,
   userId: string,

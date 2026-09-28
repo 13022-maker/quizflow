@@ -63,7 +63,7 @@ export function SubjectCombobox({
   const selectedSubject = allSubjects.find(s => s.id === selectedId);
 
   return (
-    <div className="flex items-end gap-2">
+    <div className="flex flex-wrap items-end gap-2">
       <div ref={rootRef} className="relative flex flex-col gap-1">
         <label htmlFor="adaptive-subject" className="text-sm font-medium">學科</label>
         <input
