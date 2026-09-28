@@ -798,3 +798,11 @@ export const adaptiveSubjectSchema = pgTable(
     ),
   }),
 );
+
+// 課前重點摘要講義快取：以 subjectId 字串為 key。內建學科（'cpp' 等，程式碼常數、無 DB row）
+// 與自建學科（'db:<id>'）統一存這張表，不動 adaptive_subject 表。
+export const adaptiveSubjectSummarySchema = pgTable('adaptive_subject_summary', {
+  subjectId: text('subject_id').primaryKey(),
+  markdown: text('markdown').notNull(),
+  generatedAt: timestamp('generated_at', { mode: 'date' }).defaultNow().notNull(),
+});

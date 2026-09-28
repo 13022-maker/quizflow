@@ -316,6 +316,13 @@
       "when": 1790573423554,
       "tag": "20260928_adaptive_item_wrong_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1790601780623,
+      "tag": "20260928_adaptive_subject_summary",
+      "breakpoints": true
     }
   ]
 }
