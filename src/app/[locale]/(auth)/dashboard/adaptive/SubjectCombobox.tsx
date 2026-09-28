@@ -7,6 +7,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import { PreLessonSummaryModal } from './PreLessonSummaryModal';
+
 type SubjectOption = {
   id: string;
   name: string;
@@ -28,6 +30,7 @@ export function SubjectCombobox({
   const [query, setQuery] = useState(allSubjects[0]?.name ?? '');
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
 
   // 點外面收起選單
   useEffect(() => {
@@ -57,72 +60,94 @@ export function SubjectCombobox({
     setOpen(false);
   }
 
-  return (
-    <div ref={rootRef} className="relative flex flex-col gap-1">
-      <label htmlFor="adaptive-subject" className="text-sm font-medium">學科</label>
-      <input
-        id="adaptive-subject"
-        role="combobox"
-        aria-expanded={open}
-        aria-controls="adaptive-subject-listbox"
-        aria-autocomplete="list"
-        autoComplete="off"
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        placeholder="輸入關鍵字搜尋學科"
-        className="h-9 w-56 rounded-lg border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-      />
-      {/* 真正隨表單送出的值 */}
-      <input type="hidden" name="subjectId" value={selectedId} />
+  const selectedSubject = allSubjects.find(s => s.id === selectedId);
 
-      {open && (
-        <div
-          id="adaptive-subject-listbox"
-          role="listbox"
-          className="absolute top-full z-10 mt-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-popover p-1 shadow-md"
+  return (
+    <div className="flex items-end gap-2">
+      <div ref={rootRef} className="relative flex flex-col gap-1">
+        <label htmlFor="adaptive-subject" className="text-sm font-medium">學科</label>
+        <input
+          id="adaptive-subject"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls="adaptive-subject-listbox"
+          aria-autocomplete="list"
+          autoComplete="off"
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="輸入關鍵字搜尋學科"
+          className="h-9 w-56 rounded-lg border bg-background px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
+        />
+        {/* 真正隨表單送出的值 */}
+        <input type="hidden" name="subjectId" value={selectedId} />
+
+        {open && (
+          <div
+            id="adaptive-subject-listbox"
+            role="listbox"
+            className="absolute top-full z-10 mt-1 max-h-64 w-72 overflow-y-auto rounded-lg border bg-popover p-1 shadow-md"
+          >
+            {filteredBuiltIn.length > 0 && (
+              <div>
+                <div className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">內建科目</div>
+                {filteredBuiltIn.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => selectSubject(s)}
+                    className={`block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${
+                      s.id === selectedId ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                  >
+                    {s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredCustom.length > 0 && (
+              <div>
+                <div className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">我的學科</div>
+                {filteredCustom.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => selectSubject(s)}
+                    className={`block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${
+                      s.id === selectedId ? 'bg-primary/10 text-primary' : ''
+                    }`}
+                  >
+                    {s.pinned ? `📌 ${s.name}` : s.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {filteredBuiltIn.length === 0 && filteredCustom.length === 0 && (
+              <div className="px-2 py-3 text-center text-sm text-muted-foreground">找不到符合的學科</div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {selectedSubject && (
+        <button
+          type="button"
+          onClick={() => setShowSummaryModal(true)}
+          className="h-9 whitespace-nowrap rounded-lg border px-3 text-sm hover:bg-muted"
         >
-          {filteredBuiltIn.length > 0 && (
-            <div>
-              <div className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">內建科目</div>
-              {filteredBuiltIn.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => selectSubject(s)}
-                  className={`block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${
-                    s.id === selectedId ? 'bg-primary/10 text-primary' : ''
-                  }`}
-                >
-                  {s.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {filteredCustom.length > 0 && (
-            <div>
-              <div className="px-2 pb-1 pt-1.5 text-xs font-medium text-muted-foreground">我的學科</div>
-              {filteredCustom.map(s => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => selectSubject(s)}
-                  className={`block w-full rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted ${
-                    s.id === selectedId ? 'bg-primary/10 text-primary' : ''
-                  }`}
-                >
-                  {s.pinned ? `📌 ${s.name}` : s.name}
-                </button>
-              ))}
-            </div>
-          )}
-          {filteredBuiltIn.length === 0 && filteredCustom.length === 0 && (
-            <div className="px-2 py-3 text-center text-sm text-muted-foreground">找不到符合的學科</div>
-          )}
-        </div>
+          📄 查看課前重點摘要
+        </button>
+      )}
+
+      {showSummaryModal && selectedSubject && (
+        <PreLessonSummaryModal
+          subjectId={selectedSubject.id}
+          subjectName={selectedSubject.name}
+          onClose={() => setShowSummaryModal(false)}
+        />
       )}
     </div>
   );
