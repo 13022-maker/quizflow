@@ -17,7 +17,8 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { createLiveGame } from '@/actions/liveActions';
 import { friendlyAIGenerationError, generateSubject, generateSubjectSchema, toSubject } from '@/libs/adaptive/generate-subject';
 import { generateSubjectFromYoutube } from '@/libs/adaptive/generate-subject-from-youtube';
-import { DB_SUBJECT_PREFIX, getAdaptiveService } from '@/libs/adaptive/service';
+import { generateSubjectSummary } from '@/libs/adaptive/generate-summary';
+import { DB_SUBJECT_PREFIX, getAdaptiveService, resolveSubject } from '@/libs/adaptive/service';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
 import {
@@ -26,7 +27,7 @@ import {
   fetchYouTubeTranscriptSegments,
   validateYoutubeImportUrls,
 } from '@/libs/youtube';
-import { adaptivePracticeSchema, adaptiveSubjectSchema, questionSchema, quizSchema } from '@/models/Schema';
+import { adaptivePracticeSchema, adaptiveSubjectSchema, adaptiveSubjectSummarySchema, questionSchema, quizSchema } from '@/models/Schema';
 
 const createPracticeSchema = z.object({
   title: z.string().trim().min(1, '請輸入練習名稱').max(100),
@@ -101,6 +102,72 @@ async function assertSubjectUsable(subjectId: string, userId: string): Promise<v
   if (row.status !== 'published') {
     throw new Error('這個學科尚未發佈，請先到「學科管理」頁審核發佈');
   }
+}
+
+/** 生成並快取課前重點摘要（quota 檢查在呼叫端做，這裡只負責生成+寫入） */
+async function generateAndCacheSummary(
+  subjectId: string,
+  userId: string,
+): Promise<{ markdown: string } | { error: string }> {
+  const usage = await checkAndIncrementAiUsage(userId);
+  if (!usage.allowed) {
+    return { error: usage.reason };
+  }
+  try {
+    const subject = await resolveSubject(subjectId);
+    const markdown = await generateSubjectSummary(subject);
+    await db
+      .insert(adaptiveSubjectSummarySchema)
+      .values({ subjectId, markdown })
+      .onConflictDoUpdate({
+        target: adaptiveSubjectSummarySchema.subjectId,
+        set: { markdown, generatedAt: new Date() },
+      });
+    return { markdown };
+  } catch (err) {
+    console.error('[adaptive summary] 生成失敗：', err);
+    return { error: friendlyAIGenerationError(err) };
+  }
+}
+
+/** 取得課前重點摘要：有快取直接回傳，沒有才生成並快取（給「查看課前重點摘要」按鈕用） */
+export async function getOrGenerateAdaptiveSummary(
+  subjectId: string,
+): Promise<{ markdown: string } | { error: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: '請先登入' };
+  }
+  try {
+    await assertSubjectUsable(subjectId, userId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : '學科不可用' };
+  }
+
+  const [cached] = await db
+    .select()
+    .from(adaptiveSubjectSummarySchema)
+    .where(eq(adaptiveSubjectSummarySchema.subjectId, subjectId));
+  if (cached) {
+    return { markdown: cached.markdown };
+  }
+  return generateAndCacheSummary(subjectId, userId);
+}
+
+/** 略過快取，強制重新生成（給 Modal 裡的「重新生成」按鈕用） */
+export async function regenerateAdaptiveSummary(
+  subjectId: string,
+): Promise<{ markdown: string } | { error: string }> {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: '請先登入' };
+  }
+  try {
+    await assertSubjectUsable(subjectId, userId);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : '學科不可用' };
+  }
+  return generateAndCacheSummary(subjectId, userId);
 }
 
 /** 建立適性練習：分享碼用 8 碼 nanoid（防循序猜測），成功後導向儀表板 */
