@@ -119,25 +119,28 @@ export default async function AdaptiveBoardPage({
   // 知識點欄位以第一位學生的診斷排序為準（引擎回傳已按學習路徑排序）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
 
-  // 全班弱點知識點：依 knowledgeId 彙總所有「已作答過、非鎖定中」的掌握率，平均 <50% 才算弱點
-  // （鎖定中代表還沒派過題，mastery 只是初始值，不能算弱點，跟 masteryColorMeta 的判斷一致）
-  const weakConceptStats = new Map<string, { name: string; masteries: number[] }>();
-  for (const s of students) {
-    for (const d of s.diagnosis) {
-      if (d.status === 'locked' || d.attempts === 0) {
-        continue;
-      }
-      const entry = weakConceptStats.get(d.knowledgeId) ?? { name: d.name, masteries: [] };
-      entry.masteries.push(d.mastery);
-      weakConceptStats.set(d.knowledgeId, entry);
+  // 弱點概念卡取材：全班每題累計答錯次數加總，取錯最多的前3題
+  const itemWrongTotals = new Map<string, number>();
+  for (const s of states) {
+    for (const [itemId, count] of Object.entries(s.itemWrongCounts)) {
+      itemWrongTotals.set(itemId, (itemWrongTotals.get(itemId) ?? 0) + count);
     }
   }
-  const weakConcepts = [...weakConceptStats.values()]
-    .map(({ name, masteries }) => ({
-      name,
-      masteryPct: Math.round((masteries.reduce((sum, m) => sum + m, 0) / masteries.length) * 100),
-    }))
-    .filter(c => c.masteryPct < 50);
+  const topWrongItems = [...itemWrongTotals.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([itemId, wrongCount]) => {
+      const item = service.subject.itemBank.items.find(it => it.id === itemId);
+      if (!item) {
+        return null;
+      }
+      return {
+        prompt: item.prompt,
+        wrongCount,
+        knowledgeName: knowledgeNames.get(item.knowledgeId) ?? item.knowledgeId,
+      };
+    })
+    .filter((v): v is { prompt: string; wrongCount: number; knowledgeName: string } => v !== null);
 
   // 每位學生先算好學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100
   // 鎖定中的知識點從未派過題、mastery 永遠停在初始值，排除在外才能反映個別學生的實際差異
@@ -221,7 +224,7 @@ export default async function AdaptiveBoardPage({
         </h1>
         <div className="flex items-center gap-2">
           <StartLiveModeButton practiceId={practice.id} itemCount={service.subject.itemBank.items.length} />
-          <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} weakConcepts={weakConcepts} />
+          <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} topWrongItems={topWrongItems} />
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
           <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />
           <DeletePracticeButton id={practice.id} />

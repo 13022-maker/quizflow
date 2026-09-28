@@ -17,6 +17,7 @@ function rowToState(row: typeof adaptiveStudentStateSchema.$inferSelect): Studen
     studentId: row.studentKey,
     knowledge: new Map(Object.entries(row.knowledge)),
     answeredItemIds: new Set(row.answeredItemIds),
+    itemWrongCounts: row.itemWrongCounts,
   };
 }
 
@@ -40,6 +41,7 @@ export class DrizzleAdaptiveRepository implements StudentStateRepository {
   async save(state: StudentState): Promise<void> {
     const knowledge = Object.fromEntries(state.knowledge); // Map → JSONB 物件
     const answeredItemIds = [...state.answeredItemIds]; // Set → JSONB 陣列
+    const { itemWrongCounts } = state;
     await db
       .insert(adaptiveStudentStateSchema)
       .values({
@@ -48,10 +50,11 @@ export class DrizzleAdaptiveRepository implements StudentStateRepository {
         displayName: state.studentId, // 佔位；註冊 API 隨後以 setDisplayName 補真名
         knowledge,
         answeredItemIds,
+        itemWrongCounts,
       })
       .onConflictDoUpdate({
         target: [adaptiveStudentStateSchema.practiceId, adaptiveStudentStateSchema.studentKey],
-        set: { knowledge, answeredItemIds, updatedAt: new Date() }, // 不覆寫 displayName
+        set: { knowledge, answeredItemIds, itemWrongCounts, updatedAt: new Date() }, // 不覆寫 displayName
       });
   }
 

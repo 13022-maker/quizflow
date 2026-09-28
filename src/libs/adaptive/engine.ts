@@ -63,6 +63,7 @@ export type StudentState = {
   studentId: string;
   knowledge: Map<string, KnowledgeMastery>; // key = 知識點 id
   answeredItemIds: Set<string>; // 已作答題目（避免短期內重複派同一題）
+  itemWrongCounts: Record<string, number>; // key = itemId，累計答錯次數（弱點概念卡取全班前3名用）
 };
 
 /** 單一知識點的結構化診斷（供 API / 前端儀表板使用） */
@@ -262,6 +263,7 @@ export class AdaptiveEngine {
       studentId,
       knowledge,
       answeredItemIds: new Set(),
+      itemWrongCounts: {},
     };
     await this.repo.save(state);
     return state;
@@ -399,6 +401,9 @@ export class AdaptiveEngine {
     const km = this.getMastery(state, item.knowledgeId);
     km.attempts += 1;
     state.answeredItemIds.add(itemId);
+    if (!isCorrect) {
+      state.itemWrongCounts[itemId] = (state.itemWrongCounts[itemId] ?? 0) + 1;
+    }
 
     // --- 步驟 1：計算題目層級的 guess / slip（隨難度修正）---
     const baseGuess = clamp(

@@ -702,6 +702,8 @@ export const adaptiveStudentStateSchema = pgTable(
       .notNull()
       .$type<Record<string, { mastery: number; targetDifficulty: number; attempts: number }>>(),
     answeredItemIds: jsonb('answered_item_ids').notNull().$type<string[]>(),
+    // 每題累計答錯次數（key = itemId），用於「弱點概念卡」取全班錯最多的前3題
+    itemWrongCounts: jsonb('item_wrong_counts').notNull().default({}).$type<Record<string, number>>(),
     updatedAt: timestamp('updated_at', { mode: 'date' })
       .defaultNow()
       .$onUpdate(() => new Date())

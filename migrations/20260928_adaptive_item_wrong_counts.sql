@@ -1,0 +1,1 @@
+ALTER TABLE "adaptive_student_state" ADD COLUMN "item_wrong_counts" jsonb DEFAULT '{}'::jsonb NOT NULL;

@@ -4,19 +4,19 @@ import { useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
 
-type WeakConcept = { name: string; masteryPct: number };
+type TopWrongItem = { prompt: string; wrongCount: number; knowledgeName: string };
 
 /**
- * 「用 AI 生成弱點概念卡」按鈕：把全班掌握率偏低的知識點送 AI 生成概念卡，
+ * 「用 AI 生成弱點概念卡」按鈕：把全班錯最多的前3題送 AI 生成概念卡，
  * 存成新的單字卡集（createVocabSet 成功時會 redirect /dashboard/vocab）。
- * 沒有弱點知識點（全班都還沒作答或都掌握良好）時停用，避免生出空卡集。
+ * 沒有任何答錯紀錄（全班都還沒作答或都答對）時停用，避免生出空卡集。
  */
 export function GenerateWeakpointFlashcardsButton({
   subjectName,
-  weakConcepts,
+  topWrongItems,
 }: {
   subjectName: string;
-  weakConcepts: WeakConcept[];
+  topWrongItems: TopWrongItem[];
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +28,7 @@ export function GenerateWeakpointFlashcardsButton({
       const res = await fetch('/api/ai/generate-weakpoint-flashcards', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subjectName, concepts: weakConcepts }),
+        body: JSON.stringify({ subjectName, items: topWrongItems }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -55,11 +55,11 @@ export function GenerateWeakpointFlashcardsButton({
     }
   };
 
-  if (weakConcepts.length === 0) {
+  if (topWrongItems.length === 0) {
     return (
       <span
         className="rounded-lg border px-3.5 py-2 text-sm font-medium text-muted-foreground/50"
-        title="目前沒有掌握率低於 50% 的知識點"
+        title="目前沒有答錯紀錄"
       >
         ✨ 用 AI 生成弱點概念卡
       </span>
@@ -76,7 +76,7 @@ export function GenerateWeakpointFlashcardsButton({
       >
         {isLoading
           ? '生成中…'
-          : `✨ 用 AI 生成弱點概念卡（${weakConcepts.length} 個弱點）`}
+          : `✨ 用 AI 生成弱點概念卡（前 ${topWrongItems.length} 名錯題）`}
       </button>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
