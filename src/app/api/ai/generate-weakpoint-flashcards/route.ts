@@ -3,7 +3,8 @@
  * 輸入：{ subjectName, items: [{ prompt, wrongCount, knowledgeName }] }（全班答錯次數最高的前3題）
  * 輸出：{ title, cards: [{ front, back, example }] }（front=核心概念名稱，back=簡潔解釋，example=範例）
  *
- * 統一走 generateAIText（付費 Claude、失敗備援 Gemini），跟 generate-remedial 同套模式。
+ * 統一走 generateAIText（付費 Claude 失敗備援 Gemini；免費 Gemini 失敗也會備援 Claude），
+ * 跟 generate-remedial 同套模式。
  */
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
@@ -11,6 +12,7 @@ import { z } from 'zod';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { generateAIText } from '@/lib/ai/textModel';
+import { friendlyAIGenerationError } from '@/libs/adaptive/generate-subject';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -91,7 +93,7 @@ JSON 格式：
 
     return NextResponse.json(result);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : '概念卡生成失敗';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error('[generate-weakpoint-flashcards] 生成失敗：', err);
+    return NextResponse.json({ error: friendlyAIGenerationError(err) }, { status: 500 });
   }
 }

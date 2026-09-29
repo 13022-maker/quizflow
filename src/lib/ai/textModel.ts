@@ -61,6 +61,20 @@ export function resolveAIProvider(isPro: boolean, hasClaudeKey: boolean): 'claud
 }
 
 /**
+ * 判斷 Gemini 失敗後要不要補打一次 Claude 當最後手段（純函式，可測）。
+ * 只有「這次呼叫本來就沒試過 Claude」（provider !== 'claude'，即免費方案自然分流到 Gemini）
+ * 且「呼叫端沒有主動要求 forceGemini」（forceGemini 是呼叫端為了控制成本刻意跳過 Claude，
+ * 例如生成學科避免試用戶燒 Opus token，這裡要尊重那個決定）且「有設定 Claude 金鑰」時才補打。
+ */
+export function shouldFallbackToClaudeAfterGemini(
+  opts: { forceGemini?: boolean },
+  provider: 'claude' | 'gemini',
+  hasClaudeKey: boolean,
+): boolean {
+  return !opts.forceGemini && provider !== 'claude' && hasClaudeKey;
+}
+
+/**
  * 判斷這個錯誤是不是「暫時性、值得重試」的（純函式，可測）。
  * 429/529（限流/過載）、5xx（伺服器錯誤）、訊息含 overloaded 才算；
  * 400/401/403 這種請求本身有問題的錯誤，重試也不會變好，不列入。
@@ -195,22 +209,36 @@ async function callGemini(opts: GenerateAITextOptions): Promise<string> {
 }
 
 /**
- * 統一文字生成：付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini。
+ * 統一文字生成：付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
+ * （Gemini 失敗且非 forceGemini 時，會補打一次 Claude 當最後手段，見
+ * shouldFallbackToClaudeAfterGemini）。
  * 兩個 provider 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試
  * 3 次再放棄，不是每次撞到限流就整個判定失敗（見 withAIRetry 註解）。
- * 兩個 provider 都失敗才 throw，讓呼叫端自己的錯誤處理接手。
+ * 兩個 provider 都試過還失敗才 throw，讓呼叫端自己的錯誤處理接手。
  */
 export async function generateAIText(
   opts: GenerateAITextOptions,
 ): Promise<{ text: string; usedModel: 'claude' | 'gemini' }> {
   const isPro = await isProSafe();
-  const provider = resolveAIProvider(isPro, Boolean(process.env.ANTHROPIC_API_KEY?.trim()));
+  const hasClaudeKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const provider = resolveAIProvider(isPro, hasClaudeKey);
+
   if (!opts.forceGemini && provider === 'claude') {
     try {
       return { text: await withAIRetry(() => callClaude(opts)), usedModel: 'claude' };
     } catch (err) {
       console.warn('[textModel] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
     }
+    return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
   }
-  return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
+
+  try {
+    return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
+  } catch (err) {
+    if (shouldFallbackToClaudeAfterGemini(opts, provider, hasClaudeKey)) {
+      console.warn('[textModel] Gemini 失敗，fallback Claude：', err instanceof Error ? err.message : err);
+      return { text: await withAIRetry(() => callClaude(opts)), usedModel: 'claude' };
+    }
+    throw err;
+  }
 }

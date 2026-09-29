@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildClaudeMediaBlocks, buildGeminiMediaParts, isRetryableAIError, resolveAIProvider, withAIRetry } from './textModel';
+import { buildClaudeMediaBlocks, buildGeminiMediaParts, isRetryableAIError, resolveAIProvider, shouldFallbackToClaudeAfterGemini, withAIRetry } from './textModel';
 
 describe('resolveAIProvider', () => {
   it('付費且有 Claude 金鑰 → claude', () => {
@@ -96,6 +96,24 @@ describe('withAIRetry', () => {
 
     await expect(withAIRetry(fn, { maxRetries: 3, delayMs: 0 })).rejects.toEqual({ status: 429 });
     expect(fn).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('shouldFallbackToClaudeAfterGemini', () => {
+  it('免費方案（provider=gemini）+ 有 Claude 金鑰 + 沒 forceGemini → 應該補打 Claude', () => {
+    expect(shouldFallbackToClaudeAfterGemini({}, 'gemini', true)).toBe(true);
+  });
+
+  it('forceGemini=true（呼叫端主動控成本，例如生成學科避免試用戶燒 Opus）→ 即使有金鑰也不補打', () => {
+    expect(shouldFallbackToClaudeAfterGemini({ forceGemini: true }, 'gemini', true)).toBe(false);
+  });
+
+  it('沒有設定 Claude 金鑰 → 沒得補打', () => {
+    expect(shouldFallbackToClaudeAfterGemini({}, 'gemini', false)).toBe(false);
+  });
+
+  it('provider=claude（代表這次呼叫已經試過 Claude 了）→ 不重複補打，避免無意義的第二次嘗試', () => {
+    expect(shouldFallbackToClaudeAfterGemini({}, 'claude', true)).toBe(false);
   });
 });
 
