@@ -10,12 +10,14 @@ import {
   reviewSampleSchema,
   reviewScoreSchema,
   reviewSetSchema,
+  reviewSubmissionEditSchema,
   reviewSubmissionSchema,
   reviewTeamSchema,
   reviewVoteSchema,
 } from '@/models/Schema';
 
 import { publishTick } from './ablyServer';
+import { summarizeContributors } from './contributors';
 import type { RubricScores } from './scoring';
 import { calcAccuracyScore, distributeAccuracyPoints } from './scoring';
 import type {
@@ -104,7 +106,7 @@ async function getTeamsWithProgress(
   const teamIds = teams.map(t => t.id);
 
   const players = await db
-    .select({ id: reviewPlayerSchema.id, teamId: reviewPlayerSchema.teamId })
+    .select({ id: reviewPlayerSchema.id, teamId: reviewPlayerSchema.teamId, nickname: reviewPlayerSchema.nickname })
     .from(reviewPlayerSchema)
     .where(inArray(reviewPlayerSchema.teamId, teamIds));
   const scores = await db
@@ -123,6 +125,10 @@ async function getTeamsWithProgress(
     .select({ votedForTeamId: reviewVoteSchema.votedForTeamId })
     .from(reviewVoteSchema)
     .where(inArray(reviewVoteSchema.votedForTeamId, teamIds));
+  const edits = await db
+    .select({ teamId: reviewSubmissionEditSchema.teamId, playerId: reviewSubmissionEditSchema.playerId })
+    .from(reviewSubmissionEditSchema)
+    .where(inArray(reviewSubmissionEditSchema.teamId, teamIds));
 
   return teams.map((team) => {
     const teamPlayers = players.filter(p => p.teamId === team.id);
@@ -139,15 +145,18 @@ async function getTeamsWithProgress(
 
     const submission = submissions.find(s => s.teamId === team.id);
     const votesReceived = votes.filter(v => v.votedForTeamId === team.id).length;
+    const teamEdits = edits.filter(e => e.teamId === team.id);
 
     return {
       id: team.id,
       teamName: team.teamName,
       memberCount: teamPlayers.length,
+      members: teamPlayers.map(p => ({ id: p.id, nickname: p.nickname })),
       score: team.score,
       scoredSampleCount: scoredSampleIds.size,
       memberReadyCount,
       hasSubmission: !!submission && submission.content.trim().length > 0,
+      contributors: summarizeContributors(teamEdits, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
       votesReceived,
     };
   });
@@ -164,6 +173,10 @@ async function getResultsDetail(
   }
   const teamIds = teams.map(t => t.id);
 
+  const players = await db
+    .select({ id: reviewPlayerSchema.id, teamId: reviewPlayerSchema.teamId, nickname: reviewPlayerSchema.nickname })
+    .from(reviewPlayerSchema)
+    .where(inArray(reviewPlayerSchema.teamId, teamIds));
   const scores = await db.select().from(reviewScoreSchema).where(inArray(reviewScoreSchema.teamId, teamIds));
   const submissions = await db
     .select()
@@ -173,6 +186,10 @@ async function getResultsDetail(
     .select()
     .from(reviewVoteSchema)
     .where(inArray(reviewVoteSchema.votedForTeamId, teamIds));
+  const edits = await db
+    .select({ teamId: reviewSubmissionEditSchema.teamId, playerId: reviewSubmissionEditSchema.playerId })
+    .from(reviewSubmissionEditSchema)
+    .where(inArray(reviewSubmissionEditSchema.teamId, teamIds));
   const accuracyPoints = distributeAccuracyPoints(samples.length);
 
   return teams.map((team) => {
@@ -203,14 +220,18 @@ async function getResultsDetail(
     });
     const submission = submissions.find(s => s.teamId === team.id);
     const votesReceived = voteRows.filter(v => v.votedForTeamId === team.id).length;
+    const teamPlayers = players.filter(p => p.teamId === team.id);
+    const teamEdits = edits.filter(e => e.teamId === team.id);
 
     return {
       teamId: team.id,
+      members: teamPlayers.map(p => ({ id: p.id, nickname: p.nickname })),
       samples: sampleDetails,
       accuracyScore: team.accuracyScore,
       speedBonus: team.speedBonus,
       voteBonus: team.voteBonus,
       submission: submission?.content ?? null,
+      contributors: summarizeContributors(teamEdits, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
       votesReceived,
     };
   });
@@ -498,9 +519,29 @@ export async function upsertSubmission(params: {
       target: reviewSubmissionSchema.teamId,
       set: { content, lastEditedByPlayerId: playerId, updatedAt: new Date() },
     });
+  // 只記錄「誰存過檔」，供老師事後看貢獻度，不記內容差異
+  await db.insert(reviewSubmissionEditSchema).values({ teamId: player.teamId, playerId });
 
   await publishTick(gameId);
   return { ok: true };
+}
+
+// 題組列表頁用：某老師底下某題組開過的所有場次，事後回顧用（讓老師不用記 gameId）
+export async function getGameHistory(
+  reviewSetId: number,
+  hostUserId: string,
+): Promise<{ id: number; status: ReviewGameStatus; gamePin: string; createdAt: string }[]> {
+  const rows = await db
+    .select({
+      id: reviewGameSchema.id,
+      status: reviewGameSchema.status,
+      gamePin: reviewGameSchema.gamePin,
+      createdAt: reviewGameSchema.createdAt,
+    })
+    .from(reviewGameSchema)
+    .where(and(eq(reviewGameSchema.reviewSetId, reviewSetId), eq(reviewGameSchema.hostUserId, hostUserId)))
+    .orderBy(desc(reviewGameSchema.createdAt));
+  return rows.map(r => ({ ...r, createdAt: r.createdAt.toISOString() }));
 }
 
 export async function castVote(params: {

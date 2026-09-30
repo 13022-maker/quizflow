@@ -1,3 +1,4 @@
+import type { Contributor } from './contributors';
 import type { RubricScores } from './scoring';
 
 export type ReviewGameStatus =
@@ -18,16 +19,20 @@ export type ReviewSampleForClient = {
   isAiAnswer: boolean;
 };
 
+export type ReviewTeamMember = { id: number; nickname: string };
+
 export type ReviewTeamSummary = {
   id: number;
   teamName: string;
   memberCount: number;
+  members: ReviewTeamMember[];
   score: number;
 };
 
 // 老師結算後（results 階段）每組的明細，用來畫「分數 vs 標準分」對照
 export type ReviewTeamResultDetail = {
   teamId: number;
+  members: ReviewTeamMember[];
   samples: {
     sampleId: number;
     sampleContent: string;
@@ -39,6 +44,7 @@ export type ReviewTeamResultDetail = {
   speedBonus: number;
   voteBonus: number;
   submission: string | null;
+  contributors: Contributor[]; // 共創階段誰有動手，只算次數不比對內容
   votesReceived: number;
 };
 
@@ -55,6 +61,7 @@ export type ReviewHostState = {
     scoredSampleCount: number; // 至少 1 人評過分的範例答案數
     memberReadyCount: number; // 全部範例答案都評完分的成員數
     hasSubmission: boolean;
+    contributors: Contributor[]; // 共創階段誰有動手，只算次數不比對內容
     votesReceived: number;
   })[];
   totalSamples: number;

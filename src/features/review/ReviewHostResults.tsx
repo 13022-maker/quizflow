@@ -42,7 +42,8 @@ export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
               </div>
               {detail && (
                 <div className="mt-2 text-xs text-muted-foreground">
-                  <p>
+                  <p>{detail.members.map(m => m.nickname).join('、')}</p>
+                  <p className="mt-1">
                     準確度分
                     {detail.accuracyScore}
                     {' '}
@@ -55,6 +56,12 @@ export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
                     （
                     {detail.votesReceived}
                     票）
+                  </p>
+                  <p className="mt-1">
+                    共創已動手：
+                    {detail.contributors.length === 0
+                      ? '無記錄'
+                      : detail.contributors.map(c => `${c.nickname}(${c.editCount}次)`).join('、')}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-foreground">
                     {detail.submission ?? '（未提交創作答案）'}

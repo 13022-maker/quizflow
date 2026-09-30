@@ -634,6 +634,19 @@ export const reviewSubmissionSchema = pgTable('review_submission', {
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
+// 共創階段每次自動存檔留一筆記錄，只為了讓老師事後看到「誰有動手」，
+// 不記內容差異、不做版本回溯，純粹是編輯事件日誌
+export const reviewSubmissionEditSchema = pgTable('review_submission_edit', {
+  id: serial('id').primaryKey(),
+  teamId: integer('team_id')
+    .notNull()
+    .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+  playerId: integer('player_id')
+    .notNull()
+    .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+});
+
 // 創作回合結束後，組間互投最佳創意答案（禁投自己組，app 層驗證）
 export const reviewVoteSchema = pgTable(
   'review_vote',

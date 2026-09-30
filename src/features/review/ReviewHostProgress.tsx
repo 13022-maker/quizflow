@@ -51,6 +51,9 @@ export function ReviewHostProgress({
                 人
               </span>
             </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {team.members.map(m => m.nickname).join('、')}
+            </p>
             <p className="mt-2 text-sm text-muted-foreground">
               評分進度：
               {team.scoredSampleCount}
@@ -65,10 +68,18 @@ export function ReviewHostProgress({
               人全部評完
             </p>
             {(status === 'creating' || status === 'voting') && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                共創答案：
-                {team.hasSubmission ? '已提交' : '尚未提交'}
-              </p>
+              <>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  共創答案：
+                  {team.hasSubmission ? '已提交' : '尚未提交'}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  已動手：
+                  {team.contributors.length === 0
+                    ? '尚無人存檔'
+                    : team.contributors.map(c => `${c.nickname}(${c.editCount}次)`).join('、')}
+                </p>
+              </>
             )}
             {status === 'voting' && (
               <p className="mt-1 text-sm text-muted-foreground">
