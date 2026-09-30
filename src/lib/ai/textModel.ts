@@ -2,7 +2,12 @@
  * textModel.ts — AI 文字生成統一入口（provider 分流與備援）
  *
  * 規則：付費（isProOrAbove）且有 ANTHROPIC_API_KEY → Claude，失敗自動 fallback Gemini；
- *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini。
+ *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini；
+ *       Gemini 失敗且非 forceGemini 時也會補打一次 Claude。
+ * 每個 provider 內部還有一層帳號 key pool（見 getApiKeyPool）：主帳號額度用完
+ * （單一帳號的限流/超額），會換下一組備用帳號的 key 重試，不會直接判定整個
+ * provider 都不能用。備用帳號 key 放在 ANTHROPIC_API_KEY_BACKUP／
+ * GEMINI_API_KEY_BACKUP（逗號分隔可放多組），沒設就是空陣列，行為與過去相同。
  * 背景：2026-07-16 Anthropic 額度歸零導致所有 Claude-only 功能整頁炸，
  *       spec: docs/superpowers/specs/2026-07-16-ai-provider-fallback-design.md
  */
@@ -89,6 +94,40 @@ export function isRetryableAIError(err: unknown): boolean {
 }
 
 /**
+ * 組出一個 provider 的 API key 清單：主帳號優先，後面接備用帳號（逗號分隔字串，
+ * 每組 trim、過濾空字串）。純函式，可測。
+ */
+export function getApiKeyPool(primary: string | undefined, backupCsv: string | undefined): string[] {
+  const backups = (backupCsv ?? '').split(',').map(k => k.trim()).filter(Boolean);
+  const trimmedPrimary = primary?.trim();
+  return trimmedPrimary ? [trimmedPrimary, ...backups] : backups;
+}
+
+/**
+ * 依序嘗試 key pool 裡的每一組 key，直到成功或全部用完。
+ * 用來因應「單一帳號額度用完」：換一組不同帳號的 key 重打，而不是直接判定整個
+ * provider 都不能用。空 pool 直接丟出明確錯誤，不會呼叫 fn。
+ */
+export async function callWithKeyPool<T>(
+  keys: string[],
+  fn: (key: string) => Promise<T>,
+): Promise<T> {
+  if (keys.length === 0) {
+    throw new Error('AI 服務未設定（缺少 API key）');
+  }
+  let lastErr: unknown;
+  for (const key of keys) {
+    try {
+      return await fn(key);
+    } catch (err) {
+      lastErr = err;
+      console.warn('[textModel] key pool 其中一組帳號失敗，換下一組：', err instanceof Error ? err.message : err);
+    }
+  }
+  throw lastErr;
+}
+
+/**
  * 通用重試 wrapper：可重試的錯誤失敗時遞增 backoff 重試，不可重試或試滿次數就拋出。
  *
  * 修復真實踩過的坑：簡答題 AI 評分（gradeShortAnswer → callGemini）過去完全沒有
@@ -149,8 +188,8 @@ export async function isPaidSubscriberSafe(): Promise<boolean> {
   }
 }
 
-async function callClaude(opts: GenerateAITextOptions): Promise<string> {
-  const client = new Anthropic();
+async function callClaude(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+  const client = new Anthropic({ apiKey });
   const content: Anthropic.MessageParam['content'] = opts.media?.length
     ? [...buildClaudeMediaBlocks(opts.media), { type: 'text', text: opts.prompt }]
     : opts.prompt;
@@ -175,12 +214,8 @@ async function callClaude(opts: GenerateAITextOptions): Promise<string> {
     .join('');
 }
 
-async function callGemini(opts: GenerateAITextOptions): Promise<string> {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    throw new Error('AI 服務未設定（缺少 GEMINI_API_KEY）');
-  }
-  const gemini = new GoogleGenAI({ apiKey: key });
+async function callGemini(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+  const gemini = new GoogleGenAI({ apiKey });
   // Gemini 無獨立 system 欄位使用習慣（比照本專案既有寫法），前綴到 prompt
   const fullPrompt = opts.system ? `${opts.system}\n\n---\n\n${opts.prompt}` : opts.prompt;
   const parts = [
@@ -212,32 +247,39 @@ async function callGemini(opts: GenerateAITextOptions): Promise<string> {
  * 統一文字生成：付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
  * （Gemini 失敗且非 forceGemini 時，會補打一次 Claude 當最後手段，見
  * shouldFallbackToClaudeAfterGemini）。
- * 兩個 provider 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試
- * 3 次再放棄，不是每次撞到限流就整個判定失敗（見 withAIRetry 註解）。
- * 兩個 provider 都試過還失敗才 throw，讓呼叫端自己的錯誤處理接手。
+ * 每個 provider 內部先跑 key pool（主帳號＋ *_API_KEY_BACKUP 逗號分隔的備用帳號，
+ * 見 getApiKeyPool／callWithKeyPool）：單一帳號額度用完就換下一組帳號的 key；
+ * 每組 key 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試 3 次再放棄。
+ * 兩個 provider（含各自整個 key pool）都試過還失敗才 throw，讓呼叫端自己的錯誤處理接手。
  */
 export async function generateAIText(
   opts: GenerateAITextOptions,
 ): Promise<{ text: string; usedModel: 'claude' | 'gemini' }> {
   const isPro = await isProSafe();
-  const hasClaudeKey = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  const claudeKeys = getApiKeyPool(process.env.ANTHROPIC_API_KEY, process.env.ANTHROPIC_API_KEY_BACKUP);
+  const geminiKeys = getApiKeyPool(process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP);
+  const hasClaudeKey = claudeKeys.length > 0;
   const provider = resolveAIProvider(isPro, hasClaudeKey);
 
   if (!opts.forceGemini && provider === 'claude') {
     try {
-      return { text: await withAIRetry(() => callClaude(opts)), usedModel: 'claude' };
+      const text = await callWithKeyPool(claudeKeys, key => withAIRetry(() => callClaude(opts, key)));
+      return { text, usedModel: 'claude' };
     } catch (err) {
-      console.warn('[textModel] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
+      console.warn('[textModel] Claude（含備用帳號）皆失敗，fallback Gemini：', err instanceof Error ? err.message : err);
     }
-    return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
+    const text = await callWithKeyPool(geminiKeys, key => withAIRetry(() => callGemini(opts, key)));
+    return { text, usedModel: 'gemini' };
   }
 
   try {
-    return { text: await withAIRetry(() => callGemini(opts)), usedModel: 'gemini' };
+    const text = await callWithKeyPool(geminiKeys, key => withAIRetry(() => callGemini(opts, key)));
+    return { text, usedModel: 'gemini' };
   } catch (err) {
     if (shouldFallbackToClaudeAfterGemini(opts, provider, hasClaudeKey)) {
-      console.warn('[textModel] Gemini 失敗，fallback Claude：', err instanceof Error ? err.message : err);
-      return { text: await withAIRetry(() => callClaude(opts)), usedModel: 'claude' };
+      console.warn('[textModel] Gemini（含備用帳號）皆失敗，fallback Claude：', err instanceof Error ? err.message : err);
+      const text = await callWithKeyPool(claudeKeys, key => withAIRetry(() => callClaude(opts, key)));
+      return { text, usedModel: 'claude' };
     }
     throw err;
   }

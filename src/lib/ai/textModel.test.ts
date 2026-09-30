@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildClaudeMediaBlocks, buildGeminiMediaParts, isRetryableAIError, resolveAIProvider, shouldFallbackToClaudeAfterGemini, withAIRetry } from './textModel';
+import { buildClaudeMediaBlocks, buildGeminiMediaParts, callWithKeyPool, getApiKeyPool, isRetryableAIError, resolveAIProvider, shouldFallbackToClaudeAfterGemini, withAIRetry } from './textModel';
 
 describe('resolveAIProvider', () => {
   it('付費且有 Claude 金鑰 → claude', () => {
@@ -114,6 +114,83 @@ describe('shouldFallbackToClaudeAfterGemini', () => {
 
   it('provider=claude（代表這次呼叫已經試過 Claude 了）→ 不重複補打，避免無意義的第二次嘗試', () => {
     expect(shouldFallbackToClaudeAfterGemini({}, 'claude', true)).toBe(false);
+  });
+});
+
+describe('getApiKeyPool', () => {
+  it('只有主帳號 key，沒有備用：回傳單一元素陣列', () => {
+    expect(getApiKeyPool('primary-key', undefined)).toEqual(['primary-key']);
+  });
+
+  it('主帳號 + 備用（逗號分隔）：依序組成陣列，主帳號在前', () => {
+    expect(getApiKeyPool('primary-key', 'backup-1,backup-2')).toEqual([
+      'primary-key',
+      'backup-1',
+      'backup-2',
+    ]);
+  });
+
+  it('備用清單有多餘空白：每組都要 trim', () => {
+    expect(getApiKeyPool('primary-key', ' backup-1 , backup-2 ')).toEqual([
+      'primary-key',
+      'backup-1',
+      'backup-2',
+    ]);
+  });
+
+  it('沒有主帳號 key，只有備用：不補空字串進陣列', () => {
+    expect(getApiKeyPool(undefined, 'backup-1')).toEqual(['backup-1']);
+  });
+
+  it('主帳號跟備用都沒設：回傳空陣列', () => {
+    expect(getApiKeyPool(undefined, undefined)).toEqual([]);
+  });
+
+  it('備用清單裡有空白項目（例如結尾多一個逗號）：過濾掉空字串', () => {
+    expect(getApiKeyPool('primary-key', 'backup-1,,')).toEqual(['primary-key', 'backup-1']);
+  });
+});
+
+describe('callWithKeyPool', () => {
+  it('第一組 key 就成功：直接回傳結果，不會嘗試其他 key', async () => {
+    const fn = vi.fn().mockResolvedValue('ok');
+
+    const result = await callWithKeyPool(['key-1', 'key-2'], fn);
+
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(fn).toHaveBeenCalledWith('key-1');
+  });
+
+  it('第一組失敗、第二組成功：換下一組 key 重試，回傳成功結果', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('key-1 額度用完'))
+      .mockResolvedValueOnce('ok');
+
+    const result = await callWithKeyPool(['key-1', 'key-2'], fn);
+
+    expect(result).toBe('ok');
+    expect(fn).toHaveBeenCalledTimes(2);
+    expect(fn).toHaveBeenNthCalledWith(1, 'key-1');
+    expect(fn).toHaveBeenNthCalledWith(2, 'key-2');
+  });
+
+  it('所有 key 都失敗：拋出最後一組 key 的錯誤', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new Error('key-1 失敗'))
+      .mockRejectedValueOnce(new Error('key-2 失敗'));
+
+    await expect(callWithKeyPool(['key-1', 'key-2'], fn)).rejects.toThrow('key-2 失敗');
+    expect(fn).toHaveBeenCalledTimes(2);
+  });
+
+  it('key pool 是空陣列：直接拋出明確錯誤，不呼叫 fn', async () => {
+    const fn = vi.fn();
+
+    await expect(callWithKeyPool([], fn)).rejects.toThrow('AI 服務未設定');
+    expect(fn).not.toHaveBeenCalled();
   });
 });
 
