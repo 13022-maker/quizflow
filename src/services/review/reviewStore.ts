@@ -271,6 +271,7 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
       status: game.status,
       gamePin: game.gamePin,
       title: reviewSet.title,
+      teamSize: reviewSet.teamSize,
       phaseStartedAt: game.phaseStartedAt ? game.phaseStartedAt.toISOString() : null,
       phaseDurationSec: game.phaseDurationSec,
     },

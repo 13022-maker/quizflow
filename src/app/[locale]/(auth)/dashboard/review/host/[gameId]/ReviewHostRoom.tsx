@@ -44,7 +44,7 @@ export function ReviewHostRoom({ gameId, title }: Props) {
       {status === 'lobby' && (
         <ReviewHostLobby
           state={state}
-          onStartTeamForming={actions.startTeamForming}
+          onStartTeamForming={teamSize => actions.startTeamForming(teamSize)}
           onEnd={actions.end}
           pending={pending}
         />

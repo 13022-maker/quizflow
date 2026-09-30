@@ -4,6 +4,7 @@
 import { auth } from '@clerk/nextjs/server';
 import { and, count, eq, inArray } from 'drizzle-orm';
 
+import { ReviewSetInputSchema } from '@/lib/reviewSetSchema';
 import { db } from '@/libs/DB';
 import {
   reviewGameSchema,
@@ -91,7 +92,7 @@ export async function createReviewGame(reviewSetId: number) {
   return { ok: true as const, gameId: inserted.id, gamePin: inserted.gamePin };
 }
 
-export async function startTeamForming(gameId: number) {
+export async function startTeamForming(gameId: number, teamSizeOverride?: number) {
   const { userId } = await auth();
   if (!userId) {
     return { error: 'Unauthorized' as const };
@@ -113,6 +114,16 @@ export async function startTeamForming(gameId: number) {
     return { error: 'REVIEW_SET_NOT_FOUND' };
   }
 
+  // 老師可在這場直播臨時調整人數，只影響本場次，不改題組模板存的預設值
+  let teamSize = reviewSet.teamSize;
+  if (teamSizeOverride !== undefined) {
+    const parsed = ReviewSetInputSchema.shape.teamSize.safeParse(teamSizeOverride);
+    if (!parsed.success) {
+      return { error: 'INVALID_TEAM_SIZE' };
+    }
+    teamSize = parsed.data;
+  }
+
   const players = await db
     .select({ id: reviewPlayerSchema.id })
     .from(reviewPlayerSchema)
@@ -121,7 +132,7 @@ export async function startTeamForming(gameId: number) {
     return { error: 'NO_PLAYERS' };
   }
 
-  const teamGroups = assignTeamsRoundRobin(players.map(p => p.id), reviewSet.teamSize);
+  const teamGroups = assignTeamsRoundRobin(players.map(p => p.id), teamSize);
 
   await db.transaction(async (tx) => {
     for (const [i, memberIds] of teamGroups.entries()) {

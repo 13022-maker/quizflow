@@ -54,6 +54,7 @@ export type ReviewHostState = {
     status: ReviewGameStatus;
     gamePin: string;
     title: string;
+    teamSize: number; // 題組模板預設的小組人數，lobby 開分組前可臨時覆蓋，不影響模板本身
     phaseStartedAt: string | null;
     phaseDurationSec: number | null;
   };

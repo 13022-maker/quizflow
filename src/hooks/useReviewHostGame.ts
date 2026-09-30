@@ -50,7 +50,7 @@ export function useReviewHostGame(gameId: number) {
   }, []);
 
   const startTeamForming = useCallback(
-    () => runAction(() => startTeamFormingAction(gameId)),
+    (teamSizeOverride?: number) => runAction(() => startTeamFormingAction(gameId, teamSizeOverride)),
     [gameId, runAction],
   );
   const startReviewing = useCallback(
