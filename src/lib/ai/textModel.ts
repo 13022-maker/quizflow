@@ -4,12 +4,13 @@
  * 規則：付費（isProOrAbove）且有 ANTHROPIC_API_KEY → Claude，失敗自動 fallback Gemini；
  *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini；
  *       Gemini 失敗且非 forceGemini 時也會補打一次 Claude；
- *       Claude／Gemini 兩邊（含各自備用帳號）都失敗，最後補打 OpenAI（gpt-4o-mini）。
+ *       Gemini 本身失敗（含 Gemini 帳號 key pool 都試過）會先補打 Grok；
+ *       Claude／Gemini／Grok 全部（含各自備用帳號）都失敗，最後補打 OpenAI（gpt-4o-mini）。
  * 每個 provider 內部還有一層帳號 key pool（見 getApiKeyPool）：主帳號額度用完
  * （單一帳號的限流/超額），會換下一組備用帳號的 key 重試，不會直接判定整個
  * provider 都不能用。備用帳號 key 放在 ANTHROPIC_API_KEY_BACKUP／
- * GEMINI_API_KEY_BACKUP／OPENAI_API_KEY_BACKUP（逗號分隔可放多組），沒設就是
- * 空陣列，行為與過去相同。
+ * GEMINI_API_KEY_BACKUP／GROK_API_KEY_BACKUP／OPENAI_API_KEY_BACKUP（逗號分隔可放
+ * 多組），沒設就是空陣列，行為與過去相同。
  * 背景：2026-07-16 Anthropic 額度歸零導致所有 Claude-only 功能整頁炸，
  *       spec: docs/superpowers/specs/2026-07-16-ai-provider-fallback-design.md
  */
@@ -216,16 +217,24 @@ async function callClaude(opts: GenerateAITextOptions, apiKey: string): Promise<
     .join('');
 }
 
-/** OpenAI（`gpt-4o-mini`，REST 直打，跟 generate-questions/route.ts 既有第三備援同款） */
-async function callOpenAI(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+/**
+ * OpenAI 相容的 chat completions API 共用邏輯（OpenAI 本身跟 xAI Grok 都吃這個介面，
+ * REST 直打，跟 generate-questions/route.ts 既有第三備援同款寫法）。
+ */
+async function callOpenAICompatible(
+  opts: GenerateAITextOptions,
+  apiKey: string,
+  baseUrl: string,
+  model: string,
+): Promise<string> {
   const messages = opts.system
     ? [{ role: 'system', content: opts.system }, { role: 'user', content: opts.prompt }]
     : [{ role: 'user', content: opts.prompt }];
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  const res = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model,
       messages,
       max_tokens: opts.maxTokens ?? 4096,
       ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
@@ -233,14 +242,22 @@ async function callOpenAI(opts: GenerateAITextOptions, apiKey: string): Promise<
   });
   if (!res.ok) {
     const errBody = await res.text();
-    throw new Error(`OpenAI ${res.status}: ${errBody.slice(0, 200)}`);
+    throw new Error(`${model} ${res.status}: ${errBody.slice(0, 200)}`);
   }
   const data = await res.json();
   const text = data.choices?.[0]?.message?.content ?? '';
   if (!text) {
-    throw new Error('OpenAI 回傳空內容');
+    throw new Error(`${model} 回傳空內容`);
   }
   return text;
+}
+
+async function callOpenAI(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+  return callOpenAICompatible(opts, apiKey, 'https://api.openai.com/v1', 'gpt-4o-mini');
+}
+
+async function callGrok(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+  return callOpenAICompatible(opts, apiKey, 'https://api.x.ai/v1', 'grok-4-fast');
 }
 
 async function callGemini(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
@@ -273,14 +290,15 @@ async function callGemini(opts: GenerateAITextOptions, apiKey: string): Promise<
 }
 
 /**
- * 統一文字生成入口：Claude／Gemini 雙向 fallback（含各自 key pool）都失敗時，
- * 補打 OpenAI（`gpt-4o-mini`）當最後一道防線，三個 provider 全部沒設定/都失敗才 throw。
+ * 統一文字生成入口：Claude／Gemini（Gemini 失敗會先試 Grok，見
+ * generateWithClaudeAndGemini／callGeminiThenGrok）都失敗時，補打 OpenAI
+ * （`gpt-4o-mini`）當最後一道防線，全部 provider 都沒設定/都失敗才 throw。
  * OpenAI 一樣支援 OPENAI_API_KEY_BACKUP 多帳號 key pool。這一層不分 forceGemini／
- * 付費與否，是全域最後手段，避免主要兩個 provider 剛好同時撞額度時整個生成失敗。
+ * 付費與否，是全域最後手段，避免主要 provider 剛好同時撞額度時整個生成失敗。
  */
 export async function generateAIText(
   opts: GenerateAITextOptions,
-): Promise<{ text: string; usedModel: 'claude' | 'gemini' | 'openai' }> {
+): Promise<{ text: string; usedModel: 'claude' | 'gemini' | 'grok' | 'openai' }> {
   try {
     return await generateWithClaudeAndGemini(opts);
   } catch (err) {
@@ -295,21 +313,46 @@ export async function generateAIText(
 }
 
 /**
+ * 打 Gemini，失敗（含 Gemini 自己的整個帳號 key pool 都試過）就補打一次 Grok 當
+ * Gemini 專屬的備援，兩個都失敗才 throw。GROK_API_KEY 沒設（grokKeys 空陣列）時
+ * 直接跳過，行為等同過去只有 Gemini。
+ */
+async function callGeminiThenGrok(
+  opts: GenerateAITextOptions,
+  geminiKeys: string[],
+  grokKeys: string[],
+): Promise<{ text: string; usedModel: 'gemini' | 'grok' }> {
+  try {
+    const text = await callWithKeyPool(geminiKeys, key => withAIRetry(() => callGemini(opts, key)));
+    return { text, usedModel: 'gemini' };
+  } catch (err) {
+    if (grokKeys.length === 0) {
+      throw err;
+    }
+    console.warn('[textModel] Gemini（含備用帳號）皆失敗，fallback Grok：', err instanceof Error ? err.message : err);
+    const text = await callWithKeyPool(grokKeys, key => withAIRetry(() => callGrok(opts, key)));
+    return { text, usedModel: 'grok' };
+  }
+}
+
+/**
  * 付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
  * （Gemini 失敗且非 forceGemini 時，會補打一次 Claude 當最後手段，見
- * shouldFallbackToClaudeAfterGemini）。
+ * shouldFallbackToClaudeAfterGemini）。Gemini 本身失敗時會先試 Grok
+ * （callGeminiThenGrok），Grok 也失敗才算 Gemini 這條路徹底斷了。
  * 每個 provider 內部先跑 key pool（主帳號＋ *_API_KEY_BACKUP 逗號分隔的備用帳號，
  * 見 getApiKeyPool／callWithKeyPool）：單一帳號額度用完就換下一組帳號的 key；
  * 每組 key 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試 3 次再放棄。
- * 兩個 provider（含各自整個 key pool）都試過還失敗才 throw，交給 generateAIText
- * 決定要不要再退到 OpenAI。
+ * Claude／Gemini／Grok 都試過還失敗才 throw，交給 generateAIText 決定要不要再退到
+ * OpenAI。
  */
 async function generateWithClaudeAndGemini(
   opts: GenerateAITextOptions,
-): Promise<{ text: string; usedModel: 'claude' | 'gemini' }> {
+): Promise<{ text: string; usedModel: 'claude' | 'gemini' | 'grok' }> {
   const isPro = await isProSafe();
   const claudeKeys = getApiKeyPool(process.env.ANTHROPIC_API_KEY, process.env.ANTHROPIC_API_KEY_BACKUP);
   const geminiKeys = getApiKeyPool(process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP);
+  const grokKeys = getApiKeyPool(process.env.GROK_API_KEY, process.env.GROK_API_KEY_BACKUP);
   const hasClaudeKey = claudeKeys.length > 0;
   const provider = resolveAIProvider(isPro, hasClaudeKey);
 
@@ -320,16 +363,14 @@ async function generateWithClaudeAndGemini(
     } catch (err) {
       console.warn('[textModel] Claude（含備用帳號）皆失敗，fallback Gemini：', err instanceof Error ? err.message : err);
     }
-    const text = await callWithKeyPool(geminiKeys, key => withAIRetry(() => callGemini(opts, key)));
-    return { text, usedModel: 'gemini' };
+    return callGeminiThenGrok(opts, geminiKeys, grokKeys);
   }
 
   try {
-    const text = await callWithKeyPool(geminiKeys, key => withAIRetry(() => callGemini(opts, key)));
-    return { text, usedModel: 'gemini' };
+    return await callGeminiThenGrok(opts, geminiKeys, grokKeys);
   } catch (err) {
     if (shouldFallbackToClaudeAfterGemini(opts, provider, hasClaudeKey)) {
-      console.warn('[textModel] Gemini（含備用帳號）皆失敗，fallback Claude：', err instanceof Error ? err.message : err);
+      console.warn('[textModel] Gemini／Grok 皆失敗，fallback Claude：', err instanceof Error ? err.message : err);
       const text = await callWithKeyPool(claudeKeys, key => withAIRetry(() => callClaude(opts, key)));
       return { text, usedModel: 'claude' };
     }
