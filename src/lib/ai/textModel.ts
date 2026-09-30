@@ -3,11 +3,13 @@
  *
  * 規則：付費（isProOrAbove）且有 ANTHROPIC_API_KEY → Claude，失敗自動 fallback Gemini；
  *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini；
- *       Gemini 失敗且非 forceGemini 時也會補打一次 Claude。
+ *       Gemini 失敗且非 forceGemini 時也會補打一次 Claude；
+ *       Claude／Gemini 兩邊（含各自備用帳號）都失敗，最後補打 OpenAI（gpt-4o-mini）。
  * 每個 provider 內部還有一層帳號 key pool（見 getApiKeyPool）：主帳號額度用完
  * （單一帳號的限流/超額），會換下一組備用帳號的 key 重試，不會直接判定整個
  * provider 都不能用。備用帳號 key 放在 ANTHROPIC_API_KEY_BACKUP／
- * GEMINI_API_KEY_BACKUP（逗號分隔可放多組），沒設就是空陣列，行為與過去相同。
+ * GEMINI_API_KEY_BACKUP／OPENAI_API_KEY_BACKUP（逗號分隔可放多組），沒設就是
+ * 空陣列，行為與過去相同。
  * 背景：2026-07-16 Anthropic 額度歸零導致所有 Claude-only 功能整頁炸，
  *       spec: docs/superpowers/specs/2026-07-16-ai-provider-fallback-design.md
  */
@@ -214,6 +216,33 @@ async function callClaude(opts: GenerateAITextOptions, apiKey: string): Promise<
     .join('');
 }
 
+/** OpenAI（`gpt-4o-mini`，REST 直打，跟 generate-questions/route.ts 既有第三備援同款） */
+async function callOpenAI(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
+  const messages = opts.system
+    ? [{ role: 'system', content: opts.system }, { role: 'user', content: opts.prompt }]
+    : [{ role: 'user', content: opts.prompt }];
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages,
+      max_tokens: opts.maxTokens ?? 4096,
+      ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`OpenAI ${res.status}: ${errBody.slice(0, 200)}`);
+  }
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content ?? '';
+  if (!text) {
+    throw new Error('OpenAI 回傳空內容');
+  }
+  return text;
+}
+
 async function callGemini(opts: GenerateAITextOptions, apiKey: string): Promise<string> {
   const gemini = new GoogleGenAI({ apiKey });
   // Gemini 無獨立 system 欄位使用習慣（比照本專案既有寫法），前綴到 prompt
@@ -244,15 +273,38 @@ async function callGemini(opts: GenerateAITextOptions, apiKey: string): Promise<
 }
 
 /**
- * 統一文字生成：付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
+ * 統一文字生成入口：Claude／Gemini 雙向 fallback（含各自 key pool）都失敗時，
+ * 補打 OpenAI（`gpt-4o-mini`）當最後一道防線，三個 provider 全部沒設定/都失敗才 throw。
+ * OpenAI 一樣支援 OPENAI_API_KEY_BACKUP 多帳號 key pool。這一層不分 forceGemini／
+ * 付費與否，是全域最後手段，避免主要兩個 provider 剛好同時撞額度時整個生成失敗。
+ */
+export async function generateAIText(
+  opts: GenerateAITextOptions,
+): Promise<{ text: string; usedModel: 'claude' | 'gemini' | 'openai' }> {
+  try {
+    return await generateWithClaudeAndGemini(opts);
+  } catch (err) {
+    const openaiKeys = getApiKeyPool(process.env.OPENAI_API_KEY, process.env.OPENAI_API_KEY_BACKUP);
+    if (openaiKeys.length === 0) {
+      throw err;
+    }
+    console.warn('[textModel] Claude／Gemini（含各自備用帳號）皆失敗，fallback OpenAI 最後防線：', err instanceof Error ? err.message : err);
+    const text = await callWithKeyPool(openaiKeys, key => withAIRetry(() => callOpenAI(opts, key)));
+    return { text, usedModel: 'openai' };
+  }
+}
+
+/**
+ * 付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
  * （Gemini 失敗且非 forceGemini 時，會補打一次 Claude 當最後手段，見
  * shouldFallbackToClaudeAfterGemini）。
  * 每個 provider 內部先跑 key pool（主帳號＋ *_API_KEY_BACKUP 逗號分隔的備用帳號，
  * 見 getApiKeyPool／callWithKeyPool）：單一帳號額度用完就換下一組帳號的 key；
  * 每組 key 呼叫都包了 withAIRetry：暫時性錯誤（限流/過載/5xx）先重試 3 次再放棄。
- * 兩個 provider（含各自整個 key pool）都試過還失敗才 throw，讓呼叫端自己的錯誤處理接手。
+ * 兩個 provider（含各自整個 key pool）都試過還失敗才 throw，交給 generateAIText
+ * 決定要不要再退到 OpenAI。
  */
-export async function generateAIText(
+async function generateWithClaudeAndGemini(
   opts: GenerateAITextOptions,
 ): Promise<{ text: string; usedModel: 'claude' | 'gemini' }> {
   const isPro = await isProSafe();
