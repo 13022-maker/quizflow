@@ -44,7 +44,9 @@ export type ReviewTeamResultDetail = {
   speedBonus: number;
   voteBonus: number;
   submission: string | null;
-  leaderId: number | null; // 最終送出時的隊長
+  // 目前當選的隊長（不是「送出當下」的隊長快照——送出後若組員改投票，這個值仍會變動；
+  // 真正的送出者是 lastEditedByPlayerId）
+  leaderId: number | null;
   autoSubmitted: boolean; // true = 老師推進階段時系統代送，非隊長主動按送出
   contributors: Contributor[]; // 共創階段誰有動手，依草稿字數呈現
   votesReceived: number;
@@ -63,8 +65,11 @@ export type ReviewHostState = {
   teams: (ReviewTeamSummary & {
     scoredSampleCount: number; // 至少 1 人評過分的範例答案數
     memberReadyCount: number; // 全部範例答案都評完分的成員數
-    hasSubmission: boolean;
-    leaderId: number | null; // 目前當選（或預設）的隊長
+    hasSubmission: boolean; // 只代表「有非空內容」，不代表已正式送出，判斷鎖定請用 submittedAt
+    submittedAt: string | null; // 有值 = 隊長已明確送出（或系統代送）而鎖定
+    // 目前當選（或預設）的隊長（不是「送出當下」的隊長快照——送出後若組員改投票，
+    // 這個值仍會變動；真正的送出者是 lastEditedByPlayerId）
+    leaderId: number | null;
     autoSubmitted: boolean; // true = 該組是系統逾時代送，不是隊長主動送出
     contributors: Contributor[]; // 共創階段誰有動手，依草稿字數呈現
     votesReceived: number;

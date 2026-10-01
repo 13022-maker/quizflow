@@ -126,6 +126,7 @@ async function getTeamsWithProgress(
       teamId: reviewSubmissionSchema.teamId,
       content: reviewSubmissionSchema.content,
       autoSubmitted: reviewSubmissionSchema.autoSubmitted,
+      submittedAt: reviewSubmissionSchema.submittedAt,
     })
     .from(reviewSubmissionSchema)
     .where(inArray(reviewSubmissionSchema.teamId, teamIds));
@@ -166,6 +167,7 @@ async function getTeamsWithProgress(
       scoredSampleCount: scoredSampleIds.size,
       memberReadyCount,
       hasSubmission: !!submission && submission.content.trim().length > 0,
+      submittedAt: submission?.submittedAt ? submission.submittedAt.toISOString() : null,
       leaderId: team.leaderId,
       autoSubmitted: submission?.autoSubmitted ?? false,
       contributors: summarizeContributors(teamDrafts, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
@@ -354,7 +356,9 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
     const teamMembers = await db
       .select({ id: reviewPlayerSchema.id, nickname: reviewPlayerSchema.nickname })
       .from(reviewPlayerSchema)
-      .where(eq(reviewPlayerSchema.teamId, me.teamId));
+      .where(eq(reviewPlayerSchema.teamId, me.teamId))
+      // 固定排序，避免每次輪詢回傳的組員順序不同，造成學生端按鈕位置亂跳
+      .orderBy(asc(reviewPlayerSchema.joinedAt), asc(reviewPlayerSchema.id));
     teammates = teamMembers.filter(p => p.id !== me.id);
 
     const teamDrafts = await db
@@ -560,7 +564,12 @@ export async function upsertSubmission(params: {
     .from(reviewTeamSchema)
     .where(eq(reviewTeamSchema.id, player.teamId))
     .limit(1);
-  if (!team || team.leaderId !== playerId) {
+  if (!team) {
+    return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
+  }
+  // 功能上線前就存在的場次 leader_id 會是 NULL，這裡即時補推選一位，避免整組都存不了檔
+  const effectiveLeaderId = await ensureTeamLeader(player.teamId, team.leaderId);
+  if (effectiveLeaderId !== playerId) {
     return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
   }
 
@@ -661,7 +670,9 @@ export async function upsertLeaderVote(params: {
   const teamMembers = await db
     .select({ id: reviewPlayerSchema.id, joinedAt: reviewPlayerSchema.joinedAt })
     .from(reviewPlayerSchema)
-    .where(eq(reviewPlayerSchema.teamId, voter.teamId));
+    .where(eq(reviewPlayerSchema.teamId, voter.teamId))
+    // 固定排序，讓 pickLeader 的平票 tie-break 結果穩定（不隨 DB 回傳順序跳動）
+    .orderBy(asc(reviewPlayerSchema.joinedAt), asc(reviewPlayerSchema.id));
   const target = teamMembers.find(m => m.id === votedForPlayerId);
   if (!target) {
     return { ok: false, error: 'TARGET_NOT_ON_TEAM', status: 400 };
@@ -691,6 +702,34 @@ export async function upsertLeaderVote(params: {
   return { ok: true };
 }
 
+// 確保這組一定有隊長：已經有的話直接回傳；沒有的話（例如功能上線前就存在的場次）
+// 依現有投票（可能是空陣列）即時推選一位並寫回 DB，跟 upsertLeaderVote 的邏輯一致
+async function ensureTeamLeader(teamId: number, currentLeaderId: number | null): Promise<number | null> {
+  if (currentLeaderId !== null) {
+    return currentLeaderId;
+  }
+  const teamMembers = await db
+    .select({ id: reviewPlayerSchema.id, joinedAt: reviewPlayerSchema.joinedAt })
+    .from(reviewPlayerSchema)
+    .where(eq(reviewPlayerSchema.teamId, teamId))
+    .orderBy(asc(reviewPlayerSchema.joinedAt), asc(reviewPlayerSchema.id));
+  if (teamMembers.length === 0) {
+    return null;
+  }
+  const votes = await db
+    .select({
+      voterPlayerId: reviewLeaderVoteSchema.voterPlayerId,
+      votedForPlayerId: reviewLeaderVoteSchema.votedForPlayerId,
+    })
+    .from(reviewLeaderVoteSchema)
+    .where(eq(reviewLeaderVoteSchema.teamId, teamId));
+  const leaderId = pickLeader(votes, teamMembers);
+  if (leaderId !== null) {
+    await db.update(reviewTeamSchema).set({ leaderId }).where(eq(reviewTeamSchema.id, teamId));
+  }
+  return leaderId;
+}
+
 export async function submitFinalAnswer(params: {
   gameId: number;
   playerId: number;
@@ -711,7 +750,12 @@ export async function submitFinalAnswer(params: {
     .from(reviewTeamSchema)
     .where(eq(reviewTeamSchema.id, player.teamId))
     .limit(1);
-  if (!team || team.leaderId !== playerId) {
+  if (!team) {
+    return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
+  }
+  // 同 upsertSubmission：舊場次沒有隊長時即時補推選，否則整組都送不出去
+  const effectiveLeaderId = await ensureTeamLeader(player.teamId, team.leaderId);
+  if (effectiveLeaderId !== playerId) {
     return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
   }
 
@@ -745,7 +789,7 @@ export async function submitFinalAnswer(params: {
     })
     .onConflictDoUpdate({
       target: reviewSubmissionSchema.teamId,
-      set: { submittedAt: new Date(), autoSubmitted: false },
+      set: { submittedAt: new Date(), autoSubmitted: false, updatedAt: new Date() },
     });
 
   await publishTick(gameId);
@@ -779,8 +823,10 @@ export async function autoSubmitPendingTeams(gameId: number): Promise<void> {
     if (submission?.submittedAt) {
       continue;
     }
-    const leaderDraft = team.leaderId
-      ? drafts.find(d => d.teamId === team.id && d.playerId === team.leaderId)
+    // 舊場次可能沒有隊長，這裡即時補推選一位，才有草稿可以當 fallback 內容
+    const effectiveLeaderId = await ensureTeamLeader(team.id, team.leaderId);
+    const leaderDraft = effectiveLeaderId
+      ? drafts.find(d => d.teamId === team.id && d.playerId === effectiveLeaderId)
       : undefined;
     const content = resolveFallbackContent({
       existingSubmissionContent: submission?.content ?? null,
@@ -792,7 +838,7 @@ export async function autoSubmitPendingTeams(gameId: number): Promise<void> {
       .values({
         teamId: team.id,
         content,
-        lastEditedByPlayerId: team.leaderId,
+        lastEditedByPlayerId: effectiveLeaderId,
         submittedAt: new Date(),
         autoSubmitted: true,
         updatedAt: new Date(),

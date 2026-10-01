@@ -13,9 +13,10 @@ export function pickLeader(
     return null;
   }
 
-  // 按加入時間排序，最早的成員在最前面
+  // 按加入時間排序，最早的成員在最前面；加入時間相同時再用 id 小的優先，
+  // 避免結果受傳入陣列（DB 回傳）順序影響而不穩定
   const sortedByJoinOrder = [...members].sort(
-    (a, b) => a.joinedAt.getTime() - b.joinedAt.getTime(),
+    (a, b) => (a.joinedAt.getTime() - b.joinedAt.getTime()) || (a.id - b.id),
   );
 
   // 統計每個成員的得票數
