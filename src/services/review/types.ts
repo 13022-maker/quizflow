@@ -44,7 +44,9 @@ export type ReviewTeamResultDetail = {
   speedBonus: number;
   voteBonus: number;
   submission: string | null;
-  contributors: Contributor[]; // 共創階段誰有動手，只算次數不比對內容
+  leaderId: number | null; // 最終送出時的隊長
+  autoSubmitted: boolean; // true = 老師推進階段時系統代送，非隊長主動按送出
+  contributors: Contributor[]; // 共創階段誰有動手，依草稿字數呈現
   votesReceived: number;
 };
 
@@ -62,7 +64,9 @@ export type ReviewHostState = {
     scoredSampleCount: number; // 至少 1 人評過分的範例答案數
     memberReadyCount: number; // 全部範例答案都評完分的成員數
     hasSubmission: boolean;
-    contributors: Contributor[]; // 共創階段誰有動手，只算次數不比對內容
+    leaderId: number | null; // 目前當選（或預設）的隊長
+    autoSubmitted: boolean; // true = 該組是系統逾時代送，不是隊長主動送出
+    contributors: Contributor[]; // 共創階段誰有動手，依草稿字數呈現
     votesReceived: number;
   })[];
   totalSamples: number;
@@ -87,7 +91,11 @@ export type ReviewTeamState = {
     number,
     (RubricScores & { comment: string | null; playerId: number; nickname: string })[]
   >; // key: sampleId，不含自己
-  submission: { content: string; updatedAt: string } | null;
+  leaderId: number | null; // 目前組內當選（或預設）的隊長 playerId
+  myDraft: string; // 自己的獨立草稿內容
+  teammateDrafts: { playerId: number; nickname: string; content: string; updatedAt: string }[]; // 不含自己
+  myLeaderVote: number | null; // 我目前投給誰（null = 還沒投）
+  submission: { content: string; updatedAt: string; submittedAt: string | null; autoSubmitted: boolean } | null;
   hasVoted: boolean;
   // voting 階段才有值；匿名（不含 teamName），避免人情票
   votingCandidates: { teamId: number; content: string }[] | null;
