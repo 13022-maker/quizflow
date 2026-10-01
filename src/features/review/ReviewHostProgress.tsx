@@ -67,16 +67,20 @@ export function ReviewHostProgress({
               {' '}
               人全部評完
             </p>
+            {/* 隊長在分組完成當下就有預設值，所有階段都顯示，老師隨時看得到 */}
+            <p className="mt-1 text-sm text-muted-foreground">
+              目前隊長：
+              {team.members.find(m => m.id === team.leaderId)?.nickname ?? '（尚未決定）'}
+              {team.autoSubmitted ? '（系統自動送出）' : ''}
+            </p>
             {(status === 'creating' || status === 'voting') && (
               <>
                 <p className="mt-1 text-sm text-muted-foreground">
                   共創答案：
-                  {team.hasSubmission ? '已提交' : '尚未提交'}
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  目前隊長：
-                  {team.members.find(m => m.id === team.leaderId)?.nickname ?? '（尚未決定）'}
-                  {team.autoSubmitted ? '（系統自動送出）' : ''}
+                  {/* 三態：已正式送出鎖定 / 只有草稿還沒按送出 / 完全沒寫 */}
+                  {team.submittedAt
+                    ? '✅ 已送出'
+                    : team.hasSubmission ? '草稿中（尚未正式送出）' : '尚未提交'}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
                   已動手：
