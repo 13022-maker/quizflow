@@ -561,6 +561,14 @@ export const reviewTeamSchema = pgTable('review_team', {
     .notNull()
     .references(() => reviewGameSchema.id, { onDelete: 'cascade' }),
   teamName: text('team_name').notNull(), // 「第 1 組」
+  // 目前當選的隊長，只存現況不記錄異動歷史；team_forming 分組完成時預設填
+  // 最早加入該組的成員，之後隨組內即時多數決投票結果更新
+  // 前向參照尚未定義的 reviewPlayerSchema，型別上需要顯式標註 AnyPgColumn
+  // 回傳型別，否則 TS 會因為兩表互相參照而卡在循環推論，炸出 implicit any
+  // （比照上方 quizSchema.forkedFromId 自我參照的既有寫法）
+  leaderId: integer('leader_id')
+    // eslint-disable-next-line ts/no-use-before-define
+    .references((): AnyPgColumn => reviewPlayerSchema.id, { onDelete: 'set null' }),
   // 三段分數各自存欄位（而非只存加總），讓 results 報表可以直接讀，不用在
   // 顯示層重算一次公式（避免兩處公式分岔）；score 永遠等於三者加總
   accuracyScore: integer('accuracy_score').default(0).notNull(),
@@ -621,7 +629,8 @@ export const reviewScoreSchema = pgTable(
   }),
 );
 
-// 每組最終共同撰寫的延伸創作答案（1 組 1 筆，last-write-wins）
+// 每組最終的延伸創作答案（1 組 1 筆）。只有目前隊長能寫入，submittedAt
+// 非 null 代表已鎖定，不能再改
 export const reviewSubmissionSchema = pgTable('review_submission', {
   id: serial('id').primaryKey(),
   teamId: integer('team_id')
@@ -631,6 +640,8 @@ export const reviewSubmissionSchema = pgTable('review_submission', {
   content: text('content').default('').notNull(),
   lastEditedByPlayerId: integer('last_edited_by_player_id')
     .references(() => reviewPlayerSchema.id, { onDelete: 'set null' }),
+  submittedAt: timestamp('submitted_at', { mode: 'date' }), // null = 隊長尚未明確送出
+  autoSubmitted: boolean('auto_submitted').default(false).notNull(), // true = 老師推進階段時系統代送
   updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
@@ -646,6 +657,46 @@ export const reviewSubmissionEditSchema = pgTable('review_submission_edit', {
     .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
+
+// 每位組員自己的獨立草稿（取代原本「1 組 1 筆」的共用文字框，互不覆蓋）
+export const reviewDraftSchema = pgTable(
+  'review_draft',
+  {
+    id: serial('id').primaryKey(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+    playerId: integer('player_id')
+      .notNull()
+      .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
+    content: text('content').default('').notNull(),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    teamPlayerIdx: uniqueIndex('review_draft_team_player_idx').on(table.teamId, table.playerId),
+  }),
+);
+
+// 組內互投隊長，可改投（同一 voter 再投一次會覆蓋原本的票）
+export const reviewLeaderVoteSchema = pgTable(
+  'review_leader_vote',
+  {
+    id: serial('id').primaryKey(),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => reviewTeamSchema.id, { onDelete: 'cascade' }),
+    voterPlayerId: integer('voter_player_id')
+      .notNull()
+      .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
+    votedForPlayerId: integer('voted_for_player_id')
+      .notNull()
+      .references(() => reviewPlayerSchema.id, { onDelete: 'cascade' }),
+    updatedAt: timestamp('updated_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    teamVoterIdx: uniqueIndex('review_leader_vote_team_voter_idx').on(table.teamId, table.voterPlayerId),
+  }),
+);
 
 // 創作回合結束後，組間互投最佳創意答案（禁投自己組，app 層驗證）
 export const reviewVoteSchema = pgTable(
