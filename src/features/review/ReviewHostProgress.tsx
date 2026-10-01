@@ -74,10 +74,15 @@ export function ReviewHostProgress({
                   {team.hasSubmission ? '已提交' : '尚未提交'}
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
+                  目前隊長：
+                  {team.members.find(m => m.id === team.leaderId)?.nickname ?? '（尚未決定）'}
+                  {team.autoSubmitted ? '（系統自動送出）' : ''}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
                   已動手：
                   {team.contributors.length === 0
-                    ? '尚無人存檔'
-                    : team.contributors.map(c => `${c.nickname}(${c.editCount}次)`).join('、')}
+                    ? '尚無人寫草稿'
+                    : team.contributors.map(c => `${c.nickname}(${c.charCount}字)`).join('、')}
                 </p>
               </>
             )}

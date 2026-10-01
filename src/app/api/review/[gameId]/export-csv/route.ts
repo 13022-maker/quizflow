@@ -36,18 +36,20 @@ export async function GET(
     return NextResponse.json({ error: '活動尚未結算，無法匯出' }, { status: 409 });
   }
 
-  const header = ['組別', '組員', '總分', '準確度分', '速度加成', '投票加成', '收到票數', '共創已動手', '創作答案'];
+  const header = ['組別', '組員', '隊長', '總分', '準確度分', '速度加成', '投票加成', '收到票數', '共創已動手', '創作答案'];
   const rows = state.resultsDetail.map((detail) => {
     const team = state.teams.find(t => t.id === detail.teamId);
+    const leaderNickname = detail.members.find(m => m.id === detail.leaderId)?.nickname ?? '';
     return [
       team?.teamName ?? `組別 ${detail.teamId}`,
       detail.members.map(m => m.nickname).join('、'),
+      leaderNickname + (detail.autoSubmitted ? '（系統自動送出）' : ''),
       String(team?.score ?? 0),
       String(detail.accuracyScore),
       String(detail.speedBonus),
       String(detail.voteBonus),
       String(detail.votesReceived),
-      detail.contributors.map(c => `${c.nickname}(${c.editCount}次)`).join('、') || '無記錄',
+      detail.contributors.map(c => `${c.nickname}(${c.charCount}字)`).join('、') || '無記錄',
       detail.submission ?? '（未提交）',
     ];
   });
