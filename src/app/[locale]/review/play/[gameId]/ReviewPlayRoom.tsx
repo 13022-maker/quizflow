@@ -59,6 +59,9 @@ function ReviewRoomInner({
     submitScore,
     submitSubmission,
     submitVote,
+    submitDraft,
+    submitLeaderVote,
+    submitFinalAnswer,
   } = useReviewTeamGame(gameId, playerId, playerToken);
 
   useReviewHeartbeat(gameId, playerToken, state?.game.status !== 'ended');
@@ -153,9 +156,11 @@ function ReviewRoomInner({
       <>
         {banner}
         <ReviewPlayerCreate
-          topicPrompt={state.topicPrompt}
-          initialContent={state.submission?.content ?? ''}
-          onSave={submitSubmission}
+          state={state}
+          onSaveDraft={submitDraft}
+          onVoteLeader={submitLeaderVote}
+          onSaveFinalAnswer={submitSubmission}
+          onSubmitFinal={submitFinalAnswer}
         />
       </>
     );
