@@ -2,7 +2,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, count, eq, inArray } from 'drizzle-orm';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 
 import { ReviewSetInputSchema } from '@/lib/reviewSetSchema';
 import { db } from '@/libs/DB';
@@ -15,7 +15,7 @@ import {
   reviewVoteSchema,
 } from '@/models/Schema';
 import { publishTick } from '@/services/review/ablyServer';
-import { getReviewSamples } from '@/services/review/reviewStore';
+import { autoSubmitPendingTeams, getReviewSamples } from '@/services/review/reviewStore';
 import type { RubricScores } from '@/services/review/scoring';
 import {
   calcAccuracyScore,
@@ -127,7 +127,8 @@ export async function startTeamForming(gameId: number, teamSizeOverride?: number
   const players = await db
     .select({ id: reviewPlayerSchema.id })
     .from(reviewPlayerSchema)
-    .where(eq(reviewPlayerSchema.gameId, gameId));
+    .where(eq(reviewPlayerSchema.gameId, gameId))
+    .orderBy(asc(reviewPlayerSchema.id));
   if (players.length === 0) {
     return { error: 'NO_PLAYERS' };
   }
@@ -138,7 +139,7 @@ export async function startTeamForming(gameId: number, teamSizeOverride?: number
     for (const [i, memberIds] of teamGroups.entries()) {
       const [team] = await tx
         .insert(reviewTeamSchema)
-        .values({ gameId, teamName: `第 ${i + 1} 組` })
+        .values({ gameId, teamName: `第 ${i + 1} 組`, leaderId: memberIds[0] ?? null })
         .returning();
       if (!team) {
         continue;
@@ -244,6 +245,9 @@ export async function startVoting(gameId: number) {
   if (game.status !== 'creating') {
     return { error: 'WRONG_PHASE' };
   }
+
+  // 隊長還沒按「確認送出」的組，用目前內容自動代送，避免老師卡在這一步
+  await autoSubmitPendingTeams(gameId);
 
   await db
     .update(reviewGameSchema)
