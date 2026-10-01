@@ -1,4 +1,13 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+
+import { importReviewSubmissionToQuiz } from '@/actions/reviewImportActions';
 import { Button } from '@/components/ui/button';
+import { parseCreatedQuestion } from '@/services/review/createModes';
+
+import { CreatedQuestionPreview } from './CreatedQuestionPreview';
 
 type Props = {
   gameId: number;
@@ -7,8 +16,54 @@ type Props = {
   pending: boolean;
 };
 
+// 「加入我的測驗」：每次按都新建一份測驗並匯入該組題目，成功後給編輯頁連結
+function ImportToQuizButton({ gameId, teamId }: { gameId: number; teamId: number }) {
+  const [status, setStatus] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
+  const [quizId, setQuizId] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleImport = async () => {
+    setStatus('pending');
+    setError(null);
+    try {
+      const result = await importReviewSubmissionToQuiz({ gameId, teamId });
+      if (result.ok) {
+        setQuizId(result.quizId);
+        setStatus('done');
+      } else {
+        setError(result.error);
+        setStatus('error');
+      }
+    } catch {
+      setError('匯入失敗，請稍後再試');
+      setStatus('error');
+    }
+  };
+
+  if (status === 'done' && quizId !== null) {
+    return (
+      <p className="text-sm text-emerald-600">
+        ✅ 已加入新測驗，
+        <Link href={`/dashboard/quizzes/${quizId}/edit`} className="font-medium text-primary hover:underline">
+          前往編輯測驗
+        </Link>
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <Button variant="outline" size="sm" onClick={handleImport} disabled={status === 'pending'}>
+        {status === 'pending' ? '加入中⋯' : '加入我的測驗'}
+      </Button>
+      {status === 'error' && error && <p className="text-xs text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
   const ranked = [...state.teams].sort((a, b) => b.score - a.score);
+  const isQuestionMode = state.game.createMode === 'question';
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
@@ -68,9 +123,25 @@ export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
                       ? '無記錄'
                       : detail.contributors.map(c => `${c.nickname}(${c.charCount}字)`).join('、')}
                   </p>
-                  <p className="mt-2 whitespace-pre-wrap text-foreground">
-                    {detail.submission ?? '（未提交創作答案）'}
-                  </p>
+                  {isQuestionMode
+                    ? (
+                        <div className="mt-2 space-y-2 rounded-md border p-3 text-foreground">
+                          <CreatedQuestionPreview
+                            content={detail.submission ?? ''}
+                            showAnswer
+                            emptyText="（未提交題目）"
+                          />
+                          {/* 只有完整合法的題目才能匯入（伺服器端也會再檢查一次） */}
+                          {parseCreatedQuestion(detail.submission ?? '') && (
+                            <ImportToQuizButton gameId={gameId} teamId={team.id} />
+                          )}
+                        </div>
+                      )
+                    : (
+                        <p className="mt-2 whitespace-pre-wrap text-foreground">
+                          {detail.submission ?? '（未提交創作答案）'}
+                        </p>
+                      )}
                   {detail.samples.length > 0 && (
                     <table className="mt-3 w-full text-left">
                       <thead>
