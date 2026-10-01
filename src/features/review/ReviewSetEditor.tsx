@@ -7,6 +7,11 @@ import type { ReviewSetInput } from '@/actions/reviewSetActions';
 import { createReviewSet, updateReviewSet } from '@/actions/reviewSetActions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { listCreateModes } from '@/services/review/createModes';
+import type { ReviewCreateMode, ReviewMode } from '@/services/review/modes';
+import { listModeHandlers } from '@/services/review/modes';
+
+import { getModeUi } from './modes/registry';
 
 const TEXTAREA_CLASS = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
@@ -14,6 +19,7 @@ type SampleForm = {
   content: string;
   ref: { correctness: number; completeness: number; clarity: number; creativity: number };
   isAiAnswer: boolean;
+  refData?: unknown; // 非 rubric 題型的標準答案
 };
 
 type Props = {
@@ -46,13 +52,26 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
   const [teamSize, setTeamSize] = useState(initial?.teamSize ?? 4);
   const [reviewDurationSec, setReviewDurationSec] = useState(initial?.reviewDurationSec ?? 600);
   const [createDurationSec, setCreateDurationSec] = useState(initial?.createDurationSec ?? 300);
-  const [samples, setSamples] = useState<SampleForm[]>(initial?.samples ?? [EMPTY_SAMPLE]);
+  const [samples, setSamples] = useState<SampleForm[]>(
+    initial?.samples.map(s => ({
+      content: s.content,
+      ref: s.ref ?? EMPTY_SAMPLE.ref,
+      isAiAnswer: s.isAiAnswer ?? false,
+      refData: s.refData,
+    })) ?? [EMPTY_SAMPLE],
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [aiUpgradeRequired, setAiUpgradeRequired] = useState(false);
   const [framework, setFramework] = useState<string>('');
+  const [reviewMode, setReviewMode] = useState<ReviewMode>(initial?.reviewMode ?? 'rubric');
+  const [createMode, setCreateMode] = useState<ReviewCreateMode>(initial?.createMode ?? 'free_text');
+  const modeUi = getModeUi(reviewMode);
+  const modeHandlers = listModeHandlers();
+  const currentModeHandler = modeHandlers.find(h => h.mode === reviewMode);
+  const createModes = listCreateModes();
 
   const handleAiGenerate = async () => {
     setAiError(null);
@@ -62,7 +81,7 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
       const res = await fetch('/api/ai/generate-review-set', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, framework: framework || undefined }),
+        body: JSON.stringify({ title, framework: framework || undefined, reviewMode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -99,6 +118,8 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
       reviewDurationSec,
       createDurationSec,
       samples,
+      reviewMode,
+      createMode,
     };
     const result = reviewSetId
       ? await updateReviewSet(reviewSetId, input)
@@ -116,6 +137,41 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
       <div className="space-y-2">
         <label className="text-sm font-medium" htmlFor="title">標題</label>
         <Input id="title" value={title} onChange={e => setTitle(e.target.value)} required />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1">
+          <label className="text-sm font-medium" htmlFor="reviewMode">批閱題型</label>
+          <select
+            id="reviewMode"
+            value={reviewMode}
+            onChange={e => setReviewMode(e.target.value as ReviewMode)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            {modeHandlers.map(h => (
+              <option key={h.mode} value={h.mode}>{h.label}</option>
+            ))}
+          </select>
+          {currentModeHandler && (
+            <p className="text-xs text-muted-foreground">{currentModeHandler.description}</p>
+          )}
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium" htmlFor="createMode">小組共創產出</label>
+          <select
+            id="createMode"
+            value={createMode}
+            onChange={e => setCreateMode(e.target.value as ReviewCreateMode)}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            {createModes.map(m => (
+              <option key={m.mode} value={m.mode}>{m.label}</option>
+            ))}
+          </select>
+          <p className="text-xs text-muted-foreground">
+            {createModes.find(m => m.mode === createMode)?.description}
+          </p>
+        </div>
       </div>
 
       <div className="space-y-2 rounded-lg border border-dashed p-4">
@@ -243,7 +299,16 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
               className={TEXTAREA_CLASS}
               required
             />
-            <div className="grid grid-cols-4 gap-3">
+            {modeUi && (
+              <modeUi.RefEditor
+                content={sample.content}
+                value={sample.refData}
+                onChange={refData => updateSample(i, { refData })}
+                index={i}
+                sampleCount={samples.length}
+              />
+            )}
+            <div className={reviewMode === 'rubric' ? 'grid grid-cols-4 gap-3' : 'hidden'}>
               {(Object.keys(DIMENSION_LABEL) as (keyof SampleForm['ref'])[]).map(key => (
                 <div key={key} className="space-y-1">
                   <label className="text-xs text-muted-foreground">

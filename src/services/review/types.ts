@@ -1,4 +1,5 @@
 import type { Contributor } from './contributors';
+import type { ReviewCreateMode, ReviewMode } from './modes/types';
 import type { RubricScores } from './scoring';
 
 export type ReviewGameStatus =
@@ -17,6 +18,8 @@ export type ReviewSampleForClient = {
   content: string;
   orderIndex: number;
   isAiAnswer: boolean;
+  // 題型 handler 的 toClientData 產出的公開資料（已 strip 標準答案）；rubric 為 null
+  clientData: unknown;
 };
 
 export type ReviewTeamMember = { id: number; nickname: string };
@@ -36,8 +39,9 @@ export type ReviewTeamResultDetail = {
   samples: {
     sampleId: number;
     sampleContent: string;
-    teamAvg: RubricScores;
-    ref: RubricScores;
+    teamSummary: string; // 題型 handler summarize() 產出：小組作答摘要
+    refSummary: string; // 同上：老師標準答案摘要
+    responseCount: number; // 這組對這則有幾人作答
     accuracyScore: number;
   }[];
   accuracyScore: number; // 逐則加總（= review_team.accuracy_score）
@@ -58,6 +62,8 @@ export type ReviewHostState = {
     status: ReviewGameStatus;
     gamePin: string;
     title: string;
+    reviewMode: ReviewMode;
+    createMode: ReviewCreateMode;
     teamSize: number; // 題組模板預設的小組人數，lobby 開分組前可臨時覆蓋，不影響模板本身
     phaseStartedAt: string | null;
     phaseDurationSec: number | null;
@@ -88,13 +94,16 @@ export type ReviewTeamState = {
     phaseDurationSec: number | null;
   };
   topicPrompt: string; // 給小組的延伸創作指示，creating 階段顯示用
+  reviewMode: ReviewMode;
+  createMode: ReviewCreateMode;
   me: { id: number; nickname: string; teamId: number | null; teamName: string | null };
   teammates: { id: number; nickname: string }[];
   samples: ReviewSampleForClient[];
-  myScores: Record<number, RubricScores & { comment: string | null }>; // key: sampleId
+  // rubric 題型看 4 個分數欄；其他題型看 responseData（形狀由題型 responseSchema 定義）
+  myScores: Record<number, RubricScores & { responseData: unknown; comment: string | null }>; // key: sampleId
   teammateScores: Record<
     number,
-    (RubricScores & { comment: string | null; playerId: number; nickname: string })[]
+    (RubricScores & { responseData: unknown; comment: string | null; playerId: number; nickname: string })[]
   >; // key: sampleId，不含自己
   leaderId: number | null; // 目前組內當選（或預設）的隊長 playerId
   myDraft: string; // 自己的獨立草稿內容

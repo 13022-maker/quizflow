@@ -71,6 +71,31 @@ export function ReviewHostResults({ gameId, state, onEnd, pending }: Props) {
                   <p className="mt-2 whitespace-pre-wrap text-foreground">
                     {detail.submission ?? '（未提交創作答案）'}
                   </p>
+                  {detail.samples.length > 0 && (
+                    <table className="mt-3 w-full text-left">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-1 pr-2 font-medium">範例</th>
+                          <th className="py-1 pr-2 font-medium">小組</th>
+                          <th className="py-1 pr-2 font-medium">標準</th>
+                          <th className="py-1 text-right font-medium">得分</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {detail.samples.map((s, idx) => (
+                          <tr key={s.sampleId} className="border-b last:border-0">
+                            <td className="py-1 pr-2">
+                              #
+                              {idx + 1}
+                            </td>
+                            <td className="py-1 pr-2">{s.responseCount === 0 ? '（未作答）' : s.teamSummary}</td>
+                            <td className="py-1 pr-2">{s.refSummary}</td>
+                            <td className="py-1 text-right">{s.accuracyScore}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
                 </div>
               )}
             </li>
