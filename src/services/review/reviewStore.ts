@@ -122,17 +122,21 @@ async function getTeamsWithProgress(
     .from(reviewScoreSchema)
     .where(inArray(reviewScoreSchema.teamId, teamIds));
   const submissions = await db
-    .select({ teamId: reviewSubmissionSchema.teamId, content: reviewSubmissionSchema.content })
+    .select({
+      teamId: reviewSubmissionSchema.teamId,
+      content: reviewSubmissionSchema.content,
+      autoSubmitted: reviewSubmissionSchema.autoSubmitted,
+    })
     .from(reviewSubmissionSchema)
     .where(inArray(reviewSubmissionSchema.teamId, teamIds));
   const votes = await db
     .select({ votedForTeamId: reviewVoteSchema.votedForTeamId })
     .from(reviewVoteSchema)
     .where(inArray(reviewVoteSchema.votedForTeamId, teamIds));
-  const edits = await db
-    .select({ teamId: reviewSubmissionEditSchema.teamId, playerId: reviewSubmissionEditSchema.playerId })
-    .from(reviewSubmissionEditSchema)
-    .where(inArray(reviewSubmissionEditSchema.teamId, teamIds));
+  const drafts = await db
+    .select({ teamId: reviewDraftSchema.teamId, playerId: reviewDraftSchema.playerId, content: reviewDraftSchema.content })
+    .from(reviewDraftSchema)
+    .where(inArray(reviewDraftSchema.teamId, teamIds));
 
   return teams.map((team) => {
     const teamPlayers = players.filter(p => p.teamId === team.id);
@@ -149,7 +153,9 @@ async function getTeamsWithProgress(
 
     const submission = submissions.find(s => s.teamId === team.id);
     const votesReceived = votes.filter(v => v.votedForTeamId === team.id).length;
-    const teamEdits = edits.filter(e => e.teamId === team.id);
+    const teamDrafts = drafts
+      .filter(d => d.teamId === team.id)
+      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
 
     return {
       id: team.id,
@@ -160,7 +166,9 @@ async function getTeamsWithProgress(
       scoredSampleCount: scoredSampleIds.size,
       memberReadyCount,
       hasSubmission: !!submission && submission.content.trim().length > 0,
-      contributors: summarizeContributors(teamEdits, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
+      leaderId: team.leaderId,
+      autoSubmitted: submission?.autoSubmitted ?? false,
+      contributors: summarizeContributors(teamDrafts, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
       votesReceived,
     };
   });
@@ -190,10 +198,10 @@ async function getResultsDetail(
     .select()
     .from(reviewVoteSchema)
     .where(inArray(reviewVoteSchema.votedForTeamId, teamIds));
-  const edits = await db
-    .select({ teamId: reviewSubmissionEditSchema.teamId, playerId: reviewSubmissionEditSchema.playerId })
-    .from(reviewSubmissionEditSchema)
-    .where(inArray(reviewSubmissionEditSchema.teamId, teamIds));
+  const drafts = await db
+    .select({ teamId: reviewDraftSchema.teamId, playerId: reviewDraftSchema.playerId, content: reviewDraftSchema.content })
+    .from(reviewDraftSchema)
+    .where(inArray(reviewDraftSchema.teamId, teamIds));
   const accuracyPoints = distributeAccuracyPoints(samples.length);
 
   return teams.map((team) => {
@@ -225,7 +233,9 @@ async function getResultsDetail(
     const submission = submissions.find(s => s.teamId === team.id);
     const votesReceived = voteRows.filter(v => v.votedForTeamId === team.id).length;
     const teamPlayers = players.filter(p => p.teamId === team.id);
-    const teamEdits = edits.filter(e => e.teamId === team.id);
+    const teamDrafts = drafts
+      .filter(d => d.teamId === team.id)
+      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
 
     return {
       teamId: team.id,
@@ -235,7 +245,9 @@ async function getResultsDetail(
       speedBonus: team.speedBonus,
       voteBonus: team.voteBonus,
       submission: submission?.content ?? null,
-      contributors: summarizeContributors(teamEdits, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
+      leaderId: team.leaderId,
+      autoSubmitted: submission?.autoSubmitted ?? false,
+      contributors: summarizeContributors(teamDrafts, teamPlayers.map(p => ({ id: p.id, nickname: p.nickname }))),
       votesReceived,
     };
   });
@@ -320,6 +332,10 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
   let teammates: { id: number; nickname: string }[] = [];
   const myScores: ReviewTeamState['myScores'] = {};
   const teammateScores: ReviewTeamState['teammateScores'] = {};
+  let leaderId: number | null = null;
+  let myDraft = '';
+  let teammateDrafts: ReviewTeamState['teammateDrafts'] = [];
+  let myLeaderVote: number | null = null;
   let submission: ReviewTeamState['submission'] = null;
   let hasVoted = false;
   let votingCandidates: ReviewTeamState['votingCandidates'] = null;
@@ -328,17 +344,39 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
 
   if (me.teamId) {
     const [team] = await db
-      .select({ teamName: reviewTeamSchema.teamName })
+      .select({ teamName: reviewTeamSchema.teamName, leaderId: reviewTeamSchema.leaderId })
       .from(reviewTeamSchema)
       .where(eq(reviewTeamSchema.id, me.teamId))
       .limit(1);
     teamName = team?.teamName ?? null;
+    leaderId = team?.leaderId ?? null;
 
     const teamMembers = await db
       .select({ id: reviewPlayerSchema.id, nickname: reviewPlayerSchema.nickname })
       .from(reviewPlayerSchema)
       .where(eq(reviewPlayerSchema.teamId, me.teamId));
     teammates = teamMembers.filter(p => p.id !== me.id);
+
+    const teamDrafts = await db
+      .select({ playerId: reviewDraftSchema.playerId, content: reviewDraftSchema.content, updatedAt: reviewDraftSchema.updatedAt })
+      .from(reviewDraftSchema)
+      .where(eq(reviewDraftSchema.teamId, me.teamId));
+    myDraft = teamDrafts.find(d => d.playerId === me.id)?.content ?? '';
+    teammateDrafts = teamDrafts
+      .filter(d => d.playerId !== me.id)
+      .map(d => ({
+        playerId: d.playerId,
+        nickname: teamMembers.find(m => m.id === d.playerId)?.nickname ?? '組員',
+        content: d.content,
+        updatedAt: d.updatedAt.toISOString(),
+      }));
+
+    const [myVoteRow] = await db
+      .select({ votedForPlayerId: reviewLeaderVoteSchema.votedForPlayerId })
+      .from(reviewLeaderVoteSchema)
+      .where(and(eq(reviewLeaderVoteSchema.teamId, me.teamId), eq(reviewLeaderVoteSchema.voterPlayerId, me.id)))
+      .limit(1);
+    myLeaderVote = myVoteRow?.votedForPlayerId ?? null;
 
     const teamScores = await db
       .select()
@@ -369,7 +407,12 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
       .where(eq(reviewSubmissionSchema.teamId, me.teamId))
       .limit(1);
     if (sub) {
-      submission = { content: sub.content, updatedAt: sub.updatedAt.toISOString() };
+      submission = {
+        content: sub.content,
+        updatedAt: sub.updatedAt.toISOString(),
+        submittedAt: sub.submittedAt ? sub.submittedAt.toISOString() : null,
+        autoSubmitted: sub.autoSubmitted,
+      };
     }
 
     const [myVote] = await db
@@ -420,6 +463,10 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
     samples,
     myScores,
     teammateScores,
+    leaderId,
+    myDraft,
+    teammateDrafts,
+    myLeaderVote,
     submission,
     hasVoted,
     votingCandidates,
