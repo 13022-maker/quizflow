@@ -2,7 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { validateCreateContent } from '@/services/review/createModes';
 import type { ReviewTeamState } from '@/services/review/types';
+
+import { CreatedQuestionEditor } from './CreatedQuestionEditor';
+import { CreatedQuestionPreview } from './CreatedQuestionPreview';
 
 const TEXTAREA_CLASS = 'w-full rounded-md border border-input bg-background px-3 py-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 const AUTOSAVE_DEBOUNCE_MS = 1500;
@@ -88,10 +92,14 @@ function useAutosaveTextarea(initialValue: string, onSave: (value: string) => Pr
 export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFinalAnswer, onSubmitFinal }: Props) {
   const isLeader = state.leaderId === state.me.id;
   const isSubmitted = state.submission?.submittedAt != null;
+  // 共創型態：question = 小組出一道題目（草稿與最終答案都是題目 JSON）；free_text 走原本的文字框
+  const isQuestionMode = state.createMode === 'question';
 
   const myDraftBox = useAutosaveTextarea(state.myDraft, onSaveDraft);
   const finalAnswerBox = useAutosaveTextarea(state.submission?.content ?? '', onSaveFinalAnswer);
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'submitting' | 'error'>('idle');
+  // question 型態送出被擋時（題目不完整），顯示後端回傳的具體原因
+  const [submitError, setSubmitError] = useState<string | null>(null);
   // 送出成功後下一次輪詢（最多 2 秒）才會把 submittedAt 帶回來，這段空窗期先用本地旗標
   // 當成已鎖定，否則按鈕還在、再按一次就會跳假的「送出失敗」
   const [justSubmitted, setJustSubmitted] = useState(false);
@@ -128,6 +136,7 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
 
   const handleSubmitFinal = async () => {
     setSubmitStatus('submitting');
+    setSubmitError(null);
     // 先把 debounce 裡還沒寫進 DB 的最後一段編輯存掉，再送出鎖定
     const flushed = await finalAnswerBox.flush();
     if (!flushed.ok) {
@@ -138,6 +147,7 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
     const result = await onSubmitFinal();
     if (!result.ok) {
       setSubmitStatus('error');
+      setSubmitError(result.error);
       return;
     }
     setJustSubmitted(true);
@@ -147,19 +157,23 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
   return (
     <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
       <div>
-        <h1 className="text-lg font-bold">共同創作延伸答案</h1>
+        <h1 className="text-lg font-bold">{isQuestionMode ? '小組共同出一道題目' : '共同創作延伸答案'}</h1>
         <p className="mt-2 rounded-lg bg-muted p-3 text-sm text-muted-foreground">{state.topicPrompt}</p>
       </div>
 
       <section className="space-y-2">
         <h2 className="text-sm font-semibold">我的草稿</h2>
-        <textarea
-          value={myDraftBox.value}
-          onChange={e => myDraftBox.handleChange(e.target.value)}
-          rows={6}
-          placeholder="先寫下你自己的延伸想法⋯"
-          className={TEXTAREA_CLASS}
-        />
+        {isQuestionMode
+          ? <CreatedQuestionEditor idPrefix="my-draft" value={myDraftBox.value} onChange={myDraftBox.handleChange} />
+          : (
+              <textarea
+                value={myDraftBox.value}
+                onChange={e => myDraftBox.handleChange(e.target.value)}
+                rows={6}
+                placeholder="先寫下你自己的延伸想法⋯"
+                className={TEXTAREA_CLASS}
+              />
+            )}
         <p className={`text-xs ${myDraftBox.error ? 'text-destructive' : 'text-muted-foreground'}`}>
           {myDraftBox.error
             ? `⚠️ ${saveErrorText(myDraftBox.error)}`
@@ -198,7 +212,9 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
               {m.nickname}
               {m.id === state.leaderId ? '（隊長）' : ''}
             </p>
-            <p className="mt-1 whitespace-pre-wrap">{m.content || '（尚未撰寫）'}</p>
+            {isQuestionMode
+              ? <div className="mt-1"><CreatedQuestionPreview content={m.content} showAnswer allowIncomplete /></div>
+              : <p className="mt-1 whitespace-pre-wrap">{m.content || '（尚未撰寫）'}</p>}
           </div>
         ))}
       </section>
@@ -222,14 +238,30 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
                   </button>
                 ))}
               </div>
-              <textarea
-                value={finalAnswerBox.value}
-                onChange={e => finalAnswerBox.handleChange(e.target.value)}
-                rows={8}
-                disabled={showSubmitted}
-                placeholder="挑一份草稿當基底，微調後送出⋯"
-                className={TEXTAREA_CLASS}
-              />
+              {isQuestionMode
+                ? (
+                    <CreatedQuestionEditor
+                      idPrefix="final-answer"
+                      value={finalAnswerBox.value}
+                      onChange={finalAnswerBox.handleChange}
+                      disabled={showSubmitted}
+                    />
+                  )
+                : (
+                    <textarea
+                      value={finalAnswerBox.value}
+                      onChange={e => finalAnswerBox.handleChange(e.target.value)}
+                      rows={8}
+                      disabled={showSubmitted}
+                      placeholder="挑一份草稿當基底，微調後送出⋯"
+                      className={TEXTAREA_CLASS}
+                    />
+                  )}
+              {/* 送出前先提示還缺什麼（只提示不擋編輯，真正把關在後端 submitFinalAnswer） */}
+              {isQuestionMode && !showSubmitted && (() => {
+                const pending = validateCreateContent('question', finalAnswerBox.value);
+                return pending ? <p className="text-xs text-amber-600">{`尚未完成：${pending}`}</p> : null;
+              })()}
               <p className={`text-xs ${finalAnswerBox.error ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {finalAnswerBox.error
                   ? `⚠️ ${saveErrorText(finalAnswerBox.error)}`
@@ -247,7 +279,11 @@ export function ReviewPlayerCreate({ state, onSaveDraft, onVoteLeader, onSaveFin
                       確認送出
                     </button>
                   )}
-              {submitStatus === 'error' && <p className="text-xs text-destructive">送出失敗，請再試一次</p>}
+              {submitStatus === 'error' && (
+                <p className="text-xs text-destructive">
+                  {isQuestionMode && submitError ? `送出失敗：${saveErrorText(submitError)}` : '送出失敗，請再試一次'}
+                </p>
+              )}
             </section>
           )
         : (

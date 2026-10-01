@@ -20,7 +20,7 @@ import {
 
 import { publishTick } from './ablyServer';
 import { summarizeContributors } from './contributors';
-import { validateCreateContent } from './createModes';
+import { countCreateContentChars, isVotableCreateContent, validateCreateContent } from './createModes';
 import { pickLeader } from './leaderElection';
 import type { ModeSample, ModeScoreRow, ReviewCreateMode, ReviewMode } from './modes';
 import { calcModeSampleAccuracy, getModeHandler } from './modes';
@@ -156,6 +156,7 @@ export async function verifyPlayerToken(
 async function getTeamsWithProgress(
   gameId: number,
   sampleCount: number,
+  createMode: ReviewCreateMode,
 ): Promise<ReviewHostState['teams']> {
   const teams = await db.select().from(reviewTeamSchema).where(eq(reviewTeamSchema.gameId, gameId));
   if (teams.length === 0) {
@@ -210,7 +211,7 @@ async function getTeamsWithProgress(
     const votesReceived = votes.filter(v => v.votedForTeamId === team.id).length;
     const teamDrafts = drafts
       .filter(d => d.teamId === team.id)
-      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
+      .map(d => ({ playerId: d.playerId, charCount: countCreateContentChars(createMode, d.content) }));
 
     return {
       id: team.id,
@@ -235,6 +236,7 @@ async function getResultsDetail(
   gameId: number,
   samples: ReviewSampleWithRef[],
   reviewMode: ReviewMode,
+  createMode: ReviewCreateMode,
 ): Promise<ReviewTeamResultDetail[]> {
   const teams = await db.select().from(reviewTeamSchema).where(eq(reviewTeamSchema.gameId, gameId));
   if (teams.length === 0) {
@@ -287,7 +289,7 @@ async function getResultsDetail(
     const teamPlayers = players.filter(p => p.teamId === team.id);
     const teamDrafts = drafts
       .filter(d => d.teamId === team.id)
-      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
+      .map(d => ({ playerId: d.playerId, charCount: countCreateContentChars(createMode, d.content) }));
 
     return {
       teamId: team.id,
@@ -320,8 +322,8 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
   }
 
   const samples = await getReviewSamples(game.reviewSetId);
-  const teams = await getTeamsWithProgress(gameId, samples.length);
   const createMode = reviewSet.createMode;
+  const teams = await getTeamsWithProgress(gameId, samples.length, createMode);
 
   const [joinedPlayerCountRow] = await db
     .select({ value: count() })
@@ -331,7 +333,7 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
 
   // results 之後還會進 ended（老師按「結束活動」），報表資料不能因此消失
   const resultsDetail = (game.status === 'results' || game.status === 'ended')
-    ? await getResultsDetail(gameId, samples, reviewSet.reviewMode)
+    ? await getResultsDetail(gameId, samples, reviewSet.reviewMode, createMode)
     : null;
 
   return {
@@ -496,8 +498,9 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
           eq(reviewTeamSchema.gameId, gameId),
           ne(reviewSubmissionSchema.teamId, me.teamId),
         ));
+      // question 型態只列完整合法的題目（逾時代送的半成品不列入，見 isVotableCreateContent）
       votingCandidates = otherSubmissions
-        .filter(s => s.content.trim().length > 0)
+        .filter(s => isVotableCreateContent(reviewSet.createMode, s.content))
         .map(s => ({ teamId: s.teamId, content: s.content }));
     }
 
