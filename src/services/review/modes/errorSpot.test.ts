@@ -300,3 +300,12 @@ describe('errorSpot aiInstruction 與 AI 生成解析', () => {
     expect(parseGeneratedReviewSet(raw, 'error_spot')).toBeNull();
   });
 });
+
+describe('errorSpot refSchema 錯誤訊息', () => {
+  it('refData 尚未設定（undefined）時回繁中提示，不是 zod 預設英文', () => {
+    const r = errorSpotHandler.refSchema!.safeParse(undefined);
+
+    expect(r.success).toBe(false);
+    expect(r.success ? '' : r.error.errors[0]?.message).toBe('請點選這則答案中有錯的句子');
+  });
+});

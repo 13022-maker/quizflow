@@ -56,8 +56,14 @@ const sortedUniqueIndexes = (max: number) =>
     .max(max, `最多只能選 ${max} 句`)
     .refine(arr => arr.every((v, i) => i === 0 || v > arr[i - 1]!), '句子編號必須遞增且不可重複');
 
-const RefSchema = z.object({ errorSegmentIndexes: sortedUniqueIndexes(200) });
-const ResponseSchema = z.object({ selectedSegmentIndexes: sortedUniqueIndexes(50) });
+const RefSchema = z.object(
+  { errorSegmentIndexes: sortedUniqueIndexes(200) },
+  { required_error: '請點選這則答案中有錯的句子', invalid_type_error: '請點選這則答案中有錯的句子' },
+);
+const ResponseSchema = z.object(
+  { selectedSegmentIndexes: sortedUniqueIndexes(50) },
+  { required_error: '請先點選句子再送出', invalid_type_error: '請先點選句子再送出' },
+);
 
 export type ErrorSpotRef = z.infer<typeof RefSchema>;
 export type ErrorSpotResponse = z.infer<typeof ResponseSchema>;
