@@ -21,6 +21,8 @@ export type ReviewPanelProps = {
   sampleCount: number;
   myResponse: unknown | null; // 自己已送出的 responseData；尚未作答為 null
   myComment: string | null;
+  // 自己對「所有」範例答案已送出的 responseData（key: sampleId），ranking 這類跨則題型用來提示重複名次
+  myResponsesBySample: Record<number, unknown>;
   teammates: { playerId: number; nickname: string; responseData: unknown; comment: string | null }[];
   onSubmit: (responseData: unknown, comment: string | null) => Promise<ActionResult>;
   submitting: boolean;

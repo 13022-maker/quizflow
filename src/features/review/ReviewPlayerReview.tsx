@@ -42,6 +42,10 @@ const MODE_TITLE: Record<ReviewTeamState['reviewMode'], string> = {
 export function ReviewPlayerReview({ state, onSubmitScore, onSubmitResponse, submitting }: Props) {
   const modeUi = getModeUi(state.reviewMode);
   if (modeUi) {
+    const myResponsesBySample: Record<number, unknown> = {};
+    for (const [sampleId, score] of Object.entries(state.myScores)) {
+      myResponsesBySample[Number(sampleId)] = score.responseData;
+    }
     return (
       <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
         <h1 className="text-lg font-bold">{MODE_TITLE[state.reviewMode]}</h1>
@@ -59,6 +63,7 @@ export function ReviewPlayerReview({ state, onSubmitScore, onSubmitResponse, sub
                 sampleCount={state.samples.length}
                 myResponse={mine?.responseData ?? null}
                 myComment={mine?.comment ?? null}
+                myResponsesBySample={myResponsesBySample}
                 teammates={(state.teammateScores[sample.id] ?? []).map(t => ({
                   playerId: t.playerId,
                   nickname: t.nickname,
