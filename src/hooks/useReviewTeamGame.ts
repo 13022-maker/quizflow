@@ -99,6 +99,42 @@ export function useReviewTeamGame(gameId: number, playerId: number, playerToken:
     [gameId, playerId, playerToken],
   );
 
+  const submitDraft = useCallback(
+    async (content: string): Promise<ActionResult> => {
+      setSubmitting(true);
+      try {
+        return await postJson(`/api/review/${gameId}/draft`, { playerId, playerToken, content });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [gameId, playerId, playerToken],
+  );
+
+  const submitLeaderVote = useCallback(
+    async (votedForPlayerId: number): Promise<ActionResult> => {
+      setSubmitting(true);
+      try {
+        return await postJson(`/api/review/${gameId}/leader-vote`, { playerId, playerToken, votedForPlayerId });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [gameId, playerId, playerToken],
+  );
+
+  const submitFinalAnswer = useCallback(
+    async (): Promise<ActionResult> => {
+      setSubmitting(true);
+      try {
+        return await postJson(`/api/review/${gameId}/submit-final`, { playerId, playerToken });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [gameId, playerId, playerToken],
+  );
+
   const submitVote = useCallback(
     async (votedForTeamId: number): Promise<ActionResult> => {
       setSubmitting(true);
@@ -111,5 +147,16 @@ export function useReviewTeamGame(gameId: number, playerId: number, playerToken:
     [gameId, playerId, playerToken],
   );
 
-  return { state, error, submitting, isReconnecting, submitScore, submitSubmission, submitVote };
+  return {
+    state,
+    error,
+    submitting,
+    isReconnecting,
+    submitScore,
+    submitSubmission,
+    submitVote,
+    submitDraft,
+    submitLeaderVote,
+    submitFinalAnswer,
+  };
 }
