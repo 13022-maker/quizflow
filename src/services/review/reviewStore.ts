@@ -5,7 +5,9 @@ import { and, asc, count, desc, eq, inArray, ne } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import {
+  reviewDraftSchema,
   reviewGameSchema,
+  reviewLeaderVoteSchema,
   reviewPlayerSchema,
   reviewSampleSchema,
   reviewScoreSchema,
@@ -18,8 +20,10 @@ import {
 
 import { publishTick } from './ablyServer';
 import { summarizeContributors } from './contributors';
+import { pickLeader } from './leaderElection';
 import type { RubricScores } from './scoring';
 import { calcAccuracyScore, distributeAccuracyPoints } from './scoring';
+import { resolveFallbackContent } from './submissionFallback';
 import type {
   ReviewGameStatus,
   ReviewHostState,
@@ -504,6 +508,15 @@ export async function upsertSubmission(params: {
     return { ok: false, error: 'NOT_ON_TEAM', status: 403 };
   }
 
+  const [team] = await db
+    .select({ leaderId: reviewTeamSchema.leaderId })
+    .from(reviewTeamSchema)
+    .where(eq(reviewTeamSchema.id, player.teamId))
+    .limit(1);
+  if (!team || team.leaderId !== playerId) {
+    return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
+  }
+
   const [game] = await db
     .select({ status: reviewGameSchema.status })
     .from(reviewGameSchema)
@@ -511,6 +524,15 @@ export async function upsertSubmission(params: {
     .limit(1);
   if (!game || game.status !== 'creating') {
     return { ok: false, error: 'NOT_CREATING_PHASE', status: 409 };
+  }
+
+  const [existing] = await db
+    .select({ submittedAt: reviewSubmissionSchema.submittedAt })
+    .from(reviewSubmissionSchema)
+    .where(eq(reviewSubmissionSchema.teamId, player.teamId))
+    .limit(1);
+  if (existing?.submittedAt) {
+    return { ok: false, error: 'ALREADY_SUBMITTED', status: 409 };
   }
 
   await db
@@ -525,6 +547,214 @@ export async function upsertSubmission(params: {
 
   await publishTick(gameId);
   return { ok: true };
+}
+
+export async function upsertDraft(params: {
+  gameId: number;
+  playerId: number;
+  content: string;
+}): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
+  const { gameId, playerId, content } = params;
+
+  const [player] = await db
+    .select()
+    .from(reviewPlayerSchema)
+    .where(and(eq(reviewPlayerSchema.id, playerId), eq(reviewPlayerSchema.gameId, gameId)))
+    .limit(1);
+  if (!player || !player.teamId) {
+    return { ok: false, error: 'NOT_ON_TEAM', status: 403 };
+  }
+
+  const [game] = await db
+    .select({ status: reviewGameSchema.status })
+    .from(reviewGameSchema)
+    .where(eq(reviewGameSchema.id, gameId))
+    .limit(1);
+  if (!game || game.status !== 'creating') {
+    return { ok: false, error: 'NOT_CREATING_PHASE', status: 409 };
+  }
+
+  await db
+    .insert(reviewDraftSchema)
+    .values({ teamId: player.teamId, playerId, content, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [reviewDraftSchema.teamId, reviewDraftSchema.playerId],
+      set: { content, updatedAt: new Date() },
+    });
+
+  await publishTick(gameId);
+  return { ok: true };
+}
+
+export async function upsertLeaderVote(params: {
+  gameId: number;
+  voterPlayerId: number;
+  votedForPlayerId: number;
+}): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
+  const { gameId, voterPlayerId, votedForPlayerId } = params;
+
+  const [voter] = await db
+    .select()
+    .from(reviewPlayerSchema)
+    .where(and(eq(reviewPlayerSchema.id, voterPlayerId), eq(reviewPlayerSchema.gameId, gameId)))
+    .limit(1);
+  if (!voter || !voter.teamId) {
+    return { ok: false, error: 'NOT_ON_TEAM', status: 403 };
+  }
+
+  const [game] = await db
+    .select({ status: reviewGameSchema.status })
+    .from(reviewGameSchema)
+    .where(eq(reviewGameSchema.id, gameId))
+    .limit(1);
+  if (!game || game.status !== 'creating') {
+    return { ok: false, error: 'NOT_CREATING_PHASE', status: 409 };
+  }
+
+  const teamMembers = await db
+    .select({ id: reviewPlayerSchema.id, joinedAt: reviewPlayerSchema.joinedAt })
+    .from(reviewPlayerSchema)
+    .where(eq(reviewPlayerSchema.teamId, voter.teamId));
+  const target = teamMembers.find(m => m.id === votedForPlayerId);
+  if (!target) {
+    return { ok: false, error: 'TARGET_NOT_ON_TEAM', status: 400 };
+  }
+
+  await db
+    .insert(reviewLeaderVoteSchema)
+    .values({ teamId: voter.teamId, voterPlayerId, votedForPlayerId, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: [reviewLeaderVoteSchema.teamId, reviewLeaderVoteSchema.voterPlayerId],
+      set: { votedForPlayerId, updatedAt: new Date() },
+    });
+
+  const votes = await db
+    .select({
+      voterPlayerId: reviewLeaderVoteSchema.voterPlayerId,
+      votedForPlayerId: reviewLeaderVoteSchema.votedForPlayerId,
+    })
+    .from(reviewLeaderVoteSchema)
+    .where(eq(reviewLeaderVoteSchema.teamId, voter.teamId));
+  const newLeaderId = pickLeader(votes, teamMembers);
+  if (newLeaderId !== null) {
+    await db.update(reviewTeamSchema).set({ leaderId: newLeaderId }).where(eq(reviewTeamSchema.id, voter.teamId));
+  }
+
+  await publishTick(gameId);
+  return { ok: true };
+}
+
+export async function submitFinalAnswer(params: {
+  gameId: number;
+  playerId: number;
+}): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
+  const { gameId, playerId } = params;
+
+  const [player] = await db
+    .select()
+    .from(reviewPlayerSchema)
+    .where(and(eq(reviewPlayerSchema.id, playerId), eq(reviewPlayerSchema.gameId, gameId)))
+    .limit(1);
+  if (!player || !player.teamId) {
+    return { ok: false, error: 'NOT_ON_TEAM', status: 403 };
+  }
+
+  const [team] = await db
+    .select({ leaderId: reviewTeamSchema.leaderId })
+    .from(reviewTeamSchema)
+    .where(eq(reviewTeamSchema.id, player.teamId))
+    .limit(1);
+  if (!team || team.leaderId !== playerId) {
+    return { ok: false, error: 'NOT_TEAM_LEADER', status: 403 };
+  }
+
+  const [game] = await db
+    .select({ status: reviewGameSchema.status })
+    .from(reviewGameSchema)
+    .where(eq(reviewGameSchema.id, gameId))
+    .limit(1);
+  if (!game || game.status !== 'creating') {
+    return { ok: false, error: 'NOT_CREATING_PHASE', status: 409 };
+  }
+
+  const [existing] = await db
+    .select()
+    .from(reviewSubmissionSchema)
+    .where(eq(reviewSubmissionSchema.teamId, player.teamId))
+    .limit(1);
+  if (existing?.submittedAt) {
+    return { ok: false, error: 'ALREADY_SUBMITTED', status: 409 };
+  }
+
+  await db
+    .insert(reviewSubmissionSchema)
+    .values({
+      teamId: player.teamId,
+      content: existing?.content ?? '',
+      lastEditedByPlayerId: playerId,
+      submittedAt: new Date(),
+      autoSubmitted: false,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: reviewSubmissionSchema.teamId,
+      set: { submittedAt: new Date(), autoSubmitted: false },
+    });
+
+  await publishTick(gameId);
+  return { ok: true };
+}
+
+// 老師把階段從 creating 推進到 voting 前呼叫：對每一組檢查是否已明確送出，
+// 沒有的話依 resolveFallbackContent 規則自動補送出（見
+// docs/superpowers/specs/2026-09-30-team-leader-submission-design.md）
+export async function autoSubmitPendingTeams(gameId: number): Promise<void> {
+  const teams = await db
+    .select({ id: reviewTeamSchema.id, leaderId: reviewTeamSchema.leaderId })
+    .from(reviewTeamSchema)
+    .where(eq(reviewTeamSchema.gameId, gameId));
+  if (teams.length === 0) {
+    return;
+  }
+  const teamIds = teams.map(t => t.id);
+
+  const submissions = await db
+    .select()
+    .from(reviewSubmissionSchema)
+    .where(inArray(reviewSubmissionSchema.teamId, teamIds));
+  const drafts = await db
+    .select()
+    .from(reviewDraftSchema)
+    .where(inArray(reviewDraftSchema.teamId, teamIds));
+
+  for (const team of teams) {
+    const submission = submissions.find(s => s.teamId === team.id);
+    if (submission?.submittedAt) {
+      continue;
+    }
+    const leaderDraft = team.leaderId
+      ? drafts.find(d => d.teamId === team.id && d.playerId === team.leaderId)
+      : undefined;
+    const content = resolveFallbackContent({
+      existingSubmissionContent: submission?.content ?? null,
+      leaderDraftContent: leaderDraft?.content ?? null,
+    });
+
+    await db
+      .insert(reviewSubmissionSchema)
+      .values({
+        teamId: team.id,
+        content,
+        lastEditedByPlayerId: team.leaderId,
+        submittedAt: new Date(),
+        autoSubmitted: true,
+        updatedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: reviewSubmissionSchema.teamId,
+        set: { content, submittedAt: new Date(), autoSubmitted: true, updatedAt: new Date() },
+      });
+  }
 }
 
 // 題組列表頁用：某老師底下某題組開過的所有場次，事後回顧用（讓老師不用記 gameId）
