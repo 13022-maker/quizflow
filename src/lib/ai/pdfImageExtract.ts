@@ -18,6 +18,9 @@ export type PageImage = {
   pageNumber: number; // 1-based
   buffer: Buffer;
   contentType: 'image/png';
+  // 原始圖片像素寬高（選填，向後相容）；講義命題用來濾掉項目符號等小圖示
+  width?: number;
+  height?: number;
 };
 
 export type PdfPageContent = {
@@ -37,7 +40,7 @@ export async function extractPdfPageContent(data: Uint8Array): Promise<PdfPageCo
       // unpdf 回傳的型別剛好就是這三種，可以直接餵進去不用額外轉換色彩空間。
 
       const png = await sharpEncodePng(img.data, img.width, img.height, img.channels);
-      rawImages.push({ pageNumber, buffer: png, contentType: 'image/png' });
+      rawImages.push({ pageNumber, buffer: png, contentType: 'image/png', width: img.width, height: img.height });
     }
   }
 
