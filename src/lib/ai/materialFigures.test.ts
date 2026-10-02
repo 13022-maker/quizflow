@@ -6,6 +6,7 @@ import {
   attachFigureUrls,
   buildFigureManifest,
   buildFigurePromptRules,
+  dropScannedPageImages,
   type FigureCandidate,
   type MaterialFigure,
   resolveFigureRefs,
@@ -227,5 +228,28 @@ describe('stripFigureFields', () => {
     stripFigureFields(questions);
 
     expect(questions).toEqual([{ question: 'a', answer: 'A' }, { question: 'b' }, null]);
+  });
+});
+
+describe('dropScannedPageImages', () => {
+  const img = (pageNumber: number) => ({ pageNumber, buffer: Buffer.from([pageNumber]), contentType: 'image/png' });
+
+  it('文字少於門檻的頁面（疑似掃描整頁）的圖片全部丟掉', () => {
+    const pageTexts = ['短', '這一頁有足夠多的文字內容，代表它是正常排版的講義頁面而不是掃描圖片'];
+    const result = dropScannedPageImages([img(1), img(2), img(2)], pageTexts, 20);
+
+    expect(result.map(r => r.pageNumber)).toEqual([2, 2]);
+  });
+
+  it('頁碼超出 pageTexts 範圍時視為沒有文字而丟掉', () => {
+    const result = dropScannedPageImages([img(3)], ['只有一頁'], 1);
+
+    expect(result).toEqual([]);
+  });
+
+  it('空白字元不算文字', () => {
+    const result = dropScannedPageImages([img(1)], ['   \n\t  ab  '], 3);
+
+    expect(result).toEqual([]);
   });
 });

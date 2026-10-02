@@ -49,6 +49,22 @@ export function selectFigures(
     .map(({ img }, i) => ({ ...img, id: `FIG${i + 1}` }));
 }
 
+// 掃描版 PDF 每頁通常就是一張整頁大圖、幾乎抽不到文字；這種「圖」其實是整頁題目，
+// 附上去只會讓學生看到一整頁講義。文字（去空白後）少於門檻的頁面，其圖片一律丟掉。
+export function dropScannedPageImages<T extends { pageNumber: number | null }>(
+  images: T[],
+  pageTexts: string[],
+  minTextChars = 30,
+): T[] {
+  return images.filter((img) => {
+    if (img.pageNumber === null) {
+      return true;
+    }
+    const text = pageTexts[img.pageNumber - 1] ?? '';
+    return text.replace(/\s+/g, '').length >= minTextChars;
+  });
+}
+
 // 單張圖的標籤，例如「FIG1（第3頁）」或「FIG2（上傳圖片2）」
 export function figureLabel(figure: MaterialFigure, uploadIndex: number): string {
   return figure.pageNumber !== null

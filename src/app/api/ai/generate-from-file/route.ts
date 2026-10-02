@@ -14,6 +14,7 @@ import {
   attachFigureUrls,
   buildFigureManifest,
   buildFigurePromptRules,
+  dropScannedPageImages,
   type FigureCandidate,
   figureLabel,
   type MaterialFigure,
@@ -78,6 +79,8 @@ type FigurePart = { label: string; mimeType: string; base64: string };
 const FIGURE_EXTRACT_TIMEOUT_MS = 8000;
 // 送給 AI 看的縮圖長邊上限（省 token、省時間）
 const FIGURE_MAX_SIDE = 768;
+// 實際上傳到 Blob、給學生看的圖片長邊上限
+const FIGURE_UPLOAD_MAX_SIDE = 1600;
 
 const FIGURE_EXT_BY_MIME: Record<string, string> = {
   'image/png': 'png',
@@ -90,12 +93,20 @@ const FIGURE_EXT_BY_MIME: Record<string, string> = {
 async function preparePdfFigures(
   pdfBytes: Uint8Array,
 ): Promise<{ figures: MaterialFigure[]; parts: FigurePart[] }> {
-  const { images } = await extractPdfPageContent(pdfBytes);
-  const figures = selectFigures(images);
-  if (figures.length === 0) {
-    return { figures, parts: [] };
+  const { images, pageTexts } = await extractPdfPageContent(pdfBytes);
+  const selected = selectFigures(dropScannedPageImages(images, pageTexts));
+  if (selected.length === 0) {
+    return { figures: selected, parts: [] };
   }
   const sharp = (await import('sharp')).default;
+  // 上傳給學生看的版本也先縮到長邊 1600px，避免 PDF 內嵌原圖動輒數 MB
+  const figures = await Promise.all(selected.map(async f => ({
+    ...f,
+    buffer: await sharp(f.buffer)
+      .resize({ width: FIGURE_UPLOAD_MAX_SIDE, height: FIGURE_UPLOAD_MAX_SIDE, fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer(),
+  })));
   const parts = await Promise.all(figures.map(async (f) => {
     const thumb = await sharp(f.buffer)
       .resize({ width: FIGURE_MAX_SIDE, height: FIGURE_MAX_SIDE, fit: 'inside', withoutEnlargement: true })
