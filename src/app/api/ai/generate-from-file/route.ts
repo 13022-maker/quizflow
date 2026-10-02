@@ -4,11 +4,24 @@ import { Buffer } from 'node:buffer';
 import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
+import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import {
+  attachFigureUrls,
+  buildFigureManifest,
+  buildFigurePromptRules,
+  type FigureCandidate,
+  figureLabel,
+  type MaterialFigure,
+  resolveFigureRefs,
+  selectFigures,
+  stripFigureFields,
+} from '@/lib/ai/materialFigures';
+import { extractPdfPageContent } from '@/lib/ai/pdfImageExtract';
 import { isProSafe } from '@/lib/ai/textModel';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
@@ -58,11 +71,87 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
 // 一份多模態素材：mimeType + base64
 type Media = { mimeType: string; base64: string };
 
+// 講義圖片：接在文件後面另外送給 AI 的縮圖，前面先放一段文字標籤（例如「FIG1（第3頁）」）
+type FigurePart = { label: string; mimeType: string; base64: string };
+
+// PDF 擷取圖片的時間上限：超過就放棄附圖，不影響正常出題（maxDuration 只有 60 秒）
+const FIGURE_EXTRACT_TIMEOUT_MS = 8000;
+// 送給 AI 看的縮圖長邊上限（省 token、省時間）
+const FIGURE_MAX_SIDE = 768;
+
+const FIGURE_EXT_BY_MIME: Record<string, string> = {
+  'image/png': 'png',
+  'image/jpeg': 'jpg',
+  'image/webp': 'webp',
+  'image/gif': 'gif',
+};
+
+// 從裁切後的 PDF 擷取內嵌圖片 → 挑選 → 縮圖成送給 AI 的 FigurePart
+async function preparePdfFigures(
+  pdfBytes: Uint8Array,
+): Promise<{ figures: MaterialFigure[]; parts: FigurePart[] }> {
+  const { images } = await extractPdfPageContent(pdfBytes);
+  const figures = selectFigures(images);
+  if (figures.length === 0) {
+    return { figures, parts: [] };
+  }
+  const sharp = (await import('sharp')).default;
+  const parts = await Promise.all(figures.map(async (f) => {
+    const thumb = await sharp(f.buffer)
+      .resize({ width: FIGURE_MAX_SIDE, height: FIGURE_MAX_SIDE, fit: 'inside', withoutEnlargement: true })
+      .png()
+      .toBuffer();
+    return { label: figureLabel(f, 0), mimeType: 'image/png', base64: thumb.toString('base64') };
+  }));
+  return { figures, parts };
+}
+
+// 擷取逾時或失敗一律回傳「沒有圖」，絕不讓整個命題失敗
+async function preparePdfFiguresSafe(
+  pdfBytes: Uint8Array,
+): Promise<{ figures: MaterialFigure[]; parts: FigurePart[] }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      preparePdfFigures(pdfBytes),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('FIGURE_EXTRACT_TIMEOUT')), FIGURE_EXTRACT_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (err) {
+    console.warn('[generate-from-file] 講義圖片擷取失敗或逾時，改為不附圖：', err instanceof Error ? err.message : err);
+    return { figures: [], parts: [] };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 被引用的圖片各上傳一次到 Vercel Blob；單張失敗只略過該圖（回傳的 map 不含它）
+async function uploadFigures(userId: string, used: MaterialFigure[]): Promise<Map<string, string>> {
+  const urlById = new Map<string, string>();
+  const stamp = Date.now();
+  await Promise.all(used.map(async (f, i) => {
+    try {
+      const ext = FIGURE_EXT_BY_MIME[f.contentType] ?? 'png';
+      const blob = await put(`material-images/${userId}/${stamp}-${i + 1}.${ext}`, f.buffer, {
+        access: 'public',
+        addRandomSuffix: false,
+        contentType: f.contentType,
+      });
+      urlById.set(f.id, blob.url);
+    } catch (err) {
+      console.warn('[generate-from-file] 講義圖片上傳失敗，該圖略過：', err instanceof Error ? err.message : err);
+    }
+  }));
+  return urlById;
+}
+
 // 呼叫 Gemini 2.5 Flash（省錢快速、多模態品質佳）
 // 支援多份 media（例如多張照片一次出題）
 async function generateWithGemini(
   media: Media[],
   prompt: string,
+  figureParts: FigurePart[] = [],
 ): Promise<string> {
   if (!genAI) {
     throw new Error('GEMINI_API_KEY_MISSING');
@@ -75,6 +164,11 @@ async function generateWithGemini(
           role: 'user',
           parts: [
             ...media.map(m => ({ inlineData: { mimeType: m.mimeType, data: m.base64 } })),
+            // 講義圖片：每張先放標籤文字再放圖，接在文件後面
+            ...figureParts.flatMap(f => [
+              { text: f.label },
+              { inlineData: { mimeType: f.mimeType, data: f.base64 } },
+            ]),
             { text: prompt },
           ],
         },
@@ -101,6 +195,7 @@ async function generateWithGemini(
 async function generateWithClaude(
   media: Media[],
   prompt: string,
+  figureParts: FigurePart[] = [],
 ): Promise<string> {
   if (!anthropic) {
     throw new Error('ANTHROPIC_API_KEY_MISSING');
@@ -122,6 +217,18 @@ async function generateWithClaude(
             source: { type: 'base64', media_type: 'application/pdf', data: m.base64 },
           },
     ),
+    // 講義圖片：每張先放標籤文字再放圖，接在文件後面
+    ...figureParts.flatMap((f): (Anthropic.TextBlockParam | Anthropic.ImageBlockParam)[] => [
+      { type: 'text', text: f.label },
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: f.mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+          data: f.base64,
+        },
+      },
+    ]),
     { type: 'text', text: prompt },
   ];
 
@@ -235,7 +342,7 @@ export async function POST(request: Request) {
     .join(',\n') || TYPE_EXAMPLES.mc;
 
   // 音檔用聽力題專用 prompt，文件 / 圖片用一般 prompt
-  const prompt = isAudio
+  const basePrompt = isAudio
     ? `請聽取以上音檔內容，根據音檔生成聽力測驗題。
 
 難度：${diffLabel}
@@ -348,6 +455,11 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 
   const media: { mimeType: string; base64: string }[] = [];
 
+  // 自動附加教材圖片：需要 Vercel Blob 才能存圖；音檔模式不適用
+  const figuresEnabled = Boolean(process.env.BLOB_READ_WRITE_TOKEN) && !isAudio;
+  let figures: MaterialFigure[] = [];
+  let figureParts: FigurePart[] = [];
+
   if (isAudio) {
     const arrayBuffer = await firstFile.arrayBuffer();
     media.push({
@@ -356,13 +468,17 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     });
   } else if (isImage) {
     // 多張圖片一起送
+    const imageCandidates: FigureCandidate[] = [];
     for (const f of uploaded) {
       const e = getExt(f);
-      const buf = await f.arrayBuffer();
-      media.push({
-        mimeType: imageMimeMap[e] || 'image/png',
-        base64: Buffer.from(buf).toString('base64'),
-      });
+      const buf = Buffer.from(await f.arrayBuffer());
+      const mimeType = imageMimeMap[e] || 'image/png';
+      media.push({ mimeType, base64: buf.toString('base64') });
+      imageCandidates.push({ pageNumber: null, buffer: buf, contentType: mimeType });
+    }
+    // 上傳的圖片本身已經送給 AI，不重送，只在 prompt 加上「第 N 張 = FIGn」的對照
+    if (figuresEnabled) {
+      figures = selectFigures(imageCandidates);
     }
   } else {
     // PDF：一律用伺服器端量到的真實頁數判斷上限，不信任前端傳來的 startPage/endPage
@@ -403,22 +519,36 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       mimeType: 'application/pdf',
       base64: Buffer.from(pdfBytes).toString('base64'),
     });
+
+    // 從「實際送給 AI 的裁切後 PDF」擷取圖片，頁碼才會跟 AI 看到的一致
+    // 複製一份 bytes 再交給 unpdf（pdfjs 可能會 transfer / detach 傳入的 buffer）
+    if (figuresEnabled) {
+      ({ figures, parts: figureParts } = await preparePdfFiguresSafe(new Uint8Array(pdfBytes)));
+    }
   }
+
+  const figureManifest = buildFigureManifest(figures);
+  const prompt = figures.length > 0
+    ? `${basePrompt}
+
+${figureManifest}${isImage ? '\n（「上傳圖片N」指上面依序提供的第 N 張圖片）' : '\n（每張圖片已附在文件後面，圖片前的文字即其編號）'}
+${buildFigurePromptRules(true)}`
+    : basePrompt;
 
   try {
     let raw: string;
     try {
       raw = effectiveModel === 'claude'
-        ? await generateWithClaude(media, prompt)
-        : await generateWithGemini(media, prompt);
+        ? await generateWithClaude(media, prompt, figureParts)
+        : await generateWithGemini(media, prompt, figureParts);
     } catch (err) {
       if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
         // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
-        raw = await generateWithClaude(media, prompt);
+        raw = await generateWithClaude(media, prompt, figureParts);
       } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
         // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
         console.warn('[generate-from-file] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
-        raw = await generateWithGemini(media, prompt);
+        raw = await generateWithGemini(media, prompt, figureParts);
       } else {
         throw err;
       }
@@ -452,6 +582,19 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
     if (result.questions) {
       attachDiagramSvgs(result.questions);
+    }
+
+    // 教材圖片:把 AI 標記的 figure 對回實際圖片,上傳後寫進 imageUrl(fail-open,失敗就不附圖)
+    if (Array.isArray(result.questions)) {
+      if (figures.length > 0) {
+        const { refsByIndex, used } = resolveFigureRefs(result.questions, figures);
+        if (used.length > 0) {
+          const urlById = await uploadFigures(userId, used);
+          result.figuresAttached = attachFigureUrls(result.questions, refsByIndex, urlById);
+        }
+      }
+      // figure 只是中介欄位,不論有沒有啟用都移除,避免 AI 自己亂加的欄位流到前端
+      stripFigureFields(result.questions);
     }
 
     return NextResponse.json(result);

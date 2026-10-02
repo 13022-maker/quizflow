@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 
+import { MaterialImageThumbs } from './MaterialImageThumbs';
+
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
 
 type GeneratedQuestion = {
@@ -11,6 +13,7 @@ type GeneratedQuestion = {
   answer: string;
   explanation?: string;
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有;由 generate-questions/generate-from-file 附上)
+  imageUrl?: string; // 講義命題自動附加的教材圖片（已上傳到 Vercel Blob）
 };
 
 type GeneratedResult = {
@@ -439,6 +442,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                       {' '}
                       題，確認匯入後會自動加入編輯器
                     </p>
+                    <MaterialImageThumbs questions={result.questions} />
                   </div>
                   <div className="flex gap-2">
                     <button

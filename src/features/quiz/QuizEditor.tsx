@@ -64,6 +64,7 @@ type FileGeneratedQuestion = {
   answer: string;
   explanation?: string;
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
+  imageUrl?: string; // 講義命題自動附加的教材圖片（Vercel Blob 網址）
 };
 
 // AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
@@ -535,6 +536,7 @@ export function QuizEditor({
           options,
           correctAnswers: matched ? [matched.id] : undefined,
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       } else if (q.type === 'tf') {
@@ -550,6 +552,7 @@ export function QuizEditor({
           ],
           correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       } else {
@@ -559,6 +562,7 @@ export function QuizEditor({
           body: q.question,
           correctAnswers: q.answer ? [q.answer] : undefined,
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       }
