@@ -3,7 +3,6 @@
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import type { RubricScores } from '@/services/review/scoring';
 import type { ReviewTeamState } from '@/services/review/types';
 
@@ -18,6 +17,9 @@ const DIMENSION_LABEL: Record<keyof RubricScores, string> = {
   clarity: '清晰度',
   creativity: '創意',
 };
+
+// 評分範圍固定 0-5 分，對應單一點擊的按鈕列
+const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
 
 type ScoreDraft = RubricScores & { comment: string };
 
@@ -137,18 +139,25 @@ function RubricReview({ state, onSubmitScore, submitting }: Omit<Props, 'onSubmi
             )}
             <p className="whitespace-pre-wrap text-sm">{sample.content}</p>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className="space-y-2">
               {(Object.keys(DIMENSION_LABEL) as (keyof RubricScores)[]).map(key => (
-                <div key={key} className="space-y-1">
-                  <label className="text-xs text-muted-foreground">{DIMENSION_LABEL[key]}</label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={5}
-                    value={draft[key]}
-                    onChange={e =>
-                      updateDraft(sample.id, { [key]: Number(e.target.value) } as Partial<ScoreDraft>)}
-                  />
+                <div key={key} className="flex items-center gap-2">
+                  <label className="w-12 shrink-0 text-xs text-muted-foreground">{DIMENSION_LABEL[key]}</label>
+                  <div className="flex gap-1">
+                    {SCORE_OPTIONS.map(score => (
+                      <Button
+                        key={score}
+                        type="button"
+                        size="sm"
+                        variant={draft[key] === score ? 'default' : 'outline'}
+                        className="size-7 p-0 text-xs"
+                        onClick={() =>
+                          updateDraft(sample.id, { [key]: score } as Partial<ScoreDraft>)}
+                      >
+                        {score}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

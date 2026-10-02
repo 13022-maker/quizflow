@@ -45,6 +45,9 @@ const DIMENSION_LABEL: Record<keyof SampleForm['ref'], string> = {
   creativity: '創意',
 };
 
+// 評分範圍固定 0-5 分，對應單一點擊的按鈕列
+const SCORE_OPTIONS = [0, 1, 2, 3, 4, 5] as const;
+
 export function ReviewSetEditor({ reviewSetId, initial }: Props) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -308,20 +311,24 @@ export function ReviewSetEditor({ reviewSetId, initial }: Props) {
                 sampleCount={samples.length}
               />
             )}
-            <div className={reviewMode === 'rubric' ? 'grid grid-cols-4 gap-3' : 'hidden'}>
+            <div className={reviewMode === 'rubric' ? 'space-y-2' : 'hidden'}>
               {(Object.keys(DIMENSION_LABEL) as (keyof SampleForm['ref'])[]).map(key => (
-                <div key={key} className="space-y-1">
-                  <label className="text-xs text-muted-foreground">
-                    {DIMENSION_LABEL[key]}
-                    （0-5）
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={5}
-                    value={sample.ref[key]}
-                    onChange={e => updateSampleRef(i, key, Number(e.target.value))}
-                  />
+                <div key={key} className="flex items-center gap-2">
+                  <label className="w-12 shrink-0 text-xs text-muted-foreground">{DIMENSION_LABEL[key]}</label>
+                  <div className="flex gap-1">
+                    {SCORE_OPTIONS.map(score => (
+                      <Button
+                        key={score}
+                        type="button"
+                        size="sm"
+                        variant={sample.ref[key] === score ? 'default' : 'outline'}
+                        className="size-7 p-0 text-xs"
+                        onClick={() => updateSampleRef(i, key, score)}
+                      >
+                        {score}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
