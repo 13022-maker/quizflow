@@ -43,6 +43,8 @@ export default async function EditReviewSetPage({
     teamSize: reviewSet.teamSize,
     reviewDurationSec: reviewSet.reviewDurationSec,
     createDurationSec: reviewSet.createDurationSec,
+    reviewMode: reviewSet.reviewMode,
+    createMode: reviewSet.createMode,
     samples: samples.map(s => ({
       content: s.content,
       ref: {
@@ -52,6 +54,7 @@ export default async function EditReviewSetPage({
         creativity: s.refCreativity,
       },
       isAiAnswer: s.isAiAnswer,
+      refData: s.refData ?? undefined,
     })),
   };
 

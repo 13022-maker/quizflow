@@ -57,6 +57,7 @@ function ReviewRoomInner({
     submitting,
     isReconnecting,
     submitScore,
+    submitResponse,
     submitSubmission,
     submitVote,
     submitDraft,
@@ -146,7 +147,12 @@ function ReviewRoomInner({
     return (
       <>
         {banner}
-        <ReviewPlayerReview state={state} onSubmitScore={submitScore} submitting={submitting} />
+        <ReviewPlayerReview
+          state={state}
+          onSubmitScore={submitScore}
+          onSubmitResponse={submitResponse}
+          submitting={submitting}
+        />
       </>
     );
   }

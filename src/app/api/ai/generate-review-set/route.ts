@@ -11,6 +11,7 @@ import { z } from 'zod';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { AI_ERA_FRAMEWORK_KEY, buildReviewSetPrompt, parseGeneratedReviewSet } from '@/lib/ai/reviewSetGeneration';
+import { REVIEW_MODES } from '@/services/review/modes';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -21,6 +22,7 @@ const BodySchema = z.object({
   title: z.string().trim().min(1, '請輸入標題').max(100, '標題最多 100 字'),
   // 主題/框架選填：白名單檢查在 buildReviewSetPrompt 內部做，未知 key 視為不指定
   framework: z.string().trim().max(50).optional(),
+  reviewMode: z.enum(REVIEW_MODES).default('rubric'),
 });
 
 export async function POST(request: Request) {
@@ -48,7 +50,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsedBody.error.errors[0]?.message ?? '資料格式錯誤' }, { status: 400 });
   }
 
-  const prompt = buildReviewSetPrompt(parsedBody.data.title, parsedBody.data.framework);
+  const prompt = buildReviewSetPrompt(parsedBody.data.title, parsedBody.data.framework, parsedBody.data.reviewMode);
 
   // 主用 Gemini，過載時 fallback OpenAI，再 fallback Claude
   let raw: string;
@@ -133,7 +135,7 @@ export async function POST(request: Request) {
     }
   }
 
-  const result = parseGeneratedReviewSet(raw);
+  const result = parseGeneratedReviewSet(raw, parsedBody.data.reviewMode);
   if (!result) {
     console.error(`[generate-review-set] ${usedModel} 回傳格式錯誤：`, raw.slice(0, 500));
     return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });

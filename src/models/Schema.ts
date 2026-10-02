@@ -508,6 +508,14 @@ export const reviewGameStatusEnum = pgEnum('review_game_status', [
   'ended', // 場次已結束
 ]);
 
+// 批閱題型：決定學生在 reviewing 階段怎麼「批閱」範例答案
+// rubric = 4 維度 0-5 分（原始做法）；judgment = 判斷對錯 + 錯因；
+// error_spot = 點選答案中有錯的句子；ranking = 把範例答案依品質排序
+export const reviewModeEnum = pgEnum('review_mode', ['rubric', 'judgment', 'error_spot', 'ranking']);
+
+// 共創產出型態：free_text = 自由文字延伸創作（原始做法）；question = 小組出一道題目
+export const reviewCreateModeEnum = pgEnum('review_create_mode', ['free_text', 'question']);
+
 // 可重複使用的「題組」模板，類似 quiz，一次建立可開多場次
 export const reviewSetSchema = pgTable('review_set', {
   id: serial('id').primaryKey(),
@@ -517,6 +525,8 @@ export const reviewSetSchema = pgTable('review_set', {
   teamSize: integer('team_size').default(4).notNull(),
   reviewDurationSec: integer('review_duration_sec').default(600).notNull(),
   createDurationSec: integer('create_duration_sec').default(300).notNull(),
+  reviewMode: reviewModeEnum('review_mode').default('rubric').notNull(),
+  createMode: reviewCreateModeEnum('create_mode').default('free_text').notNull(),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
 });
 
@@ -533,6 +543,9 @@ export const reviewSampleSchema = pgTable('review_sample', {
   refClarity: integer('ref_clarity').notNull(),
   refCreativity: integer('ref_creativity').notNull(),
   isAiAnswer: boolean('is_ai_answer').default(false).notNull(), // 是否明確標示為「AI 生成的解答」（AI 時代思考框架用）
+  // 非 rubric 題型的老師標準答案（形狀由 src/services/review/modes/<mode>.ts 的 refSchema 定義）；
+  // rubric 題型維持用上面 4 個 ref 欄位，此欄為 null
+  refData: jsonb('ref_data').$type<unknown>(),
 });
 
 // 一場直播場次（review_set 的即時執行實例）
@@ -614,10 +627,13 @@ export const reviewScoreSchema = pgTable(
     sampleId: integer('sample_id')
       .notNull()
       .references(() => reviewSampleSchema.id, { onDelete: 'cascade' }),
-    correctness: integer('correctness').notNull(),
-    completeness: integer('completeness').notNull(),
-    clarity: integer('clarity').notNull(),
-    creativity: integer('creativity').notNull(),
+    // rubric 題型才有意義；其他題型一律存 0，實際作答放 responseData
+    correctness: integer('correctness').default(0).notNull(),
+    completeness: integer('completeness').default(0).notNull(),
+    clarity: integer('clarity').default(0).notNull(),
+    creativity: integer('creativity').default(0).notNull(),
+    // 非 rubric 題型的學生作答（形狀由 modes/<mode>.ts 的 responseSchema 定義）
+    responseData: jsonb('response_data').$type<unknown>(),
     comment: text('comment'), // 短評，選填，Zod schema 限 200 字
     submittedAt: timestamp('submitted_at', { mode: 'date' }).defaultNow().notNull(),
   },

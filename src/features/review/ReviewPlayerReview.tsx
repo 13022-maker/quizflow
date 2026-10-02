@@ -7,6 +7,9 @@ import { Input } from '@/components/ui/input';
 import type { RubricScores } from '@/services/review/scoring';
 import type { ReviewTeamState } from '@/services/review/types';
 
+import { getModeUi } from './modes/registry';
+import type { ActionResult } from './modes/types';
+
 const TEXTAREA_CLASS = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring';
 
 const DIMENSION_LABEL: Record<keyof RubricScores, string> = {
@@ -25,10 +28,62 @@ type Props = {
     scores: RubricScores,
     comment: string | null,
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  onSubmitResponse: (sampleId: number, responseData: unknown, comment: string | null) => Promise<ActionResult>;
   submitting: boolean;
 };
 
-export function ReviewPlayerReview({ state, onSubmitScore, submitting }: Props) {
+const MODE_TITLE: Record<ReviewTeamState['reviewMode'], string> = {
+  rubric: '評分範例答案',
+  judgment: '判斷範例答案的對錯',
+  error_spot: '找出範例答案中的錯誤',
+  ranking: '幫範例答案排名次',
+};
+
+export function ReviewPlayerReview({ state, onSubmitScore, onSubmitResponse, submitting }: Props) {
+  const modeUi = getModeUi(state.reviewMode);
+  if (modeUi) {
+    const myResponsesBySample: Record<number, unknown> = {};
+    for (const [sampleId, score] of Object.entries(state.myScores)) {
+      myResponsesBySample[Number(sampleId)] = score.responseData;
+    }
+    return (
+      <div className="mx-auto max-w-2xl space-y-6 px-4 py-6">
+        <h1 className="text-lg font-bold">{MODE_TITLE[state.reviewMode]}</h1>
+        {state.samples.map((sample) => {
+          const mine = state.myScores[sample.id];
+          return (
+            <div key={sample.id} className="space-y-3 rounded-lg border p-4">
+              {sample.isAiAnswer && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                  🤖 這是 AI 生成的解答
+                </span>
+              )}
+              <modeUi.ReviewPanel
+                sample={sample}
+                sampleCount={state.samples.length}
+                myResponse={mine?.responseData ?? null}
+                myComment={mine?.comment ?? null}
+                myResponsesBySample={myResponsesBySample}
+                teammates={(state.teammateScores[sample.id] ?? []).map(t => ({
+                  playerId: t.playerId,
+                  nickname: t.nickname,
+                  responseData: t.responseData,
+                  comment: t.comment,
+                }))}
+                onSubmit={(responseData, comment) => onSubmitResponse(sample.id, responseData, comment)}
+                submitting={submitting}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return <RubricReview state={state} onSubmitScore={onSubmitScore} submitting={submitting} />;
+}
+
+function RubricReview({ state, onSubmitScore, submitting }: Omit<Props, 'onSubmitResponse'>) {
   const [drafts, setDrafts] = useState<Record<number, ScoreDraft>>({});
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
 

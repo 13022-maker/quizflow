@@ -15,10 +15,15 @@ import {
   reviewVoteSchema,
 } from '@/models/Schema';
 import { publishTick } from '@/services/review/ablyServer';
-import { autoSubmitPendingTeams, getReviewSamples } from '@/services/review/reviewStore';
-import type { RubricScores } from '@/services/review/scoring';
+import { calcModeSampleAccuracy } from '@/services/review/modes';
 import {
-  calcAccuracyScore,
+  autoSubmitPendingTeams,
+  getReviewSamples,
+  getReviewSetModes,
+  toModeSample,
+  toModeScoreRow,
+} from '@/services/review/reviewStore';
+import {
   calcSpeedBonus,
   calcTeamTotalScore,
   calcVoteBonus,
@@ -272,6 +277,8 @@ export async function finishGame(gameId: number) {
   }
 
   const samples = await getReviewSamples(game.reviewSetId);
+  const modes = await getReviewSetModes(game.reviewSetId);
+  const reviewMode = modes?.reviewMode ?? 'rubric';
   const accuracyPoints = distributeAccuracyPoints(samples.length);
   const teams = await db.select().from(reviewTeamSchema).where(eq(reviewTeamSchema.gameId, gameId));
 
@@ -288,23 +295,12 @@ export async function finishGame(gameId: number) {
 
       let accuracyTotal = 0;
       for (const [i, sample] of samples.entries()) {
-        const sampleScores = scores.filter(s => s.sampleId === sample.id);
-        if (sampleScores.length === 0) {
-          continue;
-        }
-        const avg: RubricScores = {
-          correctness: sampleScores.reduce((a, s) => a + s.correctness, 0) / sampleScores.length,
-          completeness: sampleScores.reduce((a, s) => a + s.completeness, 0) / sampleScores.length,
-          clarity: sampleScores.reduce((a, s) => a + s.clarity, 0) / sampleScores.length,
-          creativity: sampleScores.reduce((a, s) => a + s.creativity, 0) / sampleScores.length,
-        };
-        const ref: RubricScores = {
-          correctness: sample.refCorrectness,
-          completeness: sample.refCompleteness,
-          clarity: sample.refClarity,
-          creativity: sample.refCreativity,
-        };
-        accuracyTotal += calcAccuracyScore(avg, ref, accuracyPoints[i]!);
+        accuracyTotal += calcModeSampleAccuracy(reviewMode, {
+          sample: toModeSample(sample),
+          sampleScores: scores.filter(s => s.sampleId === sample.id).map(toModeScoreRow),
+          sampleCount: samples.length,
+          pointsForSample: accuracyPoints[i]!,
+        });
       }
 
       // 速度加成：全員對全部範例答案都交齊才算「該組完成」

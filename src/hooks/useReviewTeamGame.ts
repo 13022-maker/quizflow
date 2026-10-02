@@ -87,6 +87,25 @@ export function useReviewTeamGame(gameId: number, playerId: number, playerToken:
     [gameId, playerId, playerToken],
   );
 
+  // 非 rubric 題型：作答內容整包放 responseData，由 server 依題型 responseSchema 驗證
+  const submitResponse = useCallback(
+    async (sampleId: number, responseData: unknown, comment: string | null): Promise<ActionResult> => {
+      setSubmitting(true);
+      try {
+        return await postJson(`/api/review/${gameId}/score`, {
+          playerId,
+          playerToken,
+          sampleId,
+          responseData,
+          comment,
+        });
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [gameId, playerId, playerToken],
+  );
+
   const submitSubmission = useCallback(
     async (content: string): Promise<ActionResult> => {
       setSubmitting(true);
@@ -153,6 +172,7 @@ export function useReviewTeamGame(gameId: number, playerId: number, playerToken:
     submitting,
     isReconnecting,
     submitScore,
+    submitResponse,
     submitSubmission,
     submitVote,
     submitDraft,

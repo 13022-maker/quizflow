@@ -5,7 +5,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 
 import type { ReviewSetInput } from '@/lib/reviewSetSchema';
-import { ReviewSetInputSchema } from '@/lib/reviewSetSchema';
+import { ReviewSetInputSchema, validateReviewSetModes } from '@/lib/reviewSetSchema';
 import { db } from '@/libs/DB';
 import { reviewGameSchema, reviewSampleSchema, reviewSetSchema } from '@/models/Schema';
 
@@ -33,6 +33,10 @@ export async function createReviewSet(input: ReviewSetInput) {
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
   }
   const data = parsed.data;
+  const modeCheck = validateReviewSetModes(data);
+  if (!modeCheck.ok) {
+    return { error: modeCheck.error };
+  }
 
   const reviewSetId = await db.transaction(async (tx) => {
     const [inserted] = await tx
@@ -44,13 +48,15 @@ export async function createReviewSet(input: ReviewSetInput) {
         teamSize: data.teamSize,
         reviewDurationSec: data.reviewDurationSec,
         createDurationSec: data.createDurationSec,
+        reviewMode: data.reviewMode,
+        createMode: data.createMode,
       })
       .returning();
     if (!inserted) {
       throw new Error('建立題組失敗');
     }
     await tx.insert(reviewSampleSchema).values(
-      data.samples.map((s, i) => ({
+      modeCheck.samples.map((s, i) => ({
         reviewSetId: inserted.id,
         content: s.content,
         orderIndex: i,
@@ -59,6 +65,7 @@ export async function createReviewSet(input: ReviewSetInput) {
         refClarity: s.ref.clarity,
         refCreativity: s.ref.creativity,
         isAiAnswer: s.isAiAnswer,
+        refData: s.refData,
       })),
     );
     return inserted.id;
@@ -80,6 +87,10 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
   }
   const data = parsed.data;
+  const modeCheck = validateReviewSetModes(data);
+  if (!modeCheck.ok) {
+    return { error: modeCheck.error };
+  }
 
   // 編輯範例答案前先確認沒有進行中的直播場次：review_score.sample_id 設了
   // onDelete: 'cascade'，下面砍掉重建 review_sample 會連帶砍光學生已送出的評分
@@ -104,6 +115,8 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
         teamSize: data.teamSize,
         reviewDurationSec: data.reviewDurationSec,
         createDurationSec: data.createDurationSec,
+        reviewMode: data.reviewMode,
+        createMode: data.createMode,
       })
       .where(eq(reviewSetSchema.id, reviewSetId));
 
@@ -111,7 +124,7 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
     // 換取實作簡單遠比省幾條 SQL 划算
     await tx.delete(reviewSampleSchema).where(eq(reviewSampleSchema.reviewSetId, reviewSetId));
     await tx.insert(reviewSampleSchema).values(
-      data.samples.map((s, i) => ({
+      modeCheck.samples.map((s, i) => ({
         reviewSetId,
         content: s.content,
         orderIndex: i,
@@ -120,6 +133,7 @@ export async function updateReviewSet(reviewSetId: number, input: ReviewSetInput
         refClarity: s.ref.clarity,
         refCreativity: s.ref.creativity,
         isAiAnswer: s.isAiAnswer,
+        refData: s.refData,
       })),
     );
   });

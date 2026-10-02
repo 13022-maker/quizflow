@@ -20,9 +20,12 @@ import {
 
 import { publishTick } from './ablyServer';
 import { summarizeContributors } from './contributors';
+import { countCreateContentChars, isVotableCreateContent, validateCreateContent } from './createModes';
 import { pickLeader } from './leaderElection';
+import type { ModeSample, ModeScoreRow, ReviewCreateMode, ReviewMode } from './modes';
+import { calcModeSampleAccuracy, getModeHandler } from './modes';
 import type { RubricScores } from './scoring';
-import { calcAccuracyScore, distributeAccuracyPoints } from './scoring';
+import { distributeAccuracyPoints } from './scoring';
 import { resolveFallbackContent } from './submissionFallback';
 import type {
   ReviewGameStatus,
@@ -41,7 +44,57 @@ export type ReviewSampleWithRef = {
   refClarity: number;
   refCreativity: number;
   isAiAnswer: boolean;
+  refData: unknown;
 };
+
+// DB 列 → 題型 handler 用的格式（共用給 getResultsDetail 與 finishGame）
+export function toModeSample(s: ReviewSampleWithRef): ModeSample {
+  return {
+    id: s.id,
+    content: s.content,
+    orderIndex: s.orderIndex,
+    ref: {
+      correctness: s.refCorrectness,
+      completeness: s.refCompleteness,
+      clarity: s.refClarity,
+      creativity: s.refCreativity,
+    },
+    refData: s.refData,
+  };
+}
+
+export function toModeScoreRow(s: {
+  playerId: number;
+  sampleId: number;
+  correctness: number;
+  completeness: number;
+  clarity: number;
+  creativity: number;
+  responseData: unknown;
+}): ModeScoreRow {
+  return {
+    playerId: s.playerId,
+    sampleId: s.sampleId,
+    rubric: {
+      correctness: s.correctness,
+      completeness: s.completeness,
+      clarity: s.clarity,
+      creativity: s.creativity,
+    },
+    responseData: s.responseData,
+  };
+}
+
+export async function getReviewSetModes(
+  reviewSetId: number,
+): Promise<{ reviewMode: ReviewMode; createMode: ReviewCreateMode } | null> {
+  const [row] = await db
+    .select({ reviewMode: reviewSetSchema.reviewMode, createMode: reviewSetSchema.createMode })
+    .from(reviewSetSchema)
+    .where(eq(reviewSetSchema.id, reviewSetId))
+    .limit(1);
+  return row ?? null;
+}
 
 // 取得某題組的範例答案（含老師標準分，內部用；學生端回應前一定要 strip 成 ReviewSampleForClient）
 export async function getReviewSamples(reviewSetId: number): Promise<ReviewSampleWithRef[]> {
@@ -55,6 +108,7 @@ export async function getReviewSamples(reviewSetId: number): Promise<ReviewSampl
       refClarity: reviewSampleSchema.refClarity,
       refCreativity: reviewSampleSchema.refCreativity,
       isAiAnswer: reviewSampleSchema.isAiAnswer,
+      refData: reviewSampleSchema.refData,
     })
     .from(reviewSampleSchema)
     .where(eq(reviewSampleSchema.reviewSetId, reviewSetId))
@@ -102,6 +156,7 @@ export async function verifyPlayerToken(
 async function getTeamsWithProgress(
   gameId: number,
   sampleCount: number,
+  createMode: ReviewCreateMode,
 ): Promise<ReviewHostState['teams']> {
   const teams = await db.select().from(reviewTeamSchema).where(eq(reviewTeamSchema.gameId, gameId));
   if (teams.length === 0) {
@@ -156,7 +211,7 @@ async function getTeamsWithProgress(
     const votesReceived = votes.filter(v => v.votedForTeamId === team.id).length;
     const teamDrafts = drafts
       .filter(d => d.teamId === team.id)
-      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
+      .map(d => ({ playerId: d.playerId, charCount: countCreateContentChars(createMode, d.content) }));
 
     return {
       id: team.id,
@@ -180,6 +235,8 @@ async function getTeamsWithProgress(
 async function getResultsDetail(
   gameId: number,
   samples: ReviewSampleWithRef[],
+  reviewMode: ReviewMode,
+  createMode: ReviewCreateMode,
 ): Promise<ReviewTeamResultDetail[]> {
   const teams = await db.select().from(reviewTeamSchema).where(eq(reviewTeamSchema.gameId, gameId));
   if (teams.length === 0) {
@@ -208,28 +265,23 @@ async function getResultsDetail(
 
   return teams.map((team) => {
     const teamScores = scores.filter(s => s.teamId === team.id);
+    const handler = getModeHandler(reviewMode);
     const sampleDetails = samples.map((sample, i) => {
-      const sampleScores = teamScores.filter(s => s.sampleId === sample.id);
-      const avg: RubricScores = sampleScores.length === 0
-        ? { correctness: 0, completeness: 0, clarity: 0, creativity: 0 }
-        : {
-            correctness: sampleScores.reduce((a, s) => a + s.correctness, 0) / sampleScores.length,
-            completeness: sampleScores.reduce((a, s) => a + s.completeness, 0) / sampleScores.length,
-            clarity: sampleScores.reduce((a, s) => a + s.clarity, 0) / sampleScores.length,
-            creativity: sampleScores.reduce((a, s) => a + s.creativity, 0) / sampleScores.length,
-          };
-      const ref: RubricScores = {
-        correctness: sample.refCorrectness,
-        completeness: sample.refCompleteness,
-        clarity: sample.refClarity,
-        creativity: sample.refCreativity,
-      };
+      const modeSample = toModeSample(sample);
+      const sampleScores = teamScores.filter(s => s.sampleId === sample.id).map(toModeScoreRow);
+      const summary = handler.summarize({ sample: modeSample, sampleScores });
       return {
         sampleId: sample.id,
         sampleContent: sample.content,
-        teamAvg: avg,
-        ref,
-        accuracyScore: calcAccuracyScore(avg, ref, accuracyPoints[i]!),
+        teamSummary: summary.team,
+        refSummary: summary.ref,
+        responseCount: sampleScores.length,
+        accuracyScore: calcModeSampleAccuracy(reviewMode, {
+          sample: modeSample,
+          sampleScores,
+          sampleCount: samples.length,
+          pointsForSample: accuracyPoints[i]!,
+        }),
       };
     });
     const submission = submissions.find(s => s.teamId === team.id);
@@ -237,7 +289,7 @@ async function getResultsDetail(
     const teamPlayers = players.filter(p => p.teamId === team.id);
     const teamDrafts = drafts
       .filter(d => d.teamId === team.id)
-      .map(d => ({ playerId: d.playerId, charCount: d.content.length }));
+      .map(d => ({ playerId: d.playerId, charCount: countCreateContentChars(createMode, d.content) }));
 
     return {
       teamId: team.id,
@@ -270,7 +322,8 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
   }
 
   const samples = await getReviewSamples(game.reviewSetId);
-  const teams = await getTeamsWithProgress(gameId, samples.length);
+  const createMode = reviewSet.createMode;
+  const teams = await getTeamsWithProgress(gameId, samples.length, createMode);
 
   const [joinedPlayerCountRow] = await db
     .select({ value: count() })
@@ -280,7 +333,7 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
 
   // results 之後還會進 ended（老師按「結束活動」），報表資料不能因此消失
   const resultsDetail = (game.status === 'results' || game.status === 'ended')
-    ? await getResultsDetail(gameId, samples)
+    ? await getResultsDetail(gameId, samples, reviewSet.reviewMode, createMode)
     : null;
 
   return {
@@ -290,6 +343,8 @@ export async function getHostState(gameId: number): Promise<ReviewHostState | nu
       gamePin: game.gamePin,
       title: reviewSet.title,
       teamSize: reviewSet.teamSize,
+      reviewMode: reviewSet.reviewMode,
+      createMode,
       phaseStartedAt: game.phaseStartedAt ? game.phaseStartedAt.toISOString() : null,
       phaseDurationSec: game.phaseDurationSec,
     },
@@ -315,7 +370,11 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
   }
 
   const [reviewSet] = await db
-    .select({ topicPrompt: reviewSetSchema.topicPrompt })
+    .select({
+      topicPrompt: reviewSetSchema.topicPrompt,
+      reviewMode: reviewSetSchema.reviewMode,
+      createMode: reviewSetSchema.createMode,
+    })
     .from(reviewSetSchema)
     .where(eq(reviewSetSchema.id, game.reviewSetId))
     .limit(1);
@@ -324,11 +383,14 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
   }
 
   const samplesRaw = await getReviewSamples(game.reviewSetId);
+  const modeHandler = getModeHandler(reviewSet.reviewMode);
+  // 標準答案（ref 欄位 / refData）一律不送到學生端，只送 handler 篩過的公開資料
   const samples: ReviewSampleForClient[] = samplesRaw.map(s => ({
     id: s.id,
     content: s.content,
     orderIndex: s.orderIndex,
     isAiAnswer: s.isAiAnswer,
+    clientData: modeHandler.toClientData({ content: s.content, refData: s.refData }),
   }));
 
   let teammates: { id: number; nickname: string }[] = [];
@@ -392,6 +454,7 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
         completeness: s.completeness,
         clarity: s.clarity,
         creativity: s.creativity,
+        responseData: s.responseData as unknown,
         comment: s.comment,
       };
       if (s.playerId === me.id) {
@@ -435,8 +498,9 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
           eq(reviewTeamSchema.gameId, gameId),
           ne(reviewSubmissionSchema.teamId, me.teamId),
         ));
+      // question 型態只列完整合法的題目（逾時代送的半成品不列入，見 isVotableCreateContent）
       votingCandidates = otherSubmissions
-        .filter(s => s.content.trim().length > 0)
+        .filter(s => isVotableCreateContent(reviewSet.createMode, s.content))
         .map(s => ({ teamId: s.teamId, content: s.content }));
     }
 
@@ -462,6 +526,8 @@ export async function getTeamState(gameId: number, playerId: number): Promise<Re
       phaseDurationSec: game.phaseDurationSec,
     },
     topicPrompt: reviewSet.topicPrompt,
+    reviewMode: reviewSet.reviewMode,
+    createMode: reviewSet.createMode,
     me: { id: me.id, nickname: me.nickname, teamId: me.teamId, teamName },
     teammates,
     samples,
@@ -482,10 +548,12 @@ export async function upsertScore(params: {
   gameId: number;
   playerId: number;
   sampleId: number;
-  scores: RubricScores;
+  // rubric 題型傳 scores；其他題型傳 responseData（由題型 handler 的 responseSchema 驗證）
+  scores?: RubricScores;
+  responseData?: unknown;
   comment: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string; status?: number }> {
-  const { gameId, playerId, sampleId, scores, comment } = params;
+  const { gameId, playerId, sampleId, comment } = params;
 
   const [player] = await db
     .select()
@@ -497,7 +565,7 @@ export async function upsertScore(params: {
   }
 
   const [game] = await db
-    .select({ status: reviewGameSchema.status })
+    .select({ status: reviewGameSchema.status, reviewSetId: reviewGameSchema.reviewSetId })
     .from(reviewGameSchema)
     .where(eq(reviewGameSchema.id, gameId))
     .limit(1);
@@ -505,13 +573,34 @@ export async function upsertScore(params: {
     return { ok: false, error: 'NOT_REVIEWING_PHASE', status: 409 };
   }
 
+  // sample 必須屬於這場遊戲的題組，避免學生拿別場的 sampleId 亂寫
   const [sample] = await db
     .select({ id: reviewSampleSchema.id })
     .from(reviewSampleSchema)
-    .where(eq(reviewSampleSchema.id, sampleId))
+    .where(and(eq(reviewSampleSchema.id, sampleId), eq(reviewSampleSchema.reviewSetId, game.reviewSetId)))
     .limit(1);
   if (!sample) {
     return { ok: false, error: 'SAMPLE_NOT_FOUND', status: 404 };
+  }
+
+  const modes = await getReviewSetModes(game.reviewSetId);
+  if (!modes) {
+    return { ok: false, error: 'SET_NOT_FOUND', status: 404 };
+  }
+  const handler = getModeHandler(modes.reviewMode);
+  let scores: RubricScores = { correctness: 0, completeness: 0, clarity: 0, creativity: 0 };
+  let responseData: unknown = null;
+  if (handler.responseSchema === null) {
+    if (!params.scores) {
+      return { ok: false, error: 'MISSING_SCORES', status: 400 };
+    }
+    scores = params.scores;
+  } else {
+    const parsed = handler.responseSchema.safeParse(params.responseData);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.errors[0]?.message ?? 'INVALID_RESPONSE', status: 400 };
+    }
+    responseData = parsed.data;
   }
 
   await db
@@ -524,6 +613,7 @@ export async function upsertScore(params: {
       completeness: scores.completeness,
       clarity: scores.clarity,
       creativity: scores.creativity,
+      responseData,
       comment,
       submittedAt: new Date(),
     })
@@ -534,6 +624,7 @@ export async function upsertScore(params: {
         completeness: scores.completeness,
         clarity: scores.clarity,
         creativity: scores.creativity,
+        responseData,
         comment,
         submittedAt: new Date(),
       },
@@ -775,6 +866,18 @@ export async function submitFinalAnswer(params: {
     .limit(1);
   if (existing?.submittedAt) {
     return { ok: false, error: 'ALREADY_SUBMITTED', status: 409 };
+  }
+
+  // 依共創型態檢查內容格式（例如 question 型態必須是合法題目），不合格不給鎖定
+  const [gameSet] = await db
+    .select({ reviewSetId: reviewGameSchema.reviewSetId })
+    .from(reviewGameSchema)
+    .where(eq(reviewGameSchema.id, gameId))
+    .limit(1);
+  const modes = gameSet ? await getReviewSetModes(gameSet.reviewSetId) : null;
+  const contentError = validateCreateContent(modes?.createMode ?? 'free_text', existing?.content ?? '');
+  if (contentError) {
+    return { ok: false, error: contentError, status: 400 };
   }
 
   await db

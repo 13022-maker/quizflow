@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import { SampleInputSchema } from '@/lib/reviewSetSchema';
+import type { ReviewMode } from '@/services/review/modes';
+import { getModeHandler } from '@/services/review/modes';
 
 export const GeneratedReviewSetSchema = z.object({
   topicPrompt: z.string().trim().min(1).max(1000),
@@ -13,7 +15,7 @@ export type GeneratedReviewSet = z.infer<typeof GeneratedReviewSetSchema>;
  * 用 regex 抓出第一個 { 到最後一個 } 之間的內容（跟 generate-questions/route.ts 同款做法）。
  * 解析或驗證失敗一律回傳 null（fail-open，讓呼叫端決定要重試還是報錯）。
  */
-export function parseGeneratedReviewSet(raw: string): GeneratedReviewSet | null {
+export function parseGeneratedReviewSet(raw: string, reviewMode: ReviewMode = 'rubric'): GeneratedReviewSet | null {
   const match = raw.match(/\{[\s\S]*\}/);
   const jsonText = match ? match[0] : raw;
 
@@ -25,14 +27,35 @@ export function parseGeneratedReviewSet(raw: string): GeneratedReviewSet | null 
   }
 
   const parsed = GeneratedReviewSetSchema.safeParse(json);
-  return parsed.success ? parsed.data : null;
+  if (!parsed.success) {
+    return null;
+  }
+  // 非 rubric 題型：每則的 refData 必須通過該題型的 refSchema + 整組規則，否則視為生成失敗
+  const handler = getModeHandler(reviewMode);
+  if (handler.refSchema === null) {
+    return { ...parsed.data, samples: parsed.data.samples.map(s => ({ ...s, refData: undefined })) };
+  }
+  const samples = [];
+  for (const s of parsed.data.samples) {
+    const ref = handler.refSchema.safeParse(s.refData);
+    if (!ref.success) {
+      return null;
+    }
+    samples.push({ ...s, refData: ref.data });
+  }
+  if (handler.validateSet(samples.map(s => ({ content: s.content, refData: s.refData })))) {
+    return null;
+  }
+  return { ...parsed.data, samples };
 }
 
 // 「AI 時代思考」框架：白名單機制比照 generate-questions/route.ts 的 FRAMEWORK_PROMPTS，
 // 未知 key 一律視為未指定，prompt 完全不變。framework 只在生成當下影響 prompt，不落庫。
 export const AI_ERA_FRAMEWORK_KEY = 'ai-era-thinking';
 
-export function buildReviewSetPrompt(title: string, framework?: string): string {
+export function buildReviewSetPrompt(title: string, framework?: string, reviewMode: ReviewMode = 'rubric'): string {
+  const modeInstruction = getModeHandler(reviewMode).aiInstruction;
+  const modeNote = modeInstruction ? `\n\n【批閱題型補充規則】\n${modeInstruction}` : '';
   const isAiEra = framework === AI_ERA_FRAMEWORK_KEY;
 
   const frameworkIntro = isAiEra
@@ -87,6 +110,6 @@ ${frameworkIntro}
     { "content": "第二則範例答案內容", "ref": { "correctness": 3, "completeness": 3, "clarity": 3, "creativity": 3 } },
     { "content": "第三則範例答案內容", "ref": { "correctness": 5, "completeness": 5, "clarity": 4, "creativity": 5 } }
   ]
-}${jsonNote}
+}${jsonNote}${modeNote}
 所有文字使用繁體中文。`;
 }
