@@ -15,6 +15,29 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { KnowledgeDiagnosis } from '@/libs/adaptive/engine';
 import type { NextStep } from '@/libs/adaptive/tutor';
 
+/** 簡易 HTML escape：image renderer 的 fallback 文字可能含 AI 生成的特殊字元 */
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/**
+ * AI 出題／生課文時偶爾會幻覺出不存在的圖片連結（Markdown ![alt](url)語法，
+ * 但其實沒有真實圖片素材），瀏覽器載入失敗只會顯示破圖示 + alt 文字，體驗很差
+ * （例如「Symbol 21」破圖）。全域覆寫 image renderer，改顯示文字說明，不產生 <img>。
+ */
+marked.use({
+  renderer: {
+    image(href, title, text) {
+      const label = text || title || href;
+      return `<span class="text-muted-foreground">🖼️ ${escapeHtml(label)}</span>`;
+    },
+  },
+});
+
 /** 劃線問答的一則對話（前端顯示用） */
 type QaExchange = {
   highlightedText: string;

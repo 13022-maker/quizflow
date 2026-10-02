@@ -99,7 +99,8 @@ const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適
 3. 全部單選題、恰好 4 個選項；錯誤選項必須是「學生真的會犯的典型錯誤」（差一錯誤、概念混淆、符號誤用），不要湊數
 4. answerIndex 必須平均分散在 0、1、2、3 之間，每個知識點內不要讓多題答案集中在同一個索引（尤其避免像上面範例一樣全部是 0）；生成完後自我檢查一次這個知識點所有題目的 answerIndex 分布，發現集中就手動調整
 5. 所有內容使用繁體中文（台灣用語）
-6. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊`;
+6. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊
+7. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號／電路圖時，一律改用純文字具體描述（例如不要畫二極體符號，改寫「一個三角形指向一條直線，箭頭方向代表電流方向」）`;
 
 export function buildUserPrompt(topic: string, material?: string, hasMedia?: boolean): string {
   if (hasMedia) {

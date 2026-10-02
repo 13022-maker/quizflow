@@ -96,7 +96,8 @@ const YOUTUBE_SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，�
 5. 每題標一個 bloomLevel（記憶/理解/應用/分析/評鑑/創造），同一知識點內盡量覆蓋多種層次，不要全部都是「記憶」層級
 6. videoRef 必須引用逐字稿裡實際出現過的 videoId，startSec/endSec 落在該知識點內容講解的範圍（抓一段約 30~90 秒、足以完整講解該知識點），沒有明確對應片段就不要硬湊，留空即可（videoRef 為選填）
 7. 所有內容使用繁體中文（台灣用語）
-8. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號，絕對禁止 LaTeX`;
+8. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號，絕對禁止 LaTeX
+9. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號時，一律改用純文字具體描述`;
 
 export function buildYoutubeUserPrompt(topic: string, transcript: string): string {
   return `請為以下單元主題設計學科：「${topic.trim()}」\n\n以下是老師提供的 YouTube 影片逐字稿，知識點劃分與題目範圍以此為準（不要超出逐字稿範圍出題）：\n<影片逐字稿>\n${transcript}\n</影片逐字稿>`;
