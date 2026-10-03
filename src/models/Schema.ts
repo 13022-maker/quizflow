@@ -418,6 +418,19 @@ export const liveGameStatusEnum = pgEnum('live_game_status', [
   'finished', // 全部結束
 ]);
 
+// 遊戲玩法：classic = 全班同時作答、越快越高分（原本玩法）；team_buzzer = 小組搶答
+export const liveGameModeEnum = pgEnum('live_game_mode', ['classic', 'team_buzzer']);
+
+// 小組搶答每筆搶答紀錄的狀態：queued 排隊中 / answering 持有作答權 / correct 答對 /
+// wrong 答錯 / timeout 作答逾時（視同答錯）
+export const liveBuzzResultEnum = pgEnum('live_buzz_result', [
+  'queued',
+  'answering',
+  'correct',
+  'wrong',
+  'timeout',
+]);
+
 export const liveGameSchema = pgTable('live_game', {
   id: serial('id').primaryKey(),
   quizId: integer('quiz_id')
@@ -432,8 +445,22 @@ export const liveGameSchema = pgTable('live_game', {
   questionDuration: integer('question_duration').default(20).notNull(), // 秒
   // 下一次自動推進的時間戳（NULL = 不自動推進，例如 waiting / finished）
   nextTransitionAt: timestamp('next_transition_at', { mode: 'date' }),
+  // 玩法（預設 classic，既有資料行為不變）；teamCount 只有 team_buzzer 才有值（2–8）
+  gameMode: liveGameModeEnum('game_mode').default('classic').notNull(),
+  teamCount: integer('team_count'),
   createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   endedAt: timestamp('ended_at', { mode: 'date' }),
+});
+
+// 小組搶答的組別：分數記在組上（排行榜以組為主）
+export const liveTeamSchema = pgTable('live_team', {
+  id: serial('id').primaryKey(),
+  gameId: integer('game_id')
+    .notNull()
+    .references(() => liveGameSchema.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(), // 「第 1 組」
+  orderIndex: integer('order_index').notNull(), // 0-based，組號 = orderIndex + 1
+  score: integer('score').default(0).notNull(),
 });
 
 export const livePlayerSchema = pgTable(
@@ -447,6 +474,9 @@ export const livePlayerSchema = pgTable(
     playerToken: text('player_token').notNull(), // server 產生，學生存 localStorage 作身分憑證
     score: integer('score').default(0).notNull(),
     correctCount: integer('correct_count').default(0).notNull(),
+    // 小組搶答：分組後才有值；classic 永遠為 null
+    teamId: integer('team_id')
+      .references(() => liveTeamSchema.id, { onDelete: 'set null' }),
     joinedAt: timestamp('joined_at', { mode: 'date' }).defaultNow().notNull(),
     lastSeenAt: timestamp('last_seen_at', { mode: 'date' }).defaultNow().notNull(),
   },
@@ -491,6 +521,43 @@ export const liveAnswerSchema = pgTable(
       ),
     };
   },
+);
+
+// 小組搶答：每組每題最多一筆搶答紀錄。順序以 buzzedAt（DB insert 時間）為準，不信任 client 時間
+export const liveBuzzSchema = pgTable(
+  'live_buzz',
+  {
+    id: serial('id').primaryKey(),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => liveGameSchema.id, { onDelete: 'cascade' }),
+    questionId: integer('question_id')
+      .notNull()
+      .references(() => questionSchema.id, { onDelete: 'cascade' }),
+    teamId: integer('team_id')
+      .notNull()
+      .references(() => liveTeamSchema.id, { onDelete: 'cascade' }),
+    playerId: integer('player_id') // 按下搶答的學生 = 取得作答權時的作答者
+      .notNull()
+      .references(() => livePlayerSchema.id, { onDelete: 'cascade' }),
+    buzzedAt: timestamp('buzzed_at', { mode: 'date' }).defaultNow().notNull(),
+    result: liveBuzzResultEnum('result').default('queued').notNull(),
+    answerGrantedAt: timestamp('answer_granted_at', { mode: 'date' }), // 取得作答權時間（15 秒從此起算）
+    selectedOptionId: jsonb('selected_option_id').$type<string | string[]>(),
+    answeredAt: timestamp('answered_at', { mode: 'date' }),
+  },
+  table => ({
+    // 每組每題最多搶一次（答錯的組也因此不能再搶同一題）
+    gameQuestionTeamIdx: uniqueIndex('live_buzz_game_question_team_idx').on(
+      table.gameId,
+      table.questionId,
+      table.teamId,
+    ),
+    // 同一題同時間最多一組持有作答權：併發 grant 時由 DB 擋下第二筆
+    singleAnsweringIdx: uniqueIndex('live_buzz_single_answering_idx')
+      .on(table.gameId, table.questionId)
+      .where(sql`${table.result} = 'answering'`),
+  }),
 );
 
 // ---------- 小組協作批閱創作題（Team Review & Create） ----------
