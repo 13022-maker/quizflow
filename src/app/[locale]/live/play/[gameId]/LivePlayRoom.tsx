@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
+import { LiveBuzzerPlayer } from '@/features/live/LiveBuzzerPlayer';
 import { LiveLeaderboard } from '@/features/live/LiveLeaderboard';
 import { LivePlayerQuestion } from '@/features/live/LivePlayerQuestion';
+import { LiveTeamLeaderboard } from '@/features/live/LiveTeamLeaderboard';
 import { useLiveHeartbeat } from '@/hooks/useLiveHeartbeat';
 import { useLivePlayerGame } from '@/hooks/useLivePlayerGame';
 import { loadPlayerSession } from '@/services/live/playerSession';
@@ -55,7 +57,7 @@ function LiveRoomInner({
   playerId: number;
   playerToken: string;
 }) {
-  const { state, error, submit, submitting, isReconnecting } = useLivePlayerGame(
+  const { state, error, submit, submitting, isReconnecting, buzz, buzzAnswer } = useLivePlayerGame(
     gameId,
     playerId,
     playerToken,
@@ -99,6 +101,7 @@ function LiveRoomInner({
   }
 
   const { status } = state.game;
+  const isTeamBuzzer = state.game.gameMode === 'team_buzzer';
 
   if (status === 'waiting') {
     return (
@@ -112,8 +115,37 @@ function LiveRoomInner({
               你的暱稱：
               <strong>{state.me.nickname}</strong>
             </p>
+            {isTeamBuzzer && (
+              <p className="text-sm text-muted-foreground">🔔 本場是小組搶答，老師開始時會自動分組</p>
+            )}
           </div>
         </div>
+      </>
+    );
+  }
+
+  if (status === 'finished' && isTeamBuzzer) {
+    return (
+      <>
+        {banner}
+        <LiveTeamLeaderboard
+          teams={state.buzzer?.teams ?? []}
+          highlightTeamId={state.buzzer?.myTeam?.id ?? null}
+        />
+      </>
+    );
+  }
+
+  if (isTeamBuzzer) {
+    return (
+      <>
+        {banner}
+        <LiveBuzzerPlayer
+          state={state}
+          onBuzz={buzz}
+          onAnswer={buzzAnswer}
+          busy={isReconnecting}
+        />
       </>
     );
   }

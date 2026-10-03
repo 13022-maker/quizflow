@@ -46,6 +46,15 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // 學生心跳：以 x-player-token header 驗證，route 內不呼叫 auth()；
+  // 原本漏列，未登入學生的心跳被 auth.protect 擋下，老師端會把所有學生標成離線
+  '/api/live/(.*)/heartbeat',
+  '/:locale/api/live/(.*)/heartbeat',
+  // 小組搶答：搶答 / 搶答後作答（同樣以 playerToken 驗證，route 內不呼叫 auth()）
+  '/api/live/(.*)/buzz',
+  '/:locale/api/live/(.*)/buzz',
+  '/api/live/(.*)/buzz-answer',
+  '/:locale/api/live/(.*)/buzz-answer',
   // 協作批閱：學生加入、輪詢組狀態、評分/共創/投票/心跳（皆以 playerToken 驗證）
   '/api/review/join',
   '/:locale/api/review/join',

@@ -3,11 +3,9 @@
 import type { ColumnDef } from '@tanstack/react-table';
 import type { InferSelectModel } from 'drizzle-orm';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useState, useTransition } from 'react';
 
-import { createLiveGame } from '@/actions/liveActions';
 import { deleteQuiz, duplicateQuiz } from '@/actions/quizActions';
 import ShareModal from '@/components/quiz/ShareModal';
 import { Button } from '@/components/ui/button';
@@ -17,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import type { quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -38,31 +37,12 @@ function StatusBadge({ status }: { status: Quiz['status'] }) {
 
 function ActionsCell({ quiz }: { quiz: Quiz }) {
   const t = useTranslations('QuizTableColumns');
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
   const [showQR, setShowQR] = useState(false);
-  const [liveError, setLiveError] = useState<string | null>(null);
+  // 開 Live Mode 前先選玩法（經典 / 小組搶答）
+  const [showLiveDialog, setShowLiveDialog] = useState(false);
   const [duplicateError, setDuplicateError] = useState<string | null>(null);
-
-  const handleStartLive = () => {
-    setLiveError(null);
-    startTransition(async () => {
-      const res = await createLiveGame({ quizId: quiz.id });
-      // DEBUG：把完整 res 印到 console 方便定位暫時的 'error' in undefined
-
-      console.warn('[createLiveGame result]', res);
-      if (res && typeof res === 'object' && 'error' in res) {
-        setLiveError(res.error ?? '建立失敗');
-        return;
-      }
-      if (!res || !('gameId' in res)) {
-        setLiveError('建立失敗：server 回傳異常');
-        return;
-      }
-      router.push(`/dashboard/live/host/${res.gameId}`);
-    });
-  };
 
   const handleDelete = () => {
     startTransition(async () => {
@@ -123,7 +103,7 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
             </DropdownMenuItem>
           )}
           {quiz.status === 'published' && (
-            <DropdownMenuItem onClick={handleStartLive} disabled={isPending}>
+            <DropdownMenuItem onClick={() => setShowLiveDialog(true)} disabled={isPending}>
               🎮
               {' '}
               {t('start_live')}
@@ -139,8 +119,8 @@ function ActionsCell({ quiz }: { quiz: Quiz }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {liveError && (
-        <p className="mt-1 text-right text-xs text-destructive">{liveError}</p>
+      {showLiveDialog && (
+        <LiveStartDialog quizId={quiz.id} onClose={() => setShowLiveDialog(false)} />
       )}
       {duplicateError && (
         <p className="mt-1 text-right text-xs text-destructive">{duplicateError}</p>
