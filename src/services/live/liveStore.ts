@@ -1,6 +1,6 @@
 // Live Mode 統一資料存取層：把 DB query 集中在此，API Route / Server Action 呼叫即可。
 
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import {
@@ -11,6 +11,12 @@ import {
 } from '@/models/Schema';
 
 import { publishTick } from './ablyServer';
+import {
+  buildBuzzerHostView,
+  buildBuzzerPlayerView,
+  loadBuzzerGameReconciled,
+} from './buzzerStore';
+import { getGameQuestions, getLiveQuestions } from './liveQuestions';
 import { getEffectiveQuestionDuration } from './questionDuration';
 import { calcLiveScore, gradeAnswer, isLiveSupportedType } from './scoring';
 import type {
@@ -18,9 +24,11 @@ import type {
   LiveHostState,
   LivePlayerState,
   LivePlayerSummary,
-  LiveQuestionForHost,
   LiveQuestionForPlayer,
 } from './types';
+
+// getLiveQuestions 已搬到 liveQuestions.ts（buzzerStore 也要用，避免循環 import），這裡保留舊的 export 路徑
+export { getLiveQuestions };
 
 // 自動推進緩衝秒數（與 liveActions.ts 同步）
 const PLAY_PHASE_BUFFER_SEC = 5;
@@ -133,6 +141,12 @@ async function loadGameWithAutoAdvance(gameId: number): Promise<LiveGameRow | nu
     return null;
   }
 
+  // 小組搶答由老師主導節奏：不走下方 classic 的 self-heal / 自動推進（否則 nextTransitionAt
+  // 會被回填、題目自動跳走），改跑搶答自己的 lazy 推進（逾時判定、作答權流轉）
+  if (game.gameMode === 'team_buzzer') {
+    return loadBuzzerGameReconciled(gameId);
+  }
+
   // Self-heal NULL nextTransitionAt（'use server' Server Action 寫入會被吃掉）
   if (!game.nextTransitionAt) {
     if (game.status === 'playing' && game.questionStartedAt) {
@@ -178,38 +192,6 @@ async function loadGameWithAutoAdvance(gameId: number): Promise<LiveGameRow | nu
     .where(eq(liveGameSchema.id, gameId))
     .limit(1);
   return refreshed ?? null;
-}
-
-// 取得某 game 的題目清單（依 position 排序，只含支援的三種題型）
-export async function getLiveQuestions(quizId: number): Promise<LiveQuestionForHost[]> {
-  const rows = await db
-    .select({
-      id: questionSchema.id,
-      type: questionSchema.type,
-      body: questionSchema.body,
-      imageUrl: questionSchema.imageUrl,
-      audioUrl: questionSchema.audioUrl,
-      audioDurationSec: questionSchema.audioDurationSec,
-      options: questionSchema.options,
-      correctAnswers: questionSchema.correctAnswers,
-      position: questionSchema.position,
-    })
-    .from(questionSchema)
-    .where(eq(questionSchema.quizId, quizId))
-    .orderBy(asc(questionSchema.position));
-
-  return rows
-    .filter(r => isLiveSupportedType(r.type))
-    .map(r => ({
-      id: r.id,
-      type: r.type as 'single_choice' | 'multiple_choice' | 'true_false' | 'listening',
-      body: r.body,
-      imageUrl: r.imageUrl,
-      audioUrl: r.audioUrl,
-      audioDurationSec: r.audioDurationSec,
-      options: (r.options ?? []) as { id: string; text: string }[],
-      correctAnswers: (r.correctAnswers ?? []) as string[],
-    }));
 }
 
 const DISCONNECT_THRESHOLD_MS = 15 * 1000;
@@ -281,7 +263,7 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
     return null;
   }
 
-  const questions = await getLiveQuestions(game.quizId);
+  const questions = await getGameQuestions(game.quizId, game.gameMode);
   const players = await getPlayers(game.id);
 
   const currentQuestion
@@ -297,13 +279,15 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
     answeredCount = s.answeredCount;
   }
 
-  return {
+  const state: LiveHostState = {
     game: {
       id: game.id,
       quizId: game.quizId,
       title: game.title,
       gamePin: game.gamePin,
       status: game.status,
+      gameMode: game.gameMode,
+      teamCount: game.teamCount,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
       questionDuration: currentQuestion
@@ -316,6 +300,10 @@ export async function getHostState(gameId: number): Promise<LiveHostState | null
     answerStats,
     answeredCount,
   };
+  if (game.gameMode === 'team_buzzer') {
+    state.buzzer = await buildBuzzerHostView(game, currentQuestion);
+  }
+  return state;
 }
 
 // 取得學生端需要的 state（不含正解；僅 showing_result 回正解）
@@ -340,7 +328,7 @@ export async function getPlayerState(
     return null;
   }
 
-  const questions = await getLiveQuestions(game.quizId);
+  const questions = await getGameQuestions(game.quizId, game.gameMode);
   const current
     = game.currentQuestionIndex >= 0 && game.currentQuestionIndex < questions.length
       ? questions[game.currentQuestionIndex] ?? null
@@ -400,11 +388,12 @@ export async function getPlayerState(
   // finished 階段回完整排行
   const leaderboard = game.status === 'finished' ? players : [];
 
-  return {
+  const state: LivePlayerState = {
     game: {
       id: game.id,
       title: game.title,
       status: game.status,
+      gameMode: game.gameMode,
       currentQuestionIndex: game.currentQuestionIndex,
       questionStartedAt: game.questionStartedAt ? game.questionStartedAt.toISOString() : null,
       questionDuration: current
@@ -424,6 +413,10 @@ export async function getPlayerState(
     lastResult,
     leaderboard,
   };
+  if (game.gameMode === 'team_buzzer') {
+    state.buzzer = await buildBuzzerPlayerView(game, current, me.id);
+  }
+  return state;
 }
 
 /**
@@ -445,6 +438,10 @@ export async function recordAnswer(params: {
   const game = await loadGameWithAutoAdvance(gameId);
   if (!game) {
     return { ok: false, error: 'GAME_NOT_FOUND', status: 404 };
+  }
+  // 小組搶答走 /buzz-answer，不能用全班作答的 API 偷答
+  if (game.gameMode === 'team_buzzer') {
+    return { ok: false, error: 'WRONG_MODE', status: 400 };
   }
   if (game.status !== 'playing') {
     return { ok: false, error: 'NOT_PLAYING', status: 409 };
@@ -561,7 +558,7 @@ export async function verifyPlayerToken(
 
 // 以 pin 查 game（含是否已結束）
 export async function findGameByPin(pin: string): Promise<
-  | { id: number; quizId: number; status: string; endedAt: Date | null }
+  | { id: number; quizId: number; status: string; gameMode: string; endedAt: Date | null }
   | null
 > {
   const [row] = await db
@@ -569,6 +566,7 @@ export async function findGameByPin(pin: string): Promise<
       id: liveGameSchema.id,
       quizId: liveGameSchema.quizId,
       status: liveGameSchema.status,
+      gameMode: liveGameSchema.gameMode,
       endedAt: liveGameSchema.endedAt,
     })
     .from(liveGameSchema)

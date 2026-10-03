@@ -11,6 +11,17 @@ import {
   quizSchema,
 } from '@/models/Schema';
 import { publishTick } from '@/services/live/ablyServer';
+import {
+  BUZZER_DEFAULT_TEAMS,
+  BUZZER_MAX_TEAMS,
+  BUZZER_MIN_TEAMS,
+  isBuzzerSupportedType,
+} from '@/services/live/buzzer';
+import {
+  nextBuzzerQuestion,
+  revealBuzzerAnswer,
+  startBuzzerGame,
+} from '@/services/live/buzzerStore';
 import { getLiveQuestions } from '@/services/live/liveStore';
 import { getEffectiveQuestionDuration } from '@/services/live/questionDuration';
 import { isLiveSupportedType } from '@/services/live/scoring';
@@ -61,6 +72,14 @@ async function loadOwnedGame(gameId: number, userId: string) {
 const CreateLiveGameSchema = z.object({
   quizId: z.number().int().positive(),
   questionDuration: z.number().int().min(5).max(120).optional(),
+  // 玩法：未帶 = classic（既有呼叫端行為不變）
+  gameMode: z.enum(['classic', 'team_buzzer']).optional(),
+  teamCount: z
+    .number()
+    .int()
+    .min(BUZZER_MIN_TEAMS, `組數至少 ${BUZZER_MIN_TEAMS} 組`)
+    .max(BUZZER_MAX_TEAMS, `組數最多 ${BUZZER_MAX_TEAMS} 組`)
+    .optional(),
 });
 export type CreateLiveGameInput = z.infer<typeof CreateLiveGameSchema>;
 
@@ -100,9 +119,17 @@ export async function createLiveGame(input: CreateLiveGameInput) {
       .from(questionSchema)
       .where(eq(questionSchema.quizId, quiz.id))
       .orderBy(asc(questionSchema.position));
-    const hasSupported = questions.some(q => isLiveSupportedType(q.type));
-    if (!hasSupported) {
-      return { error: '此測驗沒有可用於 Live Mode 的題目（僅支援單選、多選、是非題）' };
+    const gameMode = parsed.data.gameMode ?? 'classic';
+    if (gameMode === 'team_buzzer') {
+      // 搶答模式排除聽力題
+      if (!questions.some(q => isBuzzerSupportedType(q.type))) {
+        return { error: '此測驗沒有可用於小組搶答的題目（僅支援單選、複選、是非題，聽力題不適用）' };
+      }
+    } else {
+      const hasSupported = questions.some(q => isLiveSupportedType(q.type));
+      if (!hasSupported) {
+        return { error: '此測驗沒有可用於 Live Mode 的題目（僅支援單選、多選、是非題）' };
+      }
     }
 
     const gamePin = await generateUniquePin();
@@ -115,6 +142,8 @@ export async function createLiveGame(input: CreateLiveGameInput) {
         title: quiz.title,
         gamePin,
         questionDuration: parsed.data.questionDuration ?? 20,
+        gameMode,
+        teamCount: gameMode === 'team_buzzer' ? (parsed.data.teamCount ?? BUZZER_DEFAULT_TEAMS) : null,
       })
       .returning();
 
@@ -144,6 +173,10 @@ export async function startGame(gameId: number) {
   const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
+  }
+  // 小組搶答有自己的開始／揭曉／下一題（不走 classic 的自動推進計時）
+  if (game.gameMode === 'team_buzzer') {
+    return { error: 'WRONG_MODE' };
   }
   if (game.status !== 'waiting') {
     return { error: 'ALREADY_STARTED' };
@@ -181,6 +214,10 @@ export async function showResult(gameId: number) {
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
   }
+  // 小組搶答有自己的開始／揭曉／下一題（不走 classic 的自動推進計時）
+  if (game.gameMode === 'team_buzzer') {
+    return { error: 'WRONG_MODE' };
+  }
   if (game.status !== 'playing') {
     return { error: 'NOT_PLAYING' };
   }
@@ -205,6 +242,10 @@ export async function nextQuestion(gameId: number) {
   const game = await loadOwnedGame(gameId, userId);
   if (!game) {
     return { error: 'GAME_NOT_FOUND' };
+  }
+  // 小組搶答有自己的開始／揭曉／下一題（不走 classic 的自動推進計時）
+  if (game.gameMode === 'team_buzzer') {
+    return { error: 'WRONG_MODE' };
   }
   // 狀態已經被背景自動推進過（老師停留在答案畫面超過 5 秒，
   // loadGameWithAutoAdvance 在某次 host-state 輪詢時已經 +1 過），
@@ -265,4 +306,55 @@ export async function endGame(gameId: number) {
 
   await publishTick(game.id);
   return { ok: true as const };
+}
+
+// ── 小組搶答（team_buzzer）老師端動作 ────────────────────────────────
+// 這裡只做身分驗證；時間欄位寫入都在 buzzerStore（非 'use server'，見檔頭註解）
+
+const TeamCountSchema = z.number().int().min(BUZZER_MIN_TEAMS).max(BUZZER_MAX_TEAMS);
+
+/** 大廳「分組並開始」：依加入順序 round-robin 分組並進入第一題 */
+export async function startTeamBuzzerGame(gameId: number, teamCount: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: 'Unauthorized' as const };
+  }
+  const parsedCount = TeamCountSchema.safeParse(teamCount);
+  if (!parsedCount.success) {
+    return { error: `組數需介於 ${BUZZER_MIN_TEAMS}–${BUZZER_MAX_TEAMS} 組` };
+  }
+  const game = await loadOwnedGame(gameId, userId);
+  if (!game) {
+    return { error: 'GAME_NOT_FOUND' };
+  }
+  const res = await startBuzzerGame(game.id, parsedCount.data);
+  return res.ok ? { ok: true as const } : { error: res.message };
+}
+
+/** 揭曉答案（沒有組答對時由老師手動揭曉） */
+export async function revealTeamBuzzerAnswer(gameId: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: 'Unauthorized' as const };
+  }
+  const game = await loadOwnedGame(gameId, userId);
+  if (!game) {
+    return { error: 'GAME_NOT_FOUND' };
+  }
+  const res = await revealBuzzerAnswer(game.id);
+  return res.ok ? { ok: true as const } : { error: res.message };
+}
+
+/** 下一題；最後一題則結束並顯示小組排行榜 */
+export async function nextTeamBuzzerQuestion(gameId: number) {
+  const { userId } = await auth();
+  if (!userId) {
+    return { error: 'Unauthorized' as const };
+  }
+  const game = await loadOwnedGame(gameId, userId);
+  if (!game) {
+    return { error: 'GAME_NOT_FOUND' };
+  }
+  const res = await nextBuzzerQuestion(game.id);
+  return res.ok ? { ok: true as const, finished: res.finished } : { error: res.message };
 }

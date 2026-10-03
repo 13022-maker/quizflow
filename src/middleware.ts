@@ -46,6 +46,11 @@ const isPublicApiRoute = createRouteMatcher([
   '/:locale/api/live/(.*)/player-state',
   '/api/live/(.*)/answer',
   '/:locale/api/live/(.*)/answer',
+  // 小組搶答：搶答 / 搶答後作答（同樣以 playerToken 驗證，route 內不呼叫 auth()）
+  '/api/live/(.*)/buzz',
+  '/:locale/api/live/(.*)/buzz',
+  '/api/live/(.*)/buzz-answer',
+  '/:locale/api/live/(.*)/buzz-answer',
   // 協作批閱：學生加入、輪詢組狀態、評分/共創/投票/心跳（皆以 playerToken 驗證）
   '/api/review/join',
   '/:locale/api/review/join',

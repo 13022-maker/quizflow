@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { db } from '@/libs/DB';
 import { liveGameSchema, livePlayerSchema } from '@/models/Schema';
 import { publishTick } from '@/services/live/ablyServer';
+import { assignLateJoiner } from '@/services/live/buzzerStore';
 import { findGameByPin, isNicknameTaken } from '@/services/live/liveStore';
 
 export const runtime = 'nodejs';
@@ -58,6 +59,11 @@ export async function POST(request: Request) {
 
     // touch updatedAt on game? game has no updatedAt; skip.
     void liveGameSchema;
+
+    // 小組搶答已分組後才加入：補進人數最少的組（大廳階段則等老師按「分組並開始」）
+    if (game.gameMode === 'team_buzzer' && game.status !== 'waiting') {
+      await assignLateJoiner(game.id, inserted.id);
+    }
 
     // 通知 host lobby 更新玩家列表
     await publishTick(game.id);
