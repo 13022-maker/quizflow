@@ -21,7 +21,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
 import { getAiUsageRemainingForCurrentUser } from '@/actions/aiUsageActions';
-import { createLiveGame } from '@/actions/liveActions';
 import {
   createQuestion,
   deleteQuestion,
@@ -45,6 +44,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
+import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
@@ -194,8 +194,8 @@ export function QuizEditor({
   // 平均配分成功提示
   const [distributeMsg, setDistributeMsg] = useState('');
 
-  // Live Mode 錯誤訊息
-  const [liveError, setLiveError] = useState<string | null>(null);
+  // Live Mode：開場前先選玩法（經典 / 小組搶答）；建立失敗的訊息顯示在對話框內
+  const [showLiveDialog, setShowLiveDialog] = useState(false);
 
   // 標題 inline 編輯
   const [title, setTitle] = useState(initialQuiz.title);
@@ -713,40 +713,7 @@ export function QuizEditor({
         <Button
           size="sm"
           variant="outline"
-          onClick={() => {
-            setLiveError(null);
-            startTransition(async () => {
-              // try/catch 防止 Server Action throw（例如 DB migration 未跑、
-              // live_game 表不存在）導致整頁白屏「Application error」。
-              try {
-                const res = await createLiveGame({ quizId: initialQuiz.id });
-                // DEBUG：把完整 res 印到 console，定位後會拔掉
-
-                console.warn('[QuizEditor createLiveGame result]', res);
-                if (!res || typeof res !== 'object') {
-                  // server action 回 undefined：常見原因為 Clerk session 中斷、Next.js RSC flight 解析失敗
-                  setLiveError('Live Mode 建立失敗：伺服器未回應（可能需重新登入）');
-                  return;
-                }
-                if ('error' in res) {
-                  setLiveError(res.error ?? '建立失敗');
-                  return;
-                }
-                if (!('gameId' in res)) {
-                  setLiveError('Live Mode 建立失敗：伺服器回傳異常');
-                  return;
-                }
-                router.push(`/dashboard/live/host/${res.gameId}`);
-              } catch (err) {
-                console.error('[QuizEditor createLiveGame catch]', err);
-                setLiveError(
-                  err instanceof Error
-                    ? `Live Mode 建立失敗：${err.message}`
-                    : 'Live Mode 建立失敗，請稍後再試',
-                );
-              }
-            });
-          }}
+          onClick={() => setShowLiveDialog(true)}
           disabled={isPending || status !== 'published'}
           title={status !== 'published' ? '請先發佈測驗' : '開啟 Live Mode 直播'}
           className="gap-1.5"
@@ -814,10 +781,8 @@ export function QuizEditor({
         </DropdownMenu>
       </div>
 
-      {liveError && (
-        <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
-          {liveError}
-        </div>
+      {showLiveDialog && (
+        <LiveStartDialog quizId={initialQuiz.id} onClose={() => setShowLiveDialog(false)} />
       )}
 
       {/* 分享 Modal（房間碼 + QR Code + LINE + Google Classroom + 到期） */}

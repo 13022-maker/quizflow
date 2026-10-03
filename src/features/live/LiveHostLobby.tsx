@@ -4,16 +4,23 @@ import { useState } from 'react';
 import QRCode from 'react-qr-code';
 
 import { Button } from '@/components/ui/button';
+import { BUZZER_DEFAULT_TEAMS } from '@/services/live/buzzer';
 import type { LiveHostState } from '@/services/live/types';
+
+import { TeamCountStepper } from './LiveStartDialog';
 
 type Props = {
   state: LiveHostState;
   onStart: () => void;
   onEnd: () => void;
   pending: boolean;
+  // 小組搶答才會傳：大廳按「分組並開始」，帶老師最後調整的組數
+  onStartTeams?: (teamCount: number) => void;
 };
 
-export function LiveHostLobby({ state, onStart, onEnd, pending }: Props) {
+export function LiveHostLobby({ state, onStart, onEnd, pending, onStartTeams }: Props) {
+  const isTeamBuzzer = state.game.gameMode === 'team_buzzer';
+  const [teamCount, setTeamCount] = useState(state.game.teamCount ?? BUZZER_DEFAULT_TEAMS);
   const [joinUrl] = useState(() => {
     if (typeof window === 'undefined') {
       return '';
@@ -121,13 +128,25 @@ export function LiveHostLobby({ state, onStart, onEnd, pending }: Props) {
             )}
       </div>
 
+      {isTeamBuzzer && (
+        <div className="flex flex-col items-center gap-2 rounded-xl border bg-card p-4 sm:flex-row sm:justify-between">
+          <div>
+            <p className="font-semibold">🔔 小組搶答</p>
+            <p className="text-xs text-muted-foreground">
+              {`將依加入順序輪流分成 ${Math.min(teamCount, Math.max(state.players.length, 1))} 組；之後才加入的學生會補進人數最少的組`}
+            </p>
+          </div>
+          <TeamCountStepper value={teamCount} onChange={setTeamCount} disabled={pending} />
+        </div>
+      )}
+
       <div className="flex justify-center gap-3">
         <Button
           size="lg"
-          onClick={onStart}
+          onClick={isTeamBuzzer && onStartTeams ? () => onStartTeams(teamCount) : onStart}
           disabled={pending || state.players.length === 0}
         >
-          🚀 開始遊戲
+          {isTeamBuzzer ? '👥 分組並開始' : '🚀 開始遊戲'}
         </Button>
         <Button
           size="lg"

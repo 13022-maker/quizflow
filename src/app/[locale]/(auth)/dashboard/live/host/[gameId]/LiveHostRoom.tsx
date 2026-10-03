@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 
+import { LiveBuzzerHostScreen } from '@/features/live/LiveBuzzerHostScreen';
 import { LiveHostLobby } from '@/features/live/LiveHostLobby';
 import { LiveLeaderboard } from '@/features/live/LiveLeaderboard';
 import { LiveQuestionScreen } from '@/features/live/LiveQuestionScreen';
+import { LiveTeamLeaderboard } from '@/features/live/LiveTeamLeaderboard';
 import { useLiveHostGame } from '@/hooks/useLiveHostGame';
 
 type Props = {
@@ -14,7 +16,7 @@ type Props = {
 };
 
 export function LiveHostRoom({ gameId, gamePin, title }: Props) {
-  const { state, error, pending, actions } = useLiveHostGame(gameId);
+  const { state, error, actionError, pending, actions } = useLiveHostGame(gameId);
 
   if (error && !state) {
     return (
@@ -37,6 +39,7 @@ export function LiveHostRoom({ gameId, gamePin, title }: Props) {
   }
 
   const { status } = state.game;
+  const isTeamBuzzer = state.game.gameMode === 'team_buzzer';
 
   return (
     <div className="min-h-screen">
@@ -49,16 +52,25 @@ export function LiveHostRoom({ gameId, gamePin, title }: Props) {
         </div>
       </div>
 
+      {actionError && (
+        <div className="mx-auto mt-3 max-w-3xl px-4">
+          <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-2 text-sm text-destructive">
+            {actionError}
+          </p>
+        </div>
+      )}
+
       {status === 'waiting' && (
         <LiveHostLobby
           state={state}
           onStart={actions.start}
           onEnd={actions.end}
           pending={pending}
+          onStartTeams={isTeamBuzzer ? actions.startTeams : undefined}
         />
       )}
 
-      {(status === 'playing' || status === 'showing_result') && (
+      {(status === 'playing' || status === 'showing_result') && !isTeamBuzzer && (
         <LiveQuestionScreen
           state={state}
           onRevealResult={actions.revealResult}
@@ -67,8 +79,25 @@ export function LiveHostRoom({ gameId, gamePin, title }: Props) {
         />
       )}
 
-      {status === 'finished' && (
+      {(status === 'playing' || status === 'showing_result') && isTeamBuzzer && (
+        <LiveBuzzerHostScreen
+          state={state}
+          onReveal={actions.buzzerReveal}
+          onNext={actions.buzzerNext}
+          onEnd={actions.end}
+          pending={pending}
+        />
+      )}
+
+      {status === 'finished' && !isTeamBuzzer && (
         <LiveLeaderboard players={state.players} />
+      )}
+
+      {status === 'finished' && isTeamBuzzer && (
+        <LiveTeamLeaderboard
+          teams={state.buzzer?.teams ?? []}
+          playerStats={state.buzzer?.playerStats}
+        />
       )}
     </div>
   );
