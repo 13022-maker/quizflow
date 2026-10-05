@@ -57,6 +57,29 @@ export function calcSpeedBonus(elapsedSec: number, totalDurationSec: number): nu
   return Math.max(500, Math.round(raw));
 }
 
+// 速度加成門檻：共創答案至少要有這麼多有效字，才算「真的有完成」
+export const MIN_SUBMISSION_CHARS_FOR_SPEED_BONUS = 50;
+
+/** 有效字數：不計空白、換行與零寬字元（U+200B~U+200D；U+FEFF 已含在 \s）；中文、emoji 各算一字 */
+export function countMeaningfulChars(content: string): number {
+  return [...content.replace(/[\s\u200B-\u200D]/g, '')].length;
+}
+
+/**
+ * 速度加成資格：評分速度快但共創交白卷的組，不該靠速度加成拿第一
+ * （協作批閱 #17：第 1、4 組答案空白卻分居第一、二名）。
+ * 條件：隊長主動送出（非系統逾時代送），且答案有效字數 ≥ 50。
+ */
+export function isSpeedBonusEligible(params: {
+  submissionContent: string | null;
+  autoSubmitted: boolean;
+}): boolean {
+  if (params.autoSubmitted || params.submissionContent === null) {
+    return false;
+  }
+  return countMeaningfulChars(params.submissionContent) >= MIN_SUBMISSION_CHARS_FOR_SPEED_BONUS;
+}
+
 /** 投票加成：每收到一票（不含自己組）+100 分 */
 export function calcVoteBonus(votesReceived: number): number {
   return votesReceived * 100;

@@ -5,7 +5,9 @@ import {
   calcSpeedBonus,
   calcTeamTotalScore,
   calcVoteBonus,
+  countMeaningfulChars,
   distributeAccuracyPoints,
+  isSpeedBonusEligible,
 } from './scoring';
 
 const PERFECT: { correctness: number; completeness: number; clarity: number; creativity: number } = {
@@ -70,6 +72,40 @@ describe('calcSpeedBonus', () => {
   it('超過或等於總時長（沒在時限內完成）拿 0', () => {
     expect(calcSpeedBonus(600, 600)).toBe(0);
     expect(calcSpeedBonus(700, 600)).toBe(0);
+  });
+});
+
+describe('countMeaningfulChars', () => {
+  it('不計空白、換行與零寬字元', () => {
+    expect(countMeaningfulChars(' a b\n\u200Bc\uFEFF ')).toBe(3);
+  });
+
+  it('中文與 emoji 都以一個字計', () => {
+    expect(countMeaningfulChars('溢位📌')).toBe(3);
+  });
+});
+
+describe('isSpeedBonusEligible', () => {
+  const FIFTY_CHARS = '型'.repeat(50);
+
+  it('隊長主動送出且答案達 50 字 → 可拿速度加成', () => {
+    expect(isSpeedBonusEligible({ submissionContent: FIFTY_CHARS, autoSubmitted: false })).toBe(true);
+  });
+
+  it('答案空白（協作批閱 #17 第 1、4 組）→ 不給速度加成', () => {
+    expect(isSpeedBonusEligible({ submissionContent: '', autoSubmitted: false })).toBe(false);
+  });
+
+  it('沒有送出紀錄 → 不給速度加成', () => {
+    expect(isSpeedBonusEligible({ submissionContent: null, autoSubmitted: false })).toBe(false);
+  });
+
+  it('只有 49 個有效字（空白不算）→ 不給速度加成', () => {
+    expect(isSpeedBonusEligible({ submissionContent: `${'型'.repeat(49)}   \n`, autoSubmitted: false })).toBe(false);
+  });
+
+  it('系統逾時代送，即使內容夠長 → 不給速度加成', () => {
+    expect(isSpeedBonusEligible({ submissionContent: FIFTY_CHARS, autoSubmitted: true })).toBe(false);
   });
 });
 

@@ -11,6 +11,7 @@ import {
   reviewPlayerSchema,
   reviewScoreSchema,
   reviewSetSchema,
+  reviewSubmissionSchema,
   reviewTeamSchema,
   reviewVoteSchema,
 } from '@/models/Schema';
@@ -28,6 +29,7 @@ import {
   calcTeamTotalScore,
   calcVoteBonus,
   distributeAccuracyPoints,
+  isSpeedBonusEligible,
 } from '@/services/review/scoring';
 import { assignTeamsRoundRobin } from '@/services/review/teamAssignment';
 
@@ -303,11 +305,23 @@ export async function finishGame(gameId: number) {
         });
       }
 
-      // 速度加成：全員對全部範例答案都交齊才算「該組完成」
+      // 速度加成：全員對全部範例答案都交齊才算「該組完成」，
+      // 且共創答案須由隊長主動送出、有效字數達門檻（見 isSpeedBonusEligible）
       const fullyCompleted
         = members.length > 0 && samples.length > 0 && scores.length >= members.length * samples.length;
+      const [submission] = await tx
+        .select({
+          content: reviewSubmissionSchema.content,
+          autoSubmitted: reviewSubmissionSchema.autoSubmitted,
+        })
+        .from(reviewSubmissionSchema)
+        .where(eq(reviewSubmissionSchema.teamId, team.id));
+      const speedEligible = isSpeedBonusEligible({
+        submissionContent: submission?.content ?? null,
+        autoSubmitted: submission?.autoSubmitted ?? false,
+      });
       let speedBonus = 0;
-      if (fullyCompleted && game.reviewingStartedAt && game.reviewingEndedAt && scores.length > 0) {
+      if (fullyCompleted && speedEligible && game.reviewingStartedAt && game.reviewingEndedAt && scores.length > 0) {
         const lastSubmittedAt = scores.reduce(
           (max, s) => (s.submittedAt > max ? s.submittedAt : max),
           scores[0]!.submittedAt,
