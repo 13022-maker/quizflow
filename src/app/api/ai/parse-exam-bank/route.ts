@@ -17,6 +17,7 @@ import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { CODE_FORMAT_NOTE } from '@/lib/ai/codeFormatNote';
 import { type ParsedQuestion, parseExamBankText } from '@/lib/ai/examBankParser';
 import { extractPdfPageContent, type PageImage } from '@/lib/ai/pdfImageExtract';
 import { computePageStartOffsets, matchImagesToQuestions } from '@/lib/ai/pdfImageMatch';
@@ -45,7 +46,7 @@ function buildExplainPrompt(questions: ParsedQuestion[]): string {
 規則：
 1. 絕對不要更改題目文字、選項內容或正確答案，你的任務只有寫詳解
 2. 依照題號順序輸出，只回傳合法 JSON，不要 markdown 或任何說明文字
-3. JSON 格式：{ "explanations": ["第1題的詳解文字", "第2題的詳解文字", ...] }，陣列長度必須等於題目數量 ${questions.length}
+3. JSON 格式：{ "explanations": ["第1題的詳解文字", "第2題的詳解文字", ...] }，陣列長度必須等於題目數量 ${questions.length}${CODE_FORMAT_NOTE}
 
 題目列表：
 ${list}`;

@@ -106,5 +106,6 @@ ${quizzesLines}
 # 產題規則
 ${stageRuleLines}
 - 每題必附 explanation；教材不足以支撐某難度或排序題時，於 teacherNotes 說明缺口，不得虛構
-- 不要輸出 imageUrl / diagramSvg / audioUrl / position 等欄位，交由 QuizFlow pipeline 或匯入時自動處理`;
+- 不要輸出 imageUrl / diagramSvg / audioUrl / position 等欄位，交由 QuizFlow pipeline 或匯入時自動處理
+- 程式題：題幹、選項、詳解中的多行程式碼一律用 Markdown fenced code block 並標註語言（\`\`\`c、\`\`\`cpp、\`\`\`python…），保留換行與縮排，JSON 字串內換行寫成 \\n；短的行內片段（變數名、單一運算式）用單反引號。「禁止 Markdown 圍欄」指的是整份輸出不要包 \`\`\`json，欄位字串值內的程式碼區塊是允許的`;
 }

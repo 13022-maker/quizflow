@@ -9,6 +9,7 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
+import { CODE_FORMAT_NOTE } from '@/lib/ai/codeFormatNote';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 
 export const runtime = 'nodejs';
@@ -273,7 +274,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}${CODE_FORMAT_NOTE}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;

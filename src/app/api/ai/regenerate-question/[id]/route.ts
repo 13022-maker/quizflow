@@ -11,6 +11,7 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { CODE_FORMAT_NOTE } from '@/lib/ai/codeFormatNote';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
@@ -133,7 +134,7 @@ ${hint ? `老師額外要求：${hint}` : ''}
   "options": ["(A)...", "(B)...", "(C)...", "(D)..."],
   "answer": ${isMulti ? '"A,C"' : '"A"'},
   "explanation": "解析說明"
-}`;
+}${CODE_FORMAT_NOTE}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw = '';

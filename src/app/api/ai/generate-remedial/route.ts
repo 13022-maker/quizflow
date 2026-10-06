@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
+import { CODE_FORMAT_NOTE } from '@/lib/ai/codeFormatNote';
 import { generateAIText } from '@/lib/ai/textModel';
 import { db } from '@/libs/DB';
 import { responseSchema } from '@/models/Schema';
@@ -63,7 +64,7 @@ JSON 格式：
       "targetConcept": "針對的弱點概念"
     }
   ]
-}`;
+}${CODE_FORMAT_NOTE}`;
 
     // 統一走 generateAIText：付費 Claude（失敗備援 Gemini）、免費 Gemini
     const { text: raw, usedModel } = await generateAIText({

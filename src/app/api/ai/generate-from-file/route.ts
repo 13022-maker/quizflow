@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { CODE_FORMAT_NOTE } from '@/lib/ai/codeFormatNote';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 import { isProSafe } from '@/lib/ai/textModel';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
@@ -292,7 +293,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 - 比較：{"type":"compare","leftTitle":"...","leftPoints":["..."],"rightTitle":"...","rightPoints":["..."]}（每欄 1-5 點）
 - 時間軸：{"type":"timeline","events":[{"label":"...","note":"..."}]}（2-6 個事件，note 可省略）
 - 概念關係：{"type":"concept","nodes":["A","B",...],"edges":[{"from":"A","to":"B","label":"..."}]}（2-6 節點，最多 8 條關係，label 可省略）
-（每個文字欄位——步驟、標題、要點、標籤、節點名稱——請控制在 8 個字以內，避免版面擠爆或文字重疊）`;
+（每個文字欄位——步驟、標題、要點、標籤、節點名稱——請控制在 8 個字以內，避免版面擠爆或文字重疊）${CODE_FORMAT_NOTE}`;
 
   const imageMimeMap: Record<string, string> = {
     jpg: 'image/jpeg',
