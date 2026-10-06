@@ -1,5 +1,6 @@
 'use client';
 
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
 import { useCountdown } from '@/hooks/useCountdown';
 import type { LiveHostState } from '@/services/live/types';
@@ -70,9 +71,7 @@ export function LiveQuestionScreen({
       </div>
 
       <div className="rounded-xl border bg-card p-6">
-        <h2 className="text-xl font-semibold leading-relaxed">
-          {currentQuestion.body}
-        </h2>
+        <RichText as="h2" text={currentQuestion.body} className="text-xl font-semibold leading-relaxed" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img

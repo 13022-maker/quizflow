@@ -3,7 +3,9 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import { useCallback, useRef, useState } from 'react';
 
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
+import { toPlainText } from '@/lib/richText';
 import type { questionSchema } from '@/models/Schema';
 
 type Question = InferSelectModel<typeof questionSchema>;
@@ -229,13 +231,11 @@ export function FlashCard({
               </div>
             )}
 
-            <p className="text-lg font-medium leading-relaxed">
-              {question.body}
-            </p>
+            <RichText text={question.body} className="text-lg font-medium leading-relaxed" />
 
-            {/* 發音按鈕 */}
+            {/* 發音按鈕（朗讀去掉 ``` 等 markdown 符號的純文字） */}
             <div className="mt-3">
-              <SpeakerButton text={question.body} />
+              <SpeakerButton text={toPlainText(question.body)} />
             </div>
 
             {/* 選項提示（選擇題時） */}
@@ -245,9 +245,7 @@ export function FlashCard({
                   ? TF_DEFAULTS
                   : question.options
                 ).map(opt => (
-                  <p key={opt.id} className="text-sm text-muted-foreground">
-                    {opt.text}
-                  </p>
+                  <RichText key={opt.id} text={opt.text} className="text-sm text-muted-foreground" />
                 ))}
               </div>
             )}
@@ -264,11 +262,9 @@ export function FlashCard({
             <p className="mb-2 text-xs font-medium text-green-600">
               正確答案
             </p>
-            <p className="text-lg font-bold text-green-700">
-              {getAnswerText(question)}
-            </p>
+            <RichText text={getAnswerText(question)} className="text-lg font-bold text-green-700" />
             <div className="mt-3">
-              <SpeakerButton text={getAnswerText(question)} />
+              <SpeakerButton text={toPlainText(getAnswerText(question))} />
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
               點擊翻回正面

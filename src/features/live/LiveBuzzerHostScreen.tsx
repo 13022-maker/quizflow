@@ -1,5 +1,6 @@
 'use client';
 
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
 import { useServerNow } from '@/hooks/useServerNow';
 import type { LiveBuzzResult, LiveHostState } from '@/services/live/types';
@@ -67,7 +68,7 @@ export function LiveBuzzerHostScreen({ state, onReveal, onNext, onEnd, pending }
       </div>
 
       <div className="rounded-2xl border bg-card p-6">
-        <h2 className="text-2xl font-bold leading-relaxed md:text-3xl">{currentQuestion.body}</h2>
+        <RichText as="h2" text={currentQuestion.body} className="text-2xl font-bold leading-relaxed md:text-3xl" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentQuestion.imageUrl} alt="" className="mt-4 max-h-72 rounded-lg" />
@@ -84,7 +85,7 @@ export function LiveBuzzerHostScreen({ state, onReveal, onNext, onEnd, pending }
                 }`}
               >
                 <span className="font-bold">{optionLabel(i)}</span>
-                <span className="flex-1">{opt.text}</span>
+                <RichText as="span" text={opt.text} className="flex-1" />
                 {isCorrect && <span>✓</span>}
               </li>
             );

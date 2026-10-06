@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
+import { RichText } from '@/components/quiz/RichText';
 import {
   getRelatedTemplates,
   getTemplateBySlug,
@@ -216,14 +217,14 @@ export default function TemplateDetailPage({ params }: Props) {
           {t.questions.map((q, i) => (
             <div key={i} className="rounded-2xl border bg-card p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
-                <p className="flex-1 text-base font-medium">
+                <div className="min-w-0 flex-1 text-base font-medium">
                   <span className="mr-2 text-muted-foreground">
                     Q
                     {i + 1}
                     .
                   </span>
-                  {q.question}
-                </p>
+                  <RichText as="span" text={q.question} />
+                </div>
                 <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                   難度
                   {' '}
@@ -239,7 +240,7 @@ export default function TemplateDetailPage({ params }: Props) {
                         {String.fromCharCode(65 + j)}
                         .
                       </span>
-                      <span>{opt}</span>
+                      <RichText as="span" text={opt} className="flex-1" />
                     </li>
                   ))}
                 </ul>
@@ -250,10 +251,10 @@ export default function TemplateDetailPage({ params }: Props) {
                   <span className="font-semibold text-primary">正解：</span>
                   {renderAnswer(q)}
                 </p>
-                <p className="mt-1 text-foreground/80">
+                <div className="mt-1 text-foreground/80">
                   <span className="font-semibold">解析：</span>
-                  {q.explanation}
-                </p>
+                  <RichText as="span" text={q.explanation} />
+                </div>
               </div>
             </div>
           ))}

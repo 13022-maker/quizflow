@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState, useTransition } from 'react';
 
 import { type BloomQuestion, createQuizWithBloomQuestions } from '@/actions/bloomActions';
+import { RichText } from '@/components/quiz/RichText';
 
 // ---------- 常數 ----------
 
@@ -427,7 +428,7 @@ export function BloomQuizGenerator() {
                           </span>
                         </div>
                       </div>
-                      <p className="mb-3 text-sm font-medium text-gray-900">{q.content}</p>
+                      <RichText text={q.content} className="mb-3 text-sm font-medium text-gray-900" />
                       {q.options && q.options.length > 0 && (
                         <div className="mb-3 space-y-2">
                           {q.options.map((opt, oIdx) => (
@@ -441,7 +442,7 @@ export function BloomQuizGenerator() {
                                 {String.fromCharCode(65 + oIdx)}
                                 .
                               </span>
-                              {opt}
+                              <RichText as="span" text={opt} />
                               {oIdx === q.correct_answer && <span className="ml-2">✓</span>}
                             </div>
                           ))}
@@ -455,7 +456,7 @@ export function BloomQuizGenerator() {
                       )}
                       <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-3 text-sm text-amber-800">
                         <strong>解釋：</strong>
-                        {q.explanation}
+                        <RichText text={q.explanation} />
                       </div>
                     </div>
                   ))}

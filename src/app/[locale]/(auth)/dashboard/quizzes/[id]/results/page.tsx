@@ -10,6 +10,7 @@ import { QuestionBreakdownTable } from '@/features/quiz/QuestionBreakdownTable';
 import type { ResponseRow } from '@/features/quiz/ResultsResponseTable';
 import { ResultsResponseTable } from '@/features/quiz/ResultsResponseTable';
 import { ShortAnswerSummary } from '@/features/quiz/ShortAnswerSummary';
+import { toPlainText } from '@/lib/richText';
 import { db } from '@/libs/DB';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
 
@@ -226,7 +227,7 @@ export default async function QuizResultsPage({ params }: { params: { id: string
                   難
                 </span>
                 <div className="flex-1">
-                  <p className="line-clamp-2 text-sm font-medium">{question.body}</p>
+                  <p className="line-clamp-2 text-sm font-medium">{toPlainText(question.body)}</p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     答對率：
                     <span className="font-medium text-red-600">

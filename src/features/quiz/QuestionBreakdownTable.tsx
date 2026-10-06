@@ -18,6 +18,8 @@ import {
   YAxis,
 } from 'recharts';
 
+import { toPlainText } from '@/lib/richText';
+
 // 序列化傳入（Date 省略，只要用得到的欄位）
 export type BreakdownQuestion = {
   id: number;
@@ -159,7 +161,7 @@ function RowGroup({
       <tr className="hover:bg-muted/30">
         <td className="px-4 py-3 text-muted-foreground">{index + 1}</td>
         <td className="px-4 py-3">
-          <p className="line-clamp-2">{question.body}</p>
+          <p className="line-clamp-2">{toPlainText(question.body)}</p>
           {question.type === 'short_answer' && (
             <span className="mt-0.5 text-xs text-muted-foreground">{labels.short_answer_note}</span>
           )}

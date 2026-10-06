@@ -48,6 +48,7 @@ import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { toPlainText } from '@/lib/richText';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -1217,7 +1218,7 @@ export function QuizEditor({
                     </span>
                   </div>
                   <p className="line-clamp-2 text-sm font-medium text-foreground/80">
-                    {pq.body}
+                    {toPlainText(pq.body)}
                   </p>
                   {pq.hasOptions && pq.options.length > 0 && (
                     <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">

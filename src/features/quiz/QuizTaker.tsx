@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
 import { gradeClozeAnswers, stripClozeMarkers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
@@ -142,7 +143,7 @@ function QuestionItem({
           {index + 1}
         </span>
         {question.type !== 'cloze' && (
-          <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+          <RichText text={question.body} className="min-w-0 flex-1 text-base font-semibold leading-relaxed sm:text-lg" />
         )}
       </div>
 
@@ -215,9 +216,7 @@ function QuestionItem({
                   </svg>
                 )}
               </span>
-              <span className="text-base leading-snug text-gray-800">
-                {opt.text}
-              </span>
+              <RichText as="span" text={opt.text} className="min-w-0 flex-1 text-base leading-snug text-gray-800" />
             </label>
           ))}
         </div>
@@ -255,7 +254,7 @@ function QuestionItem({
                     </svg>
                   )}
                 </span>
-                <span className="text-base leading-snug text-gray-800">{opt.text}</span>
+                <RichText as="span" text={opt.text} className="min-w-0 flex-1 text-base leading-snug text-gray-800" />
               </label>
             );
           })}
@@ -335,10 +334,10 @@ function QuestionItem({
                       : (
                           <div className="space-y-1.5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm">
                             <p className="font-medium text-red-700">✗ 答錯了</p>
-                            <p className="text-foreground/80">
+                            <div className="text-foreground/80">
                               <span className="text-muted-foreground">正解：</span>
-                              {answerToText(question, question.correctAnswers)}
-                            </p>
+                              <RichText as="span" text={answerToText(question, question.correctAnswers)} />
+                            </div>
                           </div>
                         )}
                   <button
@@ -877,13 +876,13 @@ function ResultScreen({
           return (
             <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium">
+                <div className="min-w-0 flex-1 text-sm font-medium">
                   Q
                   {index + 1}
                   .
                   {' '}
-                  {question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body}
-                </p>
+                  <RichText as="span" text={question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body} />
+                </div>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {detail?.points}
                   {' '}
@@ -897,22 +896,28 @@ function ResultScreen({
                   <div className="mt-2 text-sm">
                     <span className="text-muted-foreground">你的答案：</span>
                     {Array.isArray(studentAnswer)
-                      ? studentAnswer
-                        .map(id => options.find(o => o.id === id)?.text ?? id)
-                        .join(question.type === 'ranking' ? ' → ' : '、')
-                      : typeof studentAnswer === 'string'
-                        ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
-                            <span className="italic text-muted-foreground">未作答</span>
-                          )
+                      ? (
+                          <RichText
+                            as="span"
+                            text={studentAnswer
+                              .map(id => options.find(o => o.id === id)?.text ?? id)
+                              .join(question.type === 'ranking' ? ' → ' : '、')}
+                          />
+                        )
+                      : typeof studentAnswer === 'string' && studentAnswer
+                        ? <RichText as="span" text={options.find(o => o.id === studentAnswer)?.text ?? studentAnswer} />
                         : <span className="italic text-muted-foreground">未作答</span>}
                   </div>
 
                   {!isShort && detail?.isCorrect === false && question.correctAnswers && (
                     <div className="mt-1 text-sm text-green-700">
                       <span className="text-muted-foreground">正確答案：</span>
-                      {question.correctAnswers
-                        .map(id => options.find(o => o.id === id)?.text ?? id)
-                        .join(question.type === 'ranking' ? ' → ' : '、')}
+                      <RichText
+                        as="span"
+                        text={question.correctAnswers
+                          .map(id => options.find(o => o.id === id)?.text ?? id)
+                          .join(question.type === 'ranking' ? ' → ' : '、')}
+                      />
                     </div>
                   )}
 
@@ -1170,7 +1175,7 @@ function RetryScreen({
                 : '請 AI 教練給提示';
               return (
                 <div key={q.id} className="rounded-xl border bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-gray-900">{q.body}</p>
+                  <RichText text={q.body} className="text-sm font-medium text-gray-900" />
                   <div className="mt-2 space-y-1 text-xs">
                     <p className="text-red-600">
                       你的答案：
@@ -1993,7 +1998,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
             }`}
           >
             <p className="mb-1 text-xs text-amber-600">{q.targetConcept}</p>
-            <p className="mb-3 text-base font-semibold leading-relaxed">{q.question}</p>
+            <RichText text={q.question} className="mb-3 text-base font-semibold leading-relaxed" />
 
             <div className="space-y-2">
               {q.options.map((opt) => {
@@ -2017,7 +2022,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
                       disabled={submitted}
                       className="size-5 accent-primary"
                     />
-                    <span>{opt}</span>
+                    <RichText as="span" text={opt} className="min-w-0 flex-1" />
                     {correct && <span className="ml-auto text-green-600">✓</span>}
                     {wrong && <span className="ml-auto text-red-500">✗</span>}
                   </label>
@@ -2028,7 +2033,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
             {submitted && (
               <div className="mt-3 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-800">
                 <strong>解析：</strong>
-                {q.explanation}
+                <RichText text={q.explanation} />
               </div>
             )}
           </div>

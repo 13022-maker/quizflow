@@ -5,8 +5,10 @@ import { CSS } from '@dnd-kit/utilities';
 import type { InferSelectModel } from 'drizzle-orm';
 import { useState } from 'react';
 
+import { RichText } from '@/components/quiz/RichText';
 import { probeAudioDuration } from '@/lib/audioDuration';
 import { countClozeBlanks } from '@/lib/cloze';
+import { hasCodeBlock, toPlainText } from '@/lib/richText';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -102,7 +104,10 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
             分
           </span>
         </div>
-        <p className="line-clamp-2 text-sm">{question.body}</p>
+        {/* 程式題：完整顯示程式碼區塊（line-clamp 會把程式碼截成兩行沒意義）；一般題維持兩行摘要 */}
+        {hasCodeBlock(question.body)
+          ? <RichText text={question.body} className="text-sm" />
+          : <p className="line-clamp-2 text-sm">{toPlainText(question.body)}</p>}
         {question.imageUrl && (
           <div className="mt-2 inline-block overflow-hidden rounded">
             {/* eslint-disable-next-line @next/next/no-img-element */}

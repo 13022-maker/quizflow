@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
 import { useCountdown } from '@/hooks/useCountdown';
 import { LISTENING_FALLBACK_SEC } from '@/services/live/questionDuration';
@@ -167,9 +168,7 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
       )}
 
       <div className="rounded-xl border bg-card p-4">
-        <h2 className="text-lg font-semibold leading-relaxed">
-          {currentQuestion.body}
-        </h2>
+        <RichText as="h2" text={currentQuestion.body} className="text-lg font-semibold leading-relaxed" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -351,9 +350,7 @@ function PlayerOptionList({
             <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">
               {String.fromCharCode(65 + i)}
             </span>
-            <span className="flex-1 text-sm">
-              {opt.text}
-            </span>
+            <RichText as="span" text={opt.text} className="flex-1 text-sm" />
             {showingResult && isCorrect && <span>✓</span>}
             {showingResult && !isCorrect && wasMyAnswer && <span>✗</span>}
           </button>

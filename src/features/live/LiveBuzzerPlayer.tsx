@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { RichText } from '@/components/quiz/RichText';
 import { Button } from '@/components/ui/button';
 import { useServerNow } from '@/hooks/useServerNow';
 import { derivePlayerBuzzPhase, type PlayerBuzzPhase } from '@/services/live/buzzer';
@@ -119,7 +120,7 @@ export function LiveBuzzerPlayer({ state, onBuzz, onAnswer, busy }: Props) {
       </div>
 
       <div className="rounded-xl border bg-card p-4">
-        <h2 className="text-lg font-semibold leading-relaxed">{currentQuestion.body}</h2>
+        <RichText as="h2" text={currentQuestion.body} className="text-lg font-semibold leading-relaxed" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-56 rounded-lg" />
@@ -304,7 +305,7 @@ function AnswerPanel({
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold">
                 {optionLabel(i)}
               </span>
-              <span className="flex-1 text-sm">{opt.text}</span>
+              <RichText as="span" text={opt.text} className="flex-1 text-sm" />
             </button>
           );
         })}
