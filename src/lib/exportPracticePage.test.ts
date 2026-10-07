@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPracticePageHtml } from './exportPracticePage';
+import { buildPracticePageHtml, selectPracticeQuestions } from './exportPracticePage';
 
 describe('buildPracticePageHtml', () => {
   it('把題目資料內嵌進 <script>，畫面初始化用的到的欄位都在', () => {
@@ -94,5 +94,78 @@ describe('buildPracticePageHtml', () => {
     expect(html).toContain('"diagramSvg":"\\u003csvg');
     // 渲染邏輯要處理這個新欄位
     expect(html).toContain('function diagramHtml');
+  });
+});
+
+describe('selectPracticeQuestions', () => {
+  it('單選題與是非題會被轉成 PracticePageQuestion，correctIndex 依 correctAnswers 比對 options', () => {
+    const { practiceQuestions, skipped } = selectPracticeQuestions({
+      groupLabel: '單元一',
+      questions: [
+        {
+          type: 'single_choice',
+          body: '1+1=?',
+          options: [{ id: 'a', text: '1' }, { id: 'b', text: '2' }],
+          correctAnswers: ['b'],
+        },
+        {
+          type: 'true_false',
+          body: '地球是圓的',
+          options: null,
+          correctAnswers: ['tf-true'],
+        },
+      ],
+    });
+
+    expect(skipped).toBe(0);
+    expect(practiceQuestions).toHaveLength(2);
+    expect(practiceQuestions[0]).toMatchObject({ groupLabel: '單元一', question: '1+1=?', correctIndex: 1 });
+    // 是非題沒存 options 時要自動補上預設「正確/錯誤」選項（既有 bug fix 規則）
+    expect(practiceQuestions[1]).toMatchObject({ options: ['正確', '錯誤'], correctIndex: 0 });
+  });
+
+  it('不支援的題型（如多選題）會被略過並計入 skipped', () => {
+    const { practiceQuestions, skipped } = selectPracticeQuestions({
+      groupLabel: '單元一',
+      questions: [
+        { type: 'multiple_choice', body: '多選題', options: [{ id: 'a', text: 'x' }], correctAnswers: ['a'] },
+      ],
+    });
+
+    expect(practiceQuestions).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+
+  it('support 的題型但缺 options 或 correctAnswers 比對不到時也視為略過', () => {
+    const { practiceQuestions, skipped } = selectPracticeQuestions({
+      groupLabel: '單元一',
+      questions: [
+        { type: 'single_choice', body: '壞題目', options: [{ id: 'a', text: 'x' }], correctAnswers: ['not-exist'] },
+      ],
+    });
+
+    expect(practiceQuestions).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+
+  it('圖片與詳解有值時會原樣帶進 PracticePageQuestion', () => {
+    const { practiceQuestions } = selectPracticeQuestions({
+      groupLabel: '單元一',
+      questions: [
+        {
+          type: 'single_choice',
+          body: '看圖回答',
+          imageUrl: 'https://example.com/a.png',
+          diagramSvg: '<svg></svg>',
+          explanation: '因為...',
+          options: [{ id: 'a', text: 'x' }],
+          correctAnswers: ['a'],
+        },
+      ],
+    });
+
+    expect(practiceQuestions[0]?.image).toBe('<img src="https://example.com/a.png">');
+    expect(practiceQuestions[0]?.diagramSvg).toBe('<svg></svg>');
+    expect(practiceQuestions[0]?.explanation).toBe('因為...');
   });
 });

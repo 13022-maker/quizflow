@@ -1,27 +1,43 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import QRCode from 'react-qr-code';
 
 import { Button } from '@/components/ui/button';
 
 type Props = {
   quizId: number;
+  quizTitle: string;
   totalQuestions: number;
   onClose: () => void;
 };
 
-export function ExportPracticePageDialog({ quizId, totalQuestions, onClose }: Props) {
+export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, onClose }: Props) {
   const [start, setStart] = useState(1);
   const [end, setEnd] = useState(totalQuestions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [doneMsg, setDoneMsg] = useState('');
 
+  // 分享連結（上傳到 Vercel Blob 後拿到的公開網址）
+  const [shareUrl, setShareUrl] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const qrRef = useRef<HTMLDivElement>(null);
+
+  const validateRange = () => {
+    if (start < 1 || end > totalQuestions || start > end) {
+      setError(`題號範圍不合法，請輸入 1 ~ ${totalQuestions} 之間的範圍`);
+      return false;
+    }
+    return true;
+  };
+
   const handleExport = async () => {
     setError('');
     setDoneMsg('');
-    if (start < 1 || end > totalQuestions || start > end) {
-      setError(`題號範圍不合法，請輸入 1 ~ ${totalQuestions} 之間的範圍`);
+    if (!validateRange()) {
       return;
     }
     setLoading(true);
@@ -59,6 +75,78 @@ export function ExportPracticePageDialog({ quizId, totalQuestions, onClose }: Pr
     }
   };
 
+  const handleGenerateShareLink = async () => {
+    setShareError('');
+    if (!validateRange()) {
+      return;
+    }
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}/export-practice-page/share`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ start, end }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.url) {
+        setShareError(data?.error ?? '產生分享連結失敗');
+        return;
+      }
+      setShareUrl(data.url);
+    } catch {
+      setShareError('產生分享連結失敗，請稍後再試');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
+  };
+
+  const handleDownloadQrCode = () => {
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) {
+      return;
+    }
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const canvas = document.createElement('canvas');
+    const size = 400;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      return;
+    }
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, size, size);
+    const img = new Image();
+    img.onload = () => {
+      ctx.drawImage(img, 0, 0, size, size);
+      const a = document.createElement('a');
+      const safeTitle = quizTitle.replace(/[\\/:*?"<>|]/g, '_');
+      a.download = `QuizFlow_${safeTitle}_練習頁QRCode.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    };
+    img.src = `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgData)))}`;
+  };
+
+  const handleShareLine = () => {
+    const text = `練習頁「${quizTitle}」\n點擊開始：${shareUrl}`;
+    window.location.href = `line://msg/text/?${encodeURIComponent(text)}`;
+  };
+
+  const handleShareClassroom = () => {
+    const body = `點擊開始：${shareUrl}`;
+    const url = `https://classroom.google.com/share?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(quizTitle)}&body=${encodeURIComponent(body)}`;
+    window.open(url, '_blank', 'width=600,height=600');
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -69,7 +157,7 @@ export function ExportPracticePageDialog({ quizId, totalQuestions, onClose }: Pr
 
         <div className="space-y-4">
           <p className="text-sm text-gray-500">
-            產生一份獨立的 HTML 練習頁（免登入、不計時，答題立即顯示對錯），下載後可放到任何網頁空間分享。目前只支援單選題與是非題，其他題型會自動略過。
+            產生一份獨立的 HTML 練習頁（免登入、不計時，答題立即顯示對錯），下載後可放到任何網頁空間分享，也可以直接產生分享連結。目前只支援單選題與是非題，其他題型會自動略過。
           </p>
 
           <div className="flex items-center gap-3">
@@ -108,9 +196,55 @@ export function ExportPracticePageDialog({ quizId, totalQuestions, onClose }: Pr
           {error && <p className="text-sm text-red-600">{error}</p>}
           {doneMsg && <p className="text-sm text-green-700">{doneMsg}</p>}
 
-          <Button onClick={handleExport} disabled={loading} className="w-full">
-            {loading ? '匯出中…' : '🌐 下載練習頁'}
-          </Button>
+          <div className="flex gap-3">
+            <Button onClick={handleExport} disabled={loading} className="flex-1">
+              {loading ? '匯出中…' : '🌐 下載練習頁'}
+            </Button>
+            <Button
+              onClick={handleGenerateShareLink}
+              disabled={shareLoading}
+              variant="outline"
+              className="flex-1"
+            >
+              {shareLoading ? '產生中…' : '🔗 產生分享連結'}
+            </Button>
+          </div>
+
+          {shareError && <p className="text-sm text-red-600">{shareError}</p>}
+
+          {shareUrl && (
+            <div className="space-y-3 rounded-xl border bg-gray-50 p-4">
+              <div className="flex items-center gap-2">
+                <a
+                  href={shareUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 truncate text-sm text-blue-600 underline"
+                >
+                  {shareUrl}
+                </a>
+                <Button onClick={handleCopyLink} variant="outline" className="shrink-0 px-3 py-1 text-xs">
+                  {linkCopied ? '已複製' : '複製連結'}
+                </Button>
+              </div>
+
+              <div ref={qrRef} className="flex justify-center rounded-lg bg-white p-3">
+                <QRCode value={shareUrl} size={140} bgColor="#ffffff" fgColor="#000000" />
+              </div>
+
+              <div className="flex gap-2">
+                <Button onClick={handleDownloadQrCode} variant="outline" className="flex-1 text-xs">
+                  下載 QR Code
+                </Button>
+                <Button onClick={handleShareLine} variant="outline" className="flex-1 bg-[#06C755] text-xs text-white hover:bg-[#06C755]/90">
+                  LINE 分享
+                </Button>
+                <Button onClick={handleShareClassroom} variant="outline" className="flex-1 text-xs">
+                  Google Classroom
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

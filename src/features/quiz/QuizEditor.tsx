@@ -804,6 +804,7 @@ export function QuizEditor({
       {showExportPracticeDialog && (
         <ExportPracticePageDialog
           quizId={initialQuiz.id}
+          quizTitle={initialQuiz.title}
           totalQuestions={questions.length}
           onClose={() => setShowExportPracticeDialog(false)}
         />

@@ -41,6 +41,73 @@ function toEmbeddableJson(value: unknown): string {
   return JSON.stringify(value).replace(/</g, '\\u003c');
 }
 
+// 匯出練習頁時支援的題型：只有「四選一、單一正解」撐得起靜態頁的互動邏輯，
+// 排序題/簡答題/克漏字/聽力題/多選題不套用，遇到直接略過（見 route 檔案的說明）。
+const SUPPORTED_TYPES = new Set(['single_choice', 'true_false']);
+
+// 是非題在 DB 沒存 options 時，作答頁本來就會自動補上這組預設選項（見
+// CLAUDE.md「是非題作答」bug fix 記錄），匯出時要對齊同一套預設，不然會漏題。
+const DEFAULT_TF_OPTIONS = [
+  { id: 'tf-true', text: '正確' },
+  { id: 'tf-false', text: '錯誤' },
+];
+
+export type RawQuestionForExport = {
+  type: string;
+  body: string;
+  imageUrl?: string | null;
+  diagramSvg?: string | null;
+  explanation?: string | null;
+  options?: { id: string; text: string }[] | null;
+  correctAnswers?: string[] | null;
+};
+
+export type SelectPracticeQuestionsParams = {
+  groupLabel: string; // 每題顯示在卡片頂端的分組名稱（目前都帶 quiz 標題）
+  questions: RawQuestionForExport[];
+};
+
+export type SelectPracticeQuestionsResult = {
+  practiceQuestions: PracticePageQuestion[];
+  skipped: number; // 不支援的題型，或 options/correctAnswers 資料不完整而略過的題數
+};
+
+// 把 DB 撈出來的原始題目資料篩選、轉換成靜態練習頁要用的格式。
+// 純函式：不碰 DB，方便測試；route 只負責撈資料跟呼叫它。
+export function selectPracticeQuestions(
+  params: SelectPracticeQuestionsParams,
+): SelectPracticeQuestionsResult {
+  const { groupLabel, questions } = params;
+  const practiceQuestions: PracticePageQuestion[] = [];
+  let skipped = 0;
+
+  for (const q of questions) {
+    if (!SUPPORTED_TYPES.has(q.type)) {
+      skipped++;
+      continue;
+    }
+    const options = q.options?.length ? q.options : (q.type === 'true_false' ? DEFAULT_TF_OPTIONS : null);
+    const correctId = q.correctAnswers?.[0];
+    const correctIndex = options && correctId ? options.findIndex(o => o.id === correctId) : -1;
+    if (!options || correctIndex === -1) {
+      skipped++;
+      continue;
+    }
+
+    practiceQuestions.push({
+      groupLabel,
+      question: q.body,
+      image: q.imageUrl ? `<img src="${q.imageUrl.replace(/"/g, '&quot;')}">` : false,
+      diagramSvg: q.diagramSvg || undefined,
+      options: options.map(o => o.text),
+      correctIndex,
+      explanation: q.explanation ?? undefined,
+    });
+  }
+
+  return { practiceQuestions, skipped };
+}
+
 export function buildPracticePageHtml(params: PracticePageParams): string {
   const { title, kick, enSubtitle, noteHtml, questions } = params;
 
