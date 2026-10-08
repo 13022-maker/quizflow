@@ -75,6 +75,11 @@ npm run db:studio              # 開啟 Drizzle Studio
 
 **資料庫**
 - 修改 `src/models/Schema.ts` 後，**必須**執行 `npm run db:generate` 並 commit migration
+- `db:generate` 產生的檔名是 drizzle-kit 預設格式（例如 `0050_lovely_fat_cobra.sql`），但 pre-commit hook 規定 migration 檔名必須是 `YYYYMMDD_name.sql` 或 `YYYYMMDD_HHMM_name.sql`，不符合會擋 commit。**每次 `db:generate` 後要手動重新命名**：
+  1. `.sql` 檔：`migrations/0050_xxx.sql` → `migrations/20261008_practice_page_share.sql`
+  2. 對應的 snapshot：`migrations/meta/0050_snapshot.json` → `migrations/meta/20261008_practice_page_share_snapshot.json`
+  3. `migrations/meta/_journal.json` 裡該筆記錄的 `"tag"` 欄位同步改成新檔名（不含副檔名）
+  4. 改完跑一次 `npm run db:generate` 確認顯示「No schema changes, nothing to migrate」，代表 drizzle-kit 認得重新命名後的狀態
 
 **安全性**
 - 絕對禁止在 Client Component 直接呼叫 AI/Ollama
