@@ -12,6 +12,10 @@
  * 撈資料/組 HTML 的邏輯跟 GET .../export-practice-page route（下載）共用，見 shared.ts。
  * 這個連結是「產生一次、長期公開」的靜態檔案，不比照 ShareModal 的
  * accessCode/到期時間/取消發佈機制，也不做刪除（刻意簡化，見設計討論）。
+ *
+ * 回給前端的連結不是 Vercel Blob 原始網址，而是 /api/p/[id] 代理網址——
+ * Blob 對 .html 強制 Content-Disposition: attachment，瀏覽器打開會變下載
+ * 而不是渲染頁面，見 api/p/[id]/route.ts 開頭說明。
  */
 import { auth } from '@clerk/nextjs/server';
 import { put } from '@vercel/blob';
@@ -56,22 +60,24 @@ export async function POST(
   });
 
   const questionRange = `${result.resolvedStart}-${result.resolvedEnd}`;
-  await db.insert(practicePageShareSchema).values({
+  const [row] = await db.insert(practicePageShareSchema).values({
     quizId,
     ownerId: userId,
     url: blob.url,
     questionRange,
-  });
+  }).returning();
+
+  const origin = new URL(req.url).origin;
 
   return NextResponse.json({
-    url: blob.url,
+    url: `${origin}/api/p/${row!.id}`,
     imported: result.imported,
     skipped: result.skipped,
   });
 }
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   const { userId } = await auth();
@@ -87,7 +93,6 @@ export async function GET(
   const rows = await db
     .select({
       id: practicePageShareSchema.id,
-      url: practicePageShareSchema.url,
       questionRange: practicePageShareSchema.questionRange,
       createdAt: practicePageShareSchema.createdAt,
     })
@@ -95,5 +100,8 @@ export async function GET(
     .where(and(eq(practicePageShareSchema.quizId, quizId), eq(practicePageShareSchema.ownerId, userId)))
     .orderBy(desc(practicePageShareSchema.createdAt));
 
-  return NextResponse.json({ shares: rows });
+  const origin = new URL(req.url).origin;
+  const shares = rows.map(row => ({ ...row, url: `${origin}/api/p/${row.id}` }));
+
+  return NextResponse.json({ shares });
 }

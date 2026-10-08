@@ -21,6 +21,11 @@ const isPublicApiRoute = createRouteMatcher([
   // AI 助教：學生作答前查看 AI 提示，匿名作答所以不需登入
   '/api/ai/generate-hints/(.*)',
   '/:locale/api/ai/generate-hints/(.*)',
+  // 靜態練習頁分享連結代理：學生點連結開頁面，匿名、不需登入
+  // （Vercel Blob 原生網址對 .html 一律強制 Content-Disposition: attachment 會變下載，
+  // 所以改走這個 route 代理讀取 blob 內容再原樣回傳，瀏覽器才會直接渲染而不是下載）
+  '/api/p/(.*)',
+  '/:locale/api/p/(.*)',
   // 蘇格拉底式錯題重做提示：學生匿名作答所以不需登入
   '/api/hint/socratic',
   '/:locale/api/hint/socratic',
