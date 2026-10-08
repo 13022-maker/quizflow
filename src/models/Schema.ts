@@ -953,3 +953,23 @@ export const adaptiveSubjectSummarySchema = pgTable('adaptive_subject_summary', 
   markdown: text('markdown').notNull(),
   generatedAt: timestamp('generated_at', { mode: 'date' }).defaultNow().notNull(),
 });
+
+// 匯出成靜態練習頁時「產生分享連結」的歷史記錄：老師按一次產生一筆，
+// 之後開 Dialog 能回頭查之前產生過的連結（不做刪除/下架，見設計討論 YAGNI）。
+// Blob 檔案本身不會因為刪這筆記錄而跟著被刪，純粹是連結的查詢索引。
+export const practicePageShareSchema = pgTable(
+  'practice_page_share',
+  {
+    id: serial('id').primaryKey(),
+    quizId: integer('quiz_id')
+      .notNull()
+      .references(() => quizSchema.id, { onDelete: 'cascade' }),
+    ownerId: text('owner_id').notNull(), // Clerk userId，比照 quizSchema.ownerId
+    url: text('url').notNull(), // Vercel Blob 公開網址
+    questionRange: text('question_range').notNull(), // 例如 "1-20"
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    quizIdIdx: index('practice_page_share_quiz_id_idx').on(table.quizId),
+  }),
+);

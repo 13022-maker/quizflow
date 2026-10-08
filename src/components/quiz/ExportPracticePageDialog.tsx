@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,13 @@ type Props = {
   quizTitle: string;
   totalQuestions: number;
   onClose: () => void;
+};
+
+type ShareHistoryItem = {
+  id: number;
+  url: string;
+  questionRange: string;
+  createdAt: string;
 };
 
 export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, onClose }: Props) {
@@ -25,6 +32,41 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
   const [shareError, setShareError] = useState('');
   const [linkCopied, setLinkCopied] = useState(false);
   const qrRef = useRef<HTMLDivElement>(null);
+
+  // 過去產生過的分享連結歷史
+  const [history, setHistory] = useState<ShareHistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
+  const [copiedHistoryId, setCopiedHistoryId] = useState<number | null>(null);
+
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}/export-practice-page/share`, {
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (res.ok && Array.isArray(data?.shares)) {
+        setHistory(data.shares);
+      }
+    } catch {
+      // 歷史清單載入失敗不影響主要功能（下載/產生新連結），靜默忽略即可
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 只在 Dialog 開啟時載入一次
+  }, []);
+
+  const handleCopyHistoryLink = (item: ShareHistoryItem) => {
+    navigator.clipboard.writeText(item.url).then(() => {
+      setCopiedHistoryId(item.id);
+      setTimeout(() => setCopiedHistoryId(null), 2000);
+    });
+  };
 
   const validateRange = () => {
     if (start < 1 || end > totalQuestions || start > end) {
@@ -94,6 +136,7 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
         return;
       }
       setShareUrl(data.url);
+      fetchHistory();
     } catch {
       setShareError('產生分享連結失敗，請稍後再試');
     } finally {
@@ -243,6 +286,55 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
                   Google Classroom
                 </Button>
               </div>
+            </div>
+          )}
+
+          {!historyLoading && history.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-medium text-gray-500">之前產生過的分享連結</p>
+              <ul className="max-h-48 space-y-2 overflow-y-auto">
+                {history.map(item => (
+                  <li key={item.id} className="rounded-lg border bg-gray-50 p-2.5 text-xs">
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 truncate text-blue-600 underline"
+                      >
+                        {item.url}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyHistoryLink(item)}
+                        className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
+                      >
+                        {copiedHistoryId === item.id ? '已複製' : '複製'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedHistoryId(expandedHistoryId === item.id ? null : item.id)}
+                        className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
+                      >
+                        QR Code
+                      </button>
+                    </div>
+                    <p className="mt-1 text-gray-400">
+                      第
+                      {' '}
+                      {item.questionRange}
+                      {' '}
+                      題．
+                      {new Date(item.createdAt).toLocaleString('zh-TW')}
+                    </p>
+                    {expandedHistoryId === item.id && (
+                      <div className="mt-2 flex justify-center rounded-lg bg-white p-3">
+                        <QRCode value={item.url} size={120} bgColor="#ffffff" fgColor="#000000" />
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
         </div>

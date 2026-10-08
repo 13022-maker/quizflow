@@ -10,7 +10,16 @@ import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export type BuildQuizPracticeHtmlResult =
-  | { ok: true; html: string; quizTitle: string; total: number; imported: number; skipped: number }
+  | {
+    ok: true;
+    html: string;
+    quizTitle: string;
+    total: number;
+    imported: number;
+    skipped: number;
+    resolvedStart: number;
+    resolvedEnd: number;
+  }
   | { ok: false; status: number; error: string };
 
 export async function buildQuizPracticeHtml(
@@ -72,5 +81,7 @@ export async function buildQuizPracticeHtml(
     total: picked.length,
     imported: practiceQuestions.length,
     skipped,
+    resolvedStart,
+    resolvedEnd,
   };
 }
