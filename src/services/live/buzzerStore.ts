@@ -16,7 +16,7 @@ import {
   liveTeamSchema,
 } from '@/models/Schema';
 
-import { publishTick } from './ablyServer';
+import { publishBoard, publishTick } from './ablyServer';
 import {
   assignTeamsByCount,
   BUZZER_ANSWER_MS,
@@ -34,6 +34,7 @@ import { getGameQuestions } from './liveQuestions';
 import { gradeAnswer } from './scoring';
 import type {
   LiveBuzzEntryForHost,
+  LiveBuzzerBoard,
   LiveBuzzerHostView,
   LiveBuzzerPlayerStat,
   LiveBuzzerPlayerView,
@@ -158,18 +159,28 @@ async function closeQuestion(game: LiveGameRow): Promise<boolean> {
  * 同題同時最多一筆 answering 另有 partial unique index 當最後防線。
  * 回傳 true 代表有狀態改動。
  */
-export async function reconcileBuzzerGame(game: GameWithNow): Promise<boolean> {
+export async function reconcileBuzzerGame(
+  game: GameWithNow,
+  opts: {
+    questions?: LiveQuestionForHost[]; // 呼叫端已讀過題目就傳進來，省一次 DB round trip
+    publish?: boolean; // false = 呼叫端稍後自己發看板（避免同一個請求發兩次）
+  } = {},
+): Promise<boolean> {
   if (game.gameMode !== 'team_buzzer' || game.status !== 'playing') {
     return false;
   }
-  const questions = await getGameQuestions(game.quizId, game.gameMode);
+  const questions = opts.questions ?? await getGameQuestions(game.quizId, game.gameMode);
   const question = currentQuestionOf(game, questions);
   if (!question) {
     return false;
   }
 
-  const buzzes = (await loadBuzzRows(game.id, question.id)).map(toBuzzState);
-  const teamIds = await loadTeamIds(game.id);
+  // 兩個查詢互不相依，並行送出
+  const [buzzRows, teamIds] = await Promise.all([
+    loadBuzzRows(game.id, question.id),
+    loadTeamIds(game.id),
+  ]);
+  const buzzes = buzzRows.map(toBuzzState);
   const steps = planReconcile({ buzzes, teamIds, nowMs: game.dbNowMs });
 
   let changed = false;
@@ -206,19 +217,81 @@ export async function reconcileBuzzerGame(game: GameWithNow): Promise<boolean> {
     }
   }
 
-  if (changed) {
-    await publishTick(game.id);
+  if (changed && opts.publish !== false) {
+    // 例：輪詢 / 逾時排程觸發的讀取剛好判定逾時 → 直接把新看板推給全場，不用大家再各自打 REST
+    await publishBuzzerBoard(game.id, questions);
   }
   return changed;
 }
 
+/**
+ * 讀 DB 組出當前題的完整搶答看板（LiveBuzzerBoard）。
+ * 2 次 round trip：先讀 game（含 DB 時鐘），再並行讀組 / 玩家暱稱 / 搶答紀錄。
+ */
+export async function buildBuzzerBoard(
+  gameId: number,
+  questionsHint?: LiveQuestionForHost[],
+): Promise<LiveBuzzerBoard | null> {
+  const game = await loadGameWithDbNow(gameId);
+  if (!game || game.gameMode !== 'team_buzzer') {
+    return null;
+  }
+  const questions = questionsHint ?? await getGameQuestions(game.quizId, game.gameMode);
+  const question = currentQuestionOf(game, questions);
+  if (!question) {
+    return null;
+  }
+  const [teams, players, rows] = await Promise.all([
+    db
+      .select()
+      .from(liveTeamSchema)
+      .where(eq(liveTeamSchema.gameId, gameId))
+      .orderBy(asc(liveTeamSchema.orderIndex)),
+    db
+      .select({ id: livePlayerSchema.id, nickname: livePlayerSchema.nickname })
+      .from(livePlayerSchema)
+      .where(eq(livePlayerSchema.gameId, gameId)),
+    game.status === 'waiting' ? Promise.resolve([] as BuzzRow[]) : loadBuzzRows(gameId, question.id),
+  ]);
+  const teamSummaries = teams.map(t => ({ id: t.id, name: t.name, orderIndex: t.orderIndex, score: t.score }));
+  return {
+    gameId,
+    questionId: question.id,
+    questionIndex: game.currentQuestionIndex,
+    status: game.status,
+    serverNow: new Date(game.dbNowMs).toISOString(),
+    teams: teamSummaries,
+    // 看板會廣播給全場：拿掉所選答案（與學生端 player-state 同規則）
+    buzzes: buildBuzzEntries(rows, teamSummaries, players).map(({ selectedOptionId: _omit, ...rest }) => rest),
+    // 揭曉後才帶正解（與 player-state 的 lastResult 同規則）
+    correctAnswers: game.status === 'showing_result' ? question.correctAnswers : null,
+  };
+}
+
+/** 組看板 → 發到 Ably（未啟用 Ably 時只組不發）。回傳看板，讓 API 回應可以直接帶回去 */
+async function publishBuzzerBoard(
+  gameId: number,
+  questionsHint?: LiveQuestionForHost[],
+): Promise<LiveBuzzerBoard | null> {
+  const board = await buildBuzzerBoard(gameId, questionsHint);
+  if (board) {
+    await publishBoard(gameId, board);
+  } else {
+    await publishTick(gameId);
+  }
+  return board;
+}
+
 /** 讀取 game 並順手執行搶答 lazy 推進（liveStore.loadGameWithAutoAdvance 的搶答版） */
-export async function loadBuzzerGameReconciled(gameId: number): Promise<GameWithNow | null> {
+export async function loadBuzzerGameReconciled(
+  gameId: number,
+  questionsHint?: LiveQuestionForHost[],
+): Promise<GameWithNow | null> {
   const game = await loadGameWithDbNow(gameId);
   if (!game) {
     return null;
   }
-  if (!(await reconcileBuzzerGame(game))) {
+  if (!(await reconcileBuzzerGame(game, { questions: questionsHint }))) {
     return game;
   }
   return loadGameWithDbNow(gameId);
@@ -338,25 +411,30 @@ async function loadPlayer(gameId: number, playerId: number) {
 
 // 共用前置檢查：模式、題目是否為當前題
 async function loadPlayingContext(gameId: number, questionId: number): Promise<
-  | { ok: true; game: GameWithNow; question: LiveQuestionForHost }
+  | { ok: true; game: GameWithNow; question: LiveQuestionForHost; questions: LiveQuestionForHost[] }
   | { ok: false; error: BuzzerError }
 > {
-  const game = await loadBuzzerGameReconciled(gameId);
-  if (!game) {
+  const raw = await loadGameWithDbNow(gameId);
+  if (!raw) {
     return { ok: false, error: fail('GAME_NOT_FOUND', 404) };
   }
-  if (game.gameMode !== 'team_buzzer') {
+  if (raw.gameMode !== 'team_buzzer') {
     return { ok: false, error: fail('WRONG_MODE', 400) };
+  }
+  // 題目只讀一次，往下傳給 reconcile / 看板（原本同一個請求會讀 3 次）
+  const questions = await getGameQuestions(raw.quizId, raw.gameMode);
+  const game = (await reconcileBuzzerGame(raw, { questions })) ? await loadGameWithDbNow(gameId) : raw;
+  if (!game) {
+    return { ok: false, error: fail('GAME_NOT_FOUND', 404) };
   }
   if (game.status !== 'playing') {
     return { ok: false, error: fail('NOT_PLAYING') };
   }
-  const questions = await getGameQuestions(game.quizId, game.gameMode);
   const question = currentQuestionOf(game, questions);
   if (!question || question.id !== questionId) {
     return { ok: false, error: fail('NOT_CURRENT_QUESTION') };
   }
-  return { ok: true, game, question };
+  return { ok: true, game, question, questions };
 }
 
 /**
@@ -367,19 +445,22 @@ export async function recordBuzz(params: {
   gameId: number;
   playerId: number;
   questionId: number;
-}): Promise<{ ok: true; order: number; granted: boolean } | BuzzerError> {
+}): Promise<{ ok: true; order: number; granted: boolean; board: LiveBuzzerBoard | null } | BuzzerError> {
   const { gameId, playerId, questionId } = params;
   const ctx = await loadPlayingContext(gameId, questionId);
   if (!ctx.ok) {
     return ctx.error;
   }
-  const { game } = ctx;
+  const { game, questions } = ctx;
 
-  const me = await loadPlayer(gameId, playerId);
+  const [me, buzzRows] = await Promise.all([
+    loadPlayer(gameId, playerId),
+    loadBuzzRows(gameId, questionId),
+  ]);
   if (!me) {
     return fail('GAME_NOT_FOUND', 404);
   }
-  const buzzes = (await loadBuzzRows(gameId, questionId)).map(toBuzzState);
+  const buzzes = buzzRows.map(toBuzzState);
   const allowed = checkBuzzAllowed({
     status: game.status,
     questionStartedAtMs: game.questionStartedAt ? game.questionStartedAt.getTime() : null,
@@ -404,17 +485,21 @@ export async function recordBuzz(params: {
   // 重新讀 DB 時鐘再推進：若目前沒人持有作答權，這筆會立刻取得作答權（15 秒從現在起算）
   const fresh = await loadGameWithDbNow(gameId);
   if (fresh) {
-    await reconcileBuzzerGame(fresh);
+    await reconcileBuzzerGame(fresh, { questions, publish: false });
   }
-  await publishTick(gameId);
 
-  const after = sortBuzzes((await loadBuzzRows(gameId, questionId)).map(toBuzzState));
-  const mine = after.find(b => b.id === buzzId);
-  return {
-    ok: true,
-    order: after.findIndex(b => b.id === buzzId) + 1,
-    granted: mine?.result === 'answering',
-  };
+  // 只發一則「完整看板」（原本是 reconcile + 這裡各發一次 tick，全場收到後再各自打 REST 重抓）。
+  // 同一份看板也放進回應，按的人不用等 Ably / 輪詢就看得到自己第幾個搶到
+  const board = await publishBuzzerBoard(gameId, questions);
+  const mine = board?.buzzes.find(b => b.id === buzzId);
+  let order = mine?.order ?? 0;
+  let granted = mine?.result === 'answering';
+  if (!board) {
+    const after = sortBuzzes((await loadBuzzRows(gameId, questionId)).map(toBuzzState));
+    order = after.findIndex(b => b.id === buzzId) + 1;
+    granted = after.find(b => b.id === buzzId)?.result === 'answering';
+  }
+  return { ok: true, order, granted, board };
 }
 
 /** 持有作答權的學生送出答案：答對 +100 並揭曉；答錯 −50 並把作答權交給下一組 */
@@ -423,19 +508,22 @@ export async function recordBuzzAnswer(params: {
   playerId: number;
   questionId: number;
   selectedOptionId: string | string[];
-}): Promise<{ ok: true; isCorrect: boolean; delta: number } | BuzzerError> {
+}): Promise<{ ok: true; isCorrect: boolean; delta: number; board: LiveBuzzerBoard | null } | BuzzerError> {
   const { gameId, playerId, questionId, selectedOptionId } = params;
   const ctx = await loadPlayingContext(gameId, questionId);
   if (!ctx.ok) {
     return ctx.error;
   }
-  const { game, question } = ctx;
+  const { game, question, questions } = ctx;
 
-  const me = await loadPlayer(gameId, playerId);
+  const [me, buzzRows] = await Promise.all([
+    loadPlayer(gameId, playerId),
+    loadBuzzRows(gameId, questionId),
+  ]);
   if (!me) {
     return fail('GAME_NOT_FOUND', 404);
   }
-  const buzzes = (await loadBuzzRows(gameId, questionId)).map(toBuzzState);
+  const buzzes = buzzRows.map(toBuzzState);
   const allowed = checkAnswerAllowed({ buzzes, playerId, teamId: me.teamId, nowMs: game.dbNowMs });
   if (!allowed.ok) {
     return fail(allowed.reason, allowed.reason === 'TEAMMATE_ANSWERING' ? 403 : 409);
@@ -465,13 +553,15 @@ export async function recordBuzzAnswer(params: {
     // 答對即自動揭曉，老師再按「下一題」
     await closeQuestion(game);
   } else {
+    // 答錯：作答權交給下一個排隊的組（沒人排隊就回到開放搶答 / 全組答錯即揭曉）
     const fresh = await loadGameWithDbNow(gameId);
     if (fresh) {
-      await reconcileBuzzerGame(fresh);
+      await reconcileBuzzerGame(fresh, { questions, publish: false });
     }
   }
-  await publishTick(gameId);
-  return { ok: true, isCorrect, delta };
+  // 一則完整看板：結果、組分、下一組作答權一次到位
+  const board = await publishBuzzerBoard(gameId, questions);
+  return { ok: true, isCorrect, delta, board };
 }
 
 /** 老師按「揭曉答案」：playing → showing_result（沒人答對也可以） */
@@ -485,7 +575,8 @@ export async function revealBuzzerAnswer(gameId: number): Promise<{ ok: true } |
   }
   if (game.status === 'playing') {
     await closeQuestion(game);
-    await publishTick(gameId);
+    // 看板帶正解，學生端直接切到揭曉畫面，不用再打 REST
+    await publishBuzzerBoard(gameId);
   }
   return { ok: true };
 }
@@ -534,21 +625,24 @@ async function loadTeamsWithMembers(gameId: number): Promise<{
   teams: LiveTeamSummary[];
   players: { id: number; nickname: string; teamId: number | null }[];
 }> {
-  const teams = await db
-    .select()
-    .from(liveTeamSchema)
-    .where(eq(liveTeamSchema.gameId, gameId))
-    .orderBy(asc(liveTeamSchema.orderIndex));
-  const players = await db
-    .select({
-      id: livePlayerSchema.id,
-      nickname: livePlayerSchema.nickname,
-      teamId: livePlayerSchema.teamId,
-      lastSeenAt: livePlayerSchema.lastSeenAt,
-    })
-    .from(livePlayerSchema)
-    .where(eq(livePlayerSchema.gameId, gameId))
-    .orderBy(asc(livePlayerSchema.joinedAt), asc(livePlayerSchema.id));
+  // 兩個查詢互不相依，並行送出
+  const [teams, players] = await Promise.all([
+    db
+      .select()
+      .from(liveTeamSchema)
+      .where(eq(liveTeamSchema.gameId, gameId))
+      .orderBy(asc(liveTeamSchema.orderIndex)),
+    db
+      .select({
+        id: livePlayerSchema.id,
+        nickname: livePlayerSchema.nickname,
+        teamId: livePlayerSchema.teamId,
+        lastSeenAt: livePlayerSchema.lastSeenAt,
+      })
+      .from(livePlayerSchema)
+      .where(eq(livePlayerSchema.gameId, gameId))
+      .orderBy(asc(livePlayerSchema.joinedAt), asc(livePlayerSchema.id)),
+  ]);
 
   // lastSeenAt 由 heartbeat 以 JS Date 寫入，跟既有 getPlayers 一樣用 JS 時鐘比較
   const jsNow = Date.now();
@@ -572,7 +666,7 @@ async function loadTeamsWithMembers(gameId: number): Promise<{
 
 function buildBuzzEntries(
   rows: BuzzRow[],
-  teams: LiveTeamSummary[],
+  teams: { id: number; name: string }[],
   players: { id: number; nickname: string }[],
 ): LiveBuzzEntryForHost[] {
   const teamName = new Map(teams.map(t => [t.id, t.name]));
@@ -613,12 +707,15 @@ export async function buildBuzzerHostView(
   game: LiveGameRow,
   currentQuestion: LiveQuestionForHost | null,
 ): Promise<LiveBuzzerHostView> {
-  const nowMs = await getDbNowMs(game.id);
-  const { teams, players } = await loadTeamsWithMembers(game.id);
-  const rows = currentQuestion && game.status !== 'waiting'
-    ? await loadBuzzRows(game.id, currentQuestion.id)
-    : [];
-  const stats = await loadPlayerStats(game.id);
+  // 4 個查詢互不相依，並行送出（原本依序 await，每個都是一次 DB round trip）
+  const [nowMs, { teams, players }, rows, stats] = await Promise.all([
+    getDbNowMs(game.id),
+    loadTeamsWithMembers(game.id),
+    currentQuestion && game.status !== 'waiting'
+      ? loadBuzzRows(game.id, currentQuestion.id)
+      : Promise.resolve([] as BuzzRow[]),
+    loadPlayerStats(game.id),
+  ]);
   const playerStats: LiveBuzzerPlayerStat[] = players.map(p => ({
     playerId: p.id,
     nickname: p.nickname,
@@ -651,12 +748,15 @@ export async function buildBuzzerPlayerView(
     }
   }
 
-  const nowMs = await getDbNowMs(game.id);
-  const { teams, players } = await loadTeamsWithMembers(game.id);
-  const rows = currentQuestion && game.status !== 'waiting'
-    ? await loadBuzzRows(game.id, currentQuestion.id)
-    : [];
-  const stats = (await loadPlayerStats(game.id)).get(playerId);
+  const [nowMs, { teams, players }, rows, allStats] = await Promise.all([
+    getDbNowMs(game.id),
+    loadTeamsWithMembers(game.id),
+    currentQuestion && game.status !== 'waiting'
+      ? loadBuzzRows(game.id, currentQuestion.id)
+      : Promise.resolve([] as BuzzRow[]),
+    loadPlayerStats(game.id),
+  ]);
+  const stats = allStats.get(playerId);
   const myTeamId = players.find(p => p.id === playerId)?.teamId ?? null;
   const myTeam = teams.find(t => t.id === myTeamId) ?? null;
 

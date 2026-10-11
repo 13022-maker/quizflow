@@ -53,5 +53,6 @@ export async function POST(
     return NextResponse.json({ error: result.message, code: result.code }, { status: result.status });
   }
 
-  return NextResponse.json({ isCorrect: result.isCorrect, delta: result.delta });
+  // board = 判完對錯後的完整搶答看板（組分、下一組作答權都已更新）
+  return NextResponse.json({ isCorrect: result.isCorrect, delta: result.delta, board: result.board });
 }
