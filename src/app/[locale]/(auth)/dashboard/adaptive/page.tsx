@@ -17,6 +17,13 @@ type SortOption = typeof SORT_OPTIONS[number];
 
 export const dynamic = 'force-dynamic';
 
+// 頁首使用流程三步驟（白話說明學科、練習、連結三者關係）
+const USAGE_STEPS = [
+  { title: '選學科', hint: '學科＝知識點＋題目＋補強課文，練習從這裡出題' },
+  { title: '建立練習', hint: '建議一個班級、一個單元建一個' },
+  { title: '發連結，看進度', hint: '學生免登入作答，儀表板看誰卡在哪' },
+] as const;
+
 // 建立日期顯示格式：M/D
 function formatDate(d: Date) {
   return `${d.getMonth() + 1}/${d.getDate()}`;
@@ -86,7 +93,7 @@ export default async function AdaptiveListPage({
     <div className="mx-auto max-w-4xl px-4 py-8">
       <TitleBar
         title="🎯 適性學習"
-        description="動態診斷派題＋卡關 AI 補強課文——建立練習後把連結發給學生，免登入即可開始。"
+        description="系統依學生答對答錯調整下一題；學生卡住時，AI 補一段說明再讓他重試。"
         action={(
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             <Link
@@ -105,9 +112,24 @@ export default async function AdaptiveListPage({
         )}
       />
 
+      {/* 使用流程：讓第一次進來的老師知道「學科 → 練習 → 連結」的關係 */}
+      <ol aria-label="使用流程" className="mb-6 grid gap-3 sm:grid-cols-3">
+        {USAGE_STEPS.map((step, i) => (
+          <li key={step.title} className="flex items-start gap-3 rounded-xl border bg-card p-4">
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+              {i + 1}
+            </span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-foreground">{step.title}</div>
+              <div className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{step.hint}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+
       {/* 建立練習：收合，避免每次進來都要先滑過表單 */}
       <details className="group mb-8 rounded-xl border bg-card p-5 shadow-sm" open={practices.length === 0}>
-        <summary className="cursor-pointer list-none text-sm font-semibold marker:content-none">
+        <summary className="cursor-pointer list-none rounded-md text-sm font-semibold marker:content-none focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
           <span className="inline-flex items-center gap-1.5">
             <span className="inline-block transition-transform group-open:rotate-90">▶</span>
             ＋ 建立新練習
@@ -166,35 +188,50 @@ export default async function AdaptiveListPage({
                     <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                       {subjectNames.get(p.subjectId) ?? p.subjectId}
                     </span>
-                    {/* 學生數 pill（dot＋label，有學生亮綠、0 位灰） */}
-                    <span
-                      className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        p.studentCount > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-50 text-gray-500'
-                      }`}
-                    >
-                      <span
-                        className={`size-1.5 rounded-full ${
-                          p.studentCount > 0 ? 'bg-emerald-500' : 'bg-gray-400'
-                        }`}
-                      />
-                      {p.studentCount}
-                      {' 位學生'}
-                    </span>
                     {/* 建立日期 */}
                     <span className="text-xs text-muted-foreground">
                       {formatDate(p.createdAt)}
                       {' 建立'}
                     </span>
                   </div>
-                  <div className="mt-4 flex items-center gap-2 border-t pt-3">
-                    <CopyLinkButton path={`/adaptive/${p.accessCode}`} />
-                    <ShareClassroomButton path={`/adaptive/${p.accessCode}`} title={p.title} />
-                    <Link
-                      href={`/dashboard/adaptive/${p.id}`}
-                      className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-                    >
-                      班級儀表板 →
-                    </Link>
+                  {/* 狀態提示：依有沒有學生作答，告訴老師下一步做什麼 */}
+                  {p.studentCount > 0
+                    ? (
+                        <p className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs leading-relaxed text-emerald-800">
+                          <span className="font-semibold">
+                            {p.studentCount}
+                            {' 位學生作答中。'}
+                          </span>
+                          到儀表板看誰卡在哪個知識點。
+                        </p>
+                      )
+                    : (
+                        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+                          <span className="font-semibold">還沒有學生加入。</span>
+                          複製連結貼到班群，學生點開就能作答。
+                        </p>
+                      )}
+                  {/* 主按鈕隨狀態切換：0 人 → 複製連結；有人 → 查看進度 */}
+                  <div className="mt-4 flex flex-wrap items-center gap-2 border-t pt-3">
+                    {p.studentCount > 0
+                      ? (
+                          <>
+                            <Link
+                              href={`/dashboard/adaptive/${p.id}`}
+                              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                            >
+                              查看學生進度 →
+                            </Link>
+                            <CopyLinkButton path={`/adaptive/${p.accessCode}`} />
+                            <ShareClassroomButton path={`/adaptive/${p.accessCode}`} title={p.title} />
+                          </>
+                        )
+                      : (
+                          <>
+                            <CopyLinkButton path={`/adaptive/${p.accessCode}`} variant="primary" />
+                            <ShareClassroomButton path={`/adaptive/${p.accessCode}`} title={p.title} />
+                          </>
+                        )}
                   </div>
                 </div>
               ))}
