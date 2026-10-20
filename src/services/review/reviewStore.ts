@@ -931,9 +931,13 @@ export async function autoSubmitPendingTeams(gameId: number): Promise<void> {
     const leaderDraft = effectiveLeaderId
       ? drafts.find(d => d.teamId === team.id && d.playerId === effectiveLeaderId)
       : undefined;
+    const teammateDraftContents = drafts
+      .filter(d => d.teamId === team.id && d.playerId !== effectiveLeaderId)
+      .map(d => d.content);
     const content = resolveFallbackContent({
       existingSubmissionContent: submission?.content ?? null,
       leaderDraftContent: leaderDraft?.content ?? null,
+      teammateDraftContents,
     });
 
     await db
