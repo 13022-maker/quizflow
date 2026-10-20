@@ -973,3 +973,14 @@ export const practicePageShareSchema = pgTable(
     quizIdIdx: index('practice_page_share_quiz_id_idx').on(table.quizId),
   }),
 );
+
+// ---------- rate limit ----------
+// 公開（免登入）AI 端點的固定視窗限流計數器。不另外接 Redis，直接用 Postgres 原子 upsert。
+// key = `${bucket}:${ip}:${windowStart}`，視窗過期後由 src/libs/rateLimit.ts 不定期清除。
+export const rateLimitSchema = pgTable('rate_limit', {
+  key: text('key').primaryKey(),
+  count: integer('count').default(0).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+}, table => ({
+  expiresAtIdx: index('rate_limit_expires_at_idx').on(table.expiresAt),
+}));

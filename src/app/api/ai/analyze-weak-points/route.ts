@@ -2,21 +2,29 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { generateAIText } from '@/lib/ai/textModel';
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
 
 export const runtime = 'nodejs';
 
-// 輸入驗證 schema
+// 輸入驗證 schema（公開端點：陣列長度、字串長度都要有上限，避免一次塞爆 prompt）
 const InputSchema = z.object({
   wrongQuestions: z.array(
     z.object({
-      question: z.string(),
-      correctAnswer: z.string(),
-      studentAnswer: z.string(),
+      question: z.string().max(2000),
+      correctAnswer: z.string().max(1000),
+      studentAnswer: z.string().max(1000),
     }),
-  ),
+  ).max(200),
 });
 
+// 送進 prompt 的錯題最多幾題（題數很多的測驗只取前面，避免 prompt 過大）
+const MAX_QUESTIONS_IN_PROMPT = 50;
+
 export async function POST(request: Request) {
+  const limited = await enforcePublicAiLimit(request, 'analyze-weak-points');
+  if (limited) {
+    return limited;
+  }
   try {
     const body = await request.json();
     const parsed = InputSchema.safeParse(body);
@@ -24,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '格式錯誤' }, { status: 400 });
     }
 
-    const { wrongQuestions } = parsed.data;
+    const wrongQuestions = parsed.data.wrongQuestions.slice(0, MAX_QUESTIONS_IN_PROMPT);
 
     // 沒有答錯的題目直接回傳空陣列
     if (wrongQuestions.length === 0) {

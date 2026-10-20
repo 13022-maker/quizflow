@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
@@ -110,7 +110,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
     return { error: parsed.error.errors[0]?.message ?? '格式錯誤' };
   }
 
-  await db
+  const updated = await db
     .update(questionSchema)
     .set({
       type: parsed.data.type,
@@ -132,7 +132,14 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
       explanation: parsed.data.explanation || null,
       points: parsed.data.points,
     })
-    .where(eq(questionSchema.id, id));
+    // 必須同時比對 quizId：verifyOwnership 只證明 quizId 是自己的，
+    // 若只用 question id 過濾，帶「自己的 quizId + 別人的題目 id」就能改到別人的題目（IDOR）
+    .where(and(eq(questionSchema.id, id), eq(questionSchema.quizId, quizId)))
+    .returning({ id: questionSchema.id });
+
+  if (updated.length === 0) {
+    throw new Error('Question not found or unauthorized');
+  }
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
   return undefined;
@@ -145,7 +152,14 @@ export async function deleteQuestion(id: number, quizId: number) {
   }
   await verifyOwnership(quizId, userId);
 
-  await db.delete(questionSchema).where(eq(questionSchema.id, id));
+  const deleted = await db
+    .delete(questionSchema)
+    .where(and(eq(questionSchema.id, id), eq(questionSchema.quizId, quizId)))
+    .returning({ id: questionSchema.id });
+
+  if (deleted.length === 0) {
+    throw new Error('Question not found or unauthorized');
+  }
 
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 }
@@ -157,12 +171,27 @@ export async function reorderQuestions(quizId: number, orderedIds: number[]) {
   }
   await verifyOwnership(quizId, userId);
 
+  // 先確認所有 id 都屬於這份 quiz，任何一個不是就整批拒絕（不會只改一半）
+  const uniqueIds = Array.from(new Set(orderedIds));
+  if (uniqueIds.length !== orderedIds.length) {
+    throw new Error('Duplicate question ids');
+  }
+  if (uniqueIds.length > 0) {
+    const owned = await db
+      .select({ id: questionSchema.id })
+      .from(questionSchema)
+      .where(and(eq(questionSchema.quizId, quizId), inArray(questionSchema.id, uniqueIds)));
+    if (owned.length !== uniqueIds.length) {
+      throw new Error('Question not found or unauthorized');
+    }
+  }
+
   await Promise.all(
     orderedIds.map((id, index) =>
       db
         .update(questionSchema)
         .set({ position: index + 1 })
-        .where(eq(questionSchema.id, id)),
+        .where(and(eq(questionSchema.id, id), eq(questionSchema.quizId, quizId))),
     ),
   );
 
