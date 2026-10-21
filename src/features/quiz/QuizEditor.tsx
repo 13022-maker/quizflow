@@ -48,6 +48,7 @@ import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -595,6 +596,17 @@ export function QuizEditor({
     router.refresh();
   };
 
+  // 開啟段考命題助手（public/tools 靜態頁，同源）：把目前題目轉成助手草稿，經 localStorage 帶過去
+  const openExamComposer = () => {
+    const payload = quizToComposerImport(initialQuiz.title, questions);
+    try {
+      window.localStorage.setItem(EXAM_COMPOSER_IMPORT_KEY, JSON.stringify(payload));
+    } catch {
+      // 無痕模式等無法寫入時仍開啟工具，只是不帶入題目
+    }
+    window.open(EXAM_COMPOSER_URL, '_blank', 'noopener');
+  };
+
   const handleDeleteQuestion = (id: number) => {
     setDeletingId(id);
     startTransition(async () => {
@@ -769,6 +781,9 @@ export function QuizEditor({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)}>
                   🌐 匯出成靜態練習頁
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openExamComposer}>
+                  🧮 段考命題助手
                 </DropdownMenuItem>
               </>
             )}
