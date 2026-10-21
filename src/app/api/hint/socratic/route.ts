@@ -14,6 +14,8 @@
 import { GoogleGenAI } from '@google/genai';
 import { type NextRequest, NextResponse } from 'next/server';
 
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
+
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
@@ -47,9 +49,24 @@ const SOCRATIC_SYSTEM_PROMPT = `
 - 使用繁體中文
 `.trim();
 
+// 單一欄位長度上限：公開端點，避免被當成免費的 Gemini 聊天介面
+const MAX_FIELD_CHARS = 2000;
+
+function isTooLong(v: unknown): boolean {
+  return typeof v === 'string' && v.length > MAX_FIELD_CHARS;
+}
+
 export async function POST(req: NextRequest) {
+  const limited = await enforcePublicAiLimit(req, 'hint-socratic');
+  if (limited) {
+    return limited;
+  }
   try {
     const { question, correctAnswer, studentAnswer, roundNumber } = await req.json();
+
+    if (isTooLong(question) || isTooLong(correctAnswer) || isTooLong(studentAnswer)) {
+      return NextResponse.json({ error: '內容過長' }, { status: 400 });
+    }
 
     // 防護：round > 3 直接回 showExplanation
     if (typeof roundNumber !== 'number' || roundNumber > 3) {

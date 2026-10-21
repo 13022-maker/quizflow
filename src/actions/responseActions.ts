@@ -9,6 +9,8 @@ import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { gradeClozeAnswers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
+import type { AnswerKeyEntry } from '@/libs/quizRedaction';
+import { answerKeyFor } from '@/libs/quizRedaction';
 import type { SubmitInput } from '@/libs/submitValidation';
 import { parseSubmitInput } from '@/libs/submitValidation';
 import { answerSchema, questionSchema, quizSchema, responseSchema } from '@/models/Schema';
@@ -26,6 +28,9 @@ export type SubmitResult = {
     awardedPoints: number; // 該題實得分（簡答題可為部分分，其他題型為 0 或滿分）
     aiReason?: string; // 簡答題 AI 評語（只在有評時填）
   }[];
+  // 交卷後的正解與詳解：只有老師開「顯示解答」才回傳。
+  // 作答頁在考試模式／不顯示解答時不會送答案到瀏覽器（src/libs/quizRedaction.ts），交卷後靠這裡補回
+  answerKey?: AnswerKeyEntry[];
 };
 
 /** 查詢某個 email 在指定測驗的已作答次數 */
@@ -52,6 +57,7 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     .select({
       allowedAttempts: quizSchema.allowedAttempts,
       ownerId: quizSchema.ownerId,
+      showAnswers: quizSchema.showAnswers,
     })
     .from(quizSchema)
     .where(eq(quizSchema.id, quizId))
@@ -230,7 +236,13 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     await db.insert(answerSchema).values(answerRows);
   }
 
-  return { responseId: inserted.id, score, totalPoints, details };
+  return {
+    responseId: inserted.id,
+    score,
+    totalPoints,
+    details,
+    ...(quiz?.showAnswers && { answerKey: questions.map(answerKeyFor) }),
+  };
 }
 
 // ─── Phase C：老師複核簡答題 ────────────────────────────────────────────

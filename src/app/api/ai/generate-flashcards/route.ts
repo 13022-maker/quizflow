@@ -2,6 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
+
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
@@ -45,12 +47,23 @@ const SYSTEM_PROMPT = `你是一位專業的語言教學專家。根據使用者
 - 例句要簡短自然
 - 如果是中文單字，音標用注音符號`;
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const { words } = body as { words: string };
+// 單次輸入上限：公開端點，避免一次塞超長文字燒 token
+const MAX_WORDS_CHARS = 4000;
 
-  if (!words || words.trim().length === 0) {
+export async function POST(request: Request) {
+  const limited = await enforcePublicAiLimit(request, 'generate-flashcards');
+  if (limited) {
+    return limited;
+  }
+
+  const body = await request.json().catch(() => null);
+  const words = (body as { words?: unknown } | null)?.words;
+
+  if (typeof words !== 'string' || words.trim().length === 0) {
     return NextResponse.json({ error: '請輸入單字清單' }, { status: 400 });
+  }
+  if (words.length > MAX_WORDS_CHARS) {
+    return NextResponse.json({ error: `單字清單超過 ${MAX_WORDS_CHARS} 字上限` }, { status: 400 });
   }
 
   const userPrompt = `請為以下單字生成快閃卡片：\n\n${words.trim()}`;

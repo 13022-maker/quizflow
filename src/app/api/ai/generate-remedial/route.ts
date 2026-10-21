@@ -1,37 +1,47 @@
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
+import { z } from 'zod';
 
 import { generateAIText } from '@/lib/ai/textModel';
 import { db } from '@/libs/DB';
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
 import { responseSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type WeakPoint = {
-  concept: string;
-  suggestion: string;
-};
+// 公開端點：弱點數量與字串長度都設上限
+const InputSchema = z.object({
+  weakPoints: z.array(z.object({
+    concept: z.string().max(500),
+    suggestion: z.string().max(1000),
+  })).min(1).max(30), // weakPoints 來自 AI 分析結果，數量不固定；放寬接收，下面只取前 10 個
+  responseId: z.number().int().positive(),
+});
+
+// 補強題只在剛交卷後產生；response.id 是 serial 可被猜，限制只能用近期的作答紀錄
+const RESPONSE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(req: Request) {
+  const limited = await enforcePublicAiLimit(req, 'generate-remedial');
+  if (limited) {
+    return limited;
+  }
   try {
-    const body = await req.json();
-    const { weakPoints, responseId } = body as {
-      weakPoints: WeakPoint[];
-      responseId: number;
-    };
-
-    if (!weakPoints?.length || !responseId) {
+    const parsedBody = InputSchema.safeParse(await req.json().catch(() => null));
+    if (!parsedBody.success) {
       return NextResponse.json({ error: '缺少必要資料' }, { status: 400 });
     }
+    const { responseId } = parsedBody.data;
+    const weakPoints = parsedBody.data.weakPoints.slice(0, 10);
 
     const [resp] = await db
-      .select({ id: responseSchema.id })
+      .select({ id: responseSchema.id, submittedAt: responseSchema.submittedAt })
       .from(responseSchema)
       .where(eq(responseSchema.id, responseId))
       .limit(1);
 
-    if (!resp) {
+    if (!resp || Date.now() - resp.submittedAt.getTime() > RESPONSE_MAX_AGE_MS) {
       return NextResponse.json({ error: '無效的作答記錄' }, { status: 403 });
     }
 
