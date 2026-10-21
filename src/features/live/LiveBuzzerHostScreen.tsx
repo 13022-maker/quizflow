@@ -2,7 +2,10 @@
 
 import { Button } from '@/components/ui/button';
 import { useServerNow } from '@/hooks/useServerNow';
-import type { LiveBuzzResult, LiveHostState } from '@/services/live/types';
+import { latestBuzzEvent } from '@/services/live/buzzer';
+import type { LiveHostState } from '@/services/live/types';
+
+import { LiveBuzzOrderList } from './LiveBuzzOrderList';
 
 type Props = {
   state: LiveHostState;
@@ -10,14 +13,6 @@ type Props = {
   onNext: () => void;
   onEnd: () => void;
   pending: boolean;
-};
-
-const RESULT_LABEL: Record<LiveBuzzResult, { text: string; className: string }> = {
-  queued: { text: '排隊中', className: 'bg-muted text-muted-foreground' },
-  answering: { text: '作答中', className: 'bg-blue-100 text-blue-700' },
-  correct: { text: '答對 +100', className: 'bg-green-100 text-green-700' },
-  wrong: { text: '答錯 −50', className: 'bg-red-100 text-red-700' },
-  timeout: { text: '逾時 −50', className: 'bg-red-100 text-red-700' },
 };
 
 const optionLabel = (i: number) => String.fromCharCode(65 + i);
@@ -58,6 +53,9 @@ export function LiveBuzzerHostScreen({ state, onReveal, onNext, onEnd, pending }
   }
 
   const sortedTeams = [...buzzer.teams].sort((a, b) => a.orderIndex - b.orderIndex);
+  const feed = !isShowingResult && readingLeft <= 0 ? latestBuzzEvent(buzzer.buzzes) : null;
+  const failText = (r: 'wrong' | 'timeout') => (r === 'timeout' ? '逾時 −50' : '答錯 −50');
+  const queuedCount = buzzer.buzzes.filter(b => b.result === 'queued').length;
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 px-4 py-6">
@@ -92,30 +90,23 @@ export function LiveBuzzerHostScreen({ state, onReveal, onNext, onEnd, pending }
         </ul>
       </div>
 
-      <div className={`rounded-xl px-4 py-3 text-center text-xl font-bold ${banner.className}`}>
+      <div className={`rounded-xl px-4 py-3 text-center text-xl font-bold ${banner.className}`} aria-live="polite">
         {banner.text}
+        {!isShowingResult && answering && queuedCount > 0 && (
+          <p className="text-sm font-medium">{`還有 ${queuedCount} 組排隊中`}</p>
+        )}
       </div>
 
+      {feed && (
+        <p className="rounded-lg bg-orange-50 px-3 py-2 text-center text-lg font-semibold text-orange-800">
+          {feed.kind === 'passed'
+            ? `${feed.failedTeamName}${failText(feed.failedResult)}，換${feed.nextTeamName}作答`
+            : `${feed.failedTeamName}${failText(feed.failedResult)}，重新開放搶答！`}
+        </p>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="rounded-xl border bg-card p-4">
-          <h3 className="mb-2 text-sm font-semibold text-muted-foreground">搶答順序</h3>
-          {buzzer.buzzes.length === 0
-            ? <p className="py-4 text-center text-sm text-muted-foreground">還沒有組搶答</p>
-            : (
-                <ol className="space-y-1.5">
-                  {buzzer.buzzes.map(b => (
-                    <li key={b.id} className="flex items-center gap-2 text-sm">
-                      <span className="w-6 text-center font-mono font-bold">{b.order}</span>
-                      <span className="font-semibold">{b.teamName}</span>
-                      <span className="flex-1 truncate text-muted-foreground">{b.nickname}</span>
-                      <span className={`rounded-full px-2 py-0.5 text-xs ${RESULT_LABEL[b.result].className}`}>
-                        {RESULT_LABEL[b.result].text}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              )}
-        </section>
+        <LiveBuzzOrderList buzzes={buzzer.buzzes} size="lg" />
 
         <section className="rounded-xl border bg-card p-4">
           <h3 className="mb-2 text-sm font-semibold text-muted-foreground">各組分數</h3>

@@ -76,6 +76,22 @@ export type LiveBuzzEntryForHost = LiveBuzzEntry & {
   selectedOptionId: string | string[] | null;
 };
 
+/**
+ * 搶答看板快照（server 每次搶答狀態改變後讀 DB 組出來的完整狀態，不是增量）。
+ * 會放進 Ably `board` 訊息與 buzz / buzz-answer 回應，client 直接套用、不用再打 REST。
+ * 只含同場所有人本來就看得到的資訊（組名、組分、搶答順序與結果），不含任何人的所選答案。
+ */
+export type LiveBuzzerBoard = {
+  gameId: number;
+  questionId: number;
+  questionIndex: number;
+  status: LiveGameStatus;
+  serverNow: string; // 組快照當下的 DB 時鐘
+  teams: { id: number; name: string; orderIndex: number; score: number }[];
+  buzzes: LiveBuzzEntry[]; // 依搶答名次排序
+  correctAnswers: string[] | null; // 只有 showing_result（已揭曉）才帶，揭曉前一律 null
+};
+
 export type LiveBuzzerPlayerStat = {
   playerId: number;
   nickname: string;

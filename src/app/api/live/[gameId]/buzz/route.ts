@@ -51,5 +51,6 @@ export async function POST(
     return NextResponse.json({ error: result.message, code: result.code }, { status: result.status });
   }
 
-  return NextResponse.json({ order: result.order, granted: result.granted });
+  // board = 按下當下的完整搶答看板：學生端直接套用，立刻看到自己第幾個搶到，不用等 Ably / 輪詢
+  return NextResponse.json({ order: result.order, granted: result.granted, board: result.board });
 }

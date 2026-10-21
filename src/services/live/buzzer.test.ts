@@ -8,6 +8,7 @@ import {
   checkBuzzAllowed,
   derivePlayerBuzzPhase,
   isBuzzerSupportedType,
+  latestBuzzEvent,
   pickTeamForLateJoiner,
   planReconcile,
   scoreDeltaFor,
@@ -321,7 +322,8 @@ describe('derivePlayerBuzzPhase 學生端畫面狀態', () => {
       buzzes: [entry({ teamId: 2, playerId: 21, result: 'answering', answerGrantedAtMs: 14_000, order: 1 })],
     });
 
-    expect(phase).toEqual({ kind: 'other_team_answering', teamName: '第 2 組', canBuzz: true });
+    // 第 2 組 14_000 取得作答權 → 截止 29_000，現在 19_000 → 剩 10 秒
+    expect(phase).toEqual({ kind: 'other_team_answering', teamName: '第 2 組', secondsLeft: 10, canBuzz: true });
   });
 
   it('我組已搶、排隊第 2（前面還有 1 組在排）', () => {
@@ -335,7 +337,8 @@ describe('derivePlayerBuzzPhase 學生端畫面狀態', () => {
       ],
     });
 
-    expect(phase).toEqual({ kind: 'queued', position: 2, answeringTeamName: '第 2 組' });
+    // 全場第 3 個搶到；排隊中（不含作答中的第 2 組）排第 2
+    expect(phase).toEqual({ kind: 'queued', order: 3, position: 2, answeringTeamName: '第 2 組' });
   });
 
   it('我組已答錯 → my_team_failed', () => {
@@ -345,11 +348,75 @@ describe('derivePlayerBuzzPhase 學生端畫面狀態', () => {
       buzzes: [entry({ teamId: 1, playerId: 11, result: 'timeout', answerGrantedAtMs: 14_000, order: 1 })],
     });
 
-    expect(phase).toEqual({ kind: 'my_team_failed' });
+    expect(phase).toEqual({ kind: 'my_team_failed', result: 'timeout', answeringTeamName: null });
+  });
+
+  it('我組答錯、作答權已交給第 2 組 → 帶出下一組名稱', () => {
+    const phase = derivePlayerBuzzPhase({
+      ...base,
+      nowMs: 20_000,
+      buzzes: [
+        entry({ teamId: 1, playerId: 11, result: 'wrong', answerGrantedAtMs: 14_000, order: 1 }),
+        entry({ teamId: 2, playerId: 21, result: 'answering', answerGrantedAtMs: 18_000, order: 2 }),
+      ],
+    });
+
+    expect(phase).toEqual({ kind: 'my_team_failed', result: 'wrong', answeringTeamName: '第 2 組' });
+  });
+
+  it('我組第 2 個搶到、第 1 組作答中 → order 2 / position 1', () => {
+    const phase = derivePlayerBuzzPhase({
+      ...base,
+      nowMs: 19_000,
+      buzzes: [
+        entry({ teamId: 2, playerId: 21, result: 'answering', answerGrantedAtMs: 14_000, order: 1 }),
+        entry({ teamId: 1, playerId: 12, result: 'queued', order: 2 }),
+      ],
+    });
+
+    expect(phase).toEqual({ kind: 'queued', order: 2, position: 1, answeringTeamName: '第 2 組' });
   });
 
   it('揭曉階段 / 沒分組', () => {
     expect(derivePlayerBuzzPhase({ ...base, status: 'showing_result', nowMs: 30_000, buzzes: [] })).toEqual({ kind: 'revealed' });
     expect(derivePlayerBuzzPhase({ ...base, myTeamId: null, nowMs: 30_000, buzzes: [] })).toEqual({ kind: 'no_team' });
+  });
+});
+
+describe('latestBuzzEvent 最新動態（只描述既有規則：答錯 −50 → 交棒下一組 / 重新開放）', () => {
+  const e = (order: number, teamName: string, result: BuzzState['result']) => ({ order, teamName, result });
+
+  it('還沒有組答錯 → 沒有動態', () => {
+    expect(latestBuzzEvent([])).toBeNull();
+    expect(latestBuzzEvent([e(1, '第 1 組', 'answering'), e(2, '第 2 組', 'queued')])).toBeNull();
+  });
+
+  it('第 1 組答錯、第 2 組作答中 → passed', () => {
+    expect(latestBuzzEvent([e(1, '第 1 組', 'wrong'), e(2, '第 2 組', 'answering'), e(3, '第 3 組', 'queued')]))
+      .toEqual({ kind: 'passed', failedTeamName: '第 1 組', failedResult: 'wrong', nextTeamName: '第 2 組' });
+  });
+
+  it('兩組先後失敗 → 只報最新那筆（第 2 組逾時，換第 3 組）', () => {
+    expect(latestBuzzEvent([e(1, '第 1 組', 'wrong'), e(2, '第 2 組', 'timeout'), e(3, '第 3 組', 'answering')]))
+      .toEqual({ kind: 'passed', failedTeamName: '第 2 組', failedResult: 'timeout', nextTeamName: '第 3 組' });
+  });
+
+  it('答錯後沒有組排隊 → reopened（回到開放搶答）', () => {
+    expect(latestBuzzEvent([e(1, '第 1 組', 'wrong')]))
+      .toEqual({ kind: 'reopened', failedTeamName: '第 1 組', failedResult: 'wrong' });
+  });
+
+  it('答錯後又有新組搶到並作答中 → passed 到新組', () => {
+    expect(latestBuzzEvent([e(1, '第 1 組', 'wrong'), e(2, '第 3 組', 'answering')]))
+      .toEqual({ kind: 'passed', failedTeamName: '第 1 組', failedResult: 'wrong', nextTeamName: '第 3 組' });
+  });
+
+  it('已有組答對 → 交給揭曉畫面，不顯示動態', () => {
+    expect(latestBuzzEvent([e(1, '第 1 組', 'wrong'), e(2, '第 2 組', 'correct')])).toBeNull();
+  });
+
+  it('輸入順序打亂也依 order 判定', () => {
+    expect(latestBuzzEvent([e(2, '第 2 組', 'answering'), e(1, '第 1 組', 'wrong')]))
+      .toEqual({ kind: 'passed', failedTeamName: '第 1 組', failedResult: 'wrong', nextTeamName: '第 2 組' });
   });
 });
