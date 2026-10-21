@@ -1,0 +1,1660 @@
+<!doctype html><html lang="zh-Hant"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>段考命題助手 · QuizFlow</title>
+<style>
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@400;700&display=swap");
+
+:root{
+  --bg:#f3f4f1;
+  --surface:#ffffff;
+  --surface-2:#eef0ec;
+  --ink:#1b1f1d;
+  --ink-2:#47504b;
+  --muted:#6a736d;
+  --line:#d8dcd6;
+  --line-strong:#b6beb8;
+  --accent:#0d6a56;
+  --accent-ink:#ffffff;
+  --accent-soft:#e0eee8;
+  --warn:#8f5400;
+  --warn-soft:#fbefd9;
+  --bad:#b42318;
+  --bad-soft:#fdeceb;
+  --ok:#1d7437;
+  --ok-soft:#e3f2e6;
+  --paper:#ffffff;
+  --paper-ink:#151515;
+  --paper-muted:#555a57;
+  --paper-line:#c4c8c3;
+  --grid:rgba(13,106,86,.075);
+  --code-bg:#f2f3f0;
+  --focus:#1f6feb;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.05);
+  --font-sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  --font-serif:"Noto Serif TC","PMingLiU","Songti TC",serif;
+  --font-mono:ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111413;
+    --surface:#191d1b;
+    --surface-2:#212624;
+    --ink:#e6ebe8;
+    --ink-2:#b5beb9;
+    --muted:#8b9590;
+    --line:#2d3431;
+    --line-strong:#434c48;
+    --accent:#4dbf9e;
+    --accent-ink:#04241b;
+    --accent-soft:#17322a;
+    --warn:#f0b25a;
+    --warn-soft:#382a13;
+    --bad:#ff8b80;
+    --bad-soft:#3b1b19;
+    --ok:#6fd28a;
+    --ok-soft:#163121;
+    --paper:#f4f3ef;
+    --paper-ink:#151515;
+    --paper-muted:#4f5450;
+    --paper-line:#b5b9b4;
+    --grid:rgba(77,191,158,.06);
+    --code-bg:#e8e9e5;
+    --focus:#7aa7ff;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111413;
+  --surface:#191d1b;
+  --surface-2:#212624;
+  --ink:#e6ebe8;
+  --ink-2:#b5beb9;
+  --muted:#8b9590;
+  --line:#2d3431;
+  --line-strong:#434c48;
+  --accent:#4dbf9e;
+  --accent-ink:#04241b;
+  --accent-soft:#17322a;
+  --warn:#f0b25a;
+  --warn-soft:#382a13;
+  --bad:#ff8b80;
+  --bad-soft:#3b1b19;
+  --ok:#6fd28a;
+  --ok-soft:#163121;
+  --paper:#f4f3ef;
+  --paper-ink:#151515;
+  --paper-muted:#4f5450;
+  --paper-line:#b5b9b4;
+  --grid:rgba(77,191,158,.06);
+  --code-bg:#e8e9e5;
+  --focus:#7aa7ff;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 4px 14px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--font-sans);
+  font-size:15px;
+  line-height:1.6;
+  padding-inline:16px;
+  padding-block:0 48px;
+  overflow-x:hidden;
+}
+.wrap{max-width:1240px;margin-inline:auto;min-width:0}
+h1,h2,h3,h4{margin:0;line-height:1.3;font-weight:700}
+p{margin:0}
+.num,input[type=number],.tnum{font-variant-numeric:tabular-nums}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+/* ---------- header ---------- */
+.top{
+  position:sticky;top:0;z-index:10;
+  background:var(--bg);
+  border-bottom:1px solid var(--line);
+  margin-inline:-16px;padding-inline:16px;
+}
+.top-inner{max-width:1240px;margin-inline:auto;display:flex;align-items:center;gap:12px;padding-block:10px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;margin-right:auto}
+.logo{
+  width:30px;height:30px;flex:none;border:1.5px solid var(--accent);border-radius:4px;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:6px 6px;position:relative;
+}
+.logo::after{content:"";position:absolute;left:6px;right:6px;top:9px;height:2px;background:var(--accent);box-shadow:0 5px 0 var(--accent),0 10px 0 var(--accent)}
+.brand h1{font-size:17px;letter-spacing:.02em}
+.tag{font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px;white-space:nowrap}
+.top-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.tabs{display:flex;gap:2px;max-width:1240px;margin-inline:auto;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{
+  appearance:none;border:0;background:none;cursor:pointer;
+  padding:9px 14px;font-weight:500;color:var(--ink-2);white-space:nowrap;
+  border-bottom:2px solid transparent;display:flex;align-items:center;gap:6px;
+}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+.tab .badge{font-size:11px;line-height:1;padding:3px 6px;border-radius:999px;background:var(--warn-soft);color:var(--warn);font-variant-numeric:tabular-nums}
+.tab .badge.ok{background:var(--ok-soft);color:var(--ok)}
+
+/* ---------- generic ---------- */
+.btn{
+  appearance:none;cursor:pointer;border:1px solid var(--line-strong);background:var(--surface);
+  color:var(--ink);padding:6px 12px;border-radius:6px;font-size:14px;font-weight:500;line-height:1.4;
+  display:inline-flex;align-items:center;gap:6px;white-space:nowrap;
+}
+.btn:hover{border-color:var(--ink-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2);color:var(--ink)}
+.btn.small{padding:3px 8px;font-size:13px}
+.btn.danger{color:var(--bad)}
+.btn[data-armed]{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field>span,.lbl{font-size:12px;color:var(--muted);font-weight:500}
+.input,select.input,textarea.input{
+  width:100%;min-width:0;border:1px solid var(--line-strong);background:var(--surface);
+  border-radius:6px;padding:6px 9px;font-size:14px;line-height:1.5;
+}
+textarea.input{resize:vertical;min-height:62px}
+textarea.code,.input.code{font-family:var(--font-mono);font-size:13px}
+.input:hover{border-color:var(--ink-2)}
+.input:focus{border-color:var(--focus)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);min-width:0}
+.panel-h{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-h h2{font-size:15px}
+.panel-h .sub{font-size:13px;color:var(--muted)}
+.panel-b{padding:14px 16px}
+.stack>*+*{margin-top:16px}
+.muted{color:var(--muted)}
+.hint{font-size:13px;color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+
+.banner{
+  margin-top:14px;border:1px dashed var(--line-strong);border-radius:8px;padding:10px 14px;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;font-size:14px;
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/12px 12px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/12px 12px,
+    var(--surface);
+}
+.banner b{color:var(--accent)}
+.banner .spacer{min-width:8px}
+
+.view{display:none;margin-top:16px}
+.view.active{display:block}
+
+/* ---------- editor ---------- */
+.ed-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+.side{position:sticky;top:104px}
+.meta-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+
+.qlist{display:flex;flex-direction:column;gap:10px}
+.qcard{
+  border:1px solid var(--line);border-radius:8px;background:var(--surface);
+  display:grid;grid-template-columns:44px minmax(0,1fr);overflow:hidden;
+}
+.qno{
+  background:var(--surface-2);border-right:1px solid var(--line);
+  display:flex;flex-direction:column;align-items:center;padding-top:10px;gap:4px;
+  font-weight:700;font-variant-numeric:tabular-nums;font-size:15px;
+}
+.qno small{font-size:11px;font-weight:500;color:var(--muted);writing-mode:vertical-rl;letter-spacing:.1em}
+.qbody{padding:10px 12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.qhead{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) auto;gap:8px;align-items:end}
+.qhead .score{max-width:90px}
+.qtools{display:flex;gap:2px}
+.icon-btn{appearance:none;border:1px solid transparent;background:none;cursor:pointer;width:30px;height:30px;border-radius:6px;color:var(--ink-2);display:grid;place-items:center;font-size:14px}
+.icon-btn:hover{background:var(--surface-2);color:var(--ink)}
+.icon-btn.del:hover{color:var(--bad);background:var(--bad-soft)}
+.icon-btn svg{width:16px;height:16px}
+.opts-ed{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.opt-ed{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:6px;align-items:center}
+.opt-ed label.key{font-weight:700;font-size:13px;width:22px;text-align:center;color:var(--ink-2)}
+.opt-ed input[type=radio]{margin:0;accent-color:var(--accent);width:16px;height:16px}
+.tf-ed{display:flex;gap:16px;align-items:center}
+.tf-ed label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.tf-ed input{accent-color:var(--accent)}
+.qwarn{font-size:12px;color:var(--warn);background:var(--warn-soft);border-radius:4px;padding:2px 8px;align-self:flex-start}
+
+.add-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+.sum-total{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.sum-total .big{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.status-pill{font-size:12px;font-weight:500;border-radius:999px;padding:2px 9px}
+.status-pill.ok{background:var(--ok-soft);color:var(--ok)}
+.status-pill.bad{background:var(--bad-soft);color:var(--bad)}
+.status-pill.warn{background:var(--warn-soft);color:var(--warn)}
+.kv{display:grid;grid-template-columns:1fr auto;gap:2px 10px;font-size:13px}
+.kv dt{color:var(--ink-2)}
+.kv dd{margin:0;text-align:right;font-variant-numeric:tabular-nums}
+.bars{display:flex;flex-direction:column;gap:7px;font-size:12.5px}
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) 42px;gap:2px 8px;align-items:center}
+.bar-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-row .pct{text-align:right;font-variant-numeric:tabular-nums}
+.bar{grid-column:1 / -1;height:7px;background:var(--surface-2);border-radius:2px;position:relative;overflow:visible}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent);border-radius:2px}
+.bar b{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink-2)}
+.bar.warn i{background:var(--warn)}
+.legend{font-size:11.5px;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.legend span::before{content:"";display:inline-block;width:10px;height:7px;background:var(--accent);margin-right:5px;vertical-align:middle;border-radius:1px}
+.legend span.mk::before{width:2px;height:11px;background:var(--ink-2)}
+
+details.bulk summary{cursor:pointer;font-weight:500;padding:4px 0}
+details.bulk pre{font-family:var(--font-mono);font-size:12px;background:var(--surface-2);padding:8px 10px;border-radius:6px;overflow-x:auto;margin:8px 0}
+
+/* ---------- matrix ---------- */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%}
+.matrix{min-width:820px;font-size:13.5px}
+.matrix th,.matrix td{border:1px solid var(--line);padding:6px 8px;text-align:center;font-variant-numeric:tabular-nums}
+.matrix tr>*:first-child{border-left:0}
+.matrix tr>*:last-child{border-right:0}
+.matrix thead tr:first-child>*{border-top:0}
+.matrix tbody tr:last-child>*,.matrix tfoot tr:last-child>*{border-bottom:0}
+.matrix thead th{background:var(--surface-2);font-weight:700;font-size:12.5px;color:var(--ink-2)}
+.matrix th.unit{text-align:left;font-weight:500;min-width:130px;background:var(--surface)}
+.matrix td.cell{position:relative;min-width:62px}
+.matrix td.cell .h{position:absolute;inset:0;background:var(--accent);opacity:var(--h,0);pointer-events:none}
+.matrix td.cell b,.matrix td.cell small{position:relative;display:block;line-height:1.25}
+.matrix td.cell small{color:var(--ink-2);font-size:11.5px}
+.matrix td.empty{color:var(--line-strong)}
+.matrix tfoot td,.matrix tfoot th{background:var(--surface-2);font-weight:700}
+.matrix .dev.warn{color:var(--warn);font-weight:700}
+.matrix .dev.ok{color:var(--ok)}
+.matrix .sep{border-left:2px solid var(--line-strong)}
+.matrix .group th{font-size:11.5px;letter-spacing:.06em}
+
+.unit-ed{display:flex;flex-direction:column;gap:8px}
+.unit-row{display:grid;grid-template-columns:minmax(0,1fr) 92px auto;gap:8px;align-items:end}
+.warn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.warn-list li{font-size:13.5px;padding:7px 10px;border-radius:6px;border-left:3px solid var(--warn);background:var(--warn-soft)}
+.warn-list li.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.warn-list li.ok{border-left-color:var(--ok);background:var(--ok-soft)}
+.mx-grid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start}
+.bloom-split{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.bloom-split div{border:1px solid var(--line);border-radius:6px;padding:8px 10px}
+.bloom-split b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.bloom-split span{font-size:12px;color:var(--muted)}
+
+/* ---------- preview ---------- */
+.pv-bar{display:flex;gap:12px 18px;flex-wrap:wrap;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg input{position:absolute;opacity:0;pointer-events:none}
+.seg label{padding:5px 13px;cursor:pointer;font-size:14px;font-weight:500;color:var(--ink-2)}
+.seg label+input+label,.seg input+label~label{border-left:1px solid var(--line-strong)}
+.seg input:checked+label{background:var(--accent);color:var(--accent-ink)}
+.seg input:focus-visible+label{outline:2px solid var(--focus);outline-offset:-2px}
+.chk{display:inline-flex;gap:6px;align-items:center;font-size:14px;cursor:pointer}
+.chk input{accent-color:var(--accent);width:16px;height:16px;margin:0}
+.chk.disabled{opacity:.5;cursor:not-allowed}
+.desk{
+  margin-top:14px;padding:20px;border-radius:10px;border:1px solid var(--line);
+  background:
+    linear-gradient(var(--grid) 1px,transparent 1px) 0 0/20px 20px,
+    linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/20px 20px,
+    var(--surface-2);
+  overflow:hidden;
+}
+.paper{
+  background:var(--paper);color:var(--paper-ink);
+  max-width:794px;margin-inline:auto;aspect-ratio:210/297;
+  padding:48px 52px 56px;box-shadow:0 1px 3px rgba(0,0,0,.12),0 8px 28px rgba(0,0,0,.1);
+  font-family:var(--font-serif);font-size:15px;line-height:1.75;overflow-wrap:anywhere;
+  position:relative;
+}
+.paper .ver{position:absolute;top:22px;right:26px;border:1.5px solid var(--paper-ink);padding:1px 10px;font-weight:700;font-family:var(--font-sans);font-size:14px}
+.paper .ptitle{text-align:center;font-size:19px;font-weight:700;letter-spacing:.04em}
+.paper .psub{text-align:center;font-size:14.5px;margin-top:2px}
+.paper .pinfo{display:grid;grid-template-columns:repeat(4,1fr) 92px;border:1.2px solid var(--paper-ink);margin:14px 0 6px;font-size:14px}
+.paper .pinfo>div{padding:6px 8px;border-right:1px solid var(--paper-ink);white-space:nowrap}
+.paper .pinfo>div:last-child{border-right:0}
+.paper .pinfo .score-box{display:flex;flex-direction:column;justify-content:space-between;min-height:58px;grid-row:span 2}
+.paper .pinfo .r2{border-top:1px solid var(--paper-ink);grid-column:1 / 5;color:var(--paper-muted);font-size:13px;white-space:normal}
+.paper .note{font-size:13px;color:var(--paper-muted);margin-bottom:6px}
+.paper h3{font-size:15.5px;margin:18px 0 6px;font-family:var(--font-sans);font-weight:700}
+.paper h3 small{font-weight:400;font-size:13px}
+.pq{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 6px;margin-bottom:10px;break-inside:avoid}
+.pq .n{font-variant-numeric:tabular-nums;min-width:2.6em;text-align:right;white-space:nowrap}
+.pq .paren{display:inline-block;width:2.6em}
+.pq .stem{white-space:pre-wrap}
+.pq pre{font-family:var(--font-mono);font-size:13px;background:var(--code-bg);border-left:2px solid var(--paper-line);padding:4px 10px;margin:4px 0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5}
+.blank{display:inline-block;min-width:5em;border-bottom:1px solid var(--paper-ink);height:1.1em;vertical-align:-2px}
+.popts{display:grid;gap:2px 14px;margin-top:3px}
+.popts.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.popts.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.popts.c1{grid-template-columns:minmax(0,1fr)}
+.popts span{font-family:var(--font-serif)}
+.popts code,.pq code{font-family:var(--font-mono);font-size:13px}
+.answer-space{border:1px dashed var(--paper-line);height:120px;margin-top:6px}
+.pend{text-align:center;margin-top:22px;font-size:13px;color:var(--paper-muted)}
+.key-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));border-top:1px solid var(--paper-ink);border-left:1px solid var(--paper-ink);margin-top:4px}
+.key-grid div{border-right:1px solid var(--paper-ink);border-bottom:1px solid var(--paper-ink);display:grid;grid-template-columns:auto 1fr;font-family:var(--font-sans);font-size:14px}
+.key-grid div span{background:#eceee9;padding:3px 6px;border-right:1px solid var(--paper-line);font-variant-numeric:tabular-nums;min-width:2.2em;text-align:center;color:var(--paper-muted)}
+.key-grid div b{text-align:center;padding:3px 4px}
+.key-long{margin-top:6px;font-size:14px}
+.key-long>div{display:grid;grid-template-columns:2.6em minmax(0,1fr);gap:6px;padding:6px 0;border-bottom:1px dotted var(--paper-line)}
+.key-long .meta{font-size:12px;color:var(--paper-muted);font-family:var(--font-sans)}
+.key-long .ans{white-space:pre-wrap}
+.key-map{font-size:12px;color:var(--paper-muted);margin-top:14px;font-family:var(--font-sans)}
+
+.copy-fb{margin-top:12px;display:none}
+.copy-fb.show{display:block}
+.copy-fb textarea{height:180px;font-family:var(--font-mono);font-size:12.5px}
+
+/* ---------- business ---------- */
+.biz{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.biz .full{grid-column:1 / -1}
+.biz h3{font-size:14px;color:var(--accent);margin-bottom:8px;letter-spacing:.03em}
+.biz ul{margin:0;padding-left:20px}
+.biz li{margin:3px 0}
+.stat-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.stat{border:1px solid var(--line);border-radius:8px;padding:10px 12px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;line-height:1.2}
+.stat span{font-size:12px;color:var(--muted)}
+.plans{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.plan{border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.plan.hl{border-color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+.plan .price{font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1.2}
+.plan .price small{font-size:13px;font-weight:400;color:var(--muted)}
+.plan ul{font-size:13.5px}
+.src{font-size:12px;color:var(--muted);margin-top:8px}
+.src a{color:var(--accent)}
+.biz table{font-size:13.5px}
+.biz td,.biz th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.biz th{color:var(--ink-2);font-weight:500;background:var(--surface-2)}
+.biz td.r,.biz th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(20px);opacity:0;background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:14px;transition:.2s;pointer-events:none;z-index:50;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media (max-width: 1000px){
+  .ed-grid,.mx-grid{grid-template-columns:minmax(0,1fr)}
+  .side{position:static}
+  .biz{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width: 720px){
+  .qhead{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .qhead .qtools{grid-column:1 / -1;justify-content:flex-end}
+  .qhead .score{max-width:none}
+  .opts-ed{grid-template-columns:minmax(0,1fr)}
+  .paper{padding:28px 18px 36px;font-size:14px}
+  .paper .pinfo{grid-template-columns:repeat(2,1fr)}
+  .paper .pinfo>div{border-bottom:1px solid var(--paper-ink)}
+  .paper .pinfo>div:nth-child(2n){border-right:0}
+  .paper .pinfo .score-box{grid-row:auto;min-height:0;flex-direction:row;gap:6px;justify-content:flex-start}
+  .paper .pinfo .r2{grid-column:1 / -1;border-top:0;border-bottom:0}
+  .popts.c4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .desk{padding:10px;margin-inline:-6px}
+  .stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .plans{grid-template-columns:minmax(0,1fr)}
+  .bloom-split b{font-size:17px}
+  .paper .ver{top:8px;right:10px}
+}
+@media (max-width: 440px){
+  .qcard{grid-template-columns:34px minmax(0,1fr)}
+  .unit-row{grid-template-columns:minmax(0,1fr) 72px auto}
+  .tag{display:none}
+}
+
+/* ---------- shortcuts ---------- */
+.qcard.active{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.qcard.active .qno{background:var(--accent-soft);color:var(--accent)}
+dialog.kbd-dlg{border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);padding:0;width:min(640px,calc(100vw - 32px));max-height:calc(100vh - 48px);box-shadow:var(--shadow)}
+dialog.kbd-dlg::backdrop{background:rgba(0,0,0,.35)}
+.kbd-dlg .panel-h{position:sticky;top:0;background:var(--surface)}
+.kbd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 24px;padding:14px 16px}
+.kbd-grid h4{grid-column:1 / -1;font-size:12px;color:var(--accent);margin-top:8px;letter-spacing:.06em}
+.kbd-row{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;padding:3px 0;border-bottom:1px dotted var(--line)}
+kbd{font-family:var(--font-mono);font-size:12px;border:1px solid var(--line-strong);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface-2);white-space:nowrap}
+.kbd-note{font-size:12.5px;color:var(--muted);padding:0 16px 14px}
+@media (max-width:560px){.kbd-grid{grid-template-columns:minmax(0,1fr)}}
+</style>
+
+<div class="top">
+  <div class="top-inner">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"></div>
+      <h1>段考命題助手</h1>
+      <a class="tag" href="/dashboard" style="text-decoration:none;color:inherit">QuizFlow</a>
+    </div>
+    <div class="top-actions">
+      <button class="btn small ghost" id="kbd-open" type="button" title="鍵盤快捷鍵（?）">⌨️ 快捷鍵</button>
+      <button class="btn small ghost" id="theme-toggle" type="button" aria-label="切換深淺色">主題：自動</button>
+      <button class="btn small" id="reset-sample" type="button">重新載入範例</button>
+    </div>
+  </div>
+  <div class="tabs" role="tablist" aria-label="功能分頁">
+    <button class="tab" role="tab" id="tab-edit" aria-controls="view-edit" data-view="edit" type="button">編輯題目</button>
+    <button class="tab" role="tab" id="tab-matrix" aria-controls="view-matrix" data-view="matrix" type="button">雙向細目表 <span class="badge" id="tab-badge">0</span></button>
+    <button class="tab" role="tab" id="tab-preview" aria-controls="view-preview" data-view="preview" type="button">考卷預覽</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="banner" id="import-banner" hidden>
+    <span id="import-text"></span>
+    <span class="spacer"></span>
+    <button class="btn small" id="restore-prev" type="button" hidden>還原先前草稿</button>
+    <button class="btn small ghost" id="import-dismiss" type="button">知道了</button>
+  </div>
+  <div class="banner" id="sample-banner">
+    <span><b>範例資料</b>　目前載入的是虛構的「國中資訊科技・程式設計：變數、條件、迴圈」段考（21 題），僅供示範。</span>
+    <span class="spacer"></span>
+    <button class="btn small" id="clear-all" type="button">清空，開始新考卷</button>
+  </div>
+
+  <!-- ================= 編輯 ================= -->
+  <section class="view" id="view-edit" role="tabpanel" aria-labelledby="tab-edit">
+    <div class="ed-grid">
+      <div class="stack" style="min-width:0">
+        <div class="panel">
+          <div class="panel-h"><h2>考卷資訊</h2><span class="sub">會顯示在考卷抬頭</span></div>
+          <div class="panel-b meta-grid">
+            <label class="field"><span>學校</span><input class="input" id="meta-school" data-meta="school"></label>
+            <label class="field"><span>學年度／學期</span><input class="input" id="meta-term" data-meta="term"></label>
+            <label class="field"><span>考試名稱</span><input class="input" id="meta-exam" data-meta="exam"></label>
+            <label class="field"><span>科目</span><input class="input" id="meta-subject" data-meta="subject"></label>
+            <label class="field"><span>年級</span><input class="input" id="meta-grade" data-meta="grade"></label>
+            <label class="field"><span>作答時間（分鐘）</span><input class="input num" type="number" min="0" id="meta-minutes" data-meta="minutes"></label>
+            <label class="field"><span>命題教師</span><input class="input" id="meta-teacher" data-meta="teacher"></label>
+            <label class="field"><span>考試範圍</span><input class="input" id="meta-range" data-meta="range"></label>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">
+            <h2>題目</h2><span class="sub" id="q-count-sub"></span>
+            <span class="spacer"></span>
+            <span class="hint">題幹中以「&gt; 」開頭的行會排成程式碼；「____」會變成填答底線</span>
+          </div>
+          <div class="panel-b">
+            <div class="qlist" id="qlist"></div>
+            <div class="add-row">
+              <button class="btn" type="button" id="add-mc" data-add="mc" data-kbd="Alt+Shift+M">＋ 選擇題</button>
+              <button class="btn" type="button" id="add-tf" data-add="tf" data-kbd="Alt+Shift+T">＋ 是非題</button>
+              <button class="btn" type="button" id="add-fill" data-add="fill" data-kbd="Alt+Shift+F">＋ 填充題</button>
+              <button class="btn" type="button" id="add-essay" data-add="essay" data-kbd="Alt+Shift+E">＋ 問答題</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-b">
+            <details class="bulk" id="bulk-details">
+              <summary>批次貼上題目（從 Word／舊考卷複製）</summary>
+              <p class="hint" style="margin-top:6px">每題之間空一行。第一行寫「題型｜單元｜認知層次｜配分」，單元名稱可只寫關鍵字。</p>
+<pre>選擇｜變數｜記憶｜4
+下列何者不是 Python 的資料型態？
+(A) int (B) str (C) loop (D) bool
+答案：C
+
+是非｜迴圈｜理解｜3
+range(5) 會產生 0 到 5 共六個整數。
+答案：X</pre>
+              <label class="field"><span>貼上內容</span><textarea class="input code" id="bulk-input" rows="7" placeholder="在此貼上題目…"></textarea></label>
+              <div class="row" style="margin-top:8px">
+                <button class="btn primary" type="button" id="bulk-parse">解析並加入</button>
+                <span class="hint" id="bulk-status" aria-live="polite"></span>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+
+      <aside class="side stack">
+        <div class="panel">
+          <div class="panel-h"><h2>即時檢核</h2></div>
+          <div class="panel-b">
+            <div class="sum-total"><span class="big" id="sum-total">0</span><span class="muted">/ 100 分</span><span class="status-pill" id="sum-status"></span></div>
+            <dl class="kv" id="sum-types"></dl>
+          </div>
+          <div class="panel-b" style="border-top:1px solid var(--line)">
+            <div class="row" style="margin-bottom:8px"><span class="lbl">各單元配分占比</span><span class="spacer"></span><button class="btn small ghost" type="button" id="goto-matrix">管理單元 →</button></div>
+            <div class="bars" id="sum-bars"></div>
+            <div class="legend" style="margin-top:8px"><span>配分占比</span><span class="mk">節數占比</span></div>
+          </div>
+          <div class="panel-b" style="border-top:1px solid var(--line)">
+            <ul class="warn-list" id="sum-warn"></ul>
+          </div>
+        </div>
+        <p class="hint" id="save-state" aria-live="polite">草稿會自動存在這台裝置的瀏覽器中。</p>
+      </aside>
+    </div>
+  </section>
+
+  <!-- ================= 細目表 ================= -->
+  <section class="view" id="view-matrix" role="tabpanel" aria-labelledby="tab-matrix">
+    <div class="stack">
+      <div class="panel">
+        <div class="panel-h">
+          <h2>雙向細目表</h2><span class="sub">單元 × 認知層次（Bloom 修訂版），格內為「配分／題數」</span>
+          <span class="spacer"></span>
+          <button class="btn small" type="button" id="copy-matrix">複製細目表（可貼到 Excel）</button>
+        </div>
+        <div class="panel-b">
+          <div class="tbl-wrap" id="matrix-wrap"></div>
+        </div>
+      </div>
+
+      <div class="mx-grid">
+        <div class="panel">
+          <div class="panel-h"><h2>檢核結果</h2><span class="spacer"></span>
+            <label class="row" for="warn-threshold" style="gap:6px"><span class="hint">偏差警示門檻 ±</span><input class="input num" type="number" min="1" max="50" id="warn-threshold" style="width:64px"><span class="hint">百分點</span></label>
+          </div>
+          <div class="panel-b stack">
+            <ul class="warn-list" id="mx-warn"></ul>
+            <div>
+              <p class="lbl" style="margin-bottom:6px">認知層次分布（依配分）</p>
+              <div class="bloom-split" id="bloom-split"></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h2>單元與授課節數</h2></div>
+          <div class="panel-b">
+            <p class="hint" style="margin-bottom:10px">配分占比會和節數占比比較，偏差超過門檻就提醒你。</p>
+            <div class="unit-ed" id="unit-ed"></div>
+            <div class="row" style="margin-top:10px">
+              <button class="btn small" type="button" id="add-unit">＋ 新增單元</button>
+              <span class="hint" id="unit-msg" aria-live="polite"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 預覽 ================= -->
+  <section class="view" id="view-preview" role="tabpanel" aria-labelledby="tab-preview">
+    <div class="panel">
+      <div class="panel-b pv-bar">
+        <div class="seg" role="radiogroup" aria-label="顯示內容">
+          <input type="radio" name="pv-kind" id="pv-exam" value="exam"><label for="pv-exam">試題卷</label>
+          <input type="radio" name="pv-kind" id="pv-key" value="key"><label for="pv-key">答案卷</label>
+        </div>
+        <div class="seg" role="radiogroup" aria-label="卷別">
+          <input type="radio" name="pv-ver" id="ver-a" value="A"><label for="ver-a">A 卷</label>
+          <input type="radio" name="pv-ver" id="ver-b" value="B"><label for="ver-b">B 卷</label>
+        </div>
+        <label class="chk" id="lbl-shuffle-q"><input type="checkbox" id="shuffle-q">B 卷打亂題目順序（同題型內）</label>
+        <label class="chk" id="lbl-shuffle-o"><input type="checkbox" id="shuffle-o">B 卷打亂選擇題選項</label>
+        <button class="btn small ghost" type="button" id="reshuffle">重新洗牌</button>
+        <span class="spacer"></span>
+        <button class="btn primary" type="button" id="copy-exam">複製試題文字</button>
+        <button class="btn" type="button" id="copy-key">複製答案文字</button>
+      </div>
+      <div class="panel-b copy-fb" id="copy-fb">
+        <p class="hint" style="margin-bottom:6px">瀏覽器不允許自動複製，已幫你全選下方文字，請按 Ctrl＋C（Mac：⌘＋C）。</p>
+        <textarea class="input" id="copy-fb-text" readonly aria-label="考卷純文字"></textarea>
+      </div>
+    </div>
+    <div class="desk"><div class="paper" id="paper"></div></div>
+  </section>
+
+</div>
+
+
+<dialog class="kbd-dlg" id="kbd-dlg" aria-labelledby="kbd-title">
+  <div class="panel-h"><h2 id="kbd-title">鍵盤快捷鍵</h2><span class="spacer"></span><button class="btn small ghost" type="button" id="kbd-close">關閉（Esc）</button></div>
+  <div class="kbd-grid" id="kbd-grid"></div>
+  <p class="kbd-note">「題目」類快捷鍵作用在目前選取的題目（左側題號變色的那張卡）。單鍵（J、K、/、?）只在游標不在輸入框時有效；使用注音等中文輸入法選字時不會觸發。</p>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+'use strict';
+
+var BLOOM = ['記憶','理解','應用','分析','評鑑','創造'];
+var TYPES = {mc:'選擇題', tf:'是非題', fill:'填充題', essay:'問答題'};
+var TYPE_SHORT = {mc:'選擇', tf:'是非', fill:'填充', essay:'問答'};
+var TYPE_ORDER = ['mc','tf','fill','essay'];
+var CN_NUM = ['一','二','三','四','五','六'];
+var LETTERS = ['A','B','C','D','E'];
+var STORE_KEY = 'exam-helper-draft-v1';
+var UI_KEY = 'exam-helper-ui-v1';
+
+/* ---------- sample ---------- */
+function sampleState(){
+  var units = [
+    {id:'u1', name:'變數與資料型態', periods:3},
+    {id:'u2', name:'運算子與運算式', periods:3},
+    {id:'u3', name:'條件判斷', periods:5},
+    {id:'u4', name:'迴圈結構', periods:7}
+  ];
+  var n = 0;
+  function q(type, unit, bloom, score, stem, options, answer){
+    n++;
+    return {id:'q'+n, type:type, unit:unit, bloom:bloom, score:score, stem:stem,
+      options: options || ['','','',''], answer: answer};
+  }
+  var qs = [
+    q('mc','u1','記憶',4,'下列何者是 Python 合法的變數名稱？',['2score','my-name','_total','class'],2),
+    q('mc','u1','理解',4,'執行 x = "5" 之後，type(x) 的結果為何？',['int','str','float','bool'],1),
+    q('mc','u1','應用',4,'執行下列程式後，輸出結果為何？\n> a = 3\n> b = a\n> a = 7\n> print(b)',['3','7','10','程式錯誤'],0),
+    q('mc','u1','理解',4,'要記錄「學生是否已繳交作業」，最適合使用哪一種資料型態？',['整數 int','浮點數 float','字串 str','布林值 bool'],3),
+    q('mc','u2','記憶',4,'運算式 17 % 5 的結果為何？',['2','3','3.4','12'],0),
+    q('mc','u2','應用',4,'運算式 7 // 2 + 2 ** 3 的結果為何？',['11','11.5','12','9.5'],0),
+    q('mc','u2','理解',4,'下列哪一個條件式可以判斷整數 n 是偶數？',['n / 2 == 0','n % 2 == 0','n // 2 == 1','n % 2 == 1'],1),
+    q('mc','u3','理解',4,'執行下列程式，當 score = 60 時輸出為何？\n> if score >= 60:\n>     print("及格")\n> else:\n>     print("不及格")',['及格','不及格','沒有輸出','程式錯誤'],0),
+    q('mc','u3','應用',4,'當 x = 15 時，下列哪一個條件式的結果為 True？',['x > 10 and x % 2 == 0','x < 10 or x == 15','not x > 10','x >= 20'],1),
+    q('mc','u3','分析',4,'小明想依分數 s 給等第，寫了下列程式，輸入 95 時卻輸出 C。最可能的原因是？\n> if s >= 60:\n>     print("C")\n> elif s >= 80:\n>     print("B")\n> elif s >= 90:\n>     print("A")',['elif 不能連續使用兩次','條件順序錯誤，第一個條件成立後就不再檢查後面','95 超出分數範圍','缺少 else 區塊'],1),
+    q('mc','u4','理解',4,'下列程式共會印出幾個數字？\n> for i in range(1, 5):\n>     print(i)',['3','4','5','6'],1),
+    q('mc','u4','應用',4,'執行下列程式後，輸出為何？\n> total = 0\n> for i in range(1, 6):\n>     total += i\n> print(total)',['10','15','21','5'],1),
+    q('tf','u1','記憶',3,'Python 的變數名稱有區分大小寫，score 與 Score 是兩個不同的變數。',null,'O'),
+    q('tf','u2','理解',3,'在 Python 中，「=」是用來判斷兩個值是否相等的運算子。',null,'X'),
+    q('tf','u3','理解',3,'if 敘述後面一定要接 else 區塊，否則程式會發生錯誤。',null,'X'),
+    q('tf','u4','理解',3,'while 迴圈的條件若永遠成立，就會形成無窮迴圈。',null,'O'),
+    q('fill','u1','記憶',4,'要把字串 "123" 轉換成整數，可使用內建函式 ____()。',null,'int'),
+    q('fill','u4','應用',4,'若要依序印出 0、2、4、6、8，程式可寫成 for i in range(0, 10, ____):',null,'2'),
+    q('fill','u4','應用',4,'執行下列程式後，count 的值為 ____。\n> count = 0\n> while count < 3:\n>     count += 1',null,'3'),
+    q('essay','u3','創造',14,'某電影院票價規則：未滿 12 歲 150 元；12～64 歲 300 元；65 歲以上 150 元。\n請寫出 Python 程式，讓使用者輸入年齡後，輸出應付的票價。',null,'age = int(input("年齡："))\nif age < 12 or age >= 65:\n    print(150)\nelse:\n    print(300)\n評分：輸入並轉成整數 2 分；條件判斷正確 8 分；輸出正確 4 分。'),
+    q('essay','u4','分析',14,'下列程式想計算 1 到 100 所有偶數的總和，執行結果卻不正確。請指出兩處錯誤並說明如何修正。\n> total = 0\n> for i in range(1, 100):\n>     if i % 2 == 1:\n>         total += i\n> print(total)',null,'錯誤一：range(1, 100) 不包含 100，應改為 range(1, 101)。（7 分）\n錯誤二：i % 2 == 1 判斷的是奇數，應改為 i % 2 == 0。（7 分）\n修正後輸出 2550。')
+  ];
+  return {
+    v:1, isSample:true, nextQ:n+1, nextU:5,
+    meta:{school:'（範例）○○市立○○國民中學', term:'115 學年度第一學期', exam:'第一次段考', subject:'資訊科技', grade:'八年級', minutes:45, teacher:'', range:'程式設計：變數、運算子、條件判斷、迴圈'},
+    units:units, qs:qs, threshold:5
+  };
+}
+function blankState(){
+  return {
+    v:1, isSample:false, nextQ:2, nextU:2,
+    meta:{school:'', term:'', exam:'', subject:'', grade:'', minutes:45, teacher:'', range:''},
+    units:[{id:'u1', name:'單元一', periods:1}],
+    qs:[{id:'q1', type:'mc', unit:'u1', bloom:'記憶', score:4, stem:'', options:['','','',''], answer:null}],
+    threshold:5
+  };
+}
+
+/* ---------- storage (always safe) ---------- */
+function load(key){ try{ var s = window.localStorage.getItem(key); return s ? JSON.parse(s) : null; }catch(e){ return null; } }
+function save(key, val){ try{ window.localStorage.setItem(key, JSON.stringify(val)); return true; }catch(e){ return false; } }
+
+function validState(s){
+  return s && s.v === 1 && Array.isArray(s.qs) && Array.isArray(s.units) && s.meta && s.units.length > 0;
+}
+var IMPORT_KEY = 'quizflow-exam-composer-import';
+var PREV_KEY = 'exam-helper-draft-prev';
+var state = load(STORE_KEY);
+if(!validState(state)) state = sampleState();
+/* 從 QuizFlow 測驗「⋯ 更多 → 段考命題助手」帶入：讀一次就清掉 */
+var imported = load(IMPORT_KEY);
+try{ window.localStorage.removeItem(IMPORT_KEY); }catch(e){}
+if(imported && validState(imported.state)){
+  if(!state.isSample && state.qs.some(function(q){ return String(q.stem).trim(); })) save(PREV_KEY, state);
+  else imported.noPrev = true;
+  state = imported.state;
+  save(STORE_KEY, state);
+} else imported = null;
+var ui = load(UI_KEY) || {};
+ui = {
+  view: ui.view || 'edit',
+  pvKind: ui.pvKind || 'exam',
+  ver: ui.ver || 'A',
+  shuffleQ: ui.shuffleQ !== false,
+  shuffleO: ui.shuffleO !== false,
+  seed: ui.seed || 20261,
+  theme: ui.theme || 'auto'
+};
+
+var saveTimer = null;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function(){
+    var ok = save(STORE_KEY, state);
+    var el = document.getElementById('save-state');
+    if(el){
+      var t = new Date();
+      el.textContent = ok ? ('草稿已自動儲存 ' + pad(t.getHours()) + ':' + pad(t.getMinutes()) + ':' + pad(t.getSeconds()))
+                          : '此瀏覽器無法儲存草稿（可能是無痕模式），關閉頁面後內容會消失。';
+    }
+  }, 400);
+}
+function saveUi(){ save(UI_KEY, ui); }
+function pad(n){ return (n < 10 ? '0' : '') + n; }
+
+/* ---------- helpers ---------- */
+function $(id){ return document.getElementById(id); }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function num(v){ var n = parseFloat(v); return isFinite(n) ? n : 0; }
+function fmt(n){ return (Math.round(n * 10) / 10).toString(); }
+function unitById(id){ for(var i=0;i<state.units.length;i++){ if(state.units[i].id === id) return state.units[i]; } return null; }
+function unitName(id){ var u = unitById(id); return u ? u.name : '（未指定）'; }
+function totalScore(){ return state.qs.reduce(function(a,q){ return a + num(q.score); }, 0); }
+
+var toastTimer;
+function toast(msg){
+  var t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2200);
+}
+
+function mulberry32(a){
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function shuffled(arr, rnd){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){ var j = Math.floor(rnd() * (i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+
+/* two-step confirmation button */
+function armed(btn, action){
+  if(btn.dataset.armed){
+    delete btn.dataset.armed; btn.textContent = btn.dataset.label; clearTimeout(btn._t); action();
+    return;
+  }
+  btn.dataset.label = btn.textContent;
+  btn.dataset.armed = '1';
+  btn.textContent = '再按一次確認';
+  btn._t = setTimeout(function(){ delete btn.dataset.armed; btn.textContent = btn.dataset.label; }, 3000);
+}
+
+/* ---------- analysis ---------- */
+function analyze(){
+  var total = totalScore();
+  var periodsTotal = state.units.reduce(function(a,u){ return a + Math.max(0, num(u.periods)); }, 0);
+  var cells = {}, rows = {}, cols = {};
+  state.units.forEach(function(u){ rows[u.id] = {n:0, pts:0}; cells[u.id] = {}; BLOOM.forEach(function(b){ cells[u.id][b] = {n:0, pts:0}; }); });
+  BLOOM.forEach(function(b){ cols[b] = {n:0, pts:0}; });
+  state.qs.forEach(function(q){
+    var s = num(q.score);
+    if(cells[q.unit] && cells[q.unit][q.bloom]){ cells[q.unit][q.bloom].n++; cells[q.unit][q.bloom].pts += s; }
+    if(rows[q.unit]){ rows[q.unit].n++; rows[q.unit].pts += s; }
+    if(cols[q.bloom]){ cols[q.bloom].n++; cols[q.bloom].pts += s; }
+  });
+  var th = Math.max(1, num(state.threshold) || 5);
+  var warns = [];
+  if(Math.abs(total - 100) > 0.001){
+    warns.push({lv:'bad', text:'總分為 ' + fmt(total) + ' 分，' + (total > 100 ? '超過 ' + fmt(total-100) : '還差 ' + fmt(100-total)) + ' 分才是 100 分。'});
+  }
+  var unitInfo = state.units.map(function(u){
+    var r = rows[u.id];
+    var share = total > 0 ? r.pts / total * 100 : 0;
+    var pshare = periodsTotal > 0 ? Math.max(0, num(u.periods)) / periodsTotal * 100 : 0;
+    var dev = share - pshare;
+    var bad = periodsTotal > 0 && total > 0 && Math.abs(dev) > th;
+    if(bad){
+      warns.push({lv:'warn', text:'「' + u.name + '」配分占 ' + fmt(share) + '%，授課節數占 ' + fmt(pshare) + '%，' + (dev > 0 ? '偏高' : '偏低') + ' ' + fmt(Math.abs(dev)) + ' 個百分點。'});
+    } else if(r.n === 0 && num(u.periods) > 0){
+      warns.push({lv:'warn', text:'「' + u.name + '」有 ' + u.periods + ' 節課，但沒有任何題目。'});
+    }
+    return {u:u, n:r.n, pts:r.pts, share:share, pshare:pshare, dev:dev, warn:bad};
+  });
+  var issues = 0;
+  state.qs.forEach(function(q, i){ if(qProblem(q)) issues++; });
+  if(issues) warns.push({lv:'warn', text:'有 ' + issues + ' 題資料不完整（缺題幹、選項、答案或配分），請到「編輯題目」查看黃色提示。'});
+  var low = cols['記憶'].pts + cols['理解'].pts, mid = cols['應用'].pts, high = cols['分析'].pts + cols['評鑑'].pts + cols['創造'].pts;
+  if(total > 0 && low / total > 0.7) warns.push({lv:'warn', text:'記憶＋理解層次占 ' + fmt(low/total*100) + '%，高層次題目偏少。'});
+  return {total:total, periodsTotal:periodsTotal, cells:cells, rows:rows, cols:cols, unitInfo:unitInfo, warns:warns, th:th, low:low, mid:mid, high:high};
+}
+function qProblem(q){
+  if(!String(q.stem).trim()) return '尚未輸入題幹';
+  if(!(num(q.score) > 0)) return '配分需大於 0';
+  if(q.type === 'mc'){
+    if(q.options.some(function(o){ return !String(o).trim(); })) return '選項尚未填完';
+    if(q.answer == null || q.answer === '' || !(q.answer >= 0 && q.answer < q.options.length)) return '尚未勾選正確答案';
+  } else if(q.type === 'tf'){
+    if(q.answer !== 'O' && q.answer !== 'X') return '尚未選擇 O 或 X';
+  } else {
+    if(!String(q.answer || '').trim()) return q.type === 'fill' ? '尚未填寫答案' : '尚未填寫參考答案／評分標準';
+  }
+  return '';
+}
+
+/* ---------- editor ---------- */
+var ICON_UP = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3l5 6H3z" fill="currentColor"/></svg>';
+var ICON_DN = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13L3 7h10z" fill="currentColor"/></svg>';
+var ICON_DUP = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2h7a2 2 0 0 1 2 2v7h-1.5V4a.5.5 0 0 0-.5-.5H5z M2 6a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z M3.5 6v6a.5.5 0 0 0 .5.5h5a.5.5 0 0 0 .5-.5V6a.5.5 0 0 0-.5-.5H4a.5.5 0 0 0-.5.5z" fill="currentColor"/></svg>';
+var ICON_DEL = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2h4l.5 1H14v1.5H2V3h3.5zM3.5 5.5h9l-.7 8.1A1.5 1.5 0 0 1 10.3 15H5.7a1.5 1.5 0 0 1-1.5-1.4z" fill="currentColor"/></svg>';
+
+function opt(val, label, sel){ return '<option value="' + esc(val) + '"' + (sel ? ' selected' : '') + '>' + esc(label) + '</option>'; }
+
+function cardHtml(q, i){
+  var id = q.id;
+  var h = '<div class="qcard' + (id === activeQid ? ' active' : '') + '" data-qid="' + id + '" id="card-' + id + '">';
+  h += '<div class="qno" aria-hidden="true">' + (i+1) + '<small>' + TYPE_SHORT[q.type] + '</small></div>';
+  h += '<div class="qbody"><div class="qhead">';
+  h += '<label class="field"><span>題型</span><select class="input" id="' + id + '-type" data-f="type">';
+  TYPE_ORDER.forEach(function(t){ h += opt(t, TYPES[t], q.type === t); });
+  h += '</select></label>';
+  h += '<label class="field"><span>單元</span><select class="input" id="' + id + '-unit" data-f="unit">';
+  state.units.forEach(function(u){ h += opt(u.id, u.name, q.unit === u.id); });
+  if(!unitById(q.unit)) h += opt('', '（請選擇）', true);
+  h += '</select></label>';
+  h += '<label class="field"><span>認知層次</span><select class="input" id="' + id + '-bloom" data-f="bloom">';
+  BLOOM.forEach(function(b){ h += opt(b, b, q.bloom === b); });
+  h += '</select></label>';
+  h += '<label class="field score"><span>配分</span><input class="input num" type="number" min="0" step="0.5" id="' + id + '-score" data-f="score" value="' + esc(q.score) + '"></label>';
+  h += '<div class="qtools">'
+     + '<button type="button" class="icon-btn" id="' + id + '-up" data-act="up" aria-label="上移第 ' + (i+1) + ' 題" title="上移">' + ICON_UP + '</button>'
+     + '<button type="button" class="icon-btn" id="' + id + '-down" data-act="down" aria-label="下移第 ' + (i+1) + ' 題" title="下移">' + ICON_DN + '</button>'
+     + '<button type="button" class="icon-btn" id="' + id + '-dup" data-act="dup" aria-label="複製第 ' + (i+1) + ' 題" title="複製">' + ICON_DUP + '</button>'
+     + '<button type="button" class="icon-btn del" id="' + id + '-del" data-act="del" aria-label="刪除第 ' + (i+1) + ' 題" title="刪除">' + ICON_DEL + '</button>'
+     + '</div></div>';
+  var rows = Math.min(8, Math.max(2, String(q.stem).split('\n').length + 1));
+  h += '<label class="field"><span>題幹</span><textarea class="input" id="' + id + '-stem" data-f="stem" rows="' + rows + '">' + esc(q.stem) + '</textarea></label>';
+  if(q.type === 'mc'){
+    h += '<fieldset style="border:0;padding:0;margin:0"><legend class="lbl" style="padding:0;margin-bottom:4px">選項（點左側圓鈕標示正解）</legend><div class="opts-ed">';
+    q.options.forEach(function(o, k){
+      h += '<div class="opt-ed"><input type="radio" name="' + id + '-ans" id="' + id + '-ans' + k + '" data-f="answer" value="' + k + '"' + (q.answer === k ? ' checked' : '') + ' aria-label="設 ' + LETTERS[k] + ' 為正解">'
+         + '<label class="key" for="' + id + '-opt' + k + '">' + LETTERS[k] + '</label>'
+         + '<input class="input" id="' + id + '-opt' + k + '" data-f="opt" data-k="' + k + '" value="' + esc(o) + '"></div>';
+    });
+    h += '</div></fieldset>';
+  } else if(q.type === 'tf'){
+    h += '<div class="tf-ed" role="radiogroup" aria-label="正確答案"><span class="lbl">正確答案</span>'
+       + '<label><input type="radio" name="' + id + '-ans" id="' + id + '-ansO" data-f="answer" value="O"' + (q.answer === 'O' ? ' checked' : '') + '>O（正確）</label>'
+       + '<label><input type="radio" name="' + id + '-ans" id="' + id + '-ansX" data-f="answer" value="X"' + (q.answer === 'X' ? ' checked' : '') + '>X（錯誤）</label></div>';
+  } else if(q.type === 'fill'){
+    h += '<label class="field"><span>答案（多格請用「；」分隔）</span><input class="input" id="' + id + '-ans" data-f="answer" value="' + esc(q.answer || '') + '"></label>';
+  } else {
+    h += '<label class="field"><span>參考答案與評分標準</span><textarea class="input code" id="' + id + '-ans" data-f="answer" rows="4">' + esc(q.answer || '') + '</textarea></label>';
+  }
+  var p = qProblem(q);
+  h += '<div class="qwarn" id="' + id + '-warn"' + (p ? '' : ' hidden') + '>' + esc(p) + '</div>';
+  h += '</div></div>';
+  return h;
+}
+
+function renderEditor(){
+  var list = $('qlist');
+  list.innerHTML = state.qs.map(cardHtml).join('') || '<p class="muted">還沒有題目，用下方按鈕新增。</p>';
+  ['school','term','exam','subject','grade','minutes','teacher','range'].forEach(function(k){
+    var el = $('meta-' + k); if(el && document.activeElement !== el) el.value = state.meta[k] == null ? '' : state.meta[k];
+  });
+}
+function updateCardWarn(q){
+  var w = $(q.id + '-warn'); if(!w) return;
+  var p = qProblem(q); w.textContent = p; w.hidden = !p;
+}
+function findQ(id){ for(var i=0;i<state.qs.length;i++){ if(state.qs[i].id === id) return i; } return -1; }
+
+function newQ(type){
+  var defScore = {mc:4, tf:3, fill:4, essay:10}[type];
+  var last = state.qs[state.qs.length-1];
+  return {id:'q' + (state.nextQ++), type:type, unit: last ? last.unit : state.units[0].id, bloom: type === 'essay' ? '應用' : '記憶',
+    score:defScore, stem:'', options:['','','',''], answer: null};
+}
+
+function onEditorInput(e){
+  var el = e.target, f = el.dataset.f; if(!f) return;
+  var card = el.closest('.qcard'); if(!card) return;
+  var q = state.qs[findQ(card.dataset.qid)]; if(!q) return;
+  var structural = false;
+  if(f === 'stem') q.stem = el.value;
+  else if(f === 'score') q.score = el.value === '' ? '' : num(el.value);
+  else if(f === 'opt') q.options[+el.dataset.k] = el.value;
+  else if(f === 'answer') q.answer = q.type === 'mc' ? +el.value : el.value;
+  else if(f === 'unit') q.unit = el.value;
+  else if(f === 'bloom') q.bloom = el.value;
+  else if(f === 'type'){
+    if(e.type !== 'change') return;
+    var old = q.type; q.type = el.value;
+    if(old !== q.type){
+      if(q.type === 'mc'){ if(!Array.isArray(q.options) || q.options.length < 4) q.options = ['','','','']; q.answer = null; }
+      else if(q.type === 'tf') q.answer = null;
+      else if(old === 'mc' || old === 'tf') q.answer = '';
+    }
+    structural = true;
+  }
+  if(state.isSample){ /* keep banner; editing a sample is fine */ }
+  updateCardWarn(q);
+  scheduleSave();
+  if(structural){ renderEditor(); var t = $(q.id + '-type'); if(t) t.focus(); }
+  renderDerived();
+}
+
+function onEditorClick(e){
+  var b = e.target.closest('[data-act]'); if(!b) return;
+  var card = b.closest('.qcard'); var i = findQ(card.dataset.qid); if(i < 0) return;
+  var act = b.dataset.act, focusId = null;
+  if(act === 'up' && i > 0){ var t = state.qs[i-1]; state.qs[i-1] = state.qs[i]; state.qs[i] = t; focusId = state.qs[i-1].id + '-up'; }
+  else if(act === 'down' && i < state.qs.length-1){ var t2 = state.qs[i+1]; state.qs[i+1] = state.qs[i]; state.qs[i] = t2; focusId = state.qs[i+1].id + '-down'; }
+  else if(act === 'dup'){ var c = JSON.parse(JSON.stringify(state.qs[i])); c.id = 'q' + (state.nextQ++); state.qs.splice(i+1, 0, c); focusId = c.id + '-stem'; toast('已複製第 ' + (i+1) + ' 題'); }
+  else if(act === 'del'){
+    armed(b, function(){
+      var removed = state.qs.splice(i, 1)[0];
+      scheduleSave(); renderEditor(); renderDerived();
+      var next = state.qs[Math.min(i, state.qs.length-1)];
+      if(next){ var el = $(next.id + '-stem'); if(el) el.focus(); }
+      toast('已刪除一題（' + TYPES[removed.type] + '）');
+    });
+    return;
+  } else return;
+  scheduleSave(); renderEditor(); renderDerived();
+  if(focusId){ var f = $(focusId); if(f) f.focus(); }
+}
+
+function addQuestion(type){
+  var q = newQ(type);
+  state.qs.push(q);
+  scheduleSave(); renderEditor(); renderDerived();
+  var el = $(q.id + '-stem'); if(el){ el.focus(); el.scrollIntoView({block:'center', behavior:'smooth'}); }
+}
+
+/* bulk paste */
+function parseBulk(text){
+  var blocks = text.replace(/\r/g,'').split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean);
+  var added = 0, failed = 0;
+  var typeMap = {'選擇':'mc','單選':'mc','是非':'tf','填充':'fill','問答':'essay','非選':'essay','簡答':'essay'};
+  blocks.forEach(function(b){
+    var lines = b.split('\n');
+    var head = lines.shift().split(/[｜|]/).map(function(s){ return s.trim(); });
+    var type = null;
+    Object.keys(typeMap).forEach(function(k){ if(head[0] && head[0].indexOf(k) === 0) type = typeMap[k]; });
+    if(!type || !lines.length){ failed++; return; }
+    var q = newQ(type);
+    if(head[1]){
+      var u = null;
+      state.units.forEach(function(x){ if(!u && (x.name.indexOf(head[1]) >= 0 || head[1].indexOf(x.name) >= 0)) u = x; });
+      if(!u){ u = {id:'u' + (state.nextU++), name:head[1], periods:1}; state.units.push(u); }
+      q.unit = u.id;
+    }
+    if(head[2] && BLOOM.indexOf(head[2]) >= 0) q.bloom = head[2];
+    if(head[3] && num(head[3]) > 0) q.score = num(head[3]);
+    var ans = '', stemLines = [], ansMode = false, optLine = '';
+    lines.forEach(function(l){
+      var m = l.match(/^\s*(答案|解答|參考答案)\s*[:：]\s*(.*)$/);
+      if(m){ ansMode = true; ans = m[2]; return; }
+      if(ansMode){ ans += '\n' + l; return; }
+      if(type === 'mc' && /^\s*[\(（][A-Da-d][\)）]/.test(l)){ optLine += ' ' + l; return; }
+      stemLines.push(l);
+    });
+    q.stem = stemLines.join('\n').trim();
+    if(type === 'mc'){
+      var parts = optLine.split(/[\(（]([A-Da-d])[\)）]/);
+      var opts = [];
+      for(var k=1;k<parts.length;k+=2){ opts.push((parts[k+1] || '').trim()); }
+      while(opts.length < 4) opts.push('');
+      q.options = opts.slice(0, 5);
+      var L = ans.trim().toUpperCase().replace(/[\(（\)）]/g,'').charAt(0);
+      var idx = LETTERS.indexOf(L);
+      q.answer = idx >= 0 && idx < q.options.length ? idx : null;
+    } else if(type === 'tf'){
+      var a = ans.trim().toUpperCase();
+      q.answer = /^(O|○|對|是|T)/.test(a) ? 'O' : /^(X|×|錯|否|F)/.test(a) ? 'X' : null;
+    } else q.answer = ans.trim();
+    state.qs.push(q); added++;
+  });
+  return {added:added, failed:failed};
+}
+
+/* ---------- summary ---------- */
+function renderSummary(A){
+  $('sum-total').textContent = fmt(A.total);
+  var st = $('sum-status');
+  if(Math.abs(A.total - 100) < 0.001){ st.className = 'status-pill ok'; st.textContent = '總分正確'; }
+  else { st.className = 'status-pill bad'; st.textContent = A.total > 100 ? '超過 ' + fmt(A.total-100) + ' 分' : '差 ' + fmt(100-A.total) + ' 分'; }
+  var by = {}; TYPE_ORDER.forEach(function(t){ by[t] = {n:0, pts:0}; });
+  state.qs.forEach(function(q){ by[q.type].n++; by[q.type].pts += num(q.score); });
+  $('sum-types').innerHTML = TYPE_ORDER.map(function(t){
+    return '<dt>' + TYPES[t] + '</dt><dd>' + by[t].n + ' 題・' + fmt(by[t].pts) + ' 分</dd>';
+  }).join('');
+  $('q-count-sub').textContent = '共 ' + state.qs.length + ' 題';
+  $('sum-bars').innerHTML = A.unitInfo.map(function(x){
+    return '<div class="bar-row"><span class="nm" title="' + esc(x.u.name) + '">' + esc(x.u.name) + '</span><span class="pct">' + fmt(x.share) + '%</span>'
+      + '<div class="bar' + (x.warn ? ' warn' : '') + '" role="img" aria-label="' + esc(x.u.name) + ' 配分 ' + fmt(x.share) + '%，節數 ' + fmt(x.pshare) + '%"><i style="width:' + Math.min(100, x.share) + '%"></i><b style="left:calc(' + Math.min(100, x.pshare) + '% - 1px)"></b></div></div>';
+  }).join('');
+  var w = A.warns.length ? A.warns : [{lv:'ok', text:'目前沒有發現問題。'}];
+  $('sum-warn').innerHTML = w.map(function(x){ return '<li class="' + x.lv + '">' + esc(x.text) + '</li>'; }).join('');
+  var badge = $('tab-badge');
+  badge.textContent = A.warns.length ? A.warns.length : '✓';
+  badge.className = 'badge' + (A.warns.length ? '' : ' ok');
+  badge.setAttribute('aria-label', A.warns.length ? A.warns.length + ' 項提醒' : '無提醒');
+}
+
+/* ---------- matrix ---------- */
+function renderMatrix(A){
+  var maxPts = 0;
+  state.units.forEach(function(u){ BLOOM.forEach(function(b){ maxPts = Math.max(maxPts, A.cells[u.id][b].pts); }); });
+  var h = '<table class="matrix"><thead>';
+  h += '<tr class="group"><th rowspan="2" class="unit" style="background:var(--surface-2)">單元</th><th rowspan="2">節數</th><th colspan="6" class="sep">認知層次（配分／題數）</th><th colspan="2" class="sep">小計</th><th colspan="3" class="sep">比重檢核</th></tr><tr>';
+  BLOOM.forEach(function(b, i){ h += '<th' + (i === 0 ? ' class="sep"' : '') + '>' + b + '</th>'; });
+  h += '<th class="sep">題數</th><th>配分</th><th class="sep">配分占比</th><th>節數占比</th><th>偏差</th></tr></thead><tbody>';
+  A.unitInfo.forEach(function(x){
+    var u = x.u;
+    h += '<tr><th class="unit" scope="row">' + esc(u.name) + '</th><td>' + esc(u.periods) + '</td>';
+    BLOOM.forEach(function(b, i){
+      var c = A.cells[u.id][b];
+      var cls = (i === 0 ? ' sep' : '');
+      if(c.n){
+        var o = maxPts ? (0.08 + 0.32 * c.pts / maxPts).toFixed(2) : 0;
+        h += '<td class="cell' + cls + '"><span class="h" style="--h:' + o + '"></span><b>' + fmt(c.pts) + '</b><small>' + c.n + ' 題</small></td>';
+      } else h += '<td class="cell empty' + cls + '">·</td>';
+    });
+    var dcls = A.periodsTotal ? (x.warn ? 'warn' : 'ok') : '';
+    h += '<td class="sep">' + x.n + '</td><td>' + fmt(x.pts) + '</td><td class="sep">' + fmt(x.share) + '%</td><td>' + fmt(x.pshare) + '%</td>'
+       + '<td class="dev ' + dcls + '">' + (A.periodsTotal ? (x.dev > 0 ? '+' : '') + fmt(x.dev) : '—') + '</td></tr>';
+  });
+  h += '</tbody><tfoot><tr><th class="unit" scope="row" style="background:var(--surface-2)">合計</th><td>' + fmt(A.periodsTotal) + '</td>';
+  BLOOM.forEach(function(b, i){
+    var c = A.cols[b];
+    h += '<td class="' + (i === 0 ? 'sep' : '') + '">' + (c.n ? fmt(c.pts) + '<br><small style="font-weight:400">' + c.n + ' 題</small>' : '·') + '</td>';
+  });
+  var ok = Math.abs(A.total - 100) < 0.001;
+  h += '<td class="sep">' + state.qs.length + '</td><td style="color:var(--' + (ok ? 'ok' : 'bad') + ')">' + fmt(A.total) + (ok ? ' ✓' : '') + '</td><td class="sep">100%</td><td>100%</td><td>—</td></tr>';
+  h += '<tr><th class="unit" scope="row" style="background:var(--surface-2)">層次占比</th><td></td>';
+  BLOOM.forEach(function(b, i){ h += '<td class="' + (i === 0 ? 'sep' : '') + '" style="font-weight:500">' + (A.total ? fmt(A.cols[b].pts / A.total * 100) + '%' : '—') + '</td>'; });
+  h += '<td class="sep" colspan="5"></td></tr></tfoot></table>';
+  $('matrix-wrap').innerHTML = h;
+
+  var w = A.warns.length ? A.warns : [{lv:'ok', text:'總分 100 分，各單元比重都在門檻內。'}];
+  $('mx-warn').innerHTML = w.map(function(x){ return '<li class="' + x.lv + '">' + esc(x.text) + '</li>'; }).join('');
+  var t = A.total || 1;
+  $('bloom-split').innerHTML =
+    '<div><b>' + fmt(A.low / t * 100) + '%</b><span>記憶＋理解</span></div>' +
+    '<div><b>' + fmt(A.mid / t * 100) + '%</b><span>應用</span></div>' +
+    '<div><b>' + fmt(A.high / t * 100) + '%</b><span>分析／評鑑／創造</span></div>';
+  var th = $('warn-threshold'); if(document.activeElement !== th) th.value = A.th;
+}
+
+function renderUnits(){
+  $('unit-ed').innerHTML = state.units.map(function(u){
+    return '<div class="unit-row" data-uid="' + u.id + '">'
+      + '<label class="field"><span>單元名稱</span><input class="input" id="unit-' + u.id + '-name" data-uf="name" value="' + esc(u.name) + '"></label>'
+      + '<label class="field"><span>授課節數</span><input class="input num" type="number" min="0" id="unit-' + u.id + '-periods" data-uf="periods" value="' + esc(u.periods) + '"></label>'
+      + '<button type="button" class="icon-btn del" id="unit-' + u.id + '-del" data-uact="del" aria-label="刪除單元 ' + esc(u.name) + '" title="刪除單元">' + ICON_DEL + '</button></div>';
+  }).join('');
+}
+
+function matrixText(A){
+  var lines = [];
+  lines.push(['單元','節數'].concat(BLOOM).concat(['題數','配分','配分占比','節數占比']).join('\t'));
+  A.unitInfo.forEach(function(x){
+    var row = [x.u.name, x.u.periods];
+    BLOOM.forEach(function(b){ var c = A.cells[x.u.id][b]; row.push(c.n ? fmt(c.pts) + '分/' + c.n + '題' : ''); });
+    row.push(x.n, fmt(x.pts), fmt(x.share) + '%', fmt(x.pshare) + '%');
+    lines.push(row.join('\t'));
+  });
+  var tot = ['合計', fmt(A.periodsTotal)];
+  BLOOM.forEach(function(b){ var c = A.cols[b]; tot.push(c.n ? fmt(c.pts) + '分/' + c.n + '題' : ''); });
+  tot.push(state.qs.length, fmt(A.total), '100%', '100%');
+  lines.push(tot.join('\t'));
+  return lines.join('\n');
+}
+
+/* ---------- paper build ---------- */
+function buildVersion(){
+  var isB = ui.ver === 'B';
+  var rnd = mulberry32(ui.seed);
+  var sections = [];
+  TYPE_ORDER.forEach(function(t){
+    var items = state.qs.filter(function(q){ return q.type === t; }).map(function(q){
+      var item = {q:q, options:q.options ? q.options.slice() : [], answer:q.answer, map:null};
+      if(t === 'mc' && isB && ui.shuffleO){
+        var idx = q.options.map(function(_, k){ return k; });
+        var fixed = idx.filter(function(k){ return /以上皆|皆非|皆是/.test(q.options[k]); });
+        var free = idx.filter(function(k){ return fixed.indexOf(k) < 0; });
+        var perm = shuffled(free, rnd).concat(fixed);
+        item.options = perm.map(function(k){ return q.options[k]; });
+        item.answer = (q.answer === null || q.answer === undefined) ? null : perm.indexOf(q.answer);
+      }
+      return item;
+    });
+    if(isB && ui.shuffleQ) items = shuffled(items, rnd);
+    if(items.length) sections.push({type:t, items:items});
+  });
+  var no = 0;
+  sections.forEach(function(s){ s.items.forEach(function(it){ it.no = ++no; }); });
+  return sections;
+}
+function sectionScoreText(s){
+  var pts = s.items.map(function(it){ return num(it.q.score); });
+  var sum = pts.reduce(function(a,b){ return a+b; }, 0);
+  var same = pts.every(function(p){ return p === pts[0]; });
+  return same ? '每題 ' + fmt(pts[0]) + ' 分，共 ' + fmt(sum) + ' 分' : '共 ' + fmt(sum) + ' 分';
+}
+function stemHtml(stem){
+  var out = [], code = [];
+  function flush(){ if(code.length){ out.push('<pre>' + esc(code.join('\n')) + '</pre>'); code = []; } }
+  String(stem).split('\n').forEach(function(l){
+    if(/^>/.test(l)){ code.push(l.replace(/^> ?/, '')); return; }
+    flush();
+    out.push('<span class="stem">' + esc(l).replace(/_{2,}/g, '<span class="blank"></span>') + '</span>');
+  });
+  flush();
+  return out.join('<br>').replace(/<\/pre><br>/g, '</pre>').replace(/<br><pre>/g, '<pre>');
+}
+function optCols(opts){
+  var max = 0;
+  opts.forEach(function(o){
+    var w = 0; String(o).split('').forEach(function(c){ w += c.charCodeAt(0) > 255 ? 2 : 1; });
+    max = Math.max(max, w);
+  });
+  return max <= 14 ? 'c4' : max <= 34 ? 'c2' : 'c1';
+}
+function looksCode(s){ return /[=%()\/<>]|\b(and|or|not|int|str|float|bool|range|print)\b/.test(s) && /^[\x20-\x7E]+$/.test(s); }
+
+function paperHeader(kind){
+  var m = state.meta;
+  var title = [m.term, m.exam].filter(Boolean).join(' ');
+  var sub = [m.subject, m.grade].filter(Boolean).join('科　') + (kind === 'key' ? '　答案卷' : '　試題卷');
+  var h = '<div class="ver">' + ui.ver + ' 卷</div>';
+  h += '<div class="ptitle">' + esc(m.school || '（學校名稱）') + '</div>';
+  h += '<div class="psub">' + esc(title || '（考試名稱）') + '　' + esc(sub) + '</div>';
+  if(kind === 'exam'){
+    h += '<div class="pinfo"><div>班級：</div><div>座號：</div><div>姓名：</div><div>作答時間：' + esc(m.minutes || '') + ' 分</div>'
+       + '<div class="score-box"><span>得分</span><span></span></div>'
+       + '<div class="r2">考試範圍：' + esc(m.range || '') + (m.teacher ? '　命題教師：' + esc(m.teacher) : '') + '</div></div>';
+    h += '<p class="note">※ 選擇題、是非題請將答案填入題號前的括號內；填充與問答題請寫在作答區。</p>';
+  } else {
+    h += '<p class="note" style="margin-top:10px">命題教師：' + esc(m.teacher || '＿＿＿＿') + '　總分：' + fmt(totalScore()) + ' 分　題數：' + state.qs.length + ' 題</p>';
+  }
+  return h;
+}
+
+function renderPaper(){
+  var secs = buildVersion();
+  var h = paperHeader(ui.pvKind);
+  if(!secs.length){ $('paper').innerHTML = h + '<p class="pend">（尚無題目）</p>'; return; }
+  if(ui.pvKind === 'exam'){
+    secs.forEach(function(s, si){
+      h += '<h3>' + CN_NUM[si] + '、' + TYPES[s.type] + ' <small>（' + sectionScoreText(s) + '）</small></h3>';
+      s.items.forEach(function(it){
+        var q = it.q;
+        var lead = (s.type === 'mc' || s.type === 'tf') ? '<span class="paren">(　　)</span>' : '';
+        h += '<div class="pq"><span class="n">' + lead + it.no + '.</span><div>' + stemHtml(q.stem);
+        if(s.type === 'mc'){
+          h += '<div class="popts ' + optCols(it.options) + '">' + it.options.map(function(o, k){
+            var txt = looksCode(o) ? '<code>' + esc(o) + '</code>' : esc(o);
+            return '<span>(' + LETTERS[k] + ') ' + txt + '</span>';
+          }).join('') + '</div>';
+        }
+        if(s.type === 'essay') h += '<div class="answer-space" aria-hidden="true"></div>';
+        if(!(s.items.length > 1 && sectionScoreText(s).indexOf('每題') === 0)) h += '<div style="text-align:right;font-size:12.5px;color:var(--paper-muted)">（' + fmt(num(q.score)) + ' 分）</div>';
+        h += '</div></div>';
+      });
+    });
+    h += '<p class="pend">— 試題結束，請檢查是否作答完畢 —</p>';
+  } else {
+    secs.forEach(function(s, si){
+      h += '<h3>' + CN_NUM[si] + '、' + TYPES[s.type] + ' <small>（' + sectionScoreText(s) + '）</small></h3>';
+      if(s.type === 'mc' || s.type === 'tf'){
+        h += '<div class="key-grid">' + s.items.map(function(it){
+          var a = s.type === 'mc' ? (it.answer == null ? '？' : LETTERS[it.answer]) : (it.answer || '？');
+          return '<div><span>' + it.no + '</span><b>' + esc(a) + '</b></div>';
+        }).join('') + '</div>';
+      } else {
+        h += '<div class="key-long">' + s.items.map(function(it){
+          return '<div><span class="tnum">' + it.no + '.</span><div><div class="ans">' + esc(it.answer || '（未填寫）') + '</div>'
+            + '<div class="meta">' + esc(unitName(it.q.unit)) + '・' + esc(it.q.bloom) + '・' + fmt(num(it.q.score)) + ' 分</div></div></div>';
+        }).join('') + '</div>';
+      }
+    });
+    if(ui.ver === 'B'){
+      var map = [];
+      secs.forEach(function(s){ s.items.forEach(function(it){ map.push('B' + it.no + '=A' + aNumberOf(it.q.id)); }); });
+      h += '<p class="key-map">題號對照（B 卷 → A 卷）：' + esc(map.join('、')) + '</p>';
+    }
+  }
+  $('paper').innerHTML = h;
+}
+function aNumberOf(qid){
+  var no = 0, res = 0;
+  TYPE_ORDER.forEach(function(t){ state.qs.forEach(function(q){ if(q.type === t){ no++; if(q.id === qid) res = no; } }); });
+  return res;
+}
+
+/* ---------- plain text ---------- */
+function plainStem(stem, indent){
+  return String(stem).split('\n').map(function(l, i){
+    var t = /^>/.test(l) ? '    ' + l.replace(/^> ?/, '') : l;
+    return (i === 0 ? '' : indent) + t;
+  }).join('\n');
+}
+function examText(){
+  var m = state.meta, secs = buildVersion(), L = [];
+  L.push((m.school || '') + '');
+  L.push([m.term, m.exam, m.subject, m.grade].filter(Boolean).join(' ') + ' 試題卷（' + ui.ver + ' 卷）');
+  L.push('作答時間：' + (m.minutes || '') + ' 分鐘　考試範圍：' + (m.range || ''));
+  L.push('班級：______　座號：______　姓名：____________　得分：______');
+  L.push('');
+  secs.forEach(function(s, si){
+    L.push(CN_NUM[si] + '、' + TYPES[s.type] + '（' + sectionScoreText(s) + '）');
+    s.items.forEach(function(it){
+      var lead = (s.type === 'mc' || s.type === 'tf') ? '(    ) ' : '';
+      var pre = lead + it.no + '. ';
+      L.push(pre + plainStem(it.q.stem, '      ').replace(/_{2,}/g, '________'));
+      if(s.type === 'mc') L.push('      ' + it.options.map(function(o, k){ return '(' + LETTERS[k] + ') ' + o; }).join('　'));
+      if(s.type === 'essay') L.push('      （' + fmt(num(it.q.score)) + ' 分）\n');
+    });
+    L.push('');
+  });
+  L.push('— 試題結束 —');
+  return L.join('\n');
+}
+function keyText(){
+  var m = state.meta, secs = buildVersion(), L = [];
+  L.push((m.school || '') + '　' + [m.term, m.exam, m.subject, m.grade].filter(Boolean).join(' ') + ' 答案卷（' + ui.ver + ' 卷）');
+  L.push('');
+  secs.forEach(function(s, si){
+    L.push(CN_NUM[si] + '、' + TYPES[s.type] + '（' + sectionScoreText(s) + '）');
+    if(s.type === 'mc' || s.type === 'tf'){
+      var parts = s.items.map(function(it){ return it.no + '.' + (s.type === 'mc' ? (it.answer == null ? '?' : LETTERS[it.answer]) : (it.answer || '?')); });
+      for(var i=0;i<parts.length;i+=5) L.push('  ' + parts.slice(i, i+5).join('　'));
+    } else {
+      s.items.forEach(function(it){ L.push('  ' + it.no + '. ' + String(it.answer || '').split('\n').join('\n     ')); });
+    }
+    L.push('');
+  });
+  if(ui.ver === 'B'){
+    var map = [];
+    secs.forEach(function(s){ s.items.forEach(function(it){ map.push('B' + it.no + '=A' + aNumberOf(it.q.id)); }); });
+    L.push('題號對照：' + map.join('、'));
+  }
+  return L.join('\n');
+}
+
+function copyText(text, label){
+  var fb = $('copy-fb'), ta = $('copy-fb-text');
+  function fallback(){
+    if(!fb || !ta){ toast('無法自動複製'); return; }
+    fb.classList.add('show'); ta.value = text; ta.focus(); ta.select();
+    try{ if(document.execCommand && document.execCommand('copy')){ toast(label + '已複製（相容模式）'); return; } }catch(e){}
+    toast('請按 Ctrl＋C 複製已選取的文字');
+  }
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ fb.classList.remove('show'); toast(label + '已複製到剪貼簿'); }, fallback);
+    } else fallback();
+  }catch(e){ fallback(); }
+}
+function copyMatrix(){
+  var text = matrixText(analyze());
+  var ok = false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast('細目表已複製，可直接貼到 Excel／Google 試算表'); }, function(){ showMatrixFallback(text); });
+      ok = true;
+    }
+  }catch(e){}
+  if(!ok) showMatrixFallback(text);
+}
+function showMatrixFallback(text){
+  switchView('preview');
+  var fb = $('copy-fb'), ta = $('copy-fb-text');
+  fb.classList.add('show'); ta.value = text; ta.focus(); ta.select();
+  toast('請按 Ctrl＋C 複製已選取的細目表');
+}
+
+/* ---------- preview controls ---------- */
+function syncPreviewControls(){
+  $('pv-exam').checked = ui.pvKind === 'exam';
+  $('pv-key').checked = ui.pvKind === 'key';
+  $('ver-a').checked = ui.ver === 'A';
+  $('ver-b').checked = ui.ver === 'B';
+  var isB = ui.ver === 'B';
+  $('shuffle-q').checked = ui.shuffleQ; $('shuffle-o').checked = ui.shuffleO;
+  $('shuffle-q').disabled = !isB; $('shuffle-o').disabled = !isB; $('reshuffle').disabled = !isB;
+  $('lbl-shuffle-q').classList.toggle('disabled', !isB);
+  $('lbl-shuffle-o').classList.toggle('disabled', !isB);
+}
+
+/* ---------- view / theme ---------- */
+function switchView(v){
+  ui.view = v; saveUi();
+  document.querySelectorAll('.tab').forEach(function(t){
+    var on = t.dataset.view === v;
+    t.setAttribute('aria-selected', on ? 'true' : 'false');
+    t.tabIndex = on ? 0 : -1;
+  });
+  document.querySelectorAll('.view').forEach(function(s){ s.classList.toggle('active', s.id === 'view-' + v); });
+}
+function applyTheme(){
+  var r = document.documentElement;
+  if(ui.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', ui.theme);
+  $('theme-toggle').textContent = '主題：' + ({auto:'自動', light:'淺色', dark:'深色'})[ui.theme];
+}
+
+function renderDerived(){
+  var A = analyze();
+  renderSummary(A); renderMatrix(A); renderPaper();
+  $('sample-banner').hidden = !state.isSample;
+}
+function renderAll(){ renderEditor(); renderUnits(); syncPreviewControls(); renderDerived(); }
+
+/* ---------- wire up ---------- */
+var qlist = $('qlist');
+qlist.addEventListener('input', onEditorInput);
+qlist.addEventListener('change', onEditorInput);
+qlist.addEventListener('click', onEditorClick);
+
+document.querySelectorAll('[data-meta]').forEach(function(el){
+  el.addEventListener('input', function(){
+    var k = el.dataset.meta;
+    state.meta[k] = k === 'minutes' ? (el.value === '' ? '' : num(el.value)) : el.value;
+    scheduleSave(); renderPaper();
+  });
+});
+document.querySelectorAll('[data-add]').forEach(function(b){ b.addEventListener('click', function(){ addQuestion(b.dataset.add); }); });
+
+$('bulk-parse').addEventListener('click', function(){
+  var ta = $('bulk-input'), txt = ta.value.trim();
+  if(!txt){ $('bulk-status').textContent = '請先貼上題目內容。'; ta.focus(); return; }
+  var r = parseBulk(txt);
+  $('bulk-status').textContent = '已加入 ' + r.added + ' 題' + (r.failed ? '，' + r.failed + ' 段無法辨識題型（第一行需以「選擇／是非／填充／問答」開頭）' : '') + '。';
+  if(r.added){ ta.value = ''; scheduleSave(); renderEditor(); renderUnits(); renderDerived(); }
+});
+
+$('unit-ed').addEventListener('input', function(e){
+  var el = e.target, row = el.closest('[data-uid]'); if(!row || !el.dataset.uf) return;
+  var u = unitById(row.dataset.uid); if(!u) return;
+  if(el.dataset.uf === 'name') u.name = el.value;
+  else u.periods = el.value === '' ? '' : Math.max(0, num(el.value));
+  scheduleSave(); renderDerived();
+});
+$('unit-ed').addEventListener('change', function(e){ if(e.target.dataset.uf === 'name') renderEditor(); });
+$('unit-ed').addEventListener('click', function(e){
+  var b = e.target.closest('[data-uact]'); if(!b) return;
+  var id = b.closest('[data-uid]').dataset.uid;
+  var used = state.qs.filter(function(q){ return q.unit === id; }).length;
+  var msg = $('unit-msg');
+  if(used){ msg.textContent = '「' + unitName(id) + '」還有 ' + used + ' 題，請先把題目改到其他單元。'; return; }
+  if(state.units.length <= 1){ msg.textContent = '至少需要保留一個單元。'; return; }
+  state.units = state.units.filter(function(u){ return u.id !== id; });
+  msg.textContent = '';
+  scheduleSave(); renderUnits(); renderEditor(); renderDerived();
+});
+$('add-unit').addEventListener('click', function(){
+  var u = {id:'u' + (state.nextU++), name:'新單元 ' + (state.units.length + 1), periods:1};
+  state.units.push(u);
+  scheduleSave(); renderUnits(); renderEditor(); renderDerived();
+  var el = $('unit-' + u.id + '-name'); if(el){ el.focus(); el.select(); }
+});
+$('warn-threshold').addEventListener('input', function(e){
+  var v = num(e.target.value); if(v > 0){ state.threshold = v; scheduleSave(); renderDerived(); }
+});
+$('goto-matrix').addEventListener('click', function(){ switchView('matrix'); var f = document.querySelector('#unit-ed input'); if(f) f.focus(); });
+$('copy-matrix').addEventListener('click', copyMatrix);
+
+['pv-exam','pv-key'].forEach(function(id){ $(id).addEventListener('change', function(e){ ui.pvKind = e.target.value; saveUi(); renderPaper(); }); });
+['ver-a','ver-b'].forEach(function(id){ $(id).addEventListener('change', function(e){ ui.ver = e.target.value; saveUi(); syncPreviewControls(); renderPaper(); }); });
+$('shuffle-q').addEventListener('change', function(e){ ui.shuffleQ = e.target.checked; saveUi(); renderPaper(); });
+$('shuffle-o').addEventListener('change', function(e){ ui.shuffleO = e.target.checked; saveUi(); renderPaper(); });
+$('reshuffle').addEventListener('click', function(){ ui.seed = (ui.seed * 7919 + 104729) % 2147483647; saveUi(); renderPaper(); toast('B 卷已重新洗牌'); });
+$('copy-exam').addEventListener('click', function(){ copyText(examText(), ui.ver + ' 卷試題'); });
+$('copy-key').addEventListener('click', function(){ copyText(keyText(), ui.ver + ' 卷答案'); });
+
+var tabs = Array.prototype.slice.call(document.querySelectorAll('.tab'));
+tabs.forEach(function(t, i){
+  t.addEventListener('click', function(){ switchView(t.dataset.view); });
+  t.addEventListener('keydown', function(e){
+    var d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+    if(!d) return;
+    e.preventDefault();
+    var n = tabs[(i + d + tabs.length) % tabs.length];
+    switchView(n.dataset.view); n.focus();
+  });
+});
+
+$('theme-toggle').addEventListener('click', function(){
+  ui.theme = ui.theme === 'auto' ? 'light' : ui.theme === 'light' ? 'dark' : 'auto';
+  saveUi(); applyTheme();
+});
+$('reset-sample').addEventListener('click', function(e){
+  armed(e.currentTarget, function(){ state = sampleState(); ui.seed = 20261; saveUi(); scheduleSave(); renderAll(); toast('已重新載入範例考卷'); });
+});
+$('clear-all').addEventListener('click', function(e){
+  armed(e.currentTarget, function(){ state = blankState(); scheduleSave(); renderAll(); switchView('edit'); toast('已清空，開始新考卷'); var el = $('meta-school'); if(el) el.focus(); });
+});
+
+/* ---------- keyboard shortcuts ---------- */
+var activeQid = null;
+var IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+function setActive(qid, focusField){
+  activeQid = qid;
+  document.querySelectorAll('.qcard.active').forEach(function(c){ if(c.dataset.qid !== qid) c.classList.remove('active'); });
+  var card = $('card-' + qid);
+  if(card){
+    card.classList.add('active');
+    card.scrollIntoView({block:'nearest'});
+    if(focusField){ var f = $(qid + '-' + focusField) || $(qid + '-stem'); if(f) f.focus({preventScroll:true}); }
+  }
+}
+function activeIndex(){
+  var i = activeQid ? findQ(activeQid) : -1;
+  return i;
+}
+function focusedField(){
+  var el = document.activeElement;
+  if(!el || !el.id || !activeQid || el.id.indexOf(activeQid + '-') !== 0) return null;
+  return el.id.slice(activeQid.length + 1);
+}
+/* 結構改變後重畫並把焦點放回同一個欄位 */
+function rerenderKeep(qid, field){
+  scheduleSave(); renderEditor(); renderDerived();
+  setActive(qid, field || 'stem');
+}
+function requireActive(){
+  if(ui.view !== 'edit') switchView('edit');
+  if(activeIndex() < 0){
+    if(!state.qs.length){ toast('還沒有題目'); return null; }
+    setActive(state.qs[0].id, 'stem');
+  }
+  return state.qs[activeIndex()];
+}
+function gotoQuestion(delta){
+  if(ui.view !== 'edit') switchView('edit');
+  if(!state.qs.length) return;
+  var i = activeIndex();
+  var n = i < 0 ? 0 : Math.max(0, Math.min(state.qs.length - 1, i + delta));
+  setActive(state.qs[n].id, focusedField() || 'stem');
+}
+function moveQuestion(delta){
+  var q = requireActive(); if(!q) return;
+  var i = activeIndex(), j = i + delta;
+  if(j < 0 || j >= state.qs.length) return;
+  var f = focusedField();
+  state.qs[i] = state.qs[j]; state.qs[j] = q;
+  rerenderKeep(q.id, f);
+  toast('已移到第 ' + (j + 1) + ' 題');
+}
+function addAfterActive(type){
+  if(ui.view !== 'edit') switchView('edit');
+  var q = newQ(type), i = activeIndex();
+  if(i >= 0){ q.unit = state.qs[i].unit; state.qs.splice(i + 1, 0, q); } else state.qs.push(q);
+  rerenderKeep(q.id, 'stem');
+  toast('已新增' + TYPES[type] + '（第 ' + (findQ(q.id) + 1) + ' 題）');
+}
+function duplicateActive(){
+  var q = requireActive(); if(!q) return;
+  var c = JSON.parse(JSON.stringify(q)); c.id = 'q' + (state.nextQ++);
+  state.qs.splice(activeIndex() + 1, 0, c);
+  rerenderKeep(c.id, 'stem');
+  toast('已複製為第 ' + (findQ(c.id) + 1) + ' 題');
+}
+function deleteActive(){
+  var q = requireActive(); if(!q) return;
+  var i = activeIndex();
+  if(!window.confirm('確定刪除第 ' + (i + 1) + ' 題（' + TYPES[q.type] + '）？')) return;
+  state.qs.splice(i, 1);
+  scheduleSave(); renderEditor(); renderDerived();
+  var next = state.qs[Math.min(i, state.qs.length - 1)];
+  if(next) setActive(next.id, 'stem'); else activeQid = null;
+  toast('已刪除第 ' + (i + 1) + ' 題');
+}
+function setAnswerKey(k){
+  var q = requireActive(); if(!q) return;
+  if(q.type === 'mc'){
+    if(k >= q.options.length) return;
+    q.answer = k;
+    var r = $(q.id + '-ans' + k); if(r) r.checked = true;
+    toast('第 ' + (activeIndex() + 1) + ' 題正解設為 ' + LETTERS[k]);
+  } else if(q.type === 'tf'){
+    if(k > 1) return;
+    q.answer = k === 0 ? 'O' : 'X';
+    var r2 = $(q.id + '-ans' + q.answer); if(r2) r2.checked = true;
+    toast('第 ' + (activeIndex() + 1) + ' 題答案設為 ' + q.answer);
+  } else { toast('填充／問答題請直接輸入答案'); return; }
+  updateCardWarn(q); scheduleSave(); renderDerived();
+}
+function cycleField(field, list, label){
+  var q = requireActive(); if(!q) return;
+  var i = list.indexOf(q[field]);
+  q[field] = list[(i + 1) % list.length];
+  var sel = $(q.id + '-' + field); if(sel) sel.value = q[field];
+  var shown = field === 'unit' ? unitName(q.unit) : q[field];
+  updateCardWarn(q); scheduleSave(); renderDerived();
+  toast(label + '：' + shown);
+}
+function cycleType(){
+  var q = requireActive(); if(!q) return;
+  var sel = $(q.id + '-type'); if(!sel) return;
+  sel.value = TYPE_ORDER[(TYPE_ORDER.indexOf(q.type) + 1) % TYPE_ORDER.length];
+  sel.dispatchEvent(new Event('change', {bubbles:true})); /* 沿用既有題型轉換邏輯 */
+  setActive(q.id, 'type');
+  toast('題型：' + TYPES[q.type]);
+}
+function bumpScore(d){
+  var q = requireActive(); if(!q) return;
+  q.score = Math.max(0, num(q.score) + d);
+  var inp = $(q.id + '-score'); if(inp) inp.value = q.score;
+  updateCardWarn(q); scheduleSave(); renderDerived();
+  toast('第 ' + (activeIndex() + 1) + ' 題 ' + fmt(q.score) + ' 分，總分 ' + fmt(totalScore()));
+}
+
+/* combo 一律用 KeyboardEvent.code 比對：Mac 的 ⌥+字母 e.key 會變成特殊字元 */
+var SHORTCUTS = [
+  {g:'導覽', keys:['Alt+ArrowDown','J'], label:'下一題', run:function(){ gotoQuestion(1); }, rep:true},
+  {g:'導覽', keys:['Alt+ArrowUp','K'], label:'上一題', run:function(){ gotoQuestion(-1); }, rep:true},
+  {g:'導覽', keys:['/'], label:'跳到本題題幹', run:function(){ var q = requireActive(); if(q) setActive(q.id, 'stem'); }},
+  {g:'導覽', keys:['Escape'], label:'離開輸入框', run:function(){ if(document.activeElement) document.activeElement.blur(); }, inInput:true, quiet:true},
+  {g:'新增', keys:['Alt+Shift+KeyM'], label:'新增選擇題（插在本題後）', run:function(){ addAfterActive('mc'); }},
+  {g:'新增', keys:['Alt+Shift+KeyT'], label:'新增是非題', run:function(){ addAfterActive('tf'); }},
+  {g:'新增', keys:['Alt+Shift+KeyF'], label:'新增填充題', run:function(){ addAfterActive('fill'); }},
+  {g:'新增', keys:['Alt+Shift+KeyE'], label:'新增問答題', run:function(){ addAfterActive('essay'); }},
+  {g:'題目', keys:['Alt+Digit1','Alt+Digit2','Alt+Digit3','Alt+Digit4','Alt+Digit5'], show:'Alt+1…5', label:'設正解 A–E（是非題 1=O、2=X）', run:function(e){ setAnswerKey(+e.code.slice(-1) - 1); }},
+  {g:'題目', keys:['Alt+Shift+ArrowUp'], label:'本題上移', run:function(){ moveQuestion(-1); }},
+  {g:'題目', keys:['Alt+Shift+ArrowDown'], label:'本題下移', run:function(){ moveQuestion(1); }},
+  {g:'題目', keys:['Alt+Shift+KeyD'], label:'複製本題', run:duplicateActive},
+  {g:'題目', keys:['Alt+Backspace'], label:'刪除本題（會確認）', run:deleteActive},
+  {g:'題目', keys:['Alt+Equal'], label:'配分 +1', run:function(){ bumpScore(1); }, rep:true},
+  {g:'題目', keys:['Alt+Minus'], label:'配分 −1', run:function(){ bumpScore(-1); }, rep:true},
+  {g:'細目表', keys:['Alt+Shift+KeyY'], label:'切換題型', run:cycleType},
+  {g:'細目表', keys:['Alt+Shift+KeyL'], label:'切換認知層次', run:function(){ cycleField('bloom', BLOOM, '認知層次'); }},
+  {g:'細目表', keys:['Alt+Shift+KeyU'], label:'切換單元', run:function(){ cycleField('unit', state.units.map(function(u){ return u.id; }), '單元'); }},
+  {g:'檢視', keys:['Alt+Shift+Digit1'], label:'編輯題目', run:function(){ switchView('edit'); }},
+  {g:'檢視', keys:['Alt+Shift+Digit2'], label:'雙向細目表', run:function(){ switchView('matrix'); }},
+  {g:'檢視', keys:['Alt+Shift+Digit3'], label:'考卷預覽', run:function(){ switchView('preview'); }},
+  {g:'檢視', keys:['?','Mod+Slash'], label:'顯示快捷鍵', run:function(){ openKbd(); }}
+];
+function comboOf(e){
+  var mod = IS_MAC ? e.metaKey : e.ctrlKey;
+  var parts = [];
+  if(mod) parts.push('Mod');
+  if(e.altKey) parts.push('Alt');
+  if(e.shiftKey) parts.push('Shift');
+  parts.push(e.code);
+  return parts.join('+');
+}
+function bareKey(e){
+  /* 無修飾鍵的單鍵：用 e.key 才能適應不同鍵盤配置（例如 ? 需要 Shift） */
+  if(e.ctrlKey || e.metaKey || e.altKey) return null;
+  if(e.key === '?') return '?';
+  if(e.shiftKey) return null;
+  if(e.key === '/') return '/';
+  if(e.key === 'Escape') return 'Escape';
+  if(/^[a-z]$/i.test(e.key)) return e.key.toUpperCase();
+  return null;
+}
+function isTyping(el){
+  return el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
+}
+document.addEventListener('keydown', function(e){
+  if(e.isComposing || e.keyCode === 229) return;          /* 注音／倉頡選字中 */
+  if($('kbd-dlg').open) return;                            /* dialog 自己處理 Esc */
+  /* Mac 不吃 Ctrl、Windows 不吃 Win 鍵，避免誤觸系統快捷鍵 */
+  if(IS_MAC ? e.ctrlKey : e.metaKey) return;
+  var combo = comboOf(e), bare = bareKey(e), typing = isTyping(e.target);
+  for(var i=0;i<SHORTCUTS.length;i++){
+    var s = SHORTCUTS[i];
+    var hitCombo = s.keys.indexOf(combo) >= 0;
+    var hitBare = bare && s.keys.indexOf(bare) >= 0;
+    if(!hitCombo && !hitBare) continue;
+    if(hitBare && !hitCombo && typing && !s.inInput) return;  /* 打字中的單鍵照常輸入 */
+    if(e.repeat && !s.rep) { e.preventDefault(); return; }
+    if(!(s.quiet && !typing)) e.preventDefault();
+    s.run(e);
+    return;
+  }
+}, true);
+
+/* 點擊或焦點進入卡片 → 設為目前題目 */
+qlist.addEventListener('focusin', function(e){ var c = e.target.closest('.qcard'); if(c && c.dataset.qid !== activeQid) setActive(c.dataset.qid); });
+qlist.addEventListener('mousedown', function(e){ var c = e.target.closest('.qcard'); if(c && c.dataset.qid !== activeQid) setActive(c.dataset.qid); });
+
+function fmtKey(k){
+  return k.split('+').map(function(p){
+    var m = {Mod: IS_MAC ? '⌘' : 'Ctrl', Alt: IS_MAC ? '⌥' : 'Alt', Shift: IS_MAC ? '⇧' : 'Shift',
+      ArrowUp:'↑', ArrowDown:'↓', Backspace: IS_MAC ? '⌫' : 'Backspace', Equal:'=', Minus:'−', Slash:'/', Escape:'Esc'}[p];
+    if(m) return m;
+    return p.replace(/^Key/, '').replace(/^Digit/, '');
+  }).map(function(p){ return '<kbd>' + esc(p) + '</kbd>'; }).join(IS_MAC ? '' : '+');
+}
+function renderKbd(){
+  var groups = [];
+  SHORTCUTS.forEach(function(s){ if(groups.indexOf(s.g) < 0) groups.push(s.g); });
+  $('kbd-grid').innerHTML = groups.map(function(g){
+    return '<h4>' + esc(g) + '</h4>' + SHORTCUTS.filter(function(s){ return s.g === g; }).map(function(s){
+      var keys = s.show ? [s.show] : s.keys;
+      return '<div class="kbd-row"><span>' + esc(s.label) + '</span><span>' + keys.map(fmtKey).join(' 或 ') + '</span></div>';
+    }).join('');
+  }).join('');
+}
+function openKbd(){ renderKbd(); var d = $('kbd-dlg'); if(d.showModal) d.showModal(); else d.setAttribute('open', ''); }
+$('kbd-open').addEventListener('click', openKbd);
+$('kbd-close').addEventListener('click', function(){ $('kbd-dlg').close(); });
+$('kbd-dlg').addEventListener('click', function(e){ if(e.target === e.currentTarget) e.currentTarget.close(); });
+document.querySelectorAll('[data-kbd]').forEach(function(b){ b.title = b.dataset.kbd.replace('Alt', IS_MAC ? '⌥' : 'Alt').replace('Shift', IS_MAC ? '⇧' : 'Shift'); });
+
+/* ---------- import banner ---------- */
+if(imported){
+  var n = imported.notes || {}, extra = [];
+  if(n.multiToSingle) extra.push(n.multiToSingle + ' 題多選題已轉成單選，請重新勾正解');
+  if(n.skippedRanking) extra.push(n.skippedRanking + ' 題排序題不支援，已略過');
+  if(n.withImage) extra.push(n.withImage + ' 題原有圖片，這裡不會顯示');
+  $('import-text').innerHTML = '<b>已從 QuizFlow 帶入</b>　「' + esc(imported.quizTitle) + '」共 ' + state.qs.length + ' 題。請到「雙向細目表」設定單元與節數，並為每題標上單元與認知層次（Alt+Shift+U／L）。' + (extra.length ? '<br>' + esc(extra.join('；')) + '。' : '');
+  $('import-banner').hidden = false;
+  $('restore-prev').hidden = !!imported.noPrev;
+}
+$('import-dismiss').addEventListener('click', function(){ $('import-banner').hidden = true; });
+$('restore-prev').addEventListener('click', function(e){
+  armed(e.currentTarget, function(){
+    var prev = load(PREV_KEY);
+    if(!validState(prev)){ toast('找不到先前草稿'); return; }
+    state = prev; scheduleSave(); renderAll(); $('import-banner').hidden = true; toast('已還原先前草稿');
+  });
+});
+
+applyTheme();
+switchView(['edit','matrix','preview'].indexOf(ui.view) >= 0 ? ui.view : 'edit');
+renderAll();
+})();
+</script>
+
+</body></html>
