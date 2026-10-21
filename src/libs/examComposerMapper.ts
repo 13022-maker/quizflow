@@ -56,7 +56,7 @@ export type ComposerImport = {
   };
 };
 
-const TRUE_TEXT = /^(?:正確|對|是|O|○|true)$/i;
+const TRUE_TEXT = /^(?:正確|[對是O○]|true)$/i;
 const BLANK = '____';
 const UNIT_ID = 'u1';
 
