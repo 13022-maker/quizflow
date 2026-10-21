@@ -64,7 +64,7 @@ export async function checkRateLimit(
       target: rateLimitSchema.key,
       set: { count: sql`${rateLimitSchema.count} + 1` },
     })
-    .returning({ count: rateLimitSchema.count });
+    .returning();
 
   // 約 1% 的請求順手清掉過期列，避免表無限長大（失敗不影響本次請求）
   if (Math.random() < 0.01) {

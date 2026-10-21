@@ -135,7 +135,7 @@ export async function updateQuestion(id: number, quizId: number, data: QuestionI
     // 必須同時比對 quizId：verifyOwnership 只證明 quizId 是自己的，
     // 若只用 question id 過濾，帶「自己的 quizId + 別人的題目 id」就能改到別人的題目（IDOR）
     .where(and(eq(questionSchema.id, id), eq(questionSchema.quizId, quizId)))
-    .returning({ id: questionSchema.id });
+    .returning();
 
   if (updated.length === 0) {
     throw new Error('Question not found or unauthorized');
@@ -155,7 +155,7 @@ export async function deleteQuestion(id: number, quizId: number) {
   const deleted = await db
     .delete(questionSchema)
     .where(and(eq(questionSchema.id, id), eq(questionSchema.quizId, quizId)))
-    .returning({ id: questionSchema.id });
+    .returning();
 
   if (deleted.length === 0) {
     throw new Error('Question not found or unauthorized');
