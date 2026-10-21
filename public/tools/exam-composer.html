@@ -958,11 +958,14 @@ function addQuestion(type){
 }
 
 /* bulk paste */
+/* 全形英數轉半形：注音輸入法常自動打出全形 Ｏ／Ｘ／Ａ */
+function toHalf(s){ return String(s).replace(/[\uFF01-\uFF5E]/g, function(c){ return String.fromCharCode(c.charCodeAt(0) - 0xFEE0); }); }
+var OPT_LABEL = /[\(（]\s*([A-Ea-eＡ-Ｅａ-ｅ])\s*[\)）]/;
 function parseBulk(text){
   var blocks = text.replace(/\r/g,'').split(/\n\s*\n/).map(function(b){ return b.trim(); }).filter(Boolean);
-  var added = 0, failed = 0;
+  var added = 0, failed = 0, skipped = [];
   var typeMap = {'選擇':'mc','單選':'mc','是非':'tf','填充':'fill','問答':'essay','非選':'essay','簡答':'essay'};
-  blocks.forEach(function(b){
+  blocks.forEach(function(b, bi){
     var lines = b.split('\n');
     var head = lines.shift().split(/[｜|]/).map(function(s){ return s.trim(); });
     var type = null;
@@ -982,26 +985,33 @@ function parseBulk(text){
       var m = l.match(/^\s*(答案|解答|參考答案)\s*[:：]\s*(.*)$/);
       if(m){ ansMode = true; ans = m[2]; return; }
       if(ansMode){ ans += '\n' + l; return; }
-      if(type === 'mc' && /^\s*[\(（][A-Da-d][\)）]/.test(l)){ optLine += ' ' + l; return; }
+      if(type === 'mc' && new RegExp('^\\s*' + OPT_LABEL.source).test(l)){ optLine += ' ' + l; return; }
       stemLines.push(l);
     });
     q.stem = stemLines.join('\n').trim();
     if(type === 'mc'){
-      var parts = optLine.split(/[\(（]([A-Da-d])[\)）]/);
-      var opts = [];
-      for(var k=1;k<parts.length;k+=2){ opts.push((parts[k+1] || '').trim()); }
-      while(opts.length < 4) opts.push('');
+      var parts = optLine.split(new RegExp(OPT_LABEL.source, 'g'));
+      var opts = [], seen = [], gap = false;
+      for(var k=1;k<parts.length;k+=2){
+        /* 依字母放回對應位置：(A)(B)(D) 時 D 放在第 4 格，C 留空，答案 D 才不會錯位 */
+        var li = LETTERS.indexOf(toHalf(parts[k]).toUpperCase());
+        if(li !== seen.length) gap = true;
+        seen.push(li);
+        if(li >= 0) opts[li] = (parts[k+1] || '').trim();
+      }
+      for(var z=0;z<Math.max(4, opts.length);z++){ if(opts[z] == null) opts[z] = ''; }
+      if(gap) skipped.push(bi + 1);
       q.options = opts.slice(0, 5);
-      var L = ans.trim().toUpperCase().replace(/[\(（\)）]/g,'').charAt(0);
+      var L = toHalf(ans).trim().toUpperCase().replace(/[\(\)]/g,'').charAt(0);
       var idx = LETTERS.indexOf(L);
       q.answer = idx >= 0 && idx < q.options.length ? idx : null;
     } else if(type === 'tf'){
-      var a = ans.trim().toUpperCase();
+      var a = toHalf(ans).trim().toUpperCase();
       q.answer = /^(O|○|對|是|T)/.test(a) ? 'O' : /^(X|×|錯|否|F)/.test(a) ? 'X' : null;
     } else q.answer = ans.trim();
     state.qs.push(q); added++;
   });
-  return {added:added, failed:failed};
+  return {added:added, failed:failed, skipped:skipped};
 }
 
 /* ---------- summary ---------- */
@@ -1357,7 +1367,8 @@ $('bulk-parse').addEventListener('click', function(){
   var ta = $('bulk-input'), txt = ta.value.trim();
   if(!txt){ $('bulk-status').textContent = '請先貼上題目內容。'; ta.focus(); return; }
   var r = parseBulk(txt);
-  $('bulk-status').textContent = '已加入 ' + r.added + ' 題' + (r.failed ? '，' + r.failed + ' 段無法辨識題型（第一行需以「選擇／是非／填充／問答」開頭）' : '') + '。';
+  $('bulk-status').textContent = '已加入 ' + r.added + ' 題' + (r.failed ? '，' + r.failed + ' 段無法辨識題型（第一行需以「選擇／是非／填充／問答」開頭）' : '')
+    + (r.skipped.length ? '；第 ' + r.skipped.join('、') + ' 段的選項字母跳號或重複，已依字母放回對應位置，請檢查空白選項' : '') + '。';
   if(r.added){ ta.value = ''; scheduleSave(); renderEditor(); renderUnits(); renderDerived(); }
 });
 
