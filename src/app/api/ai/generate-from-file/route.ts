@@ -5,15 +5,28 @@ import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
-import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { withAiUsageRefund } from '@/lib/ai/aiUsageRefund';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import {
+  AIOutputError,
+  claudeStopReasonError,
+  EMPTY_CONTENT_MESSAGE,
+  geminiFinishReasonError,
+  parseTypesField,
+  validateGeneratedQuestions,
+} from '@/lib/ai/fileQuizOutput';
+import { buildPageHintPrompt, PdfPreprocessError, preparePdfForAI } from '@/lib/ai/pdfPreprocess';
 import { isProSafe } from '@/lib/ai/textModel';
-import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
+// 注意：PDF 出題實測常接近 60 秒；是否調高要看 Vercel 方案上限，這次刻意不動
 export const maxDuration = 60;
+
+// Claude Sonnet 輸出上限：20 題 × 多題型（含聽力 listeningText、圖解 diagram）
+// 4096 會截斷；16384 與 Gemini maxOutputTokens 對齊
+const CLAUDE_MAX_TOKENS = 16384;
 
 type ModelChoice = 'gemini' | 'claude';
 const DEFAULT_MODEL: ModelChoice = 'gemini';
@@ -87,11 +100,13 @@ async function generateWithGemini(
       },
     }));
 
-  // finishReason 非 STOP = 輸出被截斷,丟 sentinel error 讓外層 catch 改走 Claude 重出
+  // finishReason 非 STOP：MAX_TOKENS（截斷）/ RECITATION（照抄原文）/ SAFETY（安全過濾）
+  // 各自對應老師看得懂的訊息（AIOutputError.userMessage），外層會先試 Claude 重出
   const finishReason = response.candidates?.[0]?.finishReason;
-  if (finishReason && finishReason !== 'STOP') {
-    console.warn(`[generate-from-file] Gemini finishReason=${finishReason}（${(response.text ?? '').length} 字），改走 Claude 重出`);
-    throw new Error('GEMINI_TRUNCATED');
+  const outputError = geminiFinishReasonError(finishReason);
+  if (outputError) {
+    console.warn(`[generate-from-file] Gemini finishReason=${finishReason}（${(response.text ?? '').length} 字）`);
+    throw outputError;
   }
   return response.text ?? '';
 }
@@ -125,14 +140,25 @@ async function generateWithClaude(
     { type: 'text', text: prompt },
   ];
 
+  // 串流聚合（比照 textModel.callClaude）：max_tokens 拉高後輸出時間變長，避免撞 HTTP 逾時
   const message = await callWithRetry(() =>
-    anthropic.messages.create({
+    anthropic.messages.stream({
       model: CLAUDE_MODEL_NAME,
-      max_tokens: 4096,
+      max_tokens: CLAUDE_MAX_TOKENS,
       messages: [{ role: 'user', content }],
-    }));
+    }).finalMessage());
 
-  return (message.content[0] as { type: string; text: string }).text ?? '';
+  // 過去沒檢查 stop_reason：截斷的半截 JSON 只會變成籠統的「AI 回傳格式錯誤」
+  const outputError = claudeStopReasonError(message.stop_reason);
+  if (outputError) {
+    console.warn(`[generate-from-file] Claude stop_reason=${message.stop_reason}`);
+    throw outputError;
+  }
+
+  return message.content
+    .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+    .map(b => b.text)
+    .join('');
 }
 
 const DIFF_LABELS: Record<string, string> = {
@@ -169,7 +195,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
-  // 檢查 AI 出題 quota
+  // 檢查 AI 出題 quota（先扣次以便及早擋掉超額用戶；之後任何失敗回應都會自動退還）
   const quota = await checkAndIncrementAiUsage(userId);
   if (!quota.allowed) {
     return NextResponse.json(
@@ -178,12 +204,25 @@ export async function POST(request: Request) {
     );
   }
 
-  const formData = await request.formData();
+  return withAiUsageRefund(userId, quota, () => handleGenerate(request));
+}
+
+async function handleGenerate(request: Request): Promise<Response> {
+  let formData: FormData;
+  try {
+    formData = await request.formData();
+  } catch {
+    return NextResponse.json({ error: '上傳資料格式錯誤，請重新上傳' }, { status: 400 });
+  }
   // 支援單檔（PDF / 音檔）與多檔（多張圖片）
   const uploaded = formData.getAll('file').filter((v): v is File => v instanceof File);
-  const typesRaw = formData.get('types') as string;
   const rawCount = Number.parseInt(formData.get('count') as string) || 5;
-  const types: string[] = JSON.parse(typesRaw || '["mc"]');
+  // 過去 JSON.parse 在 try 外面，格式錯誤直接 500
+  const typesResult = parseTypesField(formData.get('types') as string | null);
+  if (!typesResult.ok) {
+    return NextResponse.json({ error: typesResult.error }, { status: 400 });
+  }
+  const types: string[] = typesResult.types;
   const hasListening = types.includes('listening');
   const count = Math.min(rawCount, hasListening ? 5 : 20);
   const difficulty = (formData.get('difficulty') as string) || 'medium';
@@ -235,7 +274,8 @@ export async function POST(request: Request) {
     .join(',\n') || TYPE_EXAMPLES.mc;
 
   // 音檔用聽力題專用 prompt，文件 / 圖片用一般 prompt
-  const prompt = isAudio
+  // let：加密 PDF 無法裁切時，下面會再附上「只根據第 X–Y 頁」的限定句
+  let prompt = isAudio
     ? `請聽取以上音檔內容，根據音檔生成聽力測驗題。
 
 難度：${diffLabel}
@@ -255,7 +295,8 @@ export async function POST(request: Request) {
     { "type": "listening", "question": "根據音檔，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }
   ]
 }
-7. 正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母`
+7. 正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母
+8. 若音檔沒有可辨識的語音內容或內容太少不足以出題，不要捏造題目，直接回傳 { "title": "", "transcript": "", "questions": [] }`
     : `請根據以上文件內容出題。
 
 難度：${diffLabel}
@@ -270,8 +311,10 @@ ${typesPrompt}
 5. 次方寫作 x²、x³、x⁴；三次方以上可用 x^n（例如 x^10）
 6. 根號寫作 √2、√(a+b)；不寫 \\sqrt
 7. 微積分符號 ∫、∑、∞、lim 直接使用 Unicode
-8. 若文件內容本身是選擇題格式（含①②③④或 A/B/C/D 等選項標號），出「填空題」時請將題幹與正確選項的文字內容重組成一句完整敘述句，把關鍵詞彙或答案內容挖空（用 ___ 標示），answer 填正確選項的實際文字內容；不要照抄原本的①②③④符號，也不要整段原封不動照搬選擇題格式
-9. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
+8. 題目必須能只靠文字作答：禁止出「如下圖所示」「如圖」「參考附表」這類需要看到文件中的圖片、圖表或表格才能作答的題目（學生端看不到原始文件的圖）；若概念來自圖表，請把圖表中的關鍵資訊直接寫進題幹
+9. 若文件內容空白、無法辨識（例如掃描不清）或內容太少不足以出題，不要硬湊或捏造題目，直接回傳 { "title": "", "questions": [] }
+10. 若文件內容本身是選擇題格式（含①②③④或 A/B/C/D 等選項標號），出「填空題」時請將題幹與正確選項的文字內容重組成一句完整敘述句，把關鍵詞彙或答案內容挖空（用 ___ 標示），answer 填正確選項的實際文字內容；不要照抄原本的①②③④符號，也不要整段原封不動照搬選擇題格式
+11. JSON 格式（下面範例只列出本次勾選的題型，只能輸出這些題型，不可額外生成範例以外的題型）：
 {
   "title": "根據文件內容自動命名的試卷標題",
   "questions": [
@@ -312,6 +355,44 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     flac: 'audio/flac',
   };
 
+  // 先處理檔案（老師可自行修正的錯誤，如損毀 / 加密 PDF、頁數範圍）再檢查伺服器金鑰
+  const media: { mimeType: string; base64: string }[] = [];
+
+  if (isAudio) {
+    const arrayBuffer = await firstFile.arrayBuffer();
+    media.push({
+      mimeType: audioMimeMap[firstExt] || firstFile.type || 'audio/mpeg',
+      base64: Buffer.from(arrayBuffer).toString('base64'),
+    });
+  } else if (isImage) {
+    // 多張圖片一起送
+    for (const f of uploaded) {
+      const e = getExt(f);
+      const buf = await f.arrayBuffer();
+      media.push({
+        mimeType: imageMimeMap[e] || 'image/png',
+        base64: Buffer.from(buf).toString('base64'),
+      });
+    }
+  } else {
+    // PDF：一律用伺服器端量到的真實頁數判斷上限，不信任前端傳來的 startPage/endPage
+    // （見 src/libs/pdfPageLimit.ts）。加密 PDF 不能用 pdf-lib copyPages 裁切——
+    // 那樣會產生內容全是密文亂碼的 PDF，改送原始 bytes（詳見 src/lib/ai/pdfPreprocess.ts）。
+    try {
+      const prepared = await preparePdfForAI(new Uint8Array(await firstFile.arrayBuffer()), { startPage, endPage });
+      media.push({
+        mimeType: 'application/pdf',
+        base64: Buffer.from(prepared.bytes).toString('base64'),
+      });
+      prompt += buildPageHintPrompt(prepared.pageHint);
+    } catch (err) {
+      if (err instanceof PdfPreprocessError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
+      }
+      throw err;
+    }
+  }
+
   // 音檔只能走 Gemini（Claude 不支援音檔多模態）
   let effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
 
@@ -346,65 +427,6 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     );
   }
 
-  const media: { mimeType: string; base64: string }[] = [];
-
-  if (isAudio) {
-    const arrayBuffer = await firstFile.arrayBuffer();
-    media.push({
-      mimeType: audioMimeMap[firstExt] || firstFile.type || 'audio/mpeg',
-      base64: Buffer.from(arrayBuffer).toString('base64'),
-    });
-  } else if (isImage) {
-    // 多張圖片一起送
-    for (const f of uploaded) {
-      const e = getExt(f);
-      const buf = await f.arrayBuffer();
-      media.push({
-        mimeType: imageMimeMap[e] || 'image/png',
-        base64: Buffer.from(buf).toString('base64'),
-      });
-    }
-  } else {
-    // PDF：一律用伺服器端量到的真實頁數判斷上限，不信任前端傳來的 startPage/endPage
-    // （前端讀取頁數失敗時不會傳這兩個值，過去這裡會把整份大 PDF 原封不動送給 AI，
-    //  命題耗時很容易超過 Vercel maxDuration 逾時，見 src/libs/pdfPageLimit.ts）
-    //
-    // ignoreEncryption: true —— 踩過的坑：老師上傳的 PDF 若有加密限制（常見於證照題庫
-    // 下載檔，通常是防修改/防列印，不是版權 DRM），pdf-lib 預設遇到加密 PDF 會直接
-    // throw EncryptedPDFError；同一份檔案送去前端 pdfjs-dist 讀頁數時也會失敗，
-    // 導致頁數選擇器完全不出現（見 AIQuizModal.tsx / FileQuizGenerator.tsx 的靜默 catch）。
-    // 更關鍵的是：就算不裁切、直接把原始 bytes 送給 AI，AI 多模態模型很可能因為
-    // PDF 帶著加密限制而讀不到內容，這才是「命題失敗」最直接的原因——不只是逾時。
-    // 解法：一律用 pdf-lib 讀取＋透過 copyPages 重新輸出成一份乾淨的 PDF（不帶原始
-    // 加密限制），不論需不需要裁切頁數，都不要把原始 bytes 直接送給 AI。
-    const arrayBuffer = await firstFile.arrayBuffer();
-    const srcDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-    const actualTotalPages = srcDoc.getPageCount();
-
-    const range = resolvePdfPageRange({
-      actualTotalPages,
-      requestedStartPage: startPage,
-      requestedEndPage: endPage,
-    });
-    if (!range.ok) {
-      return NextResponse.json({ error: range.error }, { status: 400 });
-    }
-
-    const newDoc = await PDFDocument.create();
-    const indices = Array.from(
-      { length: range.endPage - range.startPage + 1 },
-      (_, i) => range.startPage - 1 + i,
-    );
-    const copiedPages = await newDoc.copyPages(srcDoc, indices);
-    copiedPages.forEach(page => newDoc.addPage(page));
-    const pdfBytes = await newDoc.save();
-
-    media.push({
-      mimeType: 'application/pdf',
-      base64: Buffer.from(pdfBytes).toString('base64'),
-    });
-  }
-
   try {
     let raw: string;
     try {
@@ -412,8 +434,9 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         ? await generateWithClaude(media, prompt)
         : await generateWithGemini(media, prompt);
     } catch (err) {
-      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
-        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
+      if (err instanceof AIOutputError && effectiveModel === 'gemini' && hasAnthropicKey && !isAudio) {
+        // Gemini 輸出不可用（截斷 / 照抄 / 安全過濾）自動 fallback Claude 重出
+        // （音檔 Claude 不支援；Claude 也失敗時，丟出的是 Claude 的 AIOutputError 或 API 錯誤）
         raw = await generateWithClaude(media, prompt);
       } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
         // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
@@ -435,6 +458,14 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       console.error(`[generate-from-file] ${effectiveModel} 回傳非 JSON：`, raw.slice(0, 500));
       return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
     }
+    if (!result || typeof result !== 'object' || !Array.isArray(result.questions)) {
+      console.error(`[generate-from-file] ${effectiveModel} 回傳 JSON 缺 questions 陣列：`, raw.slice(0, 500));
+      return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
+    }
+    // AI 判斷內容不足（空白頁 / 掃描不清）時依 prompt 規則回空陣列
+    if (result.questions.length === 0) {
+      return NextResponse.json({ error: EMPTY_CONTENT_MESSAGE }, { status: 422 });
+    }
 
     // 後處理：確保聽力題 type 正確（AI 可能回傳 mc 而非 listening）
     if (hasListening && result.questions) {
@@ -449,13 +480,26 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       }
     }
 
-    // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
-    if (result.questions) {
-      attachDiagramSvgs(result.questions);
+    // 剔除不完整的題目（缺題幹、選項不足、缺答案），選擇題答案「(A)」「A.」正規化成「A」
+    const { questions: validQuestions, dropped } = validateGeneratedQuestions(result.questions);
+    if (dropped > 0) {
+      console.warn(`[generate-from-file] ${effectiveModel} 有 ${dropped} 題格式不完整已剔除`);
+    }
+    if (validQuestions.length === 0) {
+      return NextResponse.json({ error: 'AI 產生的題目格式都不完整，請重試' }, { status: 500 });
     }
 
-    return NextResponse.json(result);
+    // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
+    attachDiagramSvgs(validQuestions);
+
+    // dropped 是新增欄位（additive），其餘回應形狀不變
+    return NextResponse.json({ ...result, questions: validQuestions, dropped });
   } catch (err) {
+    // 截斷 / 照抄原文 / 安全過濾：給可行動的中文訊息，不外洩內部 sentinel
+    if (err instanceof AIOutputError) {
+      console.warn(`[generate-from-file] ${effectiveModel} 輸出不可用：${err.rawReason}`);
+      return NextResponse.json({ error: err.userMessage }, { status: 422 });
+    }
     const status = (err as { status?: number; code?: number }).status
       ?? (err as { code?: number }).code;
     const overloaded
