@@ -2,6 +2,11 @@
 
 import { useRef, useState } from 'react';
 
+import { droppedQuestionsNotice, readAiResponse } from '@/libs/aiFetchError';
+import { pdfPageCountErrorMessage } from '@/libs/pdfUploadPlan';
+
+import { preparePdfUpload } from './preparePdfUpload';
+
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
 
 type GeneratedQuestion = {
@@ -16,6 +21,7 @@ type GeneratedQuestion = {
 type GeneratedResult = {
   title: string;
   questions: GeneratedQuestion[];
+  dropped?: number; // server 端略過的格式錯誤題數（選填）
 };
 
 type Props = {
@@ -32,8 +38,6 @@ const TYPE_CONFIG = [
 
 const FILE_ICONS: Record<string, string> = {
   pdf: '📕',
-  doc: '📘',
-  docx: '📘',
   jpg: '🖼',
   jpeg: '🖼',
   png: '🖼',
@@ -103,12 +107,12 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       setPdfPageCount(total);
       setStartPage(1);
       setEndPage(Math.min(10, total));
-    } catch {
+    } catch (err) {
       setPdfPageCount(null);
       // 讀取頁數失敗不能完全靜默：伺服器端會用真實頁數擋下超過 20 頁的 PDF
       // （見 src/libs/pdfPageLimit.ts），沒提示的話老師會以為選頁數這一步被跳過了、
-      // 命題卻莫名其妙失敗，完全不知道發生什麼事
-      setError('無法自動讀取這份 PDF 的頁數，若頁數超過 20 頁，命題可能會被拒絕。建議重新整理頁面再試一次，或改上傳較短的檔案。');
+      // 命題卻莫名其妙失敗，完全不知道發生什麼事；需要開啟密碼的檔案另外明確提示
+      setError(pdfPageCountErrorMessage(err));
     } finally {
       setPageLoading(false);
     }
@@ -131,32 +135,19 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
     try {
       const fd = new FormData();
 
-      // 大 PDF 且已讀到頁數：前端先裁切成小 PDF 再上傳（繞過 Vercel 4.5MB body 限制）
+      // PDF：大檔前端用 pdf-lib 裁切（繞過 Vercel 4.5MB body 限制）、加密檔不裁切、
+      // 最終大小再檢查一次（見 preparePdfUpload / src/libs/pdfUploadPlan.ts）
       const isPdf = file.name.split('.').pop()?.toLowerCase() === 'pdf';
-      if (isPdf && pdfPageCount !== null && file.size > MAX_UPLOAD_SIZE) {
-        const { PDFDocument } = await import('pdf-lib');
-        const srcBytes = await file.arrayBuffer();
-        const srcDoc = await PDFDocument.load(srcBytes);
-        const newDoc = await PDFDocument.create();
-        const safeStart = Math.max(1, startPage);
-        const safeEnd = Math.min(endPage, pdfPageCount);
-        const indices = Array.from(
-          { length: safeEnd - safeStart + 1 },
-          (_, i) => safeStart - 1 + i,
-        );
-        const copiedPages = await newDoc.copyPages(srcDoc, indices);
-        copiedPages.forEach(page => newDoc.addPage(page));
-        const trimmedBytes = await newDoc.save();
-        const trimmedFile = new File([trimmedBytes as BlobPart], file.name, { type: 'application/pdf' });
-        fd.append('file', trimmedFile);
-        // 裁切過的檔案已只含選中頁面，不需再傳 startPage/endPage
-      } else {
-        fd.append('file', file);
-        // 未裁切：傳頁數範圍讓 server 端裁切
-        if (pdfPageCount !== null) {
+      if (isPdf) {
+        const prepared = await preparePdfUpload(file, { totalPages: pdfPageCount, startPage, endPage });
+        fd.append('file', prepared.file);
+        // 送原檔時傳頁數範圍讓 server 端裁切
+        if (prepared.sendPageRange) {
           fd.append('startPage', String(startPage));
           fd.append('endPage', String(endPage));
         }
+      } else {
+        fd.append('file', file);
       }
 
       fd.append('types', JSON.stringify(types));
@@ -165,10 +156,8 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       fd.append('model', model);
 
       const res = await fetch('/api/ai/generate-from-file', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || '命題失敗');
-      }
+      // 先判斷 res.ok 再解析；Vercel 504/413 的純文字 body 也會轉成中文訊息
+      const data = await readAiResponse<GeneratedResult>(res);
       setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '命題失敗，請重試');
@@ -187,7 +176,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
             <h2 className="text-lg font-bold text-gray-900">📂 上傳講義自動命題</h2>
-            <p className="mt-0.5 text-xs text-gray-500">支援 PDF、Word、圖片、音檔</p>
+            <p className="mt-0.5 text-xs text-gray-500">支援 PDF、圖片、音檔</p>
           </div>
           <button onClick={onClose} className="text-2xl leading-none text-gray-400 hover:text-gray-600">×</button>
         </div>
@@ -219,7 +208,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                     ref={inputRef}
                     type="file"
                     className="hidden"
-                    accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
+                    accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.mp3,.wav,.m4a,.ogg,.aac,.flac"
                     onChange={(e) => {
                       if (e.target.files?.[0]) {
                         handleFile(e.target.files[0]);
@@ -228,7 +217,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                   />
                   <div className="mb-3 text-4xl">📂</div>
                   <p className="mb-1 font-semibold text-gray-700">點擊或拖曳上傳教材</p>
-                  <p className="text-xs text-gray-400">PDF · DOCX · JPG · PNG · MP3 · WAV</p>
+                  <p className="text-xs text-gray-400">PDF · JPG · PNG · MP3 · WAV</p>
                 </div>
               )
             : (
@@ -439,6 +428,13 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                       {' '}
                       題，確認匯入後會自動加入編輯器
                     </p>
+                    {droppedQuestionsNotice(result.dropped) && (
+                      <p className="mt-1 text-xs text-amber-700">
+                        ⚠️
+                        {' '}
+                        {droppedQuestionsNotice(result.dropped)}
+                      </p>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <button
