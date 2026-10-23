@@ -17,6 +17,7 @@ import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { withAiUsageRefund } from '@/lib/ai/aiUsageRefund';
 import { type ParsedQuestion, parseExamBankText } from '@/lib/ai/examBankParser';
 import { extractPdfPageContent, type PageImage } from '@/lib/ai/pdfImageExtract';
 import { computePageStartOffsets, matchImagesToQuestions } from '@/lib/ai/pdfImageMatch';
@@ -27,6 +28,10 @@ export const maxDuration = 60;
 
 // 單次匯入題數上限：避免超大題庫一次塞爆 AI 詳解 prompt / token 額度
 const MAX_QUESTIONS = 60;
+
+// TODO(merge fix/pdf-quiz-client)：該分支在 src/lib/ai/pdfTextExtract.ts 新增了同字串的
+// EMPTY_PDF_TEXT_MESSAGE，合併後改成 import 那個常數並刪掉這裡的本地定義
+const EMPTY_PDF_TEXT_MESSAGE = '讀不到文字：可能是掃描檔（圖片），或字型無法解析';
 
 function letterOf(index: number): string {
   return String.fromCharCode(65 + index); // 0 -> A, 1 -> B, ...
@@ -102,6 +107,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
   }
 
+  // 先扣次以便及早擋掉超額用戶；之後任何失敗回應（4xx/5xx 或丟錯）都會自動退還
   const quota = await checkAndIncrementAiUsage(userId);
   if (!quota.allowed) {
     return NextResponse.json(
@@ -110,6 +116,10 @@ export async function POST(request: Request) {
     );
   }
 
+  return withAiUsageRefund(userId, quota, () => handleParse(request, userId));
+}
+
+async function handleParse(request: Request, userId: string): Promise<Response> {
   const contentType = request.headers.get('content-type') ?? '';
   let rawText = '';
   let pageImages: PageImage[] = [];
@@ -139,6 +149,10 @@ export async function POST(request: Request) {
         { error: 'PDF 擷取失敗，可能是掃描圖檔式 PDF（沒有可反白複製的文字層），請改用「貼上文字」模式手動貼題目' },
         { status: 400 },
       );
+    }
+    // 掃描檔（沒有文字層）擷取「成功」但全是空白，過去會落到下面籠統的「沒有讀到任何文字內容」
+    if (!rawText.trim()) {
+      return NextResponse.json({ error: EMPTY_PDF_TEXT_MESSAGE }, { status: 422 });
     }
   } else {
     const body = await request.json().catch(() => null);
