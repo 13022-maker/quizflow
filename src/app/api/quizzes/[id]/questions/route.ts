@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 
-import { buildQuestionInsertRows, type GeneratedQuestion } from '@/lib/quiz/questionRows';
+import { validateImportQuestions } from '@/lib/quiz/questionImportValidation';
+import { buildQuestionInsertRows } from '@/lib/quiz/questionRows';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -47,11 +48,21 @@ export async function POST(
     return NextResponse.json({ error: '無權限操作此測驗' }, { status: 403 });
   }
 
-  const body = await request.json();
-  const questions: GeneratedQuestion[] = body.questions ?? [];
-
-  if (!questions.length) {
+  const body = await request.json().catch(() => null);
+  if (!body || !Array.isArray(body.questions)) {
+    return NextResponse.json({ error: '匯入資料格式錯誤' }, { status: 400 });
+  }
+  if (!body.questions.length) {
     return NextResponse.json({ error: '沒有題目可匯入' }, { status: 400 });
+  }
+
+  // 逐題驗證：題幹空白、選項格式錯誤的題目剔除（dropped），不寫壞資料進 DB
+  const { questions, dropped } = validateImportQuestions(body.questions);
+  if (dropped > 0) {
+    console.warn('[api/quizzes/questions POST] 剔除格式不完整的題目', { quizId, dropped });
+  }
+  if (!questions.length) {
+    return NextResponse.json({ error: `${dropped} 題格式都不完整，沒有題目可匯入` }, { status: 400 });
   }
 
   // 取得目前最大 position，讓新題目接在現有題目後面
@@ -73,5 +84,6 @@ export async function POST(
   // 也可能拿到快取中的舊題目列表，前端顯示「題目 (0)」
   revalidatePath(`/dashboard/quizzes/${quizId}/edit`);
 
-  return NextResponse.json({ count: rows.length });
+  // dropped 為新增欄位（additive），既有只讀 count 的呼叫端不受影響
+  return NextResponse.json({ count: rows.length, dropped });
 }

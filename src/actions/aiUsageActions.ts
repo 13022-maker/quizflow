@@ -20,20 +20,26 @@ function getCurrentYearMonth(): string {
 /**
  * 檢查 AI 出題 quota 並遞增使用次數
  * 回傳 { allowed: true } 或 { allowed: false, reason, remaining }
+ *
+ * allowed 時另外帶 charged（這次有沒有真的 +1）與 yearMonth（+1 記在哪個月份），
+ * 讓 API Route 在後續失敗時能精準退還同一列（見 src/lib/ai/aiUsageRefund.ts）。
+ * 注意：退還函式刻意不放在這個 'use server' 檔案——這裡 export 的函式都會變成
+ * 前端可直接呼叫的 Server Action，退還若放這裡等於讓使用者自己無限退次數。
  */
 export async function checkAndIncrementAiUsage(userId: string): Promise<
-  | { allowed: true; remaining: number }
+  | { allowed: true; remaining: number; charged: false }
+  | { allowed: true; remaining: number; charged: true; yearMonth: string }
   | { allowed: false; reason: string; remaining: number }
 > {
   // VIP 白名單不限制
   const { isVipUser } = await import('@/libs/vip');
   if (await isVipUser()) {
-    return { allowed: true, remaining: 999 };
+    return { allowed: true, remaining: 999, charged: false };
   }
 
   // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
   if (await isProOrAbove(userId)) {
-    return { allowed: true, remaining: 999 };
+    return { allowed: true, remaining: 999, charged: false };
   }
 
   // 取得方案
@@ -43,7 +49,7 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
 
   // Pro / Enterprise（999）直接放行
   if (quota >= 999) {
-    return { allowed: true, remaining: 999 };
+    return { allowed: true, remaining: 999, charged: false };
   }
 
   const yearMonth = getCurrentYearMonth();
@@ -86,7 +92,7 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
     });
   }
 
-  return { allowed: true, remaining: remaining - 1 };
+  return { allowed: true, remaining: remaining - 1, charged: true, yearMonth };
 }
 
 /**
