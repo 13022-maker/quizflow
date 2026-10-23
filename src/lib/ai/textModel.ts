@@ -217,6 +217,23 @@ async function callClaude(opts: GenerateAITextOptions, apiKey: string): Promise<
     .join('');
 }
 
+const DEFAULT_MAX_TOKENS = 4096;
+
+// 各模型輸出 token 上限（只列已確認的）。呼叫端的 maxTokens 是依「首選模型」設計的
+// （例如 generate-subject 給 Claude Opus 32000），一路 fallback 到小模型時要夾到上限，
+// 否則 OpenAI 直接回 400：production 實際 log「gpt-4o-mini 400: max_tokens is too large:
+// 32000 ... supports at most 16384」，連最後一道防線都失效。
+const MODEL_MAX_OUTPUT_TOKENS: Record<string, number> = {
+  'gpt-4o-mini': 16384,
+};
+
+/** 依模型上限夾住 max_tokens（純函式，可測）；未列入上限表的模型原樣使用 */
+export function clampMaxTokens(model: string, requested: number | undefined): number {
+  const wanted = requested ?? DEFAULT_MAX_TOKENS;
+  const limit = MODEL_MAX_OUTPUT_TOKENS[model];
+  return limit ? Math.min(wanted, limit) : wanted;
+}
+
 /**
  * OpenAI 相容的 chat completions API 共用邏輯（OpenAI 本身跟 xAI Grok 都吃這個介面，
  * REST 直打，跟 generate-questions/route.ts 既有第三備援同款寫法）。
@@ -236,7 +253,7 @@ async function callOpenAICompatible(
     body: JSON.stringify({
       model,
       messages,
-      max_tokens: opts.maxTokens ?? 4096,
+      max_tokens: clampMaxTokens(model, opts.maxTokens),
       ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
     }),
   });

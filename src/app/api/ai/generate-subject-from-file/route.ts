@@ -3,16 +3,15 @@ import { Buffer } from 'node:buffer';
 
 import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import { PDFDocument } from 'pdf-lib';
 
 import { saveGeneratedSubject } from '@/actions/adaptiveActions';
+import { buildPageHintPrompt, PdfPreprocessError, preparePdfForAI } from '@/lib/ai/pdfPreprocess';
 import type { Media } from '@/lib/ai/textModel';
 import { friendlyAIGenerationError, generateSubject, generateSubjectSchema } from '@/libs/adaptive/generate-subject';
 import {
   fileExtToImageMimeType,
   validateSubjectUploadFiles,
 } from '@/libs/adaptive/subjectFileValidation';
-import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -46,35 +45,26 @@ export async function POST(request: Request) {
   const isPdf = firstFile.name.split('.').pop()?.toLowerCase() === 'pdf';
   const media: Media[] = [];
 
+  // 加密 PDF 無法裁切時，附在主題後面讓 AI 只看選取頁（generateSubject 的 prompt 由主題組成）
+  let topicForAI = topic;
+
   if (isPdf) {
-    // 跟 generate-from-file/route.ts 一致：ignoreEncryption + 重新輸出乾淨 PDF，
-    // 避免加密限制讓 AI 多模態讀不到內容，也避免整份大 PDF 直接送給 AI 拖慢生成。
-    const arrayBuffer = await firstFile.arrayBuffer();
-    const srcDoc = await PDFDocument.load(arrayBuffer, { ignoreEncryption: true });
-    const actualTotalPages = srcDoc.getPageCount();
-
-    const range = resolvePdfPageRange({
-      actualTotalPages,
-      requestedStartPage: startPage,
-      requestedEndPage: endPage,
-    });
-    if (!range.ok) {
-      return NextResponse.json({ error: range.error }, { status: 400 });
+    // 跟 generate-from-file/route.ts 共用 preparePdfForAI：一般 PDF 依範圍裁切；
+    // 加密 PDF 送原始 bytes（copyPages 會產生密文亂碼，見 src/lib/ai/pdfPreprocess.ts）；
+    // 損毀 / 需密碼 / 範圍錯誤 → 400（過去 PDFDocument.load 在 try 外面，直接 500）
+    try {
+      const prepared = await preparePdfForAI(new Uint8Array(await firstFile.arrayBuffer()), { startPage, endPage });
+      media.push({
+        mimeType: 'application/pdf',
+        base64: Buffer.from(prepared.bytes).toString('base64'),
+      });
+      topicForAI = topic + buildPageHintPrompt(prepared.pageHint);
+    } catch (err) {
+      if (err instanceof PdfPreprocessError) {
+        return NextResponse.json({ error: err.message }, { status: err.status });
+      }
+      throw err;
     }
-
-    const newDoc = await PDFDocument.create();
-    const indices = Array.from(
-      { length: range.endPage - range.startPage + 1 },
-      (_, i) => range.startPage - 1 + i,
-    );
-    const copiedPages = await newDoc.copyPages(srcDoc, indices);
-    copiedPages.forEach(page => newDoc.addPage(page));
-    const pdfBytes = await newDoc.save();
-
-    media.push({
-      mimeType: 'application/pdf',
-      base64: Buffer.from(pdfBytes).toString('base64'),
-    });
   } else {
     for (const f of uploaded) {
       const ext = f.name.split('.').pop()?.toLowerCase() ?? '';
@@ -88,7 +78,7 @@ export async function POST(request: Request) {
 
   let generated: Awaited<ReturnType<typeof generateSubject>>;
   try {
-    generated = await generateSubject(topic, undefined, media);
+    generated = await generateSubject(topicForAI, undefined, media);
   } catch (err) {
     console.error('[generate-subject-from-file] AI 生成失敗：', err);
     return NextResponse.json({ error: friendlyAIGenerationError(err) }, { status: 500 });

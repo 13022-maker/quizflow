@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildClaudeMediaBlocks, buildGeminiMediaParts, callWithKeyPool, getApiKeyPool, isRetryableAIError, resolveAIProvider, shouldFallbackToClaudeAfterGemini, withAIRetry } from './textModel';
+import { buildClaudeMediaBlocks, buildGeminiMediaParts, callWithKeyPool, clampMaxTokens, getApiKeyPool, isRetryableAIError, resolveAIProvider, shouldFallbackToClaudeAfterGemini, withAIRetry } from './textModel';
 
 describe('resolveAIProvider', () => {
   it('付費且有 Claude 金鑰 → claude', () => {
@@ -262,5 +262,23 @@ describe('buildGeminiMediaParts', () => {
 
   it('空陣列回傳空陣列', () => {
     expect(buildGeminiMediaParts([])).toEqual([]);
+  });
+});
+
+describe('clampMaxTokens', () => {
+  it('gpt-4o-mini 最多 16384（production 曾因送 32000 被 OpenAI 回 400）', () => {
+    expect(clampMaxTokens('gpt-4o-mini', 32000)).toBe(16384);
+  });
+
+  it('沒超過上限就原樣使用', () => {
+    expect(clampMaxTokens('gpt-4o-mini', 8192)).toBe(8192);
+  });
+
+  it('未列在上限表的模型不夾', () => {
+    expect(clampMaxTokens('some-future-model', 32000)).toBe(32000);
+  });
+
+  it('未指定時用預設 4096', () => {
+    expect(clampMaxTokens('gpt-4o-mini', undefined)).toBe(4096);
   });
 });
