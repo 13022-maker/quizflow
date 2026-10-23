@@ -14,6 +14,8 @@ import { createHash } from 'node:crypto';
 
 import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 
+import { getPdfjsNodeOptions } from './pdfjsNodeOptions';
+
 export type PageImage = {
   pageNumber: number; // 1-based
   buffer: Buffer;
@@ -26,7 +28,8 @@ export type PdfPageContent = {
 };
 
 export async function extractPdfPageContent(data: Uint8Array): Promise<PdfPageContent> {
-  const doc = await getDocumentProxy(data);
+  // 帶 CMap 路徑：非內嵌 CJK 字型的題庫 PDF 才擷取得到文字（見 pdfjsNodeOptions.ts）
+  const doc = await getDocumentProxy(data, getPdfjsNodeOptions());
   const { text: pageTexts } = await extractText(doc, { mergePages: false });
 
   const rawImages: PageImage[] = [];

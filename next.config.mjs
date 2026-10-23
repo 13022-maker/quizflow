@@ -30,6 +30,15 @@ export default withSentryConfig(
       reactStrictMode: true,
       experimental: {
         serverComponentsExternalPackages: ['@electric-sql/pglite'],
+        // pdfjs 的 CMap / 標準字型是執行期用 fs 讀的資料檔，不在 import 圖裡，
+        // Vercel file tracing 不會自動帶上；沒帶就會讓非內嵌 CJK 字型的 PDF 擷取出空字串
+        // （見 src/lib/ai/pdfjsNodeOptions.ts）。key 對應用到 pdfTextExtract / pdfImageExtract 的 route。
+        outputFileTracingIncludes: {
+          '/api/ai/parse-exam-bank': [
+            './node_modules/pdfjs-dist/cmaps/**/*',
+            './node_modules/pdfjs-dist/standard_fonts/**/*',
+          ],
+        },
       },
     }),
   ),
