@@ -15,8 +15,11 @@
 import { useRef, useState } from 'react';
 
 import { probeAudioDuration } from '@/lib/audioDuration';
+import { AiResponseError, droppedQuestionsNotice, readAiResponse } from '@/libs/aiFetchError';
+import { pdfPageCountErrorMessage } from '@/libs/pdfUploadPlan';
 
 import { buildChapters, type PdfChapter } from './pdfChapters';
+import { preparePdfUpload } from './preparePdfUpload';
 
 // ─── Types ───────────────────────────────────────────────
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
@@ -49,6 +52,7 @@ type GeneratedQuestion = {
 type GeneratedResult = {
   title: string;
   questions: GeneratedQuestion[];
+  dropped?: number; // server 端略過的格式錯誤題數（選填）
 };
 
 type Props = {
@@ -96,8 +100,6 @@ const TEMPLATES: Template[] = [
 
 const FILE_EMOJIS: Record<string, string> = {
   pdf: '📕',
-  doc: '📘',
-  docx: '📘',
   jpg: '🖼',
   jpeg: '🖼',
   png: '🖼',
@@ -370,12 +372,12 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           // 整體書籤讀取失敗 → 不顯示章節，頁碼功能不受影響
           setChapters([]);
         }
-      } catch {
+      } catch (err) {
         setPdfPageCount(null);
         // 讀取頁數失敗不能完全靜默：伺服器端會用真實頁數擋下超過 20 頁的 PDF
         // （見 src/libs/pdfPageLimit.ts），沒提示的話老師會以為選頁數這一步被跳過了、
-        // 命題卻莫名其妙失敗，完全不知道發生什麼事
-        setError('無法自動讀取這份 PDF 的頁數，若頁數超過 20 頁，命題可能會被拒絕。建議重新整理頁面再試一次，或改上傳較短的檔案。');
+        // 命題卻莫名其妙失敗，完全不知道發生什麼事；需要開啟密碼的檔案另外明確提示
+        setError(pdfPageCountErrorMessage(err));
       } finally {
         setPageLoading(false);
       }
@@ -396,6 +398,19 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
       }
       return merged;
     });
+  }
+
+  // 解析 AI API 回應：非 2xx 或非 JSON body（Vercel 504/413 純文字）都轉成中文錯誤，
+  // 並保留 server 回的 upgradeRequired 旗標
+  async function readAiOrThrow(res: Response, failurePrefix?: string) {
+    try {
+      return await readAiResponse(res, { failurePrefix });
+    } catch (e) {
+      if (e instanceof AiResponseError && e.upgradeRequired) {
+        setUpgradeRequired(true);
+      }
+      throw e;
+    }
   }
 
   // ── Generate ──
@@ -452,20 +467,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             framework: framework || undefined,
           }),
         });
-        if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
-        }
-        data = await res.json();
+        data = await readAiOrThrow(res);
       } else if (mode === 'file') {
         setStep('讀取檔案…');
         const fd = new FormData();
@@ -475,36 +477,27 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         const isPdf = firstExt === 'pdf';
         const allImagesNow = files.every(isImageFile);
 
-        if (isPdf && pdfPageCount !== null && firstFile.size > MAX_UPLOAD_SIZE) {
-          // 大 PDF 前端先裁切，避免超過 Vercel 4.5MB 限制
-          setStep('裁切 PDF 中…');
-          const { PDFDocument } = await import('pdf-lib');
-          const srcBytes = await firstFile.arrayBuffer();
-          const srcDoc = await PDFDocument.load(srcBytes);
-          const newDoc = await PDFDocument.create();
-          const safeStart = Math.max(1, startPage);
-          const safeEnd = Math.min(endPage, pdfPageCount);
-          const indices = Array.from(
-            { length: safeEnd - safeStart + 1 },
-            (_, i) => safeStart - 1 + i,
-          );
-          const copiedPages = await newDoc.copyPages(srcDoc, indices);
-          copiedPages.forEach(page => newDoc.addPage(page));
-          const trimmedBytes = await newDoc.save();
-          const trimmedFile = new File([trimmedBytes as BlobPart], firstFile.name, { type: 'application/pdf' });
-          fd.append('file', trimmedFile);
+        if (isPdf) {
+          // PDF：大檔前端用 pdf-lib 裁切（避免超過 Vercel 4.5MB 限制）、加密檔不裁切、
+          // 最終大小再檢查一次（見 preparePdfUpload / src/libs/pdfUploadPlan.ts）
+          if (firstFile.size > MAX_UPLOAD_SIZE) {
+            setStep('裁切 PDF 中…');
+          }
+          const prepared = await preparePdfUpload(firstFile, { totalPages: pdfPageCount, startPage, endPage });
+          fd.append('file', prepared.file);
+          // 送原檔時傳頁數範圍讓 server 端裁切
+          if (prepared.sendPageRange) {
+            fd.append('startPage', String(startPage));
+            fd.append('endPage', String(endPage));
+          }
         } else if (allImagesNow) {
           // 多張圖片：全部 append 到同一個 'file' 欄位，server 用 getAll('file') 取出
           for (const f of files) {
             fd.append('file', f);
           }
         } else {
-          // PDF（不需裁切）或音檔：單檔上傳
+          // 音檔：單檔上傳
           fd.append('file', firstFile);
-          if (isPdf && pdfPageCount !== null) {
-            fd.append('startPage', String(startPage));
-            fd.append('endPage', String(endPage));
-          }
         }
 
         fd.append('types', JSON.stringify(types));
@@ -513,20 +506,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('model', model);
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
-        if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
-        }
-        data = await res.json();
+        data = await readAiOrThrow(res);
       } else if (mode === 'exambank') {
         // 題庫匯入模式：貼上文字 或 上傳題庫 PDF，題幹/選項/正解由後端 examBankParser
         // 直接解析，AI 只補詳解（見 parse-exam-bank/route.ts 開頭註解）
@@ -553,20 +533,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               maxCount: examBankMaxCount || undefined,
             }),
           });
-        if (!res.ok) {
-          let errMsg = '題庫解析失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
-        }
-        const parsed = await res.json();
+        const parsed = await readAiOrThrow(res, '題庫解析失敗');
         setParseReport(parsed.parseReport ?? null);
         data = { title: parsed.title, questions: parsed.questions };
       } else {
@@ -584,20 +551,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             model,
           }),
         });
-        if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
-        }
-        data = await res.json();
+        data = await readAiOrThrow(res);
       }
 
       // 聽力題自動呼叫 TTS 生成音檔
@@ -1428,6 +1382,13 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                 {' '}
                 題，確認後匯入編輯器
               </p>
+              {droppedQuestionsNotice(result.dropped) && (
+                <p className="mt-1 text-xs text-amber-700">
+                  ⚠️
+                  {' '}
+                  {droppedQuestionsNotice(result.dropped)}
+                </p>
+              )}
             </div>
           )}
 
