@@ -45,10 +45,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
 import { LiveStartDialog } from '@/features/live/LiveStartDialog';
-import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
 import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
+import { partitionImportableQuestions, skippedQuestionsNotice } from '@/libs/importableQuestions';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -87,14 +87,6 @@ type PendingQuestion = {
   body: string;
   hasOptions: boolean;
   options: Array<{ id: string; text: string }>; // 空陣列代表非選擇題
-};
-
-// 題型對應：FileQuizGenerator → DB enum
-const FILE_TYPE_MAP: Record<FileQuestionType, 'single_choice' | 'true_false' | 'short_answer'> = {
-  mc: 'single_choice',
-  tf: 'true_false',
-  fill: 'short_answer',
-  short: 'short_answer',
 };
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -510,59 +502,36 @@ export function QuizEditor({
   };
 
   // ── 從檔案匯入題目 ──────────────────────────────────────────────────
+  // 改走與 AIQuizModal 相同的批次 API（/api/quizzes/[id]/questions + buildQuestionInsertRows）：
+  // 過去逐題呼叫 createQuestion 時沒帶 explanation（詳解全遺失），且忽略回傳的 { error }
+  // （題目被默默吃掉）。批次 route 沒有 Zod 驗證，所以先用 partitionImportableQuestions
+  // 過濾掉一定存不進去的題目，並告知老師略過幾題。
   const handleFileImport = async (fileQuestions: FileGeneratedQuestion[], _title: string) => {
     setIsSubmitting(true);
     setShowFileGenerator(false);
 
-    for (const q of fileQuestions) {
-      const type = FILE_TYPE_MAP[q.type];
+    const { valid, skipped } = partitionImportableQuestions(fileQuestions);
+    const skippedMsg = skippedQuestionsNotice(skipped);
 
-      if (q.type === 'mc' && q.options?.length) {
-        // 選擇題：將 string[] 轉成 { id, text }[]，並找出正確答案的 id
-        // stripOptionLabel：去掉 AI 塞在文字裡的「(A)」前綴，避免日後與字母重覆
-        const options = q.options.map((text, i) => ({
-          id: String.fromCharCode(97 + i), // a, b, c, d
-          text: stripOptionLabel(text),
-        }));
-        // AI 回傳的 answer 可能是字母（"A"）或完整選項文字
-        // 先用字母匹配 option id，再用文字完全匹配做 fallback（比對前同樣剝除前綴）
-        const answerKey = q.answer.trim().toLowerCase();
-        const byLetter = options.find(o => o.id === answerKey);
-        const byText = options.find(o => o.text === stripOptionLabel(q.answer));
-        const matched = byLetter ?? byText;
-        await createQuestion(initialQuiz.id, {
-          type,
-          body: q.question,
-          options,
-          correctAnswers: matched ? [matched.id] : undefined,
-          diagramSvg: q.diagramSvg || undefined,
-          points: 1,
-        });
-      } else if (q.type === 'tf') {
-        // 是非題：將 AI 回傳的 ○/✕ 轉成標準選項 ID
-        const ansStr = q.answer.trim();
-        const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
-        await createQuestion(initialQuiz.id, {
-          type,
-          body: q.question,
-          options: [
-            { id: 'tf-true', text: '正確' },
-            { id: 'tf-false', text: '錯誤' },
-          ],
-          correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
-          diagramSvg: q.diagramSvg || undefined,
-          points: 1,
-        });
-      } else {
-        // 填空題 / 簡答題：直接存 answer 字串
-        await createQuestion(initialQuiz.id, {
-          type,
-          body: q.question,
-          correctAnswers: q.answer ? [q.answer] : undefined,
-          diagramSvg: q.diagramSvg || undefined,
-          points: 1,
-        });
-      }
+    if (valid.length === 0) {
+      setIsSubmitting(false);
+      // eslint-disable-next-line no-alert
+      alert(skippedMsg ?? '沒有題目可匯入');
+      return;
+    }
+
+    const res = await fetch(`/api/quizzes/${initialQuiz.id}/questions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ questions: valid }),
+    });
+
+    if (!res.ok) {
+      setIsSubmitting(false);
+      const msg = await res.text().catch(() => '');
+      // eslint-disable-next-line no-alert
+      alert(`匯入失敗（${res.status}）${msg ? `：${msg}` : ''}`);
+      return;
     }
 
     // 既有題目都還是預設 1 分時才自動平均配分
@@ -572,6 +541,11 @@ export function QuizEditor({
     }
     setIsSubmitting(false);
     router.refresh();
+
+    if (skippedMsg) {
+      // eslint-disable-next-line no-alert
+      alert(skippedMsg);
+    }
   };
 
   // ── 題目 CRUD ─────────────────────────────────────────────────────
