@@ -21,6 +21,7 @@ import { withAiUsageRefund } from '@/lib/ai/aiUsageRefund';
 import { type ParsedQuestion, parseExamBankText } from '@/lib/ai/examBankParser';
 import { extractPdfPageContent, type PageImage } from '@/lib/ai/pdfImageExtract';
 import { computePageStartOffsets, matchImagesToQuestions } from '@/lib/ai/pdfImageMatch';
+import { EMPTY_PDF_TEXT_MESSAGE } from '@/lib/ai/pdfTextExtract';
 import { generateAIText } from '@/lib/ai/textModel';
 
 export const runtime = 'nodejs';
@@ -28,10 +29,6 @@ export const maxDuration = 60;
 
 // 單次匯入題數上限：避免超大題庫一次塞爆 AI 詳解 prompt / token 額度
 const MAX_QUESTIONS = 60;
-
-// TODO(merge fix/pdf-quiz-client)：該分支在 src/lib/ai/pdfTextExtract.ts 新增了同字串的
-// EMPTY_PDF_TEXT_MESSAGE，合併後改成 import 那個常數並刪掉這裡的本地定義
-const EMPTY_PDF_TEXT_MESSAGE = '讀不到文字：可能是掃描檔（圖片），或字型無法解析';
 
 function letterOf(index: number): string {
   return String.fromCharCode(65 + index); // 0 -> A, 1 -> B, ...
