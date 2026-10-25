@@ -7,7 +7,7 @@
  * 學生端走公開 API（/api/adaptive/[code]/*），不經過這裡。
  */
 import { auth } from '@clerk/nextjs/server';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, max, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -19,6 +19,8 @@ import { friendlyAIGenerationError, generateSubject, generateSubjectSchema, toSu
 import { generateSubjectFromYoutube } from '@/libs/adaptive/generate-subject-from-youtube';
 import { generateSubjectSummary } from '@/libs/adaptive/generate-summary';
 import { DB_SUBJECT_PREFIX, getAdaptiveService, resolveSubject } from '@/libs/adaptive/service';
+import type { AvailableSubject } from '@/libs/adaptive/subjectPicker';
+import { describeSubject } from '@/libs/adaptive/subjectPicker';
 import { listSubjects } from '@/libs/adaptive/subjects';
 import { db } from '@/libs/DB';
 import {
@@ -35,52 +37,98 @@ const createPracticeSchema = z.object({
 });
 
 /**
- * 老師可選用的學科清單：內建三科 ＋ 自己 AI 生成的學科。
- * 建練習的下拉選單與驗證都用它（自建學科帶 db: 前綴的 id）。
- * group 供下拉選單分組（<optgroup>）用；pinned 供釘選學科加 📌 前綴用。
+ * 老師可選用的學科清單：內建學科 ＋ 自己 AI 生成的學科。
+ * 建練習的學科選單、練習清單篩選都用它（自建學科帶 db: 前綴的 id）。
+ * group 供分組用；pinned 供釘選學科加 📌 前綴用；
+ * category / description / 題數 / 知識點統計 / recentlyUsedAt 供學科選單預覽與「最近使用」用。
+ * 注意：只回傳統計與名稱，不把題庫（itemBank）送到 client。
  */
-export async function listAvailableSubjects(): Promise<{
-  id: string;
-  name: string;
-  group: 'built-in' | 'custom';
-  pinned: boolean;
-}[]> {
+export async function listAvailableSubjects(): Promise<AvailableSubject[]> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('請先登入');
   }
 
-  const builtIn = listSubjects().map(s => ({
-    id: s.id,
-    name: s.name,
-    group: 'built-in' as const,
-    pinned: false,
-  }));
-  const custom = await db
-    .select({
-      id: adaptiveSubjectSchema.id,
-      name: adaptiveSubjectSchema.name,
-      pinned: adaptiveSubjectSchema.pinned,
-    })
-    .from(adaptiveSubjectSchema)
-    .where(
-      and(
-        eq(adaptiveSubjectSchema.ownerId, userId),
-        isNull(adaptiveSubjectSchema.archivedAt), // 已封存的不進下拉選單
-        eq(adaptiveSubjectSchema.status, 'published'), // 草稿學科（例如還沒審核的 YouTube 匯入）不進下拉選單
-      ),
-    )
-    .orderBy(desc(adaptiveSubjectSchema.pinned), desc(adaptiveSubjectSchema.createdAt)); // 釘選優先，其餘新到舊
+  const [custom, usage] = await Promise.all([
+    db
+      .select({
+        id: adaptiveSubjectSchema.id,
+        name: adaptiveSubjectSchema.name,
+        pinned: adaptiveSubjectSchema.pinned,
+        sourceTopic: adaptiveSubjectSchema.sourceTopic,
+        graph: adaptiveSubjectSchema.graph, // 知識點清單很小，取回來算名稱；題庫只在 SQL 端算題數
+        itemCount: sql<number>`COALESCE(jsonb_array_length(${adaptiveSubjectSchema.itemBank} -> 'items'), 0)::int`,
+      })
+      .from(adaptiveSubjectSchema)
+      .where(
+        and(
+          eq(adaptiveSubjectSchema.ownerId, userId),
+          isNull(adaptiveSubjectSchema.archivedAt), // 已封存的不進下拉選單
+          eq(adaptiveSubjectSchema.status, 'published'), // 草稿學科（例如還沒審核的 YouTube 匯入）不進下拉選單
+        ),
+      )
+      .orderBy(desc(adaptiveSubjectSchema.pinned), desc(adaptiveSubjectSchema.createdAt)), // 釘選優先，其餘新到舊
+    // 最近使用：該老師每個學科最後一次建立練習的時間
+    db
+      .select({
+        subjectId: adaptivePracticeSchema.subjectId,
+        lastUsedAt: max(adaptivePracticeSchema.createdAt),
+      })
+      .from(adaptivePracticeSchema)
+      .where(eq(adaptivePracticeSchema.ownerId, userId))
+      .groupBy(adaptivePracticeSchema.subjectId),
+  ]);
 
-  return [
-    ...builtIn,
-    ...custom.map(c => ({
-      id: `${DB_SUBJECT_PREFIX}${c.id}`,
+  const lastUsed = new Map<string, string>();
+  for (const u of usage) {
+    if (u.lastUsedAt) {
+      lastUsed.set(u.subjectId, new Date(u.lastUsedAt).toISOString());
+    }
+  }
+
+  const builtIn: AvailableSubject[] = listSubjects().map((s) => {
+    const nodeNames = s.graph.nodes.map(n => n.name);
+    return {
+      id: s.id,
+      name: s.name,
+      group: 'built-in',
+      pinned: false,
+      ...(s.category ? { category: s.category } : {}),
+      description: describeSubject({
+        description: s.description,
+        knowledgePointNames: nodeNames,
+        knowledgePointCount: nodeNames.length,
+      }),
+      itemCount: s.itemBank.items.length,
+      knowledgePointCount: nodeNames.length,
+      knowledgePointNames: nodeNames.slice(0, 5),
+      searchText: nodeNames.join(' '),
+      ...(lastUsed.has(s.id) ? { recentlyUsedAt: lastUsed.get(s.id) } : {}),
+    };
+  });
+
+  const customSubjects: AvailableSubject[] = custom.map((c) => {
+    const id = `${DB_SUBJECT_PREFIX}${c.id}`;
+    const nodeNames = (c.graph?.nodes ?? []).map(n => n.name);
+    return {
+      id,
       name: c.name,
-      group: 'custom' as const,
+      group: 'custom',
       pinned: c.pinned,
-    })),
-  ];
+      description: describeSubject({
+        sourceTopic: c.sourceTopic,
+        knowledgePointNames: nodeNames,
+        knowledgePointCount: nodeNames.length,
+      }),
+      itemCount: c.itemCount,
+      knowledgePointCount: nodeNames.length,
+      knowledgePointNames: nodeNames.slice(0, 5),
+      searchText: [c.sourceTopic, ...nodeNames].join(' '),
+      ...(lastUsed.has(id) ? { recentlyUsedAt: lastUsed.get(id) } : {}),
+    };
+  });
+
+  return [...builtIn, ...customSubjects];
 }
 
 /** 驗證 subjectId 是老師可用的學科（內建，或自己擁有、已發佈的自建學科） */
