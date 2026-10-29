@@ -88,6 +88,72 @@ const BLUE_LINE = '#b9d3e8';
 const BLUE_SOFT = '#dceaf5';
 const FONT = '-apple-system,BlinkMacSystemFont,\'PingFang TC\',\'Microsoft JhengHei\',\'Noto Sans TC\',sans-serif';
 
+/**
+ * 粗估單一字元在 SVG 裡的視覺寬度:中日韓全形字約等於字級大小,半形(英數)字約 0.55 倍。
+ * 這只是排版用的粗估,不需要精確到字型 kerning。
+ */
+function charVisualWidth(ch: string, fontSize: number): number {
+  const code = ch.codePointAt(0) ?? 0;
+  const isFullWidth = (code >= 0x1100 && code <= 0x11FF)
+    || (code >= 0x2E80 && code <= 0xA4CF)
+    || (code >= 0xAC00 && code <= 0xD7A3)
+    || (code >= 0xF900 && code <= 0xFAFF)
+    || (code >= 0xFF00 && code <= 0xFFEF)
+    || (code >= 0x20000 && code <= 0x3FFFD);
+  return isFullWidth ? fontSize : fontSize * 0.55;
+}
+
+/**
+ * 把文字按視覺寬度切成最多 maxLines 行,超出的部分截斷並補上「…」。
+ * 卡片/節點的框是固定寬高,長中文標籤不處理會直接溢出邊界,所以所有畫進固定
+ * 寬度圖形(卡片、節點、欄位)裡的文字都要先過這層,而不是放著讓它溢出。
+ */
+function wrapText(text: string, maxWidth: number, fontSize: number, maxLines: number): string[] {
+  const chars = Array.from(text);
+  const lines: string[] = [];
+  let current = '';
+  let currentWidth = 0;
+  for (const ch of chars) {
+    const w = charVisualWidth(ch, fontSize);
+    if (current && currentWidth + w > maxWidth) {
+      lines.push(current);
+      current = '';
+      currentWidth = 0;
+      if (lines.length === maxLines) {
+        break;
+      }
+    }
+    current += ch;
+    currentWidth += w;
+  }
+  if (lines.length < maxLines && current) {
+    lines.push(current);
+  }
+  const consumed = lines.reduce((sum, line) => sum + line.length, 0);
+  if (consumed < chars.length && lines.length > 0) {
+    const last = lines[lines.length - 1]!;
+    lines[lines.length - 1] = last.length > 1 ? `${last.slice(0, -1)}…` : `${last}…`;
+  }
+  return lines.length > 0 ? lines : [''];
+}
+
+/**
+ * 把 wrapText 切好的多行文字,用 <tspan> 疊成一個置中(垂直+水平皆可調)的 <text>。
+ */
+function renderWrappedText(
+  x: number,
+  y: number,
+  lines: string[],
+  opts: { fontSize: number; fontWeight?: string; fill: string; anchor?: 'middle' | 'start' },
+): string {
+  const lineHeight = opts.fontSize * 1.25;
+  const startY = y - ((lines.length - 1) * lineHeight) / 2;
+  const tspans = lines
+    .map((line, i) => `<tspan x="${x}" y="${startY + i * lineHeight}">${escapeSvgText(line)}</tspan>`)
+    .join('');
+  return `<text text-anchor="${opts.anchor ?? 'middle'}" dominant-baseline="middle" font-family="${FONT}" font-size="${opts.fontSize}"${opts.fontWeight ? ` font-weight="${opts.fontWeight}"` : ''} fill="${opts.fill}">${tspans}</text>`;
+}
+
 function renderFlow(data: FlowDiagram): string {
   const { steps } = data;
   if (steps.length < 2 || steps.length > 6) {
@@ -103,13 +169,14 @@ function renderFlow(data: FlowDiagram): string {
 
   const boxes = steps.map((step, i) => {
     const x = padding + i * (boxW + gap);
-    const text = escapeSvgText(step);
+    const lines = wrapText(step, boxW - 24, 14, 2);
+    const text = renderWrappedText(x + boxW / 2, cy, lines, { fontSize: 14, fontWeight: '600', fill: INK });
     const arrow = i < steps.length - 1
       ? `<line x1="${x + boxW}" y1="${cy}" x2="${x + boxW + gap - 8}" y2="${cy}" stroke="${BLUE}" stroke-width="2" marker-end="url(#flow-arrow)" />`
       : '';
     return `
     <rect x="${x}" y="${padding}" width="${boxW}" height="${boxH}" rx="10" fill="${BLUE_SOFT}" stroke="${BLUE_LINE}" stroke-width="1.5" />
-    <text x="${x + boxW / 2}" y="${cy}" text-anchor="middle" dominant-baseline="middle" font-family="${FONT}" font-size="14" font-weight="600" fill="${INK}">${text}</text>
+    ${text}
     ${arrow}`;
   }).join('\n');
 
@@ -140,12 +207,14 @@ function renderCompare(data: CompareDiagram): string {
   const height = headerH + rows * rowH + padding * 2;
 
   const column = (x: number, title: string, points: string[]) => {
+    const titleLines = wrapText(title, colW - 32, 14, 1);
     const header = `
     <rect x="${x}" y="${padding}" width="${colW}" height="${headerH}" rx="8" fill="${BLUE}" />
-    <text x="${x + colW / 2}" y="${padding + headerH / 2}" text-anchor="middle" dominant-baseline="middle" font-family="${FONT}" font-size="14" font-weight="700" fill="#fff">${escapeSvgText(title)}</text>`;
+    ${renderWrappedText(x + colW / 2, padding + headerH / 2, titleLines, { fontSize: 14, fontWeight: '700', fill: '#fff' })}`;
     const body = points.map((p, i) => {
       const y = padding + headerH + i * rowH + rowH / 2;
-      return `<text x="${x + 16}" y="${y}" dominant-baseline="middle" font-family="${FONT}" font-size="13" fill="${INK}">・ ${escapeSvgText(p)}</text>`;
+      const pointLines = wrapText(p, colW - 48, 13, 1);
+      return `<text x="${x + 16}" y="${y}" dominant-baseline="middle" font-family="${FONT}" font-size="13" fill="${INK}">・ ${escapeSvgText(pointLines[0]!)}</text>`;
     }).join('\n');
     return `${header}
     <rect x="${x}" y="${padding + headerH}" width="${colW}" height="${rows * rowH}" fill="#fff" stroke="${BLUE_LINE}" stroke-width="1.5" />
@@ -171,13 +240,14 @@ function renderTimeline(data: TimelineDiagram): string {
 
   const items = events.map((ev, i) => {
     const x = padding + i * stepW + stepW / 2;
-    const label = escapeSvgText(ev.label);
+    const labelLines = wrapText(ev.label, stepW - 16, 13, 1);
+    const label = renderWrappedText(x, lineY - 20, labelLines, { fontSize: 13, fontWeight: '600', fill: INK });
     const note = ev.note
-      ? `<text x="${x}" y="${lineY + 46}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="${INK}" opacity="0.7">${escapeSvgText(ev.note)}</text>`
+      ? `<text x="${x}" y="${lineY + 46}" text-anchor="middle" font-family="${FONT}" font-size="11" fill="${INK}" opacity="0.7">${escapeSvgText(wrapText(ev.note, stepW - 16, 11, 1)[0]!)}</text>`
       : '';
     return `
     <circle cx="${x}" cy="${lineY}" r="7" fill="${BLUE}" />
-    <text x="${x}" y="${lineY - 20}" text-anchor="middle" font-family="${FONT}" font-size="13" font-weight="600" fill="${INK}">${label}</text>
+    ${label}
     ${note}`;
   }).join('\n');
 
@@ -227,9 +297,11 @@ function renderConcept(data: ConceptDiagram): string {
 
   const nodeCircles = nodes.map((node) => {
     const pos = positions.get(node)!;
+    const lines = wrapText(node, nodeR * 2 - 16, 12, 2);
+    const text = renderWrappedText(pos.x, pos.y, lines, { fontSize: 12, fontWeight: '600', fill: INK });
     return `
     <circle cx="${pos.x}" cy="${pos.y}" r="${nodeR}" fill="${BLUE_SOFT}" stroke="${BLUE}" stroke-width="1.5" />
-    <text x="${pos.x}" y="${pos.y}" text-anchor="middle" dominant-baseline="middle" font-family="${FONT}" font-size="12" font-weight="600" fill="${INK}">${escapeSvgText(node)}</text>`;
+    ${text}`;
   }).join('\n');
 
   return `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
