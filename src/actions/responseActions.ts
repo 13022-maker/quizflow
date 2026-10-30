@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { gradeClozeAnswers } from '@/lib/cloze';
+import { resolveShortAnswerReference } from '@/lib/quiz/answerNormalize';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
 import type { SubmitInput } from '@/libs/submitValidation';
@@ -89,7 +90,8 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
         const studentText = typeof studentAnswer === 'string' ? studentAnswer : '';
         const grade = await gradeShortAnswer({
           questionBody: q.body,
-          referenceAnswer: q.referenceAnswer ?? null,
+          // 沒有老師填的參考答案時退回 correctAnswers[0]（AI 匯入的填充題答案存在這裡），避免無標準答案的寬鬆評分
+          referenceAnswer: resolveShortAnswerReference(q),
           studentAnswer: studentText,
           maxPoints: q.points,
         });

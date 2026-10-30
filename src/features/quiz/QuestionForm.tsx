@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { probeAudioDuration } from '@/lib/audioDuration';
 import { extractClozeAnswers } from '@/lib/cloze';
+import { orderRankingOptions } from '@/lib/quiz/answerNormalize';
 
 import { ClozeEditor } from './ClozeEditor';
 
@@ -96,10 +97,16 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
   const id1 = useId();
   const id2 = useId();
 
+  // 排序題：編輯器以「options 由上到下」當正解顯示，存檔時也照它覆寫 correctAnswers，
+  // 所以載入既有題目時要先把 options 依 DB 的 correctAnswers 重排，否則老師看到錯的順序、一存檔就改壞正解
+  const initialValues = defaultValues?.type === 'ranking' && defaultValues.options
+    ? { ...defaultValues, options: orderRankingOptions(defaultValues.options, defaultValues.correctAnswers) }
+    : defaultValues;
+
   const form = useForm<QuestionFormValues>({
     resolver: zodResolver(QuestionSchema),
-    defaultValues: defaultValues
-      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', referenceAnswer: '', ...defaultValues }
+    defaultValues: initialValues
+      ? { points: 1, correctAnswers: [], imageUrl: '', audioUrl: '', audioTranscript: '', referenceAnswer: '', ...initialValues }
       : {
           type: 'single_choice',
           body: '',

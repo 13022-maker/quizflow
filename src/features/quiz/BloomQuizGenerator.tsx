@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useState, useTransition } from 'react';
 
 import { type BloomQuestion, createQuizWithBloomQuestions } from '@/actions/bloomActions';
+import { matchChoiceAnswerId } from '@/lib/quiz/answerNormalize';
 
 // ---------- 常數 ----------
 
@@ -79,10 +80,11 @@ function stripOptionPrefix(opt: string) {
 }
 
 // 答案字母 → 選項索引
-function answerToIndex(answer: string) {
-  const letter = (answer ?? '').trim().toUpperCase();
-  const idx = letter.charCodeAt(0) - 65;
-  return Number.isNaN(idx) ? 0 : idx;
+// answer 可能是「C」「(C)」「Ｃ」或選項文字；對不到回傳 -1（匯入時留空正解，不默默變成 A）
+function answerToIndex(answer: string, options: string[] = []) {
+  const opts = options.map((text, i) => ({ id: String(i), text }));
+  const matched = matchChoiceAnswerId(opts, answer);
+  return matched === null ? -1 : Number(matched);
 }
 
 // 把 generate-questions 回傳格式轉成 BloomQuestion
@@ -97,7 +99,7 @@ function convertToBloom(q: RawQuestion, idx: number, bloomLevel: string, difficu
     difficulty: difficultyNum,
     content: q.question,
     options: cleanOpts,
-    correct_answer: isShort ? q.answer : answerToIndex(q.answer),
+    correct_answer: isShort ? q.answer : answerToIndex(q.answer, cleanOpts),
     explanation: q.explanation,
     learning_objective: '',
     estimated_time_minutes: 2,
