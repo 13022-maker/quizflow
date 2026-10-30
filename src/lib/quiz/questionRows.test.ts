@@ -82,7 +82,60 @@ describe('buildQuestionInsertRows', () => {
     expect(rows[0]!.options).toBeNull();
   });
 
-  it('rank：answer 文字順序對應出 correctAnswers 的 id 順序（與 options 呈現順序可以不同）', () => {
+  it('short / fill：answer 同時存進 referenceAnswer，AI 評分才有標準答案可對', () => {
+    const rows = buildQuestionInsertRows(
+      [
+        { type: 'short', question: 'Q1', answer: '光合作用' },
+        { type: 'fill', question: '光合作用產生 ___', answer: '氧氣' },
+      ],
+      1,
+      1,
+    );
+
+    expect(rows[0]!.referenceAnswer).toBe('光合作用');
+    expect(rows[1]!.referenceAnswer).toBe('氧氣');
+  });
+
+  it('tf：〇（U+3007）、對、✓ 都視為正確', () => {
+    const rows = buildQuestionInsertRows(
+      [
+        { type: 'tf', question: 'Q1', answer: '〇' },
+        { type: 'tf', question: 'Q2', answer: '對' },
+        { type: 'tf', question: 'Q3', answer: '✓' },
+      ],
+      1,
+      1,
+    );
+
+    expect(rows.map(r => r.correctAnswers)).toEqual([['tf-true'], ['tf-true'], ['tf-true']]);
+  });
+
+  it('tf：無法辨識的 answer 不默默存成「錯誤」，留空讓老師補', () => {
+    const rows = buildQuestionInsertRows(
+      [{ type: 'tf', question: 'Q', answer: '也許' }],
+      1,
+      1,
+    );
+
+    expect(rows[0]!.correctAnswers).toBeNull();
+  });
+
+  it('mc：answer 為「(C)」、全形「Ｃ」、「答案：C」都能對到 c', () => {
+    const rows = buildQuestionInsertRows(
+      ['(C)', 'Ｃ', '答案：C'].map(answer => ({
+        type: 'mc' as const,
+        question: 'Q',
+        options: ['葉綠體', '粒線體', '細胞核', '液泡'],
+        answer,
+      })),
+      1,
+      1,
+    );
+
+    expect(rows.map(r => r.correctAnswers)).toEqual([['c'], ['c'], ['c']]);
+  });
+
+  it('rank：options 依 answer 正解順序重排，correctAnswers 與 options 由上到下一致', () => {
     const rows = buildQuestionInsertRows(
       [{
         type: 'rank',
@@ -94,9 +147,10 @@ describe('buildQuestionInsertRows', () => {
       1,
     );
 
+    // 老師編輯器以「由上到下」當正解，所以存進 DB 的 options 必須已是正解順序
     expect(rows[0]!.options).toEqual([
-      { id: 'a', text: '文藝復興' },
       { id: 'b', text: '工業革命' },
+      { id: 'a', text: '文藝復興' },
       { id: 'c', text: '二次大戰' },
     ]);
     expect(rows[0]!.correctAnswers).toEqual(['b', 'a', 'c']);

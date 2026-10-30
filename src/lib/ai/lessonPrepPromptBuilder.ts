@@ -91,11 +91,8 @@ ${quizzesLines}
   answer 只能是 "正確" 或 "錯誤"（也接受 "true"/"false"，但請一律用「正確」/「錯誤」）
 - **short**（簡答）：**不要輸出 options**；answer 直接給參考答案字串（這裡不是 referenceAnswer 欄位，
   就是這題唯一的正確答案，系統會原字串存起來對照）
-- **rank**（排序）：options 請直接照「正確順序」排列，跟 answer 保持同序即可（學生作答頁的
-  \`QuizTaker.tsx\` 本來就會在呈現時幫每個學生打亂順序，不需要在資料裡刻意打亂；刻意打亂
-  options 會誘發 \`src/features/quiz/QuestionForm.tsx\` 一個已知 bug——老師若在編輯器重新儲存
-  一題 options 未依 answer 順序排列的排序題，正確答案會被悄悄改壞，該 bug 待另外修復前，
-  維持「options 跟 answer 同序」是最安全的作法）；
+- **rank**（排序）：options 請直接照「正確順序」排列，跟 answer 保持同序（學生作答頁會自動打亂，
+  不需要在資料裡刻意打亂）；
   answer 給「正確順序」的選項文字陣列，文字要跟 options 裡的完全一致
 - **cloze**（克漏字）：question 內文用 [[答案]] 標記要挖空的詞，**不要輸出 answer**（系統會自己從
   [[ ]] 標記解析出正確答案，你給了也會被忽略）；options 省略

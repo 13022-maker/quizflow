@@ -48,6 +48,7 @@ import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { matchChoiceAnswerId, parseTrueFalseAnswer } from '@/lib/quiz/answerNormalize';
 import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -524,24 +525,19 @@ export function QuizEditor({
           id: String.fromCharCode(97 + i), // a, b, c, d
           text: stripOptionLabel(text),
         }));
-        // AI 回傳的 answer 可能是字母（"A"）或完整選項文字
-        // 先用字母匹配 option id，再用文字完全匹配做 fallback（比對前同樣剝除前綴）
-        const answerKey = q.answer.trim().toLowerCase();
-        const byLetter = options.find(o => o.id === answerKey);
-        const byText = options.find(o => o.text === stripOptionLabel(q.answer));
-        const matched = byLetter ?? byText;
+        // AI 回傳的 answer 可能是字母（"A"、"(A)"、全形「Ａ」）或選項文字，統一交給 matchChoiceAnswerId
+        const matchedId = matchChoiceAnswerId(options, q.answer);
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
           options,
-          correctAnswers: matched ? [matched.id] : undefined,
+          correctAnswers: matchedId ? [matchedId] : undefined,
           diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });
       } else if (q.type === 'tf') {
-        // 是非題：將 AI 回傳的 ○/✕ 轉成標準選項 ID
-        const ansStr = q.answer.trim();
-        const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
+        // 是非題：將 AI 回傳的 ○/〇/✕/對/錯… 轉成標準選項 ID；認不得就留空讓老師補
+        const tfAnswer = parseTrueFalseAnswer(q.answer);
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
@@ -549,16 +545,17 @@ export function QuizEditor({
             { id: 'tf-true', text: '正確' },
             { id: 'tf-false', text: '錯誤' },
           ],
-          correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
+          correctAnswers: tfAnswer ? [tfAnswer] : undefined,
           diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });
       } else {
-        // 填空題 / 簡答題：直接存 answer 字串
+        // 填空題 / 簡答題：answer 同時存成 referenceAnswer，AI 評分才有標準答案可對
         await createQuestion(initialQuiz.id, {
           type,
           body: q.question,
           correctAnswers: q.answer ? [q.answer] : undefined,
+          referenceAnswer: q.answer || undefined,
           diagramSvg: q.diagramSvg || undefined,
           points: 1,
         });

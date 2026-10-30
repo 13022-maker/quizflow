@@ -53,8 +53,9 @@ export function stripClozeMarkers(body: string, placeholder: string = CLOZE_PLAC
     .join('');
 }
 
+// NFKC：全形英數（ＣＰＵ、２）轉半形，學生用全形輸入也能對到正解
 export function normalizeClozeAnswer(v: string): string {
-  return v.trim().toLocaleLowerCase();
+  return v.normalize('NFKC').trim().toLocaleLowerCase();
 }
 
 export type ClozeGradeResult = {

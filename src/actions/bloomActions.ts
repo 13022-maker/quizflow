@@ -51,8 +51,10 @@ function buildCorrectAnswers(question: BloomQuestion): string[] {
     return [];
   }
   const ids = ['a', 'b', 'c', 'd', 'e', 'f'];
-  const idx = typeof question.correct_answer === 'number' ? question.correct_answer : 0;
-  return [ids[idx] ?? 'a'];
+  // 索引無效（AI 答案對不到選項）時留空，不默默退回 a
+  const idx = typeof question.correct_answer === 'number' ? question.correct_answer : -1;
+  const id = ids[idx];
+  return id ? [id] : [];
 }
 
 const TitleSchema = z.string().min(1, '請輸入測驗標題').max(200);
@@ -95,7 +97,8 @@ export async function createQuizWithBloomQuestions(
       questions.map((q, i) => {
         const qfType = toQuizFlowType(q.type);
         const options = q.options ? buildOptions(q.options) : null;
-        const correctAnswers = q.type !== 'short_answer' ? buildCorrectAnswers(q) : null;
+        const built = q.type !== 'short_answer' ? buildCorrectAnswers(q) : [];
+        const correctAnswers = built.length ? built : null;
 
         return {
           quizId,
