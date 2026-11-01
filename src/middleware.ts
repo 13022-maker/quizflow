@@ -105,7 +105,10 @@ const isOptionalAuthRoute = createRouteMatcher([
 const isOptionalAuthPageRoute = createRouteMatcher([
   '/',
   '/pricing',
-  ...AllLocales.flatMap(locale => [`/${locale}`, `/${locale}/pricing`]),
+  // 題庫市集：匿名訪客可瀏覽，但複製/上架等 server action 需要 auth() 讀 session，
+  // 不加會踩「Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware()」
+  '/marketplace(.*)',
+  ...AllLocales.flatMap(locale => [`/${locale}`, `/${locale}/pricing`, `/${locale}/marketplace(.*)`]),
 ]);
 
 const isProtectedRoute = createRouteMatcher([
