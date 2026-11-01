@@ -118,7 +118,7 @@ export async function unpublishFromMarketplace(quizId: number) {
 export async function copyQuizFromMarketplace(sourceQuizId: number) {
   const { userId } = await auth();
   if (!userId) {
-    throw new Error('請先登入再複製');
+    return { error: '請先登入再複製' };
   }
 
   const source = await loadSourceQuiz(sourceQuizId);
@@ -222,7 +222,7 @@ export async function unpublishVocabFromMarketplace(setId: number) {
 export async function copyVocabFromMarketplace(sourceSetId: number) {
   const { userId } = await auth();
   if (!userId) {
-    throw new Error('請先登入再複製');
+    return { error: '請先登入再複製' };
   }
 
   const [source] = await db
