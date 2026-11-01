@@ -142,7 +142,7 @@ function QuestionItem({
           {index + 1}
         </span>
         {question.type !== 'cloze' && (
-          <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+          <p className="whitespace-pre-wrap text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
         )}
       </div>
 
@@ -877,7 +877,7 @@ function ResultScreen({
           return (
             <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium">
+                <p className="whitespace-pre-wrap text-sm font-medium">
                   Q
                   {index + 1}
                   .
@@ -1170,7 +1170,7 @@ function RetryScreen({
                 : '請 AI 教練給提示';
               return (
                 <div key={q.id} className="rounded-xl border bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-gray-900">{q.body}</p>
+                  <p className="whitespace-pre-wrap text-sm font-medium text-gray-900">{q.body}</p>
                   <div className="mt-2 space-y-1 text-xs">
                     <p className="text-red-600">
                       你的答案：
