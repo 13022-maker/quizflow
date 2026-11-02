@@ -152,7 +152,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
   .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
   .qbody{padding:20px 22px 6px}
-  .qtext{font-size:16px;font-weight:700;margin:0 0 14px}
+  .qtext{font-size:16px;font-weight:700;margin:0 0 14px;white-space:pre-wrap}
   .qimg{margin:0 0 16px;display:flex;justify-content:center}
   .qimg svg{max-width:100%;height:auto}
   .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
