@@ -156,10 +156,10 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .qimg svg{max-width:100%;height:auto}
   .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
 
-  .opts{padding:2px 22px 20px;display:flex;flex-direction:column;gap:10px}
-  .opt{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--blue-line);border-radius:12px;background:#fff;cursor:pointer;font-size:14.5px;transition:.15s;text-align:left}
+  .opts{padding:2px 22px 20px;display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1.5px solid var(--blue-line);border-radius:12px;background:#fff;cursor:pointer;font-size:14.5px;transition:.15s;text-align:left}
   .opt:hover{border-color:var(--blue);background:var(--blue-soft)}
-  .opt .num{flex:none;width:26px;height:26px;border-radius:50%;background:#eef4fa;color:var(--blue-dark);font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .opt .num{flex:none;width:22px;height:22px;border-radius:50%;background:#eef4fa;color:var(--blue-dark);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
   .opt img{max-height:64px;width:auto;max-width:150px;background:#fff}
   .opt.correct{border-color:var(--ok);background:var(--ok-soft)}
   .opt.correct .num{background:var(--ok);color:#fff}
