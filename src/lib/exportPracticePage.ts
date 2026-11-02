@@ -202,7 +202,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     .opts{padding:2px 16px 16px}
     .explain{margin:0 16px 16px}
     .dock-nav{flex-wrap:wrap;justify-content:center}
-    .jump{order:3;width:100%}
+    .jump{order:3;flex-basis:100%}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 </style>
