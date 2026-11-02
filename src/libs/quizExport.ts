@@ -30,6 +30,12 @@ const TF_DEFAULTS = [
   { id: 'tf-false', text: '錯誤' },
 ];
 
+// docx 的 TextRun.text 不會把 \n 轉成換行，要切成多個 TextRun 用 break 屬性串起來
+function textRunsWithLineBreaks(text: string): TextRun[] {
+  return text.split('\n').map((line, i) =>
+    i === 0 ? new TextRun({ text: line }) : new TextRun({ text: line, break: 1 }));
+}
+
 // 將 option id 陣列翻成顯示文字
 function answerToText(question: Question, ids: string[] | null): string {
   if (!ids || ids.length === 0) {
@@ -56,7 +62,7 @@ function questionToParagraphs(question: Question, index: number, variant: Export
       spacing: { before: 240, after: 120 },
       children: [
         new TextRun({ text: `${index + 1}. `, bold: true }),
-        new TextRun({ text: safeBody }),
+        ...textRunsWithLineBreaks(safeBody),
         ...(pointsText ? [new TextRun({ text: pointsText, color: '666666', size: 20 })] : []),
       ],
     }),
