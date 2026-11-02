@@ -148,6 +148,10 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .count b{color:var(--ok);font-size:15px}
   .count b.ok{color:var(--ok)}
 
+  /* 題號跳題列跟上一題/下一題合併固定在進度條下方，最多顯示 3 列，題數多時在這個小區塊內捲動，
+     不會把整個導覽列撐高推擠到題目卡片 */
+  .dock-nav{max-width:760px;margin:8px auto 0;display:flex;align-items:flex-start;gap:10px}
+
   .qcard{margin-top:18px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden;animation:pop .2s ease}
   @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
   .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
@@ -175,16 +179,15 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .explain.show{display:block;animation:pop .2s ease}
   .explain b{color:var(--ink)}
 
-  .navbar{margin-top:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-  .btn{border:none;border-radius:var(--radius);font-weight:800;font-size:14.5px;padding:10px 20px;cursor:pointer;font-family:inherit;transition:.15s}
+  .btn{border:none;border-radius:var(--radius);font-weight:800;font-size:14.5px;padding:10px 20px;cursor:pointer;font-family:inherit;transition:.15s;flex:none}
   .btn.primary{background:linear-gradient(180deg,var(--blue),var(--blue-dark));color:#fff;box-shadow:0 4px 12px rgba(30,90,138,.3)}
   .btn.primary:hover{filter:brightness(1.06)}
   .btn.primary:disabled{opacity:.4;cursor:not-allowed;filter:none}
   .btn.sub{background:#eef4fa;color:var(--blue-dark);border:1.5px solid var(--blue-line)}
   .btn.sub:hover{background:var(--blue-soft)}
   .btn.sub:disabled{opacity:.4;cursor:not-allowed}
-  .jump{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:center}
-  .jbtn{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--blue-line);background:#fff;color:var(--blue-dark);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .jump{display:flex;gap:6px;flex-wrap:wrap;flex:1;justify-content:center;max-height:104px;overflow-y:auto;padding:2px}
+  .jbtn{width:30px;height:30px;flex:none;border-radius:8px;border:1.5px solid var(--blue-line);background:#fff;color:var(--blue-dark);font-weight:800;font-size:12.5px;cursor:pointer;font-family:inherit}
   .jbtn.cur{border-color:var(--blue);background:var(--blue);color:#fff}
   .jbtn.done{border-color:var(--ok);color:var(--ok)}
   .jbtn.done.cur{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -198,7 +201,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     .qbody{padding:16px 16px 4px}
     .opts{padding:2px 16px 16px}
     .explain{margin:0 16px 16px}
-    .navbar{justify-content:center}
+    .dock-nav{flex-wrap:wrap;justify-content:center}
     .jump{order:3;width:100%}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -221,15 +224,14 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
       <div class="bar"><span id="progressBar"></span></div>
       <div class="count">第 <b id="curNum">1</b> / <span id="totalNum">-</span> 題　答對 <b class="ok" id="correctNum">0</b></div>
     </div>
+    <div class="dock-nav">
+      <button class="btn sub" id="prevBtn">← 上一題</button>
+      <div class="jump" id="jump"></div>
+      <button class="btn primary" id="nextBtn">下一題 →</button>
+    </div>
   </div>
 
   <div class="qcard" id="qcard"></div>
-
-  <div class="navbar">
-    <button class="btn sub" id="prevBtn">← 上一題</button>
-    <div class="jump" id="jump"></div>
-    <button class="btn primary" id="nextBtn">下一題 →</button>
-  </div>
 
   <div class="kbdhint">鍵盤操作　<kbd>←</kbd>/<kbd>→</kbd> 或 <kbd>↑</kbd>/<kbd>↓</kbd> 切換題目　·　<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> 選擇選項</div>
   <div class="foot">由 QuizFlow 提供 · 從測驗匯出</div>
