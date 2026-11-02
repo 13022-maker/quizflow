@@ -341,7 +341,6 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     if(i<0||i>=QUESTIONS.length) return;
     cur=i;
     renderQuestion();
-    qcard.scrollIntoView({block:'nearest',behavior:'smooth'});
   }
 
   prevBtn.addEventListener('click',function(){ goTo(cur-1); });
