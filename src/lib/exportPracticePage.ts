@@ -234,7 +234,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   <div class="qcard" id="qcard"></div>
 
   <div class="kbdhint">鍵盤操作　<kbd>←</kbd>/<kbd>→</kbd> 或 <kbd>↑</kbd>/<kbd>↓</kbd> 切換題目　·　<kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd> 選擇選項</div>
-  <div class="foot">由 QuizFlow 提供 · 從測驗匯出</div>
+  <div class="foot">📘 免登入、不計時，答題後立即顯示對錯。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
 </div>
 
 <script>
