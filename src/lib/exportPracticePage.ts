@@ -21,6 +21,7 @@ export type PracticePageQuestion = {
   options: PracticePageOption[];
   correctIndex: number;
   explanation?: string; // 目前 QuizFlow 題目資料庫不存詳解，通常是空字串
+  id?: number; // DB question.id：作答事件帶回去對應題目（舊版匯出沒有這欄）
 };
 
 export type PracticePageParams = {
@@ -52,6 +53,7 @@ const DEFAULT_TF_OPTIONS = [
 ];
 
 export type RawQuestionForExport = {
+  id?: number;
   type: string;
   body: string;
   imageUrl?: string | null;
@@ -101,10 +103,35 @@ export function selectPracticeQuestions(
       options: options.map(o => o.text),
       correctIndex,
       explanation: q.explanation ?? undefined,
+      ...(q.id ? { id: q.id } : {}),
     });
   }
 
   return { practiceQuestions, skipped };
+}
+
+// 練習頁 <head> 裡的佔位註解：/api/p/[id] 代理回傳時把它換成 config <script>（含事件端點網址）。
+// 下載的離線檔不經過代理，佔位註解原樣留著 → 沒有 config → 統計 hooks 全部 no-op。
+// 舊版（加這功能前）上傳的 HTML 沒有這個 marker，代理就原樣回傳，不會壞。
+export const PRACTICE_PAGE_CONFIG_MARKER = '<!--qf-practice-config-->';
+
+export type PracticePageRuntimeConfig = {
+  endpoint: string; // 作答事件 POST 網址
+  signupUrl: string; // 身分選「老師」時顯示的 QuizFlow 註冊連結
+};
+
+export function hasPracticePageAnalytics(html: string): boolean {
+  return html.includes(PRACTICE_PAGE_CONFIG_MARKER);
+}
+
+export function injectPracticePageConfig(html: string, config: PracticePageRuntimeConfig): string {
+  if (!hasPracticePageAnalytics(html)) {
+    return html;
+  }
+  return html.replace(
+    PRACTICE_PAGE_CONFIG_MARKER,
+    `<script>window.__QF_PRACTICE__=${toEmbeddableJson(config)};</script>`,
+  );
 }
 
 export function buildPracticePageHtml(params: PracticePageParams): string {
@@ -116,6 +143,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escHtml(title)} | QuizFlow</title>
+${PRACTICE_PAGE_CONFIG_MARKER}
 <style>
   :root{
     --ink:#0f2540; --blue:#1e5a8a; --blue-dark:#17466b;
@@ -188,6 +216,32 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .jbtn.done{border-color:var(--ok);color:var(--ok)}
   .jbtn.done.cur{background:var(--ok);border-color:var(--ok);color:#fff}
 
+  /* 作答結束畫面 */
+  .endbody{padding:22px}
+  .score{font-size:40px;font-weight:800;color:var(--blue-dark);text-align:center;line-height:1.2}
+  .score b{color:var(--ok)}
+  .scoresub{text-align:center;color:var(--muted);font-size:13.5px;margin-top:2px}
+  .endsec{margin-top:20px;padding-top:16px;border-top:1px dashed var(--blue-line)}
+  .endsec.allok{text-align:center;font-weight:700;color:var(--ok)}
+  .endh{display:block;font-weight:800;font-size:14px;margin-bottom:10px}
+  .wronglist{display:flex;flex-wrap:wrap;gap:6px}
+  .jbtn.wrongj{border-color:var(--err);color:var(--err)}
+  .jbtn.endj{width:auto;padding:0 8px;border-color:var(--ok);color:var(--ok)}
+  .plabel{font-size:12.5px;color:var(--muted);font-weight:700;margin:10px 0 6px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{border:1.5px solid var(--blue-line);background:#fff;color:var(--blue-dark);border-radius:99px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
+  .chip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .teacher{margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--blue-soft);font-size:13.5px}
+  .teacher a{color:var(--blue-dark);font-weight:800}
+  .leadrow{display:flex;gap:8px}
+  .leadrow input[type=email]{flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--blue-line);border-radius:var(--radius);font-size:16px;font-family:inherit;color:var(--ink)}
+  .consent{display:flex;gap:8px;align-items:flex-start;margin-top:10px;font-size:13px;cursor:pointer}
+  .consent input{margin-top:3px;flex:none}
+  .leaderr{color:var(--err);font-size:12.5px;margin-top:6px;min-height:1em}
+  .privacy{font-size:12px;color:var(--hint);margin-top:4px}
+  .leadok{color:var(--ok);font-weight:700}
+  .endgo{display:block;margin-top:12px}
+
   .kbdhint{margin-top:14px;text-align:center;font-size:12px;color:var(--hint)}
   .kbdhint kbd{background:#fff;border:1px solid var(--blue-line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11.5px;color:var(--blue-dark)}
   .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--hint)}
@@ -239,6 +293,54 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   /* ---------- state ---------- */
   var cur=0;
   var answered=new Array(QUESTIONS.length).fill(-1); /* -1=未作答,否則為選擇的 index */
+  var completed=false; /* 所有題目都作答完 */
+  var showEnd=false; /* 目前是否顯示作答結束畫面 */
+
+  /* ---------- 作答統計：只有從 QuizFlow 分享連結開啟（代理注入 config）才會送出；
+     下載的離線檔沒有 config，send() 直接 no-op。任何錯誤都吞掉，絕不影響作答 ---------- */
+  var CFG=window.__QF_PRACTICE__||null;
+  function uuid(){
+    try{ if(window.crypto&&crypto.randomUUID) return crypto.randomUUID(); }catch(e){}
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16);});
+  }
+  var SID=uuid(); /* 每次開頁 = 一次作答 session，只存在記憶體，不用 cookie */
+  function send(payload){
+    if(!CFG||!CFG.endpoint) return;
+    try{
+      payload.sessionId=SID;
+      var body=JSON.stringify(payload);
+      var sent=false;
+      if(navigator.sendBeacon){
+        try{ sent=navigator.sendBeacon(CFG.endpoint,new Blob([body],{type:'text/plain;charset=UTF-8'})); }catch(e){ sent=false; }
+      }
+      if(!sent&&window.fetch){
+        fetch(CFG.endpoint,{method:'POST',body:body,keepalive:true,credentials:'omit',headers:{'Content-Type':'text/plain;charset=UTF-8'}}).catch(function(){});
+      }
+    }catch(e){}
+  }
+  (function(){
+    var sp=null; try{ sp=new URLSearchParams(location.search); }catch(e){}
+    var ref=null; try{ if(document.referrer) ref=new URL(document.referrer).hostname; }catch(e){}
+    var mobile=false; try{ mobile=/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(!!window.matchMedia&&matchMedia('(pointer:coarse)').matches); }catch(e){}
+    send({
+      type:'session_start',
+      utmSource:sp?sp.get('utm_source'):null,
+      utmContent:sp?sp.get('utm_content'):null,
+      utmCampaign:sp?sp.get('utm_campaign'):null,
+      referrerHost:ref,
+      deviceType:mobile?'mobile':'desktop'
+    });
+  })();
+
+  /* 每題累積停留時間（切到別題或切走分頁時暫停） */
+  var spent=new Array(QUESTIONS.length).fill(0);
+  var enterIdx=0, enterAt=Date.now();
+  function leaveCurrent(){ if(enterIdx!==-1){ spent[enterIdx]+=Date.now()-enterAt; enterIdx=-1; } }
+  function enterQuestion(i){ leaveCurrent(); enterIdx=i; enterAt=Date.now(); }
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden) leaveCurrent();
+    else if(!showEnd) enterQuestion(cur);
+  });
 
   var qcard=document.getElementById('qcard');
   var jumpEl=document.getElementById('jump');
@@ -262,7 +364,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     jumpEl.innerHTML=QUESTIONS.map(function(_,i){
       var cls='jbtn'+(i===cur?' cur':'')+(answered[i]!==-1?' done':'');
       return '<button type="button" class="'+cls+'" data-i="'+i+'">'+(i+1)+'</button>';
-    }).join('');
+    }).join('')+(completed?'<button type="button" class="jbtn endj'+(showEnd?' cur':'')+'" data-end="1" title="查看成績">🏁 成績</button>':'');
   }
 
   function imageHtml(q){
@@ -308,7 +410,8 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
       return '<button type="button" class="'+cls+'" data-i="'+i+'"><span class="num">'+(i+1)+'</span>'+optionContent(opt)+'</button>';
     }).join('');
     var explainText=q.explanation?('<br><b>詳解:</b>'+q.explanation):'';
-    var explainHtml=isAnswered?('<div class="explain show">'+(picked===q.correctIndex?'✅ 答對了!':'❌ 答錯了,正確答案是「'+optionLabel(q.options[q.correctIndex],q.correctIndex)+'」。')+explainText+'</div>'):'<div class="explain"></div>';
+    var endGoHtml=completed?'<button type="button" class="btn primary endgo" id="toEnd">全部作答完畢，查看成績 →</button>':'';
+    var explainHtml=isAnswered?('<div class="explain show">'+(picked===q.correctIndex?'✅ 答對了!':'❌ 答錯了,正確答案是「'+optionLabel(q.options[q.correctIndex],q.correctIndex)+'」。')+explainText+endGoHtml+'</div>'):'<div class="explain"></div>';
 
     qcard.className='qcard'+(isAnswered?' answered':'');
     qcard.innerHTML=
@@ -322,40 +425,156 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
         selectOption(cur,+btn.getAttribute('data-i'));
       });
     });
+    var toEnd=document.getElementById('toEnd');
+    if(toEnd) toEnd.addEventListener('click',renderEnd);
 
     document.getElementById('curNum').textContent=cur+1;
     document.getElementById('correctNum').textContent=correctCount();
     document.getElementById('progressBar').style.width=(answeredCount()/QUESTIONS.length*100)+'%';
     prevBtn.disabled=(cur===0);
-    nextBtn.disabled=(cur===QUESTIONS.length-1);
+    var isLast=(cur===QUESTIONS.length-1);
+    nextBtn.disabled=isLast&&!completed;
+    nextBtn.textContent=(isLast&&completed)?'看成績 →':'下一題 →';
     renderJump();
   }
 
   function selectOption(qi,oi){
     if(answered[qi]!==-1) return; /* 已作答過就不能再改,維持第一次作答的結果 */
     answered[qi]=oi;
+    var q=QUESTIONS[qi];
+    send({
+      type:'answer',
+      questionIndex:qi,
+      questionId:q.id||null,
+      chosenOption:oi,
+      isCorrect:oi===q.correctIndex,
+      msOnQuestion:spent[qi]+(enterIdx===qi?Date.now()-enterAt:0)
+    });
+    if(!completed&&answeredCount()===QUESTIONS.length){
+      completed=true;
+      send({type:'complete',answeredCount:answeredCount(),correctCount:correctCount()});
+    }
     if(qi===cur) renderQuestion();
     else renderJump();
   }
 
   function goTo(i){
+    if(i===QUESTIONS.length&&completed&&!showEnd){ renderEnd(); return; }
     if(i<0||i>=QUESTIONS.length) return;
+    showEnd=false;
     cur=i;
+    enterQuestion(i);
     renderQuestion();
   }
+  function goPrev(){ if(showEnd) goTo(cur); else goTo(cur-1); }
+  function goNext(){ goTo(cur+1); }
 
-  prevBtn.addEventListener('click',function(){ goTo(cur-1); });
-  nextBtn.addEventListener('click',function(){ goTo(cur+1); });
+  /* ---------- 作答結束畫面：分數、錯題跳轉；線上版另有選填的自我回報與 email ---------- */
+  var profile={role:null,language:null,examPlan:null};
+  var leadSent=false;
+  var PROFILE_GROUPS=[
+    ['role','身分',[['junior_high','國中'],['senior_high','高中'],['college','大學'],['teacher','老師'],['parent','家長'],['other','其他']]],
+    ['language','題本語言',[['cpp','C++'],['python','Python']]],
+    ['examPlan','預計應考',[['soon','近期一場'],['later','之後'],['none','不考'],['taken','已考過']]]
+  ];
+  function isTypingTarget(t){ return !!t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.tagName==='SELECT'||t.isContentEditable); }
+
+  function profileHtml(){
+    var h='<div class="endsec"><div class="endh">讓出題老師更了解你（選填，點一下就好，不收個人資料）</div>';
+    PROFILE_GROUPS.forEach(function(g){
+      h+='<div class="plabel">'+g[1]+'</div><div class="chips" data-g="'+g[0]+'">'+g[2].map(function(o){
+        return '<button type="button" class="chip'+(profile[g[0]]===o[0]?' on':'')+'" data-v="'+o[0]+'">'+o[1]+'</button>';
+      }).join('')+'</div>';
+    });
+    if(CFG.signupUrl){
+      h+='<div class="teacher" id="teacherInvite"'+(profile.role==='teacher'?'':' hidden')+'>👩‍🏫 您是老師嗎？這份練習頁就是用 QuizFlow 做的，上傳講義就能自動出題、產生同樣的練習頁。<br><a href="'+esc(CFG.signupUrl)+'" target="_blank" rel="noopener">免費用 QuizFlow 出自己的題目 →</a></div>';
+    }
+    return h+'</div>';
+  }
+
+  function leadHtml(){
+    if(leadSent) return '<div class="endsec"><div class="leadok">✅ 收到了！下一份練習題準備好會寄給你。</div></div>';
+    return '<div class="endsec"><form id="leadForm" novalidate>'+
+      '<label class="endh" for="leadEmail">想收到下一份 20 題和考前提醒？留 email（選填）</label>'+
+      '<div class="leadrow"><input id="leadEmail" type="email" inputmode="email" autocomplete="email" maxlength="254" placeholder="you@example.com"><button type="submit" class="btn primary">送出</button></div>'+
+      '<label class="consent"><input id="leadConsent" type="checkbox"><span>我同意 QuizFlow 用此 email 寄送練習題與考試提醒，可隨時取消</span></label>'+
+      '<div class="leaderr" id="leadErr"></div>'+
+      '<div class="privacy">🔒 只保存 email、同意時間與這次作答的匿名代碼，不公開、不轉售，每封信都能一鍵取消。未滿 18 歲請先徵得家長同意。</div>'+
+      '</form></div>';
+  }
+
+  function renderEnd(){
+    showEnd=true;
+    leaveCurrent();
+    var n=QUESTIONS.length, c=correctCount(), wrong=[];
+    for(var i=0;i<n;i++){ if(answered[i]!==-1&&answered[i]!==QUESTIONS[i].correctIndex) wrong.push(i); }
+    var h='<div class="grouplabel">作答結果</div><div class="endbody">'+
+      '<div class="score"><b>'+c+'</b> / '+n+'</div>'+
+      '<div class="scoresub">答對率 '+Math.round(c/n*100)+'%</div>'+
+      (wrong.length
+        ?'<div class="endsec"><div class="endh">答錯的題目（點題號回去看詳解）</div><div class="wronglist">'+wrong.map(function(i){
+          return '<button type="button" class="jbtn wrongj" data-i="'+i+'">'+(i+1)+'</button>';
+        }).join('')+'</div></div>'
+        :'<div class="endsec allok">🎉 全部答對！</div>');
+    if(CFG&&CFG.endpoint){ h+=profileHtml()+leadHtml(); }
+    h+='</div>';
+
+    qcard.className='qcard';
+    qcard.innerHTML=h;
+
+    qcard.querySelectorAll('.wrongj').forEach(function(b){
+      b.addEventListener('click',function(){ goTo(+b.getAttribute('data-i')); });
+    });
+    qcard.querySelectorAll('.chips').forEach(function(group){
+      group.addEventListener('click',function(e){
+        var chip=e.target.closest('.chip');
+        if(!chip) return;
+        var key=group.getAttribute('data-g');
+        profile[key]=chip.getAttribute('data-v');
+        group.querySelectorAll('.chip').forEach(function(x){ x.classList.toggle('on',x===chip); });
+        var invite=document.getElementById('teacherInvite');
+        if(invite) invite.hidden=profile.role!=='teacher';
+        send({type:'profile',role:profile.role,language:profile.language,examPlan:profile.examPlan});
+      });
+    });
+    var form=document.getElementById('leadForm');
+    if(form){
+      form.addEventListener('submit',function(e){
+        e.preventDefault();
+        var email=(document.getElementById('leadEmail').value||'').trim();
+        var err=document.getElementById('leadErr');
+        if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){ err.textContent='email 格式看起來不太對，再檢查一下'; return; }
+        if(!document.getElementById('leadConsent').checked){ err.textContent='請先勾選同意，我們才能寄信給你'; return; }
+        send({type:'lead',email:email,consent:true});
+        leadSent=true;
+        renderEnd();
+      });
+    }
+
+    document.getElementById('progressBar').style.width='100%';
+    document.getElementById('correctNum').textContent=c;
+    prevBtn.disabled=false;
+    nextBtn.disabled=true;
+    nextBtn.textContent='下一題 →';
+    renderJump();
+    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+  }
+
+  prevBtn.addEventListener('click',goPrev);
+  nextBtn.addEventListener('click',goNext);
   jumpEl.addEventListener('click',function(e){
     var b=e.target.closest('.jbtn');
     if(!b) return;
+    if(b.hasAttribute('data-end')){ renderEnd(); return; }
     goTo(+b.getAttribute('data-i'));
   });
 
   document.addEventListener('keydown',function(e){
     if(e.metaKey||e.ctrlKey||e.altKey) return;
-    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); goTo(cur+1); }
-    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); goTo(cur-1); }
+    if(isTypingTarget(e.target)) return; /* 在 email 欄位打字時不要觸發快捷鍵 */
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); goNext(); }
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); goPrev(); }
+    else if(showEnd){ return; }
     else if(e.key>='1'&&e.key<='9'){
       var idx=+e.key-1;
       if(idx<QUESTIONS[cur].options.length){ selectOption(cur,idx); }
