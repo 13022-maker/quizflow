@@ -157,6 +157,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
 
   .opts{padding:2px 22px 20px;display:flex;flex-direction:column;gap:8px}
+  .opts.grid2{display:grid;grid-template-columns:1fr 1fr}
   .opt{display:flex;align-items:center;gap:10px;padding:8px 14px;border:1.5px solid var(--blue-line);border-radius:12px;background:#fff;cursor:pointer;font-size:14.5px;transition:.15s;text-align:left}
   .opt:hover{border-color:var(--blue);background:var(--blue-soft)}
   .opt .num{flex:none;width:22px;height:22px;border-radius:50%;background:#eef4fa;color:var(--blue-dark);font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
@@ -286,6 +287,13 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     return esc(opt);
   }
 
+  /* 選項都是短文字(非圖片、長度在 6 字以內)才排成 2 欄,文字一長排 2 欄容易換行、高度不一反而亂 */
+  function isShortOptions(options){
+    return options.every(function(opt){
+      return typeof opt==='string' && opt.length<=6;
+    });
+  }
+
   function renderQuestion(){
     var q=QUESTIONS[cur];
     var picked=answered[cur];
@@ -306,7 +314,7 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     qcard.innerHTML=
       '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+(cur+1)+' 題</div>'+
       '<div class="qbody"><p class="qtext">'+esc(q.question)+'</p>'+imgHtml+'</div>'+
-      '<div class="opts">'+optsHtml+'</div>'+
+      '<div class="opts'+(isShortOptions(q.options)?' grid2':'')+'">'+optsHtml+'</div>'+
       explainHtml;
 
     qcard.querySelectorAll('.opt').forEach(function(btn){
