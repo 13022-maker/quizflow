@@ -70,7 +70,6 @@ export async function buildQuizPracticeHtml(
   const html = buildPracticePageHtml({
     title: quiz.title,
     kick: 'QuizFlow 測驗匯出．靜態練習頁',
-    noteHtml: '<b>免登入、不計時</b>，答題後立即顯示對錯。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。',
     questions: practiceQuestions,
   });
 

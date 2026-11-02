@@ -7,7 +7,6 @@ describe('buildPracticePageHtml', () => {
     const html = buildPracticePageHtml({
       title: '單元測驗',
       kick: 'QuizFlow 測驗匯出',
-      noteHtml: '免登入、不計時',
       questions: [
         { groupLabel: '第一組', question: '1+1=?', options: ['1', '2', '3', '4'], correctIndex: 1 },
       ],
@@ -26,7 +25,6 @@ describe('buildPracticePageHtml', () => {
     const html = buildPracticePageHtml({
       title: '測試',
       kick: 'k',
-      noteHtml: 'n',
       questions: [
         { groupLabel: 'g', question: '含</script>惡意內容的題目', options: ['a', 'b', 'c', 'd'], correctIndex: 0 },
       ],
@@ -43,7 +41,6 @@ describe('buildPracticePageHtml', () => {
     const html = buildPracticePageHtml({
       title: '測試',
       kick: 'k',
-      noteHtml: 'n',
       questions: [
         {
           groupLabel: 'g',
@@ -61,7 +58,6 @@ describe('buildPracticePageHtml', () => {
     const html = buildPracticePageHtml({
       title: '測試',
       kick: 'k',
-      noteHtml: 'n',
       questions: [
         { groupLabel: 'g', question: 'q', options: ['a', 'b', 'c', 'd'], correctIndex: 0 },
       ],
@@ -77,7 +73,6 @@ describe('buildPracticePageHtml', () => {
     const html = buildPracticePageHtml({
       title: '測試',
       kick: 'k',
-      noteHtml: 'n',
       questions: [
         {
           groupLabel: 'g',

@@ -27,7 +27,6 @@ export type PracticePageParams = {
   title: string; // <title> 與頁首大標題
   kick: string; // masthead 小標題（例如「QuizFlow 測驗匯出．丙級電腦硬體裝修」）
   enSubtitle?: string; // masthead 英文副標，可省略
-  noteHtml: string; // 免登入說明區塊內容，可含簡單 <b> 標籤
   questions: PracticePageQuestion[];
 };
 
@@ -109,7 +108,7 @@ export function selectPracticeQuestions(
 }
 
 export function buildPracticePageHtml(params: PracticePageParams): string {
-  const { title, kick, enSubtitle, noteHtml, questions } = params;
+  const { title, kick, enSubtitle, questions } = params;
 
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -136,10 +135,6 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
   .masthead .kick{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:700}
   .masthead h1{margin:6px 0 4px;font-size:22px;font-weight:800}
   .masthead .en{opacity:.9;font-size:13px;font-weight:500}
-  .note{margin-top:14px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.3);border-radius:12px;padding:12px 14px;font-size:13.5px;display:flex;gap:10px;align-items:flex-start;position:relative;z-index:2}
-  .note b{color:#fff}
-  .note .src{opacity:.85;font-size:12px;margin-top:6px}
-
   .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
   .dock-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px}
   .bar{flex:1;height:9px;border-radius:99px;background:#e3ebf3;overflow:hidden}
@@ -213,10 +208,6 @@ export function buildPracticePageHtml(params: PracticePageParams): string {
     <div class="kick">${escHtml(kick)}</div>
     <h1>${escHtml(title)}</h1>
     ${enSubtitle ? `<div class="en">${escHtml(enSubtitle)}</div>` : ''}
-    <div class="note">
-      <span>📘</span>
-      <div>${noteHtml}</div>
-    </div>
   </header>
 
   <div class="dock">
