@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPracticePageHtml, selectPracticeQuestions } from './exportPracticePage';
+import {
+  buildPracticePageHtml,
+  hasPracticePageAnalytics,
+  injectPracticePageConfig,
+  PRACTICE_PAGE_CONFIG_MARKER,
+  selectPracticeQuestions,
+} from './exportPracticePage';
 
 describe('buildPracticePageHtml', () => {
   it('把題目資料內嵌進 <script>，畫面初始化用的到的欄位都在', () => {
@@ -162,5 +168,77 @@ describe('selectPracticeQuestions', () => {
     expect(practiceQuestions[0]?.image).toBe('<img src="https://example.com/a.png">');
     expect(practiceQuestions[0]?.diagramSvg).toBe('<svg></svg>');
     expect(practiceQuestions[0]?.explanation).toBe('因為...');
+  });
+});
+
+describe('selectPracticeQuestions 題目 id', () => {
+  it('DB 題目 id 會帶進 PracticePageQuestion，供作答事件對回題目', () => {
+    const { practiceQuestions } = selectPracticeQuestions({
+      groupLabel: 'g',
+      questions: [{ id: 77, type: 'single_choice', body: 'q', options: [{ id: 'a', text: 'x' }], correctAnswers: ['a'] }],
+    });
+
+    expect(practiceQuestions[0]?.id).toBe(77);
+  });
+});
+
+describe('練習頁作答統計 hooks', () => {
+  const baseParams = {
+    title: '測試',
+    kick: 'k',
+    questions: [{ groupLabel: 'g', question: 'q', options: ['a', 'b', 'c', 'd'], correctIndex: 0, id: 42 }],
+  };
+
+  it('題目 id 會內嵌進 QUESTIONS，讓事件能對回 DB 題目', () => {
+    expect(buildPracticePageHtml(baseParams)).toContain('"id":42');
+  });
+
+  it('下載版本身不含任何 API 網址：沒有 config 時送出函式是 no-op（離線也能開）', () => {
+    const html = buildPracticePageHtml(baseParams);
+
+    expect(html).toContain(PRACTICE_PAGE_CONFIG_MARKER);
+    expect(html).not.toContain('/api/p/');
+    expect(html).toContain('window.__QF_PRACTICE__');
+    // 送出前先檢查有沒有 endpoint
+    expect(html).toContain('if(!CFG||!CFG.endpoint) return;');
+  });
+
+  it('作答結束畫面：分數、錯題跳轉、自我回報與 email 同意勾選都在', () => {
+    const html = buildPracticePageHtml(baseParams);
+
+    expect(html).toContain('function renderEnd');
+    expect(html).toContain('我同意 QuizFlow 用此 email 寄送練習題與考試提醒，可隨時取消');
+    expect(html).toContain('想收到下一份 20 題和考前提醒？留 email（選填）');
+    // 不收姓名、學校、電話
+    expect(html).not.toMatch(/name="(name|school|phone)"/);
+  });
+
+  it('輸入框打字時不能被數字鍵快捷鍵當成選選項', () => {
+    expect(buildPracticePageHtml(baseParams)).toContain('isTypingTarget(e.target)');
+  });
+});
+
+describe('injectPracticePageConfig', () => {
+  it('把 config 以 <script> 塞到 marker 位置，內容裡的 "<" 會被跳脫', () => {
+    const html = buildPracticePageHtml({
+      title: 't',
+      kick: 'k',
+      questions: [{ groupLabel: 'g', question: 'q', options: ['a', 'b'], correctIndex: 0 }],
+    });
+    const out = injectPracticePageConfig(html, {
+      endpoint: 'https://quizflow.example/api/p/24/events',
+      signupUrl: 'https://quizflow.example/sign-up?x=</script>',
+    });
+
+    expect(out).toContain('<script>window.__QF_PRACTICE__={"endpoint":"https://quizflow.example/api/p/24/events"');
+    expect(out).not.toContain('x=</script>');
+    expect(out).not.toContain(PRACTICE_PAGE_CONFIG_MARKER);
+  });
+
+  it('舊版（沒有 marker）的 HTML 原樣回傳，不注入', () => {
+    const legacy = '<html><head></head><body>old</body></html>';
+
+    expect(injectPracticePageConfig(legacy, { endpoint: 'x', signupUrl: 'y' })).toBe(legacy);
+    expect(hasPracticePageAnalytics(legacy)).toBe(false);
   });
 });

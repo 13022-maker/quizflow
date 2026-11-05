@@ -976,3 +976,53 @@ export const practicePageShareSchema = pgTable(
     quizIdIdx: index('practice_page_share_quiz_id_idx').on(table.quizId),
   }),
 );
+
+// 靜態練習頁（/api/p/[id]）匿名作答事件：學生免登入，不存 IP / cookie / 任何個資，
+// sessionId 是頁面每次開啟時在瀏覽器記憶體產生的隨機 UUID。
+// type 用 text + CHECK（比照 adaptive_subject.status，避免 PG enum 加值要 ALTER TYPE）；
+// question_index / question_id 拉成獨立欄位方便聚合，其餘欄位放 payload jsonb。
+export const practicePageEventSchema = pgTable(
+  'practice_page_event',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    quizId: integer('quiz_id')
+      .notNull()
+      .references(() => quizSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    type: text('type').notNull(), // session_start | answer | complete | profile
+    questionIndex: integer('question_index'), // 只有 answer 事件有值（0-based，練習頁內題序）
+    questionId: integer('question_id'), // answer 事件對應的 question.id（舊版匯出沒有）；刻意不設 FK，題目刪了統計照留
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareCreatedIdx: index('practice_page_event_share_created_idx').on(table.shareId, table.createdAt),
+    shareSessionIdx: index('practice_page_event_share_session_idx').on(table.shareId, table.sessionId),
+    typeCheck: check(
+      'practice_page_event_type_check',
+      sql`${table.type} IN ('session_start', 'answer', 'complete', 'profile')`,
+    ),
+  }),
+);
+
+// 練習頁結束畫面「留 email」名單：只存 email + 同意時間 + sessionId + shareId，
+// 不收姓名/學校/電話。同一份練習頁同一個 email 只留一筆（unique）。
+export const practicePageLeadSchema = pgTable(
+  'practice_page_lead',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    email: text('email').notNull(),
+    consentAt: timestamp('consent_at', { mode: 'date' }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareEmailUnique: uniqueIndex('practice_page_lead_share_email_idx').on(table.shareId, table.email),
+  }),
+);

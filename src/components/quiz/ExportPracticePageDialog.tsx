@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 
@@ -38,6 +39,10 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
   const [historyLoading, setHistoryLoading] = useState(true);
   const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState<number | null>(null);
+  // 「更新到最新版」：同一個分享網址重新產生 HTML（啟用作答統計與結束畫面）
+  const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  const [refreshedId, setRefreshedId] = useState<number | null>(null);
+  const [refreshError, setRefreshError] = useState('');
 
   const fetchHistory = async () => {
     setHistoryLoading(true);
@@ -66,6 +71,29 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
       setCopiedHistoryId(item.id);
       setTimeout(() => setCopiedHistoryId(null), 2000);
     });
+  };
+
+  const handleRefreshShare = async (item: ShareHistoryItem) => {
+    setRefreshError('');
+    setRefreshingId(item.id);
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}/export-practice-page/share/${item.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setRefreshError(data?.error ?? '更新失敗');
+        return;
+      }
+      setRefreshedId(item.id);
+      setTimeout(() => setRefreshedId(null), 2500);
+      fetchHistory();
+    } catch {
+      setRefreshError('更新失敗，請稍後再試');
+    } finally {
+      setRefreshingId(null);
+    }
   };
 
   const validateRange = () => {
@@ -291,7 +319,16 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
 
           {!historyLoading && history.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-gray-500">之前產生過的分享連結</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-gray-500">之前產生過的分享連結</p>
+                <Link
+                  href={`/dashboard/quizzes/${quizId}/practice-stats`}
+                  className="text-xs text-blue-600 underline"
+                >
+                  📊 查看作答統計
+                </Link>
+              </div>
+              {refreshError && <p className="text-xs text-red-600">{refreshError}</p>}
               <ul className="max-h-48 space-y-2 overflow-y-auto">
                 {history.map(item => (
                   <li key={item.id} className="rounded-lg border bg-gray-50 p-2.5 text-xs">
@@ -319,14 +356,31 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
                         QR Code
                       </button>
                     </div>
-                    <p className="mt-1 text-gray-400">
-                      第
-                      {' '}
-                      {item.questionRange}
-                      {' '}
-                      題．
-                      {new Date(item.createdAt).toLocaleString('zh-TW')}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <p className="flex-1 text-gray-400">
+                        第
+                        {' '}
+                        {item.questionRange}
+                        {' '}
+                        題．
+                        {new Date(item.createdAt).toLocaleString('zh-TW')}
+                      </p>
+                      <Link
+                        href={`/dashboard/quizzes/${quizId}/practice-stats?share=${item.id}`}
+                        className="text-blue-600 underline"
+                      >
+                        統計
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleRefreshShare(item)}
+                        disabled={refreshingId !== null}
+                        title="用目前的題目重新產生，網址不變；舊連結也會開始收集作答統計"
+                        className="text-gray-600 underline disabled:opacity-50"
+                      >
+                        {refreshingId === item.id ? '更新中…' : refreshedId === item.id ? '✅ 已更新' : '更新到最新版'}
+                      </button>
+                    </div>
                     {expandedHistoryId === item.id && (
                       <div className="mt-2 flex justify-center rounded-lg bg-white p-3">
                         <QRCode value={item.url} size={120} bgColor="#ffffff" fgColor="#000000" />
