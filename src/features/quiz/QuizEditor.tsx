@@ -30,6 +30,7 @@ import {
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
+import { ExportFillBlankPracticePageDialog } from '@/components/quiz/ExportFillBlankPracticePageDialog';
 import { ExportPracticePageDialog } from '@/components/quiz/ExportPracticePageDialog';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
@@ -372,6 +373,8 @@ export function QuizEditor({
 
   // 控制「匯出成靜態練習頁」Dialog 顯示
   const [showExportPracticeDialog, setShowExportPracticeDialog] = useState(false);
+  // 控制「匯出成填空練習頁」Dialog 顯示
+  const [showExportFillBlankDialog, setShowExportFillBlankDialog] = useState(false);
 
   // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
   // 不自動彈 ShareModal，避免打斷老師審題
@@ -782,6 +785,9 @@ export function QuizEditor({
                 <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)}>
                   🌐 匯出成靜態練習頁
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowExportFillBlankDialog(true)}>
+                  ✏️ 匯出成填空練習頁
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={openExamComposer}>
                   🧮 段考命題助手
                 </DropdownMenuItem>
@@ -822,6 +828,16 @@ export function QuizEditor({
           quizTitle={initialQuiz.title}
           totalQuestions={questions.length}
           onClose={() => setShowExportPracticeDialog(false)}
+        />
+      )}
+
+      {/* 匯出成填空練習頁 Dialog */}
+      {showExportFillBlankDialog && (
+        <ExportFillBlankPracticePageDialog
+          quizId={initialQuiz.id}
+          quizTitle={initialQuiz.title}
+          totalQuestions={questions.length}
+          onClose={() => setShowExportFillBlankDialog(false)}
         />
       )}
 

@@ -967,6 +967,9 @@ export const practicePageShareSchema = pgTable(
     ownerId: text('owner_id').notNull(), // Clerk userId，比照 quizSchema.ownerId
     url: text('url').notNull(), // Vercel Blob 公開網址
     questionRange: text('question_range').notNull(), // 例如 "1-20"
+    // 'choice' = 單選/是非題練習頁、'fillblank' = 填空題練習頁。
+    // 兩種練習頁的歷史記錄查詢各自依這個欄位過濾，避免混在一起顯示。
+    kind: text('kind').notNull().default('choice'),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   table => ({

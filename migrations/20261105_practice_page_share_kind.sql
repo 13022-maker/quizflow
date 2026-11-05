@@ -1,0 +1,1 @@
+ALTER TABLE "practice_page_share" ADD COLUMN "kind" text DEFAULT 'choice' NOT NULL;
