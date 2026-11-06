@@ -122,6 +122,12 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   .masthead .kick{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.85;font-weight:700}
   .masthead h1{margin:6px 0 4px;font-size:22px;font-weight:800}
   .masthead .en{opacity:.9;font-size:13px;font-weight:500}
+
+  .studentinfo{margin-top:14px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);padding:14px 18px;display:flex;gap:12px;flex-wrap:wrap}
+  .studentinfo label{flex:1;min-width:140px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:var(--muted)}
+  .studentinfo input{padding:8px 10px;font-size:14.5px;font-family:inherit;border:1.5px solid var(--blue-line);border-radius:8px;color:var(--ink)}
+  .studentinfo input:focus{outline:none;border-color:var(--blue)}
+
   .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
   .dock-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px}
   .bar{flex:1;height:9px;border-radius:99px;background:#e3ebf3;overflow:hidden}
@@ -204,6 +210,11 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     ${enSubtitle ? `<div class="en">${escHtml(enSubtitle)}</div>` : ''}
   </header>
 
+  <div class="studentinfo">
+    <label>班級<input type="text" id="classInput" autocomplete="off"></label>
+    <label>姓名<input type="text" id="nameInput" autocomplete="off"></label>
+  </div>
+
   <div class="dock">
     <div class="dock-inner">
       <div class="bar"><span id="progressBar"></span></div>
@@ -222,7 +233,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     <button class="btn primary" id="submitBtn" disabled>✅ 確認送出</button>
   </div>
 
-  <div class="foot">📘 免登入、不計時。空格請自行輸入，不能貼上；看一次答案會扣該格 ${hintPenaltyPercent}% 分數。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
+  <div class="foot">📘 免登入、不計時。請先填寫班級、姓名才能送出；空格請自行輸入，不能貼上；看一次答案會扣該格 ${hintPenaltyPercent}% 分數。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
 </div>
 
 <div class="overlay" id="confirmOverlay" hidden>
@@ -239,6 +250,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
 <div class="overlay" id="resultOverlay" hidden>
   <div class="modal">
     <h3>作答結果</h3>
+    <p id="resultStudentInfo" style="text-align:center;margin:-4px 0 10px;font-weight:700;color:var(--ink)"></p>
     <div class="finalscore" id="finalScore">0</div>
     <p style="text-align:center;margin-top:-6px">分（滿分 100）</p>
     <div class="result-list" id="resultList"></div>
@@ -269,6 +281,14 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   var prevBtn=document.getElementById('prevBtn');
   var nextBtn=document.getElementById('nextBtn');
   var submitBtn=document.getElementById('submitBtn');
+  var classInput=document.getElementById('classInput');
+  var nameInput=document.getElementById('nameInput');
+
+  function studentInfoFilled(){
+    return classInput.value.trim()!==''&&nameInput.value.trim()!=='';
+  }
+  classInput.addEventListener('input', renderQuestion);
+  nameInput.addEventListener('input', renderQuestion);
 
   document.getElementById('totalNum').textContent=N;
 
@@ -359,7 +379,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     document.getElementById('progressBar').style.width=(checkedCount()/N*100)+'%';
     prevBtn.disabled=(cur===0);
     nextBtn.disabled=(cur===N-1);
-    submitBtn.disabled=submitted||checkedCount()<N;
+    submitBtn.disabled=submitted||checkedCount()<N||!studentInfoFilled();
     renderJump();
   }
 
@@ -398,7 +418,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   var resultOverlay=document.getElementById('resultOverlay');
 
   submitBtn.addEventListener('click', function(){
-    if(checkedCount()<N) return; /* 防呆：按鈕理論上此時已 disabled */
+    if(checkedCount()<N||!studentInfoFilled()) return; /* 防呆：按鈕理論上此時已 disabled */
     confirmOverlay.hidden=false;
   });
   document.getElementById('confirmCancelBtn').addEventListener('click', function(){
@@ -406,6 +426,8 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   });
   document.getElementById('confirmOkBtn').addEventListener('click', function(){
     submitted=true;
+    classInput.disabled=true;
+    nameInput.disabled=true;
     confirmOverlay.hidden=true;
     showResult();
     renderQuestion();
@@ -415,6 +437,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   });
 
   function showResult(){
+    document.getElementById('resultStudentInfo').textContent=classInput.value.trim()+'　'+nameInput.value.trim();
     document.getElementById('finalScore').textContent=totalScore();
     document.getElementById('resultList').innerHTML=QUESTIONS.map(function(q,i){
       var ok=state[i].correct;
