@@ -788,6 +788,11 @@ export function QuizEditor({
                 <DropdownMenuItem onClick={() => setShowExportFillBlankDialog(true)}>
                   ✏️ 匯出成填空練習頁
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export-questions-csv`}>
+                    📊 匯出成 CSV
+                  </a>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={openExamComposer}>
                   🧮 段考命題助手
                 </DropdownMenuItem>
