@@ -98,9 +98,10 @@ const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適
 2. 每個知識點 5~8 題，難度覆蓋 0.2 到 0.9 的光譜（至少含一題 ≤0.3 與一題 ≥0.7）
 3. 全部單選題、恰好 4 個選項；錯誤選項必須是「學生真的會犯的典型錯誤」（差一錯誤、概念混淆、符號誤用），不要湊數
 4. answerIndex 必須平均分散在 0、1、2、3 之間，每個知識點內不要讓多題答案集中在同一個索引（尤其避免像上面範例一樣全部是 0）；生成完後自我檢查一次這個知識點所有題目的 answerIndex 分布，發現集中就手動調整
-5. 所有內容使用繁體中文（台灣用語）
-6. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊
-7. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號／電路圖時，一律改用純文字具體描述（例如不要畫二極體符號，改寫「一個三角形指向一條直線，箭頭方向代表電流方向」）`;
+5. 4 個選項的字數／詳細程度必須相近，絕對禁止把正確答案寫得比錯誤選項明顯更長或更完整（這是最常見的洩題破綻，學生會靠「選最長的」猜對而不理解內容）；若正解本身需要較完整的敘述，三個錯誤選項也要補到同等篇幅，不要只湊簡短的誤稱
+6. 所有內容使用繁體中文（台灣用語）
+7. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊
+8. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號／電路圖時，一律改用純文字具體描述（例如不要畫二極體符號，改寫「一個三角形指向一條直線，箭頭方向代表電流方向」）`;
 
 export function buildUserPrompt(topic: string, material?: string, hasMedia?: boolean): string {
   if (hasMedia) {
@@ -152,7 +153,7 @@ export function toSubject(
 }
 
 /** 結構之外的語意驗證：知識點引用、每點題數、難度光譜；最後用引擎建構驗 DAG */
-function validateSemantics(generated: GeneratedSubject): void {
+export function validateSemantics(generated: GeneratedSubject): void {
   const knowledgeIds = new Set(generated.knowledgePoints.map(k => k.id));
 
   for (const k of generated.knowledgePoints) {
@@ -178,6 +179,19 @@ function validateSemantics(generated: GeneratedSubject): void {
     const count = generated.items.filter(i => i.knowledgeId === kId).length;
     if (count < 3) {
       throw new Error(`知識點 ${kId} 只有 ${count} 題（至少 3 題才能適性派題）`);
+    }
+  }
+
+  // 選項長度離群檢查：AI 生成題目時天生會把「正確答案」寫得比干擾選項更完整詳細，
+  // 長度差異會讓學生不用理解內容、單靠「選最長的」就能猜對，所以只防正解過長這一個方向
+  for (const item of generated.items) {
+    const correctLength = item.options[item.answerIndex]!.length;
+    const otherLengths = item.options.filter((_, i) => i !== item.answerIndex).map(o => o.length);
+    const avgOtherLength = otherLengths.reduce((sum, l) => sum + l, 0) / otherLengths.length;
+    if (avgOtherLength > 0 && correctLength > avgOtherLength * 1.5) {
+      throw new Error(
+        `題目 ${item.id} 的正確答案選項明顯比其他選項長（${correctLength} 字 vs 其他選項平均 ${avgOtherLength.toFixed(1)} 字），學生可能靠長度猜題，請讓 4 個選項篇幅相近`,
+      );
     }
   }
 

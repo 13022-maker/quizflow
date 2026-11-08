@@ -84,4 +84,25 @@ describe('validateYoutubeSemantics', () => {
 
     expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow();
   });
+
+  it('正確答案選項明顯比其他選項長：丟出可行動的錯誤訊息', () => {
+    const generated = {
+      ...baseGenerated,
+      items: [
+        {
+          ...baseGenerated.items[0]!,
+          options: [
+            '這是正確答案，內容寫得特別完整詳細，解釋了為什麼這是對的，字數明顯比其他三個選項長很多很多',
+            '錯誤甲',
+            '錯誤乙',
+            '錯誤丙',
+          ],
+          answerIndex: 0,
+        },
+        ...baseGenerated.items.slice(1),
+      ],
+    };
+
+    expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow(/選項明顯比其他選項長/);
+  });
 });

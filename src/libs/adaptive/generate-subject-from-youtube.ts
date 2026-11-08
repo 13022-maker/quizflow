@@ -93,11 +93,12 @@ const YOUTUBE_SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，�
 2. 每個知識點 5~8 題，難度覆蓋 0.2 到 0.9 的光譜（至少含一題 ≤0.3 與一題 ≥0.7）
 3. 全部單選題、恰好 4 個選項；錯誤選項必須是「學生真的會犯的典型錯誤」，不要湊數
 4. answerIndex 必須平均分散在 0、1、2、3 之間，生成完後自我檢查一次分布，發現集中就手動調整
-5. 每題標一個 bloomLevel（記憶/理解/應用/分析/評鑑/創造），同一知識點內盡量覆蓋多種層次，不要全部都是「記憶」層級
-6. videoRef 必須引用逐字稿裡實際出現過的 videoId，startSec/endSec 落在該知識點內容講解的範圍（抓一段約 30~90 秒、足以完整講解該知識點），沒有明確對應片段就不要硬湊，留空即可（videoRef 為選填）
-7. 所有內容使用繁體中文（台灣用語）
-8. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號，絕對禁止 LaTeX
-9. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號時，一律改用純文字具體描述`;
+5. 4 個選項的字數／詳細程度必須相近，絕對禁止把正確答案寫得比錯誤選項明顯更長或更完整（這是最常見的洩題破綻，學生會靠「選最長的」猜對而不理解內容）；若正解本身需要較完整的敘述，三個錯誤選項也要補到同等篇幅，不要只湊簡短的誤稱
+6. 每題標一個 bloomLevel（記憶/理解/應用/分析/評鑑/創造），同一知識點內盡量覆蓋多種層次，不要全部都是「記憶」層級
+7. videoRef 必須引用逐字稿裡實際出現過的 videoId，startSec/endSec 落在該知識點內容講解的範圍（抓一段約 30~90 秒、足以完整講解該知識點），沒有明確對應片段就不要硬湊，留空即可（videoRef 為選填）
+8. 所有內容使用繁體中文（台灣用語）
+9. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號，絕對禁止 LaTeX
+10. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號時，一律改用純文字具體描述`;
 
 export function buildYoutubeUserPrompt(topic: string, transcript: string): string {
   return `請為以下單元主題設計學科：「${topic.trim()}」\n\n以下是老師提供的 YouTube 影片逐字稿，知識點劃分與題目範圍以此為準（不要超出逐字稿範圍出題）：\n<影片逐字稿>\n${transcript}\n</影片逐字稿>`;
@@ -142,6 +143,19 @@ export function validateYoutubeSemantics(
     const count = generated.items.filter(i => i.knowledgeId === kId).length;
     if (count < 3) {
       throw new Error(`知識點 ${kId} 只有 ${count} 題（至少 3 題才能適性派題）`);
+    }
+  }
+
+  // 選項長度離群檢查：AI 生成題目時天生會把「正確答案」寫得比干擾選項更完整詳細，
+  // 長度差異會讓學生不用理解內容、單靠「選最長的」就能猜對，所以只防正解過長這一個方向
+  for (const item of generated.items) {
+    const correctLength = item.options[item.answerIndex]!.length;
+    const otherLengths = item.options.filter((_, i) => i !== item.answerIndex).map(o => o.length);
+    const avgOtherLength = otherLengths.reduce((sum, l) => sum + l, 0) / otherLengths.length;
+    if (avgOtherLength > 0 && correctLength > avgOtherLength * 1.5) {
+      throw new Error(
+        `題目 ${item.id} 的正確答案選項明顯比其他選項長（${correctLength} 字 vs 其他選項平均 ${avgOtherLength.toFixed(1)} 字），學生可能靠長度猜題，請讓 4 個選項篇幅相近`,
+      );
     }
   }
 
