@@ -11,9 +11,16 @@
  * - 每格核對後立即顯示對錯
  * - 全部核對過才能按「確認送出」，送出後鎖定、顯示總分
  *
+ * 線上分享版（/api/p/[id] 代理注入 submitEndpoint）按「確定送出」時，會把班級、姓名、
+ * 每格最後一次核對的內容與看答案次數送回 QuizFlow，由 server 重算分數，成功後顯示
+ * 「繳交到 Google Classroom」按鈕；下載的離線檔沒有 config，維持本機算分、不連網。
+ *
  * 純函式：不碰 DB、不碰 Request，方便測試；由
  * export-fillblank-practice-page/route.ts 呼叫。
  */
+
+import { PRACTICE_PAGE_CONFIG_MARKER } from './exportPracticePage';
+import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
 
 function escHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -103,6 +110,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>${escHtml(title)} | QuizFlow</title>
+${PRACTICE_PAGE_CONFIG_MARKER}
 <style>
   :root{
     --ink:#0f2540; --blue:#1e5a8a; --blue-dark:#17466b;
@@ -123,10 +131,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   .masthead h1{margin:6px 0 4px;font-size:22px;font-weight:800}
   .masthead .en{opacity:.9;font-size:13px;font-weight:500}
 
-  .studentinfo{margin-top:14px;background:var(--card);border:1px solid var(--blue-line);border-radius:14px;box-shadow:var(--shadow);padding:14px 18px;display:flex;gap:12px;flex-wrap:wrap}
-  .studentinfo label{flex:1;min-width:140px;display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:700;color:var(--muted)}
-  .studentinfo input{padding:8px 10px;font-size:14.5px;font-family:inherit;border:1.5px solid var(--blue-line);border-radius:8px;color:var(--ink)}
-  .studentinfo input:focus{outline:none;border-color:var(--blue)}
+${PRACTICE_PAGE_SUBMIT_CSS}
 
   .dock{position:sticky;top:0;z-index:30;margin:0 -18px;padding:10px 18px;background:rgba(244,247,251,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--blue-line)}
   .dock-inner{max-width:760px;margin:0 auto;display:flex;align-items:center;gap:14px}
@@ -183,7 +188,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
 
   .overlay{position:fixed;inset:0;background:rgba(15,37,64,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
   .overlay[hidden]{display:none}
-  .modal{background:#fff;border-radius:14px;padding:22px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+  .modal{background:#fff;border-radius:14px;padding:22px;max-width:420px;width:100%;max-height:92vh;overflow-y:auto;box-shadow:var(--shadow)}
   .modal h3{margin:0 0 10px;font-size:16px}
   .modal p{margin:0 0 16px;font-size:14px;color:var(--muted)}
   .modal .row{display:flex;gap:10px;justify-content:flex-end}
@@ -211,8 +216,8 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   </header>
 
   <div class="studentinfo">
-    <label>班級<input type="text" id="classInput" autocomplete="off"></label>
-    <label>姓名<input type="text" id="nameInput" autocomplete="off"></label>
+    <label>班級<input type="text" id="classInput" autocomplete="off" maxlength="40"></label>
+    <label>姓名<input type="text" id="nameInput" autocomplete="off" maxlength="40"></label>
   </div>
 
   <div class="dock">
@@ -240,6 +245,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   <div class="modal">
     <h3>確定要送出嗎？</h3>
     <p id="confirmText">送出後會鎖定所有空格，無法再修改。</p>
+    <div class="qf-err" id="confirmErr"></div>
     <div class="row">
       <button class="btn sub" id="confirmCancelBtn">再檢查一下</button>
       <button class="btn primary" id="confirmOkBtn">確定送出</button>
@@ -254,6 +260,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     <div class="finalscore" id="finalScore">0</div>
     <p style="text-align:center;margin-top:-6px">分（滿分 100）</p>
     <div class="result-list" id="resultList"></div>
+    <div id="submitStatus"></div>
     <div class="row" style="margin-top:14px">
       <button class="btn primary" id="resultCloseBtn">關閉</button>
     </div>
@@ -268,12 +275,17 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
   var QUESTIONS=${toEmbeddableJson(questions)};
   var HINT_PENALTY_PERCENT=${hintPenaltyPercent};
   var N=QUESTIONS.length;
+${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
+  var ONLINE_SUBMIT=!!qfSubmitEndpoint(); /* 只有線上分享版才把成績送回 QuizFlow */
+  var SID=qfUuid(); /* 每次開頁 = 一次作答 session，只存在記憶體；server 用它擋同一次作答重複送出 */
+  var sending=false;
 
   /* ---------- state ---------- */
   var cur=0;
   // 每題一筆：typed（目前輸入框內容）、checked（是否按過「核對答案」至少一次）、
-  // correct（最近一次核對是否正確）、hintUses（看答案次數，影響扣分）
-  var state=QUESTIONS.map(function(){ return { typed:'', checked:false, correct:false, hintUses:0 }; });
+  // correct（最近一次核對是否正確）、checkedTyped（最近一次核對時的內容，送出給 server 重算用）、
+  // hintUses（看答案次數，影響扣分）
+  var state=QUESTIONS.map(function(){ return { typed:'', checked:false, correct:false, checkedTyped:'', hintUses:0 }; });
   var submitted=false;
 
   var qcard=document.getElementById('qcard');
@@ -388,6 +400,7 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     var input=document.getElementById('blankInput');
     var typed=(input.value||'').trim();
     state[cur].typed=typed;
+    state[cur].checkedTyped=typed;
     state[cur].checked=true;
     state[cur].correct=typed!==''&&typed.toLowerCase()===QUESTIONS[cur].answer.trim().toLowerCase();
     renderQuestion();
@@ -421,24 +434,57 @@ export function buildFillBlankPracticePageHtml(params: FillBlankPracticePagePara
     if(checkedCount()<N||!studentInfoFilled()) return; /* 防呆：按鈕理論上此時已 disabled */
     confirmOverlay.hidden=false;
   });
-  document.getElementById('confirmCancelBtn').addEventListener('click', function(){
+  var confirmOkBtn=document.getElementById('confirmOkBtn');
+  var confirmCancelBtn=document.getElementById('confirmCancelBtn');
+  var confirmErr=document.getElementById('confirmErr');
+  confirmCancelBtn.addEventListener('click', function(){
+    if(sending) return;
+    confirmErr.textContent='';
     confirmOverlay.hidden=true;
   });
-  document.getElementById('confirmOkBtn').addEventListener('click', function(){
+  confirmOkBtn.addEventListener('click', function(){
+    if(submitted||sending) return;
+    if(!ONLINE_SUBMIT){ finalizeSubmit(null); return; }
+    /* 線上分享版：先送到 server，成功才鎖定；失敗留在確認視窗顯示錯誤，可以再按一次 */
+    sending=true;
+    confirmErr.textContent='';
+    confirmOkBtn.disabled=true;
+    confirmCancelBtn.disabled=true;
+    confirmOkBtn.textContent='送出中…';
+    qfSubmit({
+      sessionId:SID,
+      className:classInput.value.trim(),
+      studentName:nameInput.value.trim(),
+      answers:state.map(function(s){ return { typed:s.checkedTyped, hintUses:s.hintUses }; })
+    }, function(err,data){
+      sending=false;
+      confirmOkBtn.disabled=false;
+      confirmCancelBtn.disabled=false;
+      confirmOkBtn.textContent='確定送出';
+      if(err){ confirmErr.textContent=err; return; }
+      finalizeSubmit(data);
+    });
+  });
+
+  function finalizeSubmit(serverResult){
     submitted=true;
     classInput.disabled=true;
     nameInput.disabled=true;
     confirmOverlay.hidden=true;
-    showResult();
+    showResult(serverResult);
     renderQuestion();
-  });
+  }
   document.getElementById('resultCloseBtn').addEventListener('click', function(){
     resultOverlay.hidden=true;
   });
 
-  function showResult(){
+  function showResult(serverResult){
     document.getElementById('resultStudentInfo').textContent=classInput.value.trim()+'　'+nameInput.value.trim();
-    document.getElementById('finalScore').textContent=totalScore();
+    /* 線上版以 server 重算的分數為準（老師端看到的就是這個分數） */
+    document.getElementById('finalScore').textContent=serverResult?serverResult.score:totalScore();
+    document.getElementById('submitStatus').innerHTML=serverResult
+      ?'<div class="qf-ok" style="margin-top:12px">✅ 已送出成績給老師</div>'+qfClassroomHtml(serverResult)
+      :'';
     document.getElementById('resultList').innerHTML=QUESTIONS.map(function(q,i){
       var ok=state[i].correct;
       return '<div class="result-item"><span>'+(ok?'✅':'❌')+' 第 '+(i+1)+' 題：'+esc(q.answer)+'</span><span class="result-score">'+blankScore(i).toFixed(1)+' 分</span></div>';

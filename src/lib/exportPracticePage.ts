@@ -11,6 +11,8 @@
  * 純函式：不碰 DB、不碰 Request，方便測試；由 export-practice-page/route.ts 呼叫。
  */
 
+import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
+
 export type PracticePageOption = string | { img: string; alt?: string };
 
 export type PracticePageQuestion = {
@@ -118,6 +120,7 @@ export const PRACTICE_PAGE_CONFIG_MARKER = '<!--qf-practice-config-->';
 export type PracticePageRuntimeConfig = {
   endpoint: string; // 作答事件 POST 網址
   signupUrl: string; // 身分選「老師」時顯示的 QuizFlow 註冊連結
+  submitEndpoint?: string; // 「確認送出」成績回傳網址（/api/p/[id]/submit）；沒有就不顯示班級姓名欄與送出按鈕
 };
 
 export function hasPracticePageAnalytics(html: string): boolean {
@@ -242,6 +245,7 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
   .leadok{color:var(--ok);font-weight:700}
   .endgo{display:block;margin-top:12px}
 
+${PRACTICE_PAGE_SUBMIT_CSS}
   .kbdhint{margin-top:14px;text-align:center;font-size:12px;color:var(--hint)}
   .kbdhint kbd{background:#fff;border:1px solid var(--blue-line);border-radius:5px;padding:1px 6px;font-family:inherit;font-size:11.5px;color:var(--blue-dark)}
   .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--hint)}
@@ -264,6 +268,12 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
     <h1>${escHtml(title)}</h1>
     ${enSubtitle ? `<div class="en">${escHtml(enSubtitle)}</div>` : ''}
   </header>
+
+  <!-- 班級/姓名：只有線上分享版（代理注入 submitEndpoint）才顯示，下載的離線檔維持原樣 -->
+  <div class="studentinfo" id="studentInfo" hidden>
+    <label>班級<input type="text" id="classInput" autocomplete="off" maxlength="40"></label>
+    <label>姓名<input type="text" id="nameInput" autocomplete="off" maxlength="40"></label>
+  </div>
 
   <div class="dock">
     <div class="dock-inner">
@@ -304,6 +314,13 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,function(c){var r=Math.random()*16|0;return (c==='x'?r:(r&3|8)).toString(16);});
   }
   var SID=uuid(); /* 每次開頁 = 一次作答 session，只存在記憶體，不用 cookie */
+${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
+  /* 線上分享版才啟用班級姓名欄與「確認送出」；離線檔 ONLINE_SUBMIT=false，結束畫面維持原樣 */
+  var ONLINE_SUBMIT=!!qfSubmitEndpoint();
+  var classInput=document.getElementById('classInput');
+  var nameInput=document.getElementById('nameInput');
+  if(ONLINE_SUBMIT) document.getElementById('studentInfo').hidden=false;
+  var submitState={sending:false,result:null,error:''};
   function send(payload){
     if(!CFG||!CFG.endpoint) return;
     try{
@@ -503,6 +520,36 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
       '</form></div>';
   }
 
+  /* ---------- 線上分享版：把成績送給老師 ---------- */
+  function submitHtml(){
+    if(submitState.result){
+      return '<div class="endsec"><div class="qf-ok">✅ 已送出成績給老師（'+esc(submitState.result.score)+' / '+esc(submitState.result.maxScore)+' 分）</div>'+qfClassroomHtml(submitState.result)+'</div>';
+    }
+    return '<div class="endsec"><div class="endh">把這次成績送給老師（送出後不能修改）</div>'+
+      '<button type="button" class="btn primary" id="submitScoreBtn"'+(submitState.sending?' disabled':'')+'>'+(submitState.sending?'送出中…':'✅ 確認送出')+'</button>'+
+      '<div class="qf-err" id="submitErr"></div></div>';
+  }
+
+  function doSubmitScore(){
+    if(submitState.sending||submitState.result) return;
+    var cls=classInput.value.trim(), nm=nameInput.value.trim();
+    if(!cls||!nm){
+      submitState.error='請先在頁面最上方填寫班級、姓名再送出';
+      renderEnd();
+      try{ classInput.focus(); }catch(e){}
+      return;
+    }
+    submitState.sending=true;
+    submitState.error='';
+    renderEnd();
+    qfSubmit({sessionId:SID,className:cls,studentName:nm,answers:answered.slice()},function(err,data){
+      submitState.sending=false;
+      if(err){ submitState.error=err; }
+      else{ submitState.result=data; classInput.disabled=true; nameInput.disabled=true; }
+      if(showEnd) renderEnd();
+    });
+  }
+
   function renderEnd(){
     showEnd=true;
     leaveCurrent();
@@ -516,6 +563,7 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
           return '<button type="button" class="jbtn wrongj" data-i="'+i+'">'+(i+1)+'</button>';
         }).join('')+'</div></div>'
         :'<div class="endsec allok">🎉 全部答對！</div>');
+    if(ONLINE_SUBMIT){ h+=submitHtml(); }
     if(CFG&&CFG.endpoint){ h+=profileHtml()+leadHtml(); }
     h+='</div>';
 
@@ -537,6 +585,10 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
         send({type:'profile',role:profile.role,language:profile.language,examPlan:profile.examPlan});
       });
     });
+    var submitScoreBtn=document.getElementById('submitScoreBtn');
+    if(submitScoreBtn) submitScoreBtn.addEventListener('click',doSubmitScore);
+    var submitErr=document.getElementById('submitErr');
+    if(submitErr) submitErr.textContent=submitState.error;
     var form=document.getElementById('leadForm');
     if(form){
       form.addEventListener('submit',function(e){
