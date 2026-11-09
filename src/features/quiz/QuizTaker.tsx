@@ -12,6 +12,7 @@ import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { ClozeQuestion } from './ClozeQuestion';
 import { FlashCard } from './FlashCard';
+import { QuizReferenceVideo } from './QuizReferenceVideo';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
 // 避免一般測驗的學生作答頁被 ~200KB 的依賴拖累
@@ -1593,21 +1594,28 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       );
     }
     return (
-      <FlashCard
-        questions={displayQuestions}
-        onExit={() => setFlashCardMode(false)}
-      />
+      <div className="space-y-6">
+        <QuizReferenceVideo youtubeUrl={quiz.youtubeUrl} quizTitle={quiz.title} />
+        <FlashCard
+          questions={displayQuestions}
+          onExit={() => setFlashCardMode(false)}
+        />
+      </div>
     );
   }
 
   // 錯題重做模式
   if (result && retryMode) {
+    // 錯題重做一樣要看影片才能作答，影片放在最上方
     return (
-      <RetryScreen
-        wrongQuestions={retryQuestions}
-        originalWrongCount={retryQuestions.length}
-        onBack={() => setRetryMode(false)}
-      />
+      <div className="space-y-6">
+        <QuizReferenceVideo youtubeUrl={quiz.youtubeUrl} quizTitle={quiz.title} />
+        <RetryScreen
+          wrongQuestions={retryQuestions}
+          originalWrongCount={retryQuestions.length}
+          onBack={() => setRetryMode(false)}
+        />
+      </div>
     );
   }
 
@@ -1656,6 +1664,9 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           </span>
         </div>
       )}
+
+      {/* 參考影片（題目需看影片作答，放在試卷最上方） */}
+      <QuizReferenceVideo youtubeUrl={quiz.youtubeUrl} quizTitle={quiz.title} />
 
       {/* 測驗標題 */}
       <div className="rounded-2xl border border-white/80 bg-white/90 p-6 shadow-sm backdrop-blur-sm">

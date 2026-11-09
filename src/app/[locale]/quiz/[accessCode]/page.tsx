@@ -39,6 +39,7 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
       scoringMode: quizSchema.scoringMode,
       attemptDecayRate: quizSchema.attemptDecayRate,
       quizMode: quizSchema.quizMode,
+      youtubeUrl: quizSchema.youtubeUrl,
       category: quizSchema.category,
       gradeLevel: quizSchema.gradeLevel,
       tags: quizSchema.tags,

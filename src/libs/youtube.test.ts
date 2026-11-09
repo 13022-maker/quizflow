@@ -11,7 +11,14 @@ vi.mock('youtube-transcript', () => ({
 }));
 
 // eslint-disable-next-line import/first -- mock 必須在 import 目標函式之前設定好
-import { buildTimestampedTranscript, extractYouTubeId, fetchYouTubeTranscriptSegments, validateYoutubeImportUrls } from './youtube';
+import {
+  buildTimestampedTranscript,
+  buildYoutubeEmbedUrl,
+  extractYouTubeId,
+  fetchYouTubeTranscriptSegments,
+  quizYoutubeUrlSchema,
+  validateYoutubeImportUrls,
+} from './youtube';
 
 describe('extractYouTubeId', () => {
   it('watch?v= 格式：取出 11 碼 video id', () => {
@@ -36,6 +43,63 @@ describe('extractYouTubeId', () => {
 
   it('非 YouTube 網址：回傳 null', () => {
     expect(extractYouTubeId('https://example.com/video')).toBeNull();
+  });
+
+  it('watch 網址 v 不是第一個參數（分享連結常見）：仍取出 video id', () => {
+    expect(extractYouTubeId('https://www.youtube.com/watch?feature=share&v=dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+  });
+
+  it('手機版 m.youtube.com 並帶時間參數：取出 video id', () => {
+    expect(extractYouTubeId('https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=42s')).toBe('dQw4w9WgXcQ');
+  });
+
+  it('youtu.be 帶 ?si= 追蹤參數：取出 video id', () => {
+    expect(extractYouTubeId('https://youtu.be/dQw4w9WgXcQ?si=AbCdEf123')).toBe('dQw4w9WgXcQ');
+  });
+
+  it('video id 不足 11 碼：回傳 null', () => {
+    expect(extractYouTubeId('https://youtu.be/short')).toBeNull();
+  });
+});
+
+describe('buildYoutubeEmbedUrl', () => {
+  it('組出 youtube-nocookie 的 embed 網址', () => {
+    expect(buildYoutubeEmbedUrl('dQw4w9WgXcQ')).toBe('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ');
+  });
+});
+
+describe('quizYoutubeUrlSchema（老師設定參考影片的輸入驗證）', () => {
+  it('空字串：轉成 null（清空影片）', () => {
+    expect(quizYoutubeUrlSchema.parse('')).toBeNull();
+  });
+
+  it('只有空白：轉成 null', () => {
+    expect(quizYoutubeUrlSchema.parse('   ')).toBeNull();
+  });
+
+  it('null：維持 null', () => {
+    expect(quizYoutubeUrlSchema.parse(null)).toBeNull();
+  });
+
+  it('合法網址：去掉前後空白後原樣保留', () => {
+    expect(quizYoutubeUrlSchema.parse('  https://youtu.be/dQw4w9WgXcQ  ')).toBe('https://youtu.be/dQw4w9WgXcQ');
+  });
+
+  it('shorts 網址：接受', () => {
+    expect(quizYoutubeUrlSchema.parse('https://www.youtube.com/shorts/dQw4w9WgXcQ')).toBe('https://www.youtube.com/shorts/dQw4w9WgXcQ');
+  });
+
+  it('無法解析出 video id：回傳繁中錯誤訊息', () => {
+    const result = quizYoutubeUrlSchema.safeParse('https://example.com/video');
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('無法辨識的 YouTube 影片網址，請貼上 watch?v=、youtu.be/、shorts/ 或 embed/ 格式的連結');
+  });
+
+  it('超過 500 字：拒絕', () => {
+    const result = quizYoutubeUrlSchema.safeParse(`https://youtu.be/dQw4w9WgXcQ?x=${'a'.repeat(500)}`);
+
+    expect(result.success).toBe(false);
   });
 });
 

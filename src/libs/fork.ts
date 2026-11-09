@@ -35,6 +35,7 @@ export type SourceQuiz = {
   category: string | null;
   gradeLevel: string | null;
   tags: string[];
+  youtubeUrl: string | null; // 參考影片：題目依賴影片作答，複製 / fork 時必須跟著帶走
 };
 
 // fork 來源 question 需要讀取的欄位
@@ -134,6 +135,7 @@ export function buildNewQuizValues(
     preventLeave: source.preventLeave,
     scoringMode: source.scoringMode,
     attemptDecayRate: source.attemptDecayRate,
+    youtubeUrl: source.youtubeUrl,
 
     // 強制重置:新 quiz 預設不發佈、不公開、無到期
     status: 'draft' as const,
@@ -185,6 +187,7 @@ export function buildDuplicateQuizValues(
     preventLeave: source.preventLeave,
     scoringMode: source.scoringMode,
     attemptDecayRate: source.attemptDecayRate,
+    youtubeUrl: source.youtubeUrl,
 
     // 強制重置：複製出來的新 quiz 先草稿、不公開、無到期，讓老師檢查後再發佈
     status: 'draft' as const,

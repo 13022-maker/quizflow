@@ -50,6 +50,7 @@ import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
 import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
+import { extractYouTubeId } from '@/libs/youtube';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -217,6 +218,11 @@ export function QuizEditor({
   const [showAnswers, setShowAnswers] = useState(initialQuiz.showAnswers);
   const [preventLeave, setPreventLeave] = useState(initialQuiz.preventLeave);
 
+  // 參考影片（YouTube 網址）：savedYoutubeUrl = 已存進 DB 的值；youtubeUrlInput = 輸入框草稿
+  const [savedYoutubeUrl, setSavedYoutubeUrl] = useState(initialQuiz.youtubeUrl ?? '');
+  const [youtubeUrlInput, setYoutubeUrlInput] = useState(initialQuiz.youtubeUrl ?? '');
+  const [youtubeUrlError, setYoutubeUrlError] = useState('');
+
   // 目前選中的快速方案（null = 未選或手動調整後取消）
   type ModePreset = 'exam' | 'practice' | 'review';
   const [activePreset, setActivePreset] = useState<ModePreset | null>(null);
@@ -365,6 +371,21 @@ export function QuizEditor({
     });
   };
 
+  // ── 參考影片（YouTube 網址）───────────────────────────────────────
+  const saveYoutubeUrl = (value: string) => {
+    const trimmed = value.trim();
+    setYoutubeUrlError('');
+    startTransition(async () => {
+      const res = await updateQuizSettings(initialQuiz.id, { youtubeUrl: trimmed });
+      if (res?.error) {
+        setYoutubeUrlError(res.error);
+        return;
+      }
+      setSavedYoutubeUrl(trimmed);
+      setYoutubeUrlInput(trimmed);
+    });
+  };
+
   // 設定區預設收起
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -409,7 +430,11 @@ export function QuizEditor({
   }, [autoOpenAI, isPro]);
 
   // ── AIQuizModal onImport：批次 POST 到 /api/quizzes/[id]/questions ─────
-  const handleAIImport = async (aiQuestions: AIGeneratedQuestion[], aiTitle: string) => {
+  const handleAIImport = async (
+    aiQuestions: AIGeneratedQuestion[],
+    aiTitle: string,
+    meta?: { sourceUrl?: string },
+  ) => {
     setIsSubmitting(true);
     setShowAIModal(false);
 
@@ -462,6 +487,21 @@ export function QuizEditor({
       } catch (err) {
         // 更新標題失敗不阻擋題目匯入(題目已成功)
         console.error('[handleAIImport] 更新標題失敗', err);
+      }
+    }
+
+    // 從 YouTube 網址命題：若測驗尚未設定參考影片，自動回填來源網址（學生作答頁才看得到影片）
+    // 已有參考影片就不覆蓋老師的設定；Google Docs 等非 YouTube 網址直接略過
+    if (meta?.sourceUrl && !savedYoutubeUrl && extractYouTubeId(meta.sourceUrl)) {
+      try {
+        const res = await updateQuizSettings(initialQuiz.id, { youtubeUrl: meta.sourceUrl });
+        if (!res?.error) {
+          setSavedYoutubeUrl(meta.sourceUrl);
+          setYoutubeUrlInput(meta.sourceUrl);
+        }
+      } catch (err) {
+        // 回填失敗不阻擋題目匯入（題目已成功），老師可在測驗設定手動填
+        console.error('[handleAIImport] 回填參考影片失敗', err);
       }
     }
 
@@ -909,6 +949,7 @@ export function QuizEditor({
               {!activePreset && '自訂'}
               {showAnswers ? ' · 顯示解答' : ''}
               {preventLeave ? ' · 防作弊' : ''}
+              {savedYoutubeUrl ? ' · 參考影片' : ''}
             </span>
           </div>
           <svg className={`size-4 text-muted-foreground transition-transform ${settingsOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1046,6 +1087,65 @@ export function QuizEditor({
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* 第三列：參考影片（題目源自 YouTube 影片時，學生作答頁頂部會嵌入播放器） */}
+            <div className="space-y-1.5 text-sm">
+              <label htmlFor="quiz-youtube-url" className="block text-muted-foreground">
+                參考影片（YouTube 網址）
+              </label>
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  id="quiz-youtube-url"
+                  type="url"
+                  inputMode="url"
+                  value={youtubeUrlInput}
+                  onChange={(e) => {
+                    setYoutubeUrlInput(e.target.value);
+                    setYoutubeUrlError('');
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      saveYoutubeUrl(youtubeUrlInput);
+                    }
+                  }}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  disabled={isPending}
+                  aria-invalid={youtubeUrlError ? true : undefined}
+                  aria-describedby="quiz-youtube-url-hint"
+                  className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-ring"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => saveYoutubeUrl(youtubeUrlInput)}
+                  disabled={isPending || youtubeUrlInput.trim() === savedYoutubeUrl}
+                >
+                  儲存
+                </Button>
+                {savedYoutubeUrl && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => saveYoutubeUrl('')}
+                    disabled={isPending}
+                  >
+                    清除
+                  </Button>
+                )}
+              </div>
+              {youtubeUrlError
+                ? <p id="quiz-youtube-url-hint" role="alert" className="text-xs text-red-600">{youtubeUrlError}</p>
+                : (
+                    <p id="quiz-youtube-url-hint" className="text-xs text-muted-foreground">
+                      {savedYoutubeUrl
+                        ? '✅ 已設定，學生作答頁最上方會顯示此影片'
+                        : '題目需要看影片才能作答時填入，學生作答頁最上方會嵌入影片播放器'}
+                    </p>
+                  )}
             </div>
           </div>
         )}
