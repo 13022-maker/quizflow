@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Range 打磚塊｜APCS 陷阱題遊戲 · QuizFlow</title>
 <meta name="description" content="用 range(start, stop, step) 打磚塊！10 關 APCS Python 陷阱題＋60 秒挑戰，免登入直接玩。">
 <meta property="og:title" content="Range 打磚塊｜APCS 陷阱題遊戲">
@@ -12,9 +12,9 @@
 <style>
 :root{--bg:#0d121c;--card:#161d2b;--line:#2a3447;--txt:#e8ecf3;--dim:#8a94a8;--yel:#f5c84b;--blue:#5aa9ff;--red:#ef5a5a;--grn:#3ddc97;--pur:#a78bfa}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+html,body{margin:0;height:100%;overflow-x:hidden;overscroll-behavior:none;touch-action:manipulation;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
 body{background-image:radial-gradient(#ffffff10 1px,transparent 1px);background-size:22px 22px;display:flex;justify-content:center}
-.app{width:100%;max-width:480px;min-height:100%;padding:12px 14px 20px;display:flex;flex-direction:column;gap:10px;position:relative}
+.app{width:100%;max-width:480px;min-height:100vh;min-height:100dvh;padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px;position:relative}
 .mono{font-family:ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace}
 .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .badge{border:2px solid var(--yel);color:var(--yel);border-radius:999px;padding:4px 12px;font-weight:800;font-size:15px;white-space:nowrap}
@@ -23,27 +23,28 @@ body{background-image:radial-gradient(#ffffff10 1px,transparent 1px);background-
 .balls span{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--yel);margin-left:3px}
 .balls span.used{background:#333c4f}
 .icon-btn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:5px 9px;font-size:14px;cursor:pointer}
-.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 16px;font-size:17px;line-height:1.7}
+.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:clamp(14px,4.3vw,18px);line-height:1.7;white-space:nowrap;overflow-x:auto}
 .kw{color:#c792ea}.fn{color:var(--blue)}.na{color:var(--yel);font-weight:700}.nb{color:var(--red);font-weight:700}.nc{color:var(--grn);font-weight:700}.pr{color:#c792ea}
 .goal{font-size:13px;color:var(--dim);text-align:center;min-height:18px}
-.cond{text-align:center;min-height:62px}
-.cond .big{font-size:30px;font-weight:800}
-.cond .sub{font-size:13px;color:var(--dim)}
+.cond{text-align:center;min-height:58px}
+.cond .big{font-size:clamp(24px,7.5vw,32px);font-weight:800}
+.cond .sub{font-size:12.5px;color:var(--dim)}
 .ok{color:var(--grn)}.bad{color:var(--red)}
-canvas{width:100%;height:230px;display:block}
+.stage{flex:1 1 auto;min-height:170px;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .out{display:flex;gap:8px;align-items:center;overflow-x:auto;min-height:52px;padding:2px 0}
 .out .lab{background:#2a3242;color:var(--dim);border-radius:8px;padding:6px 10px;font-size:13px;flex:none}
 .out .box{flex:none;min-width:44px;height:46px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;border:2px solid var(--blue);background:#1d2a40;animation:pop .25s}
 .out .box:nth-child(odd){border-color:var(--pur);background:#2a2440}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
-.ctrls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 6px;text-align:center}
-.st .nm{font-size:12px;font-weight:700;letter-spacing:.5px}
-.st .row{display:flex;align-items:center;justify-content:space-between;margin-top:4px}
-.st button{width:36px;height:36px;border-radius:9px;border:none;background:#263046;color:var(--txt);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.ctrls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 5px;text-align:center;min-width:0}
+.st .nm{white-space:nowrap;font-size:clamp(10px,3.1vw,12px);font-weight:700;letter-spacing:.5px}
+.st .row{display:flex;align-items:center;justify-content:space-between;gap:2px;margin-top:4px}
+.st button{flex:none;width:clamp(30px,9vw,38px);height:40px;border-radius:9px;border:none;background:#263046;color:var(--txt);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation}
 .st button:active{background:#33405c}
-.st .v{font-size:22px;font-weight:800;min-width:34px}
-.fire{width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(180deg,#ffd76a,#f0b429);color:#2a1d00;font-size:19px;font-weight:900;cursor:pointer;box-shadow:0 4px 0 #a87a10}
+.st .v{flex:1;min-width:0;font-size:clamp(18px,5.6vw,24px);font-weight:800}
+.fire{width:100%;padding:13px;border:none;border-radius:14px;background:linear-gradient(180deg,#ffd76a,#f0b429);color:#2a1d00;font-size:19px;font-weight:900;cursor:pointer;box-shadow:0 4px 0 #a87a10}
 .fire:active{transform:translateY(2px);box-shadow:0 2px 0 #a87a10}
 .fire:disabled{opacity:.5}
 .sub-row{display:flex;gap:8px}
@@ -66,7 +67,7 @@ canvas{width:100%;height:230px;display:block}
 .grid button small{display:block;font-size:10px;color:var(--yel)}
 .grid button:disabled{opacity:.35}
 .stars{font-size:34px;letter-spacing:4px;margin:6px 0}
-.legend{display:flex;gap:12px;justify-content:center;font-size:12px;color:var(--dim)}
+.legend{display:flex;gap:10px;justify-content:center;font-size:11px;color:var(--dim);white-space:nowrap}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
 </style>
 </head>
@@ -83,8 +84,8 @@ canvas{width:100%;height:230px;display:block}
   <div class="code mono" id="code"></div>
   <div class="goal" id="goal"></div>
   <div class="cond" id="cond"><div class="big">&nbsp;</div><div class="sub">&nbsp;</div></div>
-  <canvas id="cv"></canvas>
-  <div class="legend"><span><i style="background:var(--yel)"></i>目標磚（數字＝要打幾次）</span><span><i style="background:var(--red)"></i>炸彈（碰到就失敗）</span></div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="legend"><span><i style="background:var(--yel)"></i>金磚：數字＝要打幾次</span><span><i style="background:var(--red)"></i>炸彈：碰到就失敗</span></div>
   <div class="out mono" id="out"><span class="lab">印出</span></div>
   <div class="ctrls mono">
     <div class="st"><div class="nm" style="color:var(--yel)">start 包含</div><div class="row"><button data-k="a" data-d="-1">−</button><span class="v" id="va">0</span><button data-k="a" data-d="1">+</button></div></div>
@@ -153,10 +154,10 @@ function beep(f,d=.08,type='square',v=.05){if(muted)return;try{ac=ac||new (windo
 
 // ---------- canvas
 const cv=$('cv'),cx=cv.getContext('2d');let W=0,H=0;
-function resize(){const r=cv.getBoundingClientRect(),dp=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dp;cv.height=H*dp;cx.setTransform(dp,0,0,dp,0,0)}
-window.addEventListener('resize',resize);
+function resize(){const r=cv.getBoundingClientRect(),dp=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dp;cv.height=H*dp;cx.setTransform(dp,0,0,dp,0,0);BH=Math.round(Math.max(28,Math.min(42,H*.085)))}
+window.addEventListener('resize',resize);try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){}
 const X=p=>16+(p-LO)*(W-32)/(HI-LO);
-const lineY=()=>H-56, BH=30;
+let BH=30;const lineY=()=>Math.min(H-56,Math.round(H*.62)+20);
 function cellW(){return (W-32)/(HI-LO)}
 function brickAt(p){const c=board[p];return c&&(c.type==='b'&&!c.dead||c.type==='t'&&c.hp>0)?c:null}
 function landY(p){return lineY()-(brickAt(p)?BH+3:0)-10}
@@ -168,7 +169,7 @@ function draw(){
   const ly=lineY(),cw=cellW();
   // line
   cx.strokeStyle='#8a94a8';cx.lineWidth=2;cx.beginPath();cx.moveTo(X(LO)-8,ly);cx.lineTo(X(HI)+8,ly);cx.stroke();
-  cx.font='600 12px ui-monospace,Menlo,monospace';cx.textAlign='center';
+  cx.font=`600 ${Math.round(Math.min(13,Math.max(8,cw/1.3)))}px ui-monospace,Menlo,monospace`;cx.textAlign='center';
   for(let p=LO;p<=HI;p++){
     const x=X(p);cx.strokeStyle='#8a94a8';cx.beginPath();cx.moveTo(x,ly-6);cx.lineTo(x,ly+6);cx.stroke();
     cx.fillStyle=p===a?'#5aa9ff':(p<0||p>15?'#4a5468':'#8a94a8');cx.fillText(p,x,ly+22);
@@ -179,9 +180,9 @@ function draw(){
   if(b>=LO&&b<=HI){const x=X(b);cx.strokeStyle='#ef5a5a';cx.lineWidth=2;cx.strokeRect(x-4,ly-24,8,36);cx.fillStyle='#ef5a5a';cx.font='700 10px system-ui';cx.fillText('stop不含',Math.max(28,Math.min(W-28,x)),ly+(Math.abs(a-b)<2?50:36))}
   // bricks
   for(const k in board){const c=board[k],p=+k,x=X(p),w=Math.min(cw-4,34);
-    if(c.type==='t'&&c.hp>0){cx.fillStyle=c.hp>1?'#f0a020':'#f5c84b';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.fillStyle='#2a1d00';cx.font='800 15px system-ui';cx.fillText(c.hp,x,ly-BH/2+2)}
+    if(c.type==='t'&&c.hp>0){cx.fillStyle=c.hp>1?'#f0a020':'#f5c84b';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.fillStyle='#2a1d00';cx.font=`800 ${Math.round(BH*.5)}px system-ui`;cx.fillText(c.hp,x,ly-BH/2+BH*.18)}
     else if(c.type==='t'&&c.hp<=0){cx.strokeStyle='#3ddc9755';cx.lineWidth=1.5;rr(x-w/2,ly-BH-3,w,BH,6);cx.stroke()}
-    if(c.type==='b'&&!c.dead){cx.fillStyle='#ef5a5a';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.font='15px system-ui';cx.fillText('💣',x,ly-BH/2+2)}
+    if(c.type==='b'&&!c.dead){cx.fillStyle='#ef5a5a';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.font=`${Math.round(BH*.5)}px system-ui`;cx.fillText('💣',x,ly-BH/2+BH*.18)}
   }
   // ball
   if(ball){cx.fillStyle='#f5c84b';cx.beginPath();cx.arc(ball.x,ball.y,13,0,7);cx.fill();cx.fillStyle='#2a1d00';cx.font='800 13px ui-monospace,monospace';cx.fillText(ball.label,ball.x,ball.y+4.5);
@@ -265,7 +266,7 @@ async function shoot(){
     await tween(320,k=>{ball.y=-20+(landY(seq[0])+20)*k*k});
     for(let n=0;n<seq.length;n++){
       const i=seq[n];
-      if(n>0){const p0=seq[n-1],x0=X(p0),x1=X(i),y0=landY(p0),y1=landY(i),peak=Math.min(y0,y1)-55;
+      if(n>0){const p0=seq[n-1],x0=X(p0),x1=X(i),y0=landY(p0),y1=landY(i),peak=Math.min(y0,y1)-Math.max(45,Math.min(100,(H-110)*.5));
         ball.trail=[];ball.stepLbl=[(s>0?'+':'')+s,(x0+x1)/2,peak-8];
         await tween(380,k=>{ball.x=x0+(x1-x0)*k;ball.y=(1-k)*(1-k)*y0+2*(1-k)*k*peak+k*k*y1;ball.trail.push([ball.x,ball.y]);if(k>.5)ball.label=i});
         ball.stepLbl=null;
