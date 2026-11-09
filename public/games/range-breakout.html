@@ -30,6 +30,7 @@ body{background-image:radial-gradient(#ffffff10 1px,transparent 1px);background-
 .cond .big{font-size:clamp(24px,7.5vw,32px);font-weight:800}
 .cond .sub{font-size:12.5px;color:var(--dim)}
 .ok{color:var(--grn)}.bad{color:var(--red)}
+.app>*{flex-shrink:0}
 .stage{flex:1 1 auto;min-height:170px;position:relative}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .out{display:flex;gap:8px;align-items:center;overflow-x:auto;min-height:52px;padding:2px 0}
@@ -69,6 +70,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 .stars{font-size:34px;letter-spacing:4px;margin:6px 0}
 .legend{display:flex;gap:10px;justify-content:center;font-size:11px;color:var(--dim);white-space:nowrap}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+@media (max-height:720px){.app{gap:6px}.stage{min-height:140px}.legend{display:none}.sub-row button{padding:4px 8px}.fire{padding:11px}.st button{height:36px}.cond{min-height:50px}.cond .big{font-size:26px}.out{min-height:44px}.out .box{height:40px;font-size:18px}.code{line-height:1.5}.goal{min-height:0}}
 </style>
 </head>
 <body>
@@ -169,10 +171,10 @@ function draw(){
   const ly=lineY(),cw=cellW();
   // line
   cx.strokeStyle='#8a94a8';cx.lineWidth=2;cx.beginPath();cx.moveTo(X(LO)-8,ly);cx.lineTo(X(HI)+8,ly);cx.stroke();
-  cx.font=`600 ${Math.round(Math.min(13,Math.max(8,cw/1.3)))}px ui-monospace,Menlo,monospace`;cx.textAlign='center';
+  const fs=Math.min(12,Math.max(7,cw/1.55));cx.textAlign='center';
   for(let p=LO;p<=HI;p++){
     const x=X(p);cx.strokeStyle='#8a94a8';cx.beginPath();cx.moveTo(x,ly-6);cx.lineTo(x,ly+6);cx.stroke();
-    cx.fillStyle=p===a?'#5aa9ff':(p<0||p>15?'#4a5468':'#8a94a8');cx.fillText(p,x,ly+22);
+    cx.font=`600 ${Math.round(p>=10?fs*.88:fs)}px ui-monospace,Menlo,monospace`;cx.fillStyle=p===a?'#5aa9ff':(p<0||p>15?'#4a5468':'#8a94a8');cx.fillText(p,x,ly+22);
   }
   // start marker
   if(a>=LO&&a<=HI){cx.fillStyle='#5aa9ff';cx.beginPath();cx.arc(X(a),ly,5,0,7);cx.fill();cx.font='700 10px system-ui';cx.fillText('start',Math.max(20,Math.min(W-20,X(a))),ly+36)}
