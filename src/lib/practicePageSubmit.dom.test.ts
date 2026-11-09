@@ -109,7 +109,7 @@ describe('選擇題練習頁：線上送出', () => {
     const link = doc.querySelector('a.classroom') as HTMLAnchorElement;
 
     expect(link).toHaveAttribute('href', SERVER_RESPONSE.classroomShareUrl);
-    expect(doc.body).toHaveTextContent(/附加後記得在 Classroom 按「繳交」/);
+    expect(doc.body).toHaveTextContent(/請選老師出的那份作業 → 按「繳交」/);
     expect(doc.getElementById('submitScoreBtn')).toBeNull();
     expect((doc.getElementById('nameInput') as HTMLInputElement).disabled).toBe(true);
   });
@@ -207,7 +207,7 @@ describe('填空練習頁：線上送出', () => {
     });
     expect(doc.getElementById('finalScore')?.textContent).toBe('50');
     expect(doc.querySelector('a.classroom')).toHaveAttribute('href', SERVER_RESPONSE.classroomShareUrl);
-    expect(doc.body).toHaveTextContent(/附加後記得在 Classroom 按「繳交」/);
+    expect(doc.body).toHaveTextContent(/請選老師出的那份作業 → 按「繳交」/);
     expect((doc.getElementById('classInput') as HTMLInputElement).disabled).toBe(true);
   });
 

@@ -44,7 +44,7 @@ export const PRACTICE_PAGE_SUBMIT_CLIENT_JS = `
     if(href.indexOf('https://classroom.google.com/')!==0) return '';
     return '<div class="qf-classroom">'+
       '<a class="btn classroom" href="'+esc(href)+'" target="_blank" rel="noopener">📤 繳交到 Google Classroom</a>'+
-      '<div class="qf-tip">會開啟 Google Classroom，請選擇課程與作業，把這份成績連結附加上去。<b>附加後記得在 Classroom 按「繳交」</b>，老師才會收到！</div>'+
+      '<div class="qf-tip">會開啟 Google Classroom，<b>請選老師出的那份作業 → 按「繳交」</b>，老師才會收到！</div>'+
       (resultUrl.indexOf('https://')===0||resultUrl.indexOf('http://')===0
         ?'<div class="qf-link">成績連結：<a href="'+esc(resultUrl)+'" target="_blank" rel="noopener">'+esc(resultUrl)+'</a></div>'
         :'')+
