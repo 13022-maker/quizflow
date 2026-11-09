@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Range 打磚塊｜APCS 陷阱題遊戲 · QuizFlow</title>
-<meta name="description" content="用 range(start, stop, step) 打磚塊！10 關 APCS Python 陷阱題＋60 秒挑戰，免登入直接玩。">
-<meta property="og:title" content="Range 打磚塊｜APCS 陷阱題遊戲">
+<title>步步驚心：Range 陷阱｜APCS Python range() 陷阱題 · QuizFlow</title>
+<meta name="description" content="用 range(start, stop, step) 打爆金磚、避開炸彈！10 關 APCS Python 陷阱題＋60 秒挑戰，免登入直接玩。">
+<meta property="og:title" content="步步驚心：Range 陷阱｜APCS Python range() 陷阱題">
 <meta property="og:description" content="stop 不含、負 step、step=0…10 關陷阱題，免登入直接玩。">
 <meta property="og:type" content="website">
 <link rel="icon" href="/favicon.ico">
@@ -76,7 +76,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 <body>
 <div class="app" id="app">
   <div class="top">
-    <span class="badge" id="title">Range 打磚塊</span>
+    <span class="badge" id="title">步步驚心</span>
     <div class="hud">
       <span id="hudL">關卡 <b id="lvTxt">1</b></span>
       <span>分數 <b id="scTxt">0</b></span>
@@ -106,7 +106,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
 
 <div class="overlay" id="menu">
   <div class="panel">
-    <h1>Range 打磚塊</h1>
+    <h1>步步驚心</h1><p style="margin:0;color:var(--yel);font-weight:800">Range 陷阱</p>
     <p>設定 <span class="mono" style="color:var(--yel)">range(start, stop, step)</span>，<br>彈珠會照 <span class="mono">for i in range(...)</span> 一格一格跳。<br>打爆所有<b style="color:var(--yel)">金磚</b>、避開<b style="color:var(--red)">炸彈</b>！</p>
     <p style="font-size:12px">⚠ stop 不含・負 step 往左跳・step 不能是 0</p>
     <button class="btn pri" id="goLevels">🧱 關卡模式（10 關）</button>
