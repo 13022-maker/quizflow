@@ -9,11 +9,13 @@
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 import { buildQuestionStats, type QuestionStat } from '@/lib/practicePageStats';
+import type { SubmissionDetail } from '@/lib/practicePageSubmission';
 import { db } from '@/libs/DB';
 import {
   practicePageEventSchema as e,
   practicePageLeadSchema,
   practicePageShareSchema,
+  practicePageSubmissionSchema,
   questionSchema,
   quizSchema,
 } from '@/models/Schema';
@@ -191,12 +193,34 @@ export async function getPracticePageLeads(shareId: number) {
     .orderBy(asc(practicePageLeadSchema.createdAt));
 }
 
+// 練習頁線上版學生「確認送出」的成績（老師成績列表 / CSV），依送出時間舊到新。
+// 呼叫端必須先驗證 shareId 屬於目前登入的老師（listOwnedPracticeShares）。
+export async function getPracticePageSubmissions(shareId: number) {
+  const rows = await db
+    .select({
+      id: practicePageSubmissionSchema.id,
+      className: practicePageSubmissionSchema.className,
+      studentName: practicePageSubmissionSchema.studentName,
+      score: practicePageSubmissionSchema.score,
+      maxScore: practicePageSubmissionSchema.maxScore,
+      detail: practicePageSubmissionSchema.detail,
+      resultToken: practicePageSubmissionSchema.resultToken,
+      createdAt: practicePageSubmissionSchema.createdAt,
+    })
+    .from(practicePageSubmissionSchema)
+    .where(eq(practicePageSubmissionSchema.shareId, shareId))
+    .orderBy(asc(practicePageSubmissionSchema.createdAt));
+  // detail 是送出 API 用 scorePracticePageSubmission 算好寫入的，不是 client 原始輸入
+  return rows.map(r => ({ ...r, detail: r.detail as unknown as SubmissionDetail }));
+}
+
 // 列出老師在某份 quiz 底下的所有分享連結（統計頁切換用），同時驗證 quiz 屬於該老師
 export async function listOwnedPracticeShares(userId: string, quizId: number) {
   return db
     .select({
       id: practicePageShareSchema.id,
       questionRange: practicePageShareSchema.questionRange,
+      kind: practicePageShareSchema.kind,
       createdAt: practicePageShareSchema.createdAt,
     })
     .from(practicePageShareSchema)

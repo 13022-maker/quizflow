@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 
@@ -318,14 +319,23 @@ export function ExportFillBlankPracticePageDialog({ quizId, quizTitle, totalQues
                           QR Code
                         </button>
                       </div>
-                      <p className="mt-1 text-gray-400">
-                        第
-                        {' '}
-                        {item.questionRange}
-                        {' '}
-                        題．
-                        {new Date(item.createdAt).toLocaleString('zh-TW')}
-                      </p>
+                      <div className="mt-1 flex items-center gap-3">
+                        <p className="flex-1 text-gray-400">
+                          第
+                          {' '}
+                          {item.questionRange}
+                          {' '}
+                          題．
+                          {new Date(item.createdAt).toLocaleString('zh-TW')}
+                        </p>
+                        {/* 學生在線上分享版按「確認送出」的成績，看這裡（跟選擇題練習頁共用同一個統計頁） */}
+                        <Link
+                          href={`/dashboard/quizzes/${quizId}/practice-stats?share=${item.id}`}
+                          className="shrink-0 text-blue-600 underline"
+                        >
+                          學生成績
+                        </Link>
+                      </div>
                       {expandedHistoryId === item.id && (
                         <div className="mt-2 flex justify-center rounded-lg bg-white p-3">
                           <QRCode value={item.url} size={120} bgColor="#ffffff" fgColor="#000000" />

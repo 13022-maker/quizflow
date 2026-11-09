@@ -329,7 +329,7 @@
     "leads": "登録メール",
     "export_leads": "メールリストをダウンロード（CSV）",
     "empty": "まだ回答データがありません。統計機能の導入前に作成したリンクの場合は、「静的練習ページとして書き出す」で該当リンクの「最新版に更新」を押すと統計が有効になります（URL は変わりません）。",
-    "privacy_note": "データはすべて匿名です。IP・氏名・学校は記録しません。メールは学習者が自ら入力し同意にチェックした場合のみ保存されます。",
+    "privacy_note": "匿名の解答統計では IP・氏名・学校を記録しません。メールは生徒が自ら入力し同意した場合のみ収集します。「生徒の成績」のクラス・氏名は生徒が提出時に自分で入力したものです。",
     "question_breakdown": "問題別の誤答率（高い順）",
     "col_question": "問題",
     "col_error_rate": "誤答率",
@@ -360,6 +360,20 @@
     "exam_plan_soon": "直近の試験",
     "exam_plan_later": "いずれ",
     "exam_plan_none": "受験しない",
-    "exam_plan_taken": "受験済み"
+    "exam_plan_taken": "受験済み",
+    "share_item_fillblank": "#{id}．穴埋め 第 {range} 問",
+    "submissions_title": "生徒の成績",
+    "submissions_desc": "共有リンクから解答し「提出」を押した生徒の成績です（点数はサーバーで再計算、クラス・氏名は自己申告）。",
+    "submissions_empty": "まだ提出がありません。提出機能の公開前に作成したリンクの場合は、共有リンクを再作成してください（選択問題の練習ページは「最新版に更新」で URL はそのままです）。",
+    "submissions_count": "全 {count} 件",
+    "export_submissions": "成績 CSV をダウンロード",
+    "col_class": "クラス",
+    "col_name": "氏名",
+    "col_score": "点数",
+    "col_correct": "正解数",
+    "col_submitted_at": "提出日時",
+    "col_result": "結果ページ",
+    "view_result": "表示",
+    "fillblank_no_analytics": "穴埋め練習ページは匿名の解答統計を収集しません。ここには提出された成績のみ表示されます。"
   }
 }

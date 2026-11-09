@@ -329,7 +329,7 @@
     "leads": "留下 email",
     "export_leads": "下載 email 名單 CSV",
     "empty": "還沒有作答資料。若這個連結是在統計功能上線前產生的，請到「匯出成靜態練習頁」對該連結按「更新到最新版」啟用統計（網址不變）。",
-    "privacy_note": "資料皆為匿名：不記錄 IP、姓名或學校；email 僅限學生主動填寫並勾選同意。",
+    "privacy_note": "匿名作答統計不記錄 IP、姓名或學校；email 僅限學生主動填寫並勾選同意。「學生成績」的班級、姓名為學生送出時自行填寫。",
     "question_breakdown": "各題錯誤率（由高到低）",
     "col_question": "題目",
     "col_error_rate": "錯誤率",
@@ -360,6 +360,20 @@
     "exam_plan_soon": "近期一場",
     "exam_plan_later": "之後",
     "exam_plan_none": "不考",
-    "exam_plan_taken": "已考過"
+    "exam_plan_taken": "已考過",
+    "share_item_fillblank": "#{id}．填空 第 {range} 題",
+    "submissions_title": "學生成績",
+    "submissions_desc": "學生從分享連結作答後按「確認送出」的成績（分數由系統依題目答案重新計算；班級、姓名為學生自填）。",
+    "submissions_empty": "還沒有學生送出成績。若這個連結是在送出功能上線前產生的，請重新產生分享連結（選擇題練習頁可按「更新到最新版」，網址不變）。",
+    "submissions_count": "共 {count} 筆",
+    "export_submissions": "下載成績 CSV",
+    "col_class": "班級",
+    "col_name": "姓名",
+    "col_score": "分數",
+    "col_correct": "答對題數",
+    "col_submitted_at": "送出時間",
+    "col_result": "結果頁",
+    "view_result": "查看",
+    "fillblank_no_analytics": "填空練習頁不收集匿名作答統計，這裡只顯示學生送出的成績。"
   }
 }

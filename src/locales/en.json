@@ -329,7 +329,7 @@
     "leads": "Emails collected",
     "export_leads": "Download email list (CSV)",
     "empty": "No responses yet. If this link was created before analytics existed, open \"Export as static practice page\" and click \"Update to latest\" on it to enable analytics (the URL stays the same).",
-    "privacy_note": "All data is anonymous: no IP, name or school is recorded; emails are only stored when a student enters one and ticks the consent box.",
+    "privacy_note": "Anonymous practice analytics never record IPs, names or schools; emails are only collected when students opt in. Class and name under \"Student scores\" are entered by students when they submit.",
     "question_breakdown": "Error rate by question (highest first)",
     "col_question": "Question",
     "col_error_rate": "Error rate",
@@ -360,6 +360,20 @@
     "exam_plan_soon": "Upcoming exam",
     "exam_plan_later": "Later",
     "exam_plan_none": "Not taking",
-    "exam_plan_taken": "Already taken"
+    "exam_plan_taken": "Already taken",
+    "share_item_fillblank": "#{id} · Fill-in Q{range}",
+    "submissions_title": "Student scores",
+    "submissions_desc": "Scores students submitted with \"Submit\" on the shared practice page (scores are recalculated by the server; class and name are self-reported).",
+    "submissions_empty": "No submissions yet. If this link was created before submissions were supported, generate a new share link (for multiple-choice pages you can click \"Update to latest\" and keep the same URL).",
+    "submissions_count": "{count} submissions",
+    "export_submissions": "Download scores CSV",
+    "col_class": "Class",
+    "col_name": "Name",
+    "col_score": "Score",
+    "col_correct": "Correct",
+    "col_submitted_at": "Submitted at",
+    "col_result": "Result page",
+    "view_result": "View",
+    "fillblank_no_analytics": "Fill-in-the-blank practice pages do not collect anonymous analytics; only submitted scores are shown here."
   }
 }
