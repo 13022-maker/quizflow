@@ -34,6 +34,7 @@ const SOURCE_QUIZ_FIELDS = {
   category: quizSchema.category,
   gradeLevel: quizSchema.gradeLevel,
   tags: quizSchema.tags,
+  youtubeUrl: quizSchema.youtubeUrl,
 } as const;
 
 /**

@@ -54,7 +54,8 @@ type GeneratedResult = {
 type Props = {
   quizId?: string;
   defaultTopic?: string;
-  onImport: (questions: GeneratedQuestion[], title: string) => void;
+  // meta.sourceUrl：URL 模式（YouTube / Google Docs）命題時的來源網址，讓 caller 決定要不要回填（例：測驗參考影片）
+  onImport: (questions: GeneratedQuestion[], title: string, meta?: { sourceUrl?: string }) => void;
   onClose: () => void;
 };
 
@@ -181,6 +182,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
 
   // URL mode（YouTube / Google Docs）
   const [sourceUrl, setSourceUrl] = useState('');
+  // 本次命題結果實際使用的來源網址（命題當下快照，避免老師命題後又改輸入框）
+  const [resultSourceUrl, setResultSourceUrl] = useState<string | undefined>(undefined);
 
   // 題庫匯入模式（貼上文字 或 上傳題庫 PDF，二選一）
   const [examBankInput, setExamBankInput] = useState<'paste' | 'pdf'>('paste');
@@ -642,6 +645,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         setTtsProgress('');
       }
 
+      setResultSourceUrl(mode === 'url' ? sourceUrl.trim() : undefined);
       setResult(data);
     } catch (e: unknown) {
       // AI 伺服器忙碌（503 + retryable）時顯示特定提示
@@ -1552,7 +1556,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                     重新命題
                   </button>
                   <button
-                    onClick={() => onImport(result.questions, result.title)}
+                    onClick={() => onImport(result.questions, result.title, { sourceUrl: resultSourceUrl })}
                     className="flex-[2] rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                   >
                     ✓ 匯入

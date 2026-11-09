@@ -98,6 +98,7 @@ export const quizSchema = pgTable(
     attemptDecayRate: real('attempt_decay_rate').default(0.9).notNull(), // decay 模式衰減率
     expiresAt: timestamp('expires_at', { mode: 'date' }), // 到期時間（null = 永不到期）
     quizMode: text('quiz_mode').default('standard').notNull(), // standard / vocab（單字記憶模式）
+    youtubeUrl: text('youtube_url'), // 參考影片（YouTube 網址，null = 無）；學生作答頁頂部嵌入播放器，題目需看影片才能作答
     // 題庫市集（Phase 3:isMarketplace 已 DROP COLUMN,改用 visibility='public' 判斷）
     category: text('category'),
     gradeLevel: text('grade_level'),

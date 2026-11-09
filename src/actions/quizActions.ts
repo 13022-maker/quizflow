@@ -12,6 +12,7 @@ import { db } from '@/libs/DB';
 import { insertDuplicatedQuiz, loadSourceQuiz } from '@/libs/fork-dao';
 import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
 import { recordStreakActivity } from '@/libs/streak';
+import { quizYoutubeUrlSchema } from '@/libs/youtube';
 import { quizSchema } from '@/models/Schema';
 import { PricingPlanList } from '@/utils/AppConfig';
 
@@ -163,30 +164,43 @@ export async function updateQuiz(
   revalidatePath('/dashboard/quizzes');
 }
 
+// 測驗設定的輸入驗證（所有欄位皆可選，只更新有帶的欄位）
+const QuizSettingsSchema = z.object({
+  shuffleQuestions: z.boolean().optional(),
+  shuffleOptions: z.boolean().optional(),
+  allowedAttempts: z.number().int().positive().nullable().optional(),
+  showAnswers: z.boolean().optional(),
+  timeLimitSeconds: z.number().int().positive().nullable().optional(),
+  preventLeave: z.boolean().optional(),
+  expiresAt: z.date().nullable().optional(),
+  // 參考影片：空字串 → null（清空）；非空必須能解析出 YouTube video id
+  youtubeUrl: quizYoutubeUrlSchema.optional(),
+});
+
+export type QuizSettingsInput = z.input<typeof QuizSettingsSchema>;
+
 // 更新測驗的防作弊與顯示設定
 export async function updateQuizSettings(
   id: number,
-  data: {
-    shuffleQuestions?: boolean;
-    shuffleOptions?: boolean;
-    allowedAttempts?: number | null;
-    showAnswers?: boolean;
-    timeLimitSeconds?: number | null;
-    preventLeave?: boolean;
-    expiresAt?: Date | null;
-  },
-) {
+  data: QuizSettingsInput,
+): Promise<{ error?: string }> {
   const { userId } = await auth();
   if (!userId) {
     throw new Error('Unauthorized');
   }
 
+  const parsed = QuizSettingsSchema.safeParse(data);
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? '設定格式錯誤' };
+  }
+
   await db
     .update(quizSchema)
-    .set(data)
+    .set(parsed.data)
     .where(and(eq(quizSchema.id, id), eq(quizSchema.ownerId, userId)));
 
   revalidatePath(`/dashboard/quizzes/${id}/edit`);
+  return {};
 }
 
 export async function deleteQuiz(id: number) {
