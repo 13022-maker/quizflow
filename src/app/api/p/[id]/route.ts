@@ -13,6 +13,9 @@
  * 作答統計：回傳前把 HTML 裡的 config 佔位註解換成 window.__QF_PRACTICE__（事件端點網址），
  * 練習頁才會開始送匿名作答事件；下載的離線檔不經過這裡 → 沒有 config → 不送任何資料。
  * 加這功能前上傳的舊版 HTML 沒有佔位註解，原樣回傳（老師可在匯出 Dialog 按「更新到最新版」）。
+ *
+ * 成績送出：config 同時帶 submitEndpoint（/api/p/[id]/submit），練習頁才會顯示班級姓名欄與「確認送出」、
+ * 送出後顯示「繳交到 Google Classroom」按鈕。下載的離線檔同樣沒有 config → 不送出。
  */
 import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
@@ -50,6 +53,7 @@ export async function GET(
   const origin = new URL(req.url).origin;
   const html = injectPracticePageConfig(await blobRes.text(), {
     endpoint: `${origin}/api/p/${id}/events`,
+    submitEndpoint: `${origin}/api/p/${id}/submit`,
     signupUrl: `${origin}/sign-up?utm_source=practice_page&utm_medium=end_screen&utm_content=share_${id}`,
   });
   return new NextResponse(html, {

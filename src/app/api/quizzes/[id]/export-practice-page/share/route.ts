@@ -65,6 +65,7 @@ export async function POST(
     ownerId: userId,
     url: blob.url,
     questionRange,
+    answerKey: result.answerKey,
     kind: 'choice',
   }).returning();
 
