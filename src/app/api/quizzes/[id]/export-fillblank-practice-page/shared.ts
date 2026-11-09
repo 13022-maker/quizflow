@@ -6,13 +6,18 @@
 import { and, asc, eq } from 'drizzle-orm';
 
 import { buildFillBlankPracticePageHtml, selectFillBlankQuestions } from '@/lib/exportFillBlankPracticePage';
+import { buildFillBlankAnswerKey, type FillBlankAnswerKey } from '@/lib/practicePageSubmission';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
+
+// 看一次答案扣該格幾 %：HTML 與答案表必須用同一個值，server 重算分數才會跟頁面上一致
+const HINT_PENALTY_PERCENT = 3;
 
 export type BuildQuizFillBlankPracticeHtmlResult =
   | {
     ok: true;
     html: string;
+    answerKey: FillBlankAnswerKey; // 跟 html 同一份題目資料產生，分享連結存進 DB 給「確認送出」server 重算分數
     quizTitle: string;
     total: number;
     imported: number;
@@ -71,11 +76,13 @@ export async function buildQuizFillBlankPracticeHtml(
     title: quiz.title,
     kick: 'QuizFlow 測驗匯出．填空練習頁',
     questions: practiceQuestions,
+    hintPenaltyPercent: HINT_PENALTY_PERCENT,
   });
 
   return {
     ok: true,
     html,
+    answerKey: buildFillBlankAnswerKey(practiceQuestions, HINT_PENALTY_PERCENT),
     quizTitle: quiz.title,
     total: picked.length,
     imported: practiceQuestions.length,

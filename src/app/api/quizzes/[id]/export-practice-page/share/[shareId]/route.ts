@@ -71,7 +71,8 @@ export async function PUT(
 
   await db
     .update(practicePageShareSchema)
-    .set({ url: blob.url, questionRange: `${result.resolvedStart}-${result.resolvedEnd}` })
+    // 答案表跟 HTML 一起更新：更新後學生送出就以新版題目重算分數（已送出的成績不受影響）
+    .set({ url: blob.url, questionRange: `${result.resolvedStart}-${result.resolvedEnd}`, answerKey: result.answerKey })
     .where(eq(practicePageShareSchema.id, shareId));
 
   const origin = new URL(req.url).origin;

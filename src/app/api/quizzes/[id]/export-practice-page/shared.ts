@@ -6,6 +6,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 
 import { buildPracticePageHtml, selectPracticeQuestions } from '@/lib/exportPracticePage';
+import { buildChoiceAnswerKey, type ChoiceAnswerKey } from '@/lib/practicePageSubmission';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -13,6 +14,7 @@ export type BuildQuizPracticeHtmlResult =
   | {
     ok: true;
     html: string;
+    answerKey: ChoiceAnswerKey; // 跟 html 同一份題目資料產生，分享連結存進 DB 給「確認送出」server 重算分數
     quizTitle: string;
     total: number;
     imported: number;
@@ -76,6 +78,7 @@ export async function buildQuizPracticeHtml(
   return {
     ok: true,
     html,
+    answerKey: buildChoiceAnswerKey(practiceQuestions),
     quizTitle: quiz.title,
     total: picked.length,
     imported: practiceQuestions.length,

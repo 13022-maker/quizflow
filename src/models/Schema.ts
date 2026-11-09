@@ -970,10 +970,40 @@ export const practicePageShareSchema = pgTable(
     // 'choice' = 單選/是非題練習頁、'fillblank' = 填空題練習頁。
     // 兩種練習頁的歷史記錄查詢各自依這個欄位過濾，避免混在一起顯示。
     kind: text('kind').notNull().default('choice'),
+    // 學生「確認送出」時 server 重算分數用的答案表（見 lib/practicePageSubmission.ts PracticePageAnswerKey）。
+    // 產生/更新分享連結時跟 HTML 同一份題目資料一起寫入；加這欄之前產生的舊連結為 null → 送出 API 回 409。
+    answerKey: jsonb('answer_key').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   table => ({
     quizIdIdx: index('practice_page_share_quiz_id_idx').on(table.quizId),
+  }),
+);
+
+// 練習頁線上分享版「確認送出」的學生成績：班級/姓名由學生自填（免登入、不驗證身分），
+// 分數由 server 依 practice_page_share.answer_key 重算（填空題的看答案次數為 client 回報）。
+// 同一份練習頁同一個 session（頁面開啟時產生的隨機 UUID）只收一筆，重送回傳同一筆的結果連結。
+// result_token 是唯讀結果頁網址的不可猜憑證（學生貼到 Google Classroom 繳交用）。
+export const practicePageSubmissionSchema = pgTable(
+  'practice_page_submission',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    className: text('class_name').notNull(),
+    studentName: text('student_name').notNull(),
+    score: integer('score').notNull(),
+    maxScore: integer('max_score').notNull(),
+    detail: jsonb('detail').$type<Record<string, unknown>>().notNull(), // 逐題對錯（lib/practicePageSubmission.ts SubmissionDetail）
+    resultToken: text('result_token').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareSessionUnique: uniqueIndex('practice_page_submission_share_session_idx').on(table.shareId, table.sessionId),
+    resultTokenUnique: uniqueIndex('practice_page_submission_result_token_idx').on(table.resultToken),
+    shareCreatedIdx: index('practice_page_submission_share_created_idx').on(table.shareId, table.createdAt),
   }),
 );
 

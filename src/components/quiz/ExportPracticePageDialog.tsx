@@ -326,7 +326,7 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
                     href={`/dashboard/quizzes/${quizId}/practice-stats`}
                     className="text-xs text-blue-600 underline"
                   >
-                    📊 查看作答統計
+                    📊 作答統計與學生成績
                   </Link>
                 </div>
                 {refreshError && <p className="text-xs text-red-600">{refreshError}</p>}
@@ -370,7 +370,7 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
                           href={`/dashboard/quizzes/${quizId}/practice-stats?share=${item.id}`}
                           className="text-blue-600 underline"
                         >
-                          統計
+                          統計／成績
                         </Link>
                         <button
                           type="button"
