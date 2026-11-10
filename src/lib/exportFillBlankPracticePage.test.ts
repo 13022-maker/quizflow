@@ -3,6 +3,36 @@ import { describe, expect, it } from 'vitest';
 import { buildFillBlankPracticePageHtml, selectFillBlankQuestions } from './exportFillBlankPracticePage';
 
 describe('selectFillBlankQuestions', () => {
+  it('多格題：題幹切成 N+1 段，正解依頓號拆成每格答案，answer 用「／」串起', () => {
+    const { practiceQuestions, skipped } = selectFillBlankQuestions({
+      groupLabel: 'g',
+      questions: [
+        { type: 'short_answer', body: '光合作用在___中進行，產生___。', correctAnswers: ['葉綠體、氧氣'] },
+      ],
+    });
+
+    expect(skipped).toBe(0);
+    expect(practiceQuestions[0]).toMatchObject({
+      before: '光合作用在',
+      after: '。',
+      segments: ['光合作用在', '中進行，產生', '。'],
+      answers: ['葉綠體', '氧氣'],
+      answer: '葉綠體／氧氣',
+    });
+  });
+
+  it('多格題但正解拆不出對應格數：略過（避免學生怎麼填都對不上）', () => {
+    const { practiceQuestions, skipped } = selectFillBlankQuestions({
+      groupLabel: 'g',
+      questions: [
+        { type: 'short_answer', body: '光合作用在___中進行，產生___。', correctAnswers: ['葉綠體'] },
+      ],
+    });
+
+    expect(practiceQuestions).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+
   it('short_answer 題型且 body 含 ___ 標記時會被轉成填空題資料，空格前後文字正確切開', () => {
     const { practiceQuestions, skipped } = selectFillBlankQuestions({
       groupLabel: '第一組',

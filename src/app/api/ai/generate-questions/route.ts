@@ -27,7 +27,7 @@ const DIFF_LABELS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   mc: '選擇題（4選1，標明正確選項字母）',
   tf: '是非題（答案為「○」或「✕」）',
-  fill: '填空題（用 ___ 標空格，附答案）',
+  fill: '填空題（用 ___ 標空格，附答案；同一題有多個空格時，answer 依空格順序用「、」分隔，例如「葉綠體、氧氣」）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
   cloze: '克漏字題（80-150 字短文，挑 3-5 個關鍵詞彙用 [[詞彙]] 標記挖空，question 欄位放整段含標記的文章，不需要 answer 欄位）',

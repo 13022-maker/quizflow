@@ -20,6 +20,7 @@
  */
 
 import { PRACTICE_PAGE_CONFIG_MARKER } from './exportPracticePage';
+import { countBlanks, resolveBlankAnswers, splitBodyByBlanks } from './fillBlank';
 import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
 
 function escHtml(s: string): string {
@@ -33,11 +34,23 @@ function toEmbeddableJson(value: unknown): string {
 
 export type FillBlankPracticeQuestion = {
   groupLabel: string;
-  before: string; // 空格前文字
-  after: string; // 空格後文字
-  answer: string; // 正確答案（已 trim）
+  before: string; // 第一個空格前文字
+  after: string; // 最後一個空格後文字
+  // 題幹依空格切開的 N+1 段文字（第 i 格在 segments[i] 與 segments[i+1] 之間）；
+  // 省略時視為單格題 = [before, after]
+  segments?: string[];
+  // 每格正確答案（已 trim），長度 = 空格數；省略時視為單格題 = [answer]
+  answers?: string[];
+  // 整題正確答案：各格答案用 FILL_BLANK_JOINER 串起來（單格時就是該格答案）。
+  // 線上版答案表（practice_page_share.answer_key）存的就是這個字串，
+  // 練習頁送出時 typed 也用同一個分隔符串起來，server 端整串比對即可，不用改 server 邏輯
+  answer: string;
   explanation?: string;
 };
+
+// 多格填空題把各格答案串成一個字串的分隔符（全形斜線，學生幾乎不會在單格答案裡打這個字）。
+// 練習頁內嵌 JS 也用同一個字元，兩邊要一致
+export const FILL_BLANK_JOINER = '／';
 
 export type FillBlankPracticePageParams = {
   title: string;
@@ -49,7 +62,6 @@ export type FillBlankPracticePageParams = {
 
 // 填空題只吃 short_answer 題型：AI「填空題」(fill) 生成時就是存成 short_answer，
 // body 用 ___ 標記空格、correctAnswers[0] 存答案（見 src/lib/quiz/questionRows.ts）
-const BLANK_MARKER = '___';
 
 export type RawQuestionForFillBlankExport = {
   type: string;
@@ -65,7 +77,7 @@ export type SelectFillBlankQuestionsParams = {
 
 export type SelectFillBlankQuestionsResult = {
   practiceQuestions: FillBlankPracticeQuestion[];
-  skipped: number; // 非 short_answer，或沒有 ___ 標記／答案的題目數
+  skipped: number; // 非 short_answer、沒有 ___ 標記／答案，或多格題的答案拆不出對應格數的題目數
 };
 
 // 把 DB 撈出來的原始題目資料篩選、轉換成靜態填空練習頁要用的格式。
@@ -82,18 +94,23 @@ export function selectFillBlankQuestions(
       skipped++;
       continue;
     }
-    const blankIndex = q.body.indexOf(BLANK_MARKER);
-    const answer = q.correctAnswers?.[0]?.trim();
-    if (blankIndex === -1 || !answer) {
+    const blankCount = countBlanks(q.body);
+    // 多格題：正解要能拆成剛好 blankCount 份（例「葉綠體、氧氣」），拆不出來就略過，
+    // 避免學生怎麼填都對不上
+    const answers = resolveBlankAnswers(q.correctAnswers, blankCount);
+    if (blankCount === 0 || !answers) {
       skipped++;
       continue;
     }
 
+    const segments = splitBodyByBlanks(q.body);
     practiceQuestions.push({
       groupLabel,
-      before: q.body.slice(0, blankIndex),
-      after: q.body.slice(blankIndex + BLANK_MARKER.length),
-      answer,
+      before: segments[0]!,
+      after: segments[segments.length - 1]!,
+      segments,
+      answers,
+      answer: answers.join(FILL_BLANK_JOINER),
       explanation: q.explanation ?? undefined,
     });
   }
@@ -102,7 +119,13 @@ export function selectFillBlankQuestions(
 }
 
 export function buildFillBlankPracticePageHtml(params: FillBlankPracticePageParams): string {
-  const { title, kick, enSubtitle, questions, hintPenaltyPercent = 3 } = params;
+  const { title, kick, enSubtitle, hintPenaltyPercent = 3 } = params;
+  // 補齊單格題的 segments / answers，內嵌 JS 一律用陣列處理（單格 = 長度 1）
+  const questions = params.questions.map(q => ({
+    ...q,
+    segments: q.segments ?? [q.before, q.after],
+    answers: q.answers ?? [q.answer],
+  }));
 
   return `<!DOCTYPE html>
 <html lang="zh-Hant">
@@ -223,7 +246,7 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   <div class="dock">
     <div class="dock-inner">
       <div class="bar"><span id="progressBar"></span></div>
-      <div class="count">已核對 <b id="checkedNum">0</b> / <span id="totalNum">-</span> 格</div>
+      <div class="count">已核對 <b id="checkedNum">0</b> / <span id="totalNum">-</span> 題</div>
     </div>
     <div class="dock-nav">
       <button class="btn sub" id="prevBtn">← 上一題</button>
@@ -238,7 +261,7 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
     <button class="btn primary" id="submitBtn" disabled>✅ 確認送出</button>
   </div>
 
-  <div class="foot">📘 免登入、不計時。請先填寫班級、姓名才能送出；空格請自行輸入，不能貼上；看一次答案會扣該格 ${hintPenaltyPercent}% 分數。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
+  <div class="foot">📘 免登入、不計時。請先填寫班級、姓名才能送出；空格請自行輸入，不能貼上；看一次答案會扣該題 ${hintPenaltyPercent}% 分數。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
 </div>
 
 <div class="overlay" id="confirmOverlay" hidden>
@@ -273,6 +296,9 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
   var QUESTIONS=${toEmbeddableJson(questions)};
+  var JOINER=${toEmbeddableJson(FILL_BLANK_JOINER)};
+  /* 第 1 格沿用原本的 id="blankInput"，第 2 格起為 blankInput1、blankInput2… */
+  function blankId(bi){ return bi===0?'blankInput':'blankInput'+bi; }
   var HINT_PENALTY_PERCENT=${hintPenaltyPercent};
   var N=QUESTIONS.length;
 ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
@@ -282,10 +308,10 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
 
   /* ---------- state ---------- */
   var cur=0;
-  // 每題一筆：typed（目前輸入框內容）、checked（是否按過「核對答案」至少一次）、
-  // correct（最近一次核對是否正確）、checkedTyped（最近一次核對時的內容，送出給 server 重算用）、
+  // 每題一筆：typed（每格目前輸入框內容的陣列）、checked（是否按過「核對答案」至少一次）、
+  // correct（最近一次核對是否每格都正確）、checkedTyped（最近一次核對時各格內容以 JOINER 串起來，送出給 server 重算用）、
   // hintUses（看答案次數，影響扣分）
-  var state=QUESTIONS.map(function(){ return { typed:'', checked:false, correct:false, checkedTyped:'', hintUses:0 }; });
+  var state=QUESTIONS.map(function(q){ return { typed:q.answers.map(function(){ return ''; }), checked:false, correct:false, checkedTyped:'', hintUses:0 }; });
   var submitted=false;
 
   var qcard=document.getElementById('qcard');
@@ -345,9 +371,11 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     qcard.innerHTML=
       '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+(cur+1)+' 題</div>'+
       '<div class="qbody">'+
-        '<div class="sentence">'+esc(q.before)+
-          '<input type="text" class="'+inputCls+'" id="blankInput" autocomplete="off" autocorrect="off" spellcheck="false" '+(disabled?'disabled':'')+' value="'+esc(s.typed)+'">'+
-          esc(q.after)+
+        '<div class="sentence">'+q.segments.map(function(seg,bi){
+          if(bi===0) return esc(seg);
+          var label=q.answers.length>1?' aria-label="第 '+bi+' 格" placeholder="('+bi+')"':'';
+          return '<input type="text" class="'+inputCls+'" id="'+blankId(bi-1)+'" data-bi="'+(bi-1)+'"'+label+' autocomplete="off" autocorrect="off" spellcheck="false" '+(disabled?'disabled':'')+' value="'+esc(s.typed[bi-1]||'')+'">'+esc(seg);
+        }).join('')+
         '</div>'+
         '<div class="pastewarn" id="pasteWarn">請自行輸入答案，這裡不能貼上喔</div>'+
         '<div class="actions">'+
@@ -361,17 +389,23 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
         (q.explanation ? '<div class="explain" id="explainBox"><b>詳解：</b>'+esc(q.explanation)+'</div>' : '')+
       '</div>';
 
-    var input=document.getElementById('blankInput');
-    input.addEventListener('paste', function(e){
-      e.preventDefault();
-      var warn=document.getElementById('pasteWarn');
-      warn.className='pastewarn show';
-      setTimeout(function(){ warn.className='pastewarn'; },2000);
-    });
-    input.addEventListener('drop', function(e){ e.preventDefault(); });
-    input.addEventListener('input', function(){ state[cur].typed=input.value; });
-    input.addEventListener('keydown', function(e){
-      if(e.key==='Enter'){ e.preventDefault(); document.getElementById('checkBtn').click(); }
+    q.answers.forEach(function(_,bi){
+      var input=document.getElementById(blankId(bi));
+      input.addEventListener('paste', function(e){
+        e.preventDefault();
+        var warn=document.getElementById('pasteWarn');
+        warn.className='pastewarn show';
+        setTimeout(function(){ warn.className='pastewarn'; },2000);
+      });
+      input.addEventListener('drop', function(e){ e.preventDefault(); });
+      input.addEventListener('input', function(){ state[cur].typed[bi]=input.value; });
+      input.addEventListener('keydown', function(e){
+        if(e.key!=='Enter') return;
+        e.preventDefault();
+        /* 多格題：還有下一格就跳下一格，最後一格才核對 */
+        var next=document.getElementById(blankId(bi+1));
+        if(next){ next.focus(); } else { document.getElementById('checkBtn').click(); }
+      });
     });
 
     document.getElementById('checkBtn').addEventListener('click', doCheck);
@@ -380,7 +414,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     if(s.hintUses>0){
       var hintBox=document.getElementById('hintBox');
       hintBox.className='hintbox show';
-      hintBox.textContent='正確答案是「'+q.answer+'」，已看答案 '+s.hintUses+' 次，這格扣 '+Math.min(100,HINT_PENALTY_PERCENT*s.hintUses)+'% 分數';
+      hintBox.textContent='正確答案是「'+q.answers.join('」「')+'」，已看答案 '+s.hintUses+' 次，這題扣 '+Math.min(100,HINT_PENALTY_PERCENT*s.hintUses)+'% 分數';
     }
     if(s.checked){
       var explainBox=document.getElementById('explainBox');
@@ -397,12 +431,16 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
 
   function doCheck(){
     if(submitted) return;
-    var input=document.getElementById('blankInput');
-    var typed=(input.value||'').trim();
-    state[cur].typed=typed;
-    state[cur].checkedTyped=typed;
+    var q=QUESTIONS[cur];
+    var parts=q.answers.map(function(_,bi){
+      var input=document.getElementById(blankId(bi));
+      return ((input&&input.value)||'').trim();
+    });
+    state[cur].typed=parts;
+    /* 送給 server 的內容 = 各格用 JOINER 串起來，server 以整串比對 answer（同一個 JOINER 串的正解） */
+    state[cur].checkedTyped=parts.join(JOINER);
     state[cur].checked=true;
-    state[cur].correct=typed!==''&&typed.toLowerCase()===QUESTIONS[cur].answer.trim().toLowerCase();
+    state[cur].correct=parts.every(function(p,bi){ return p!==''&&p.toLowerCase()===q.answers[bi].trim().toLowerCase(); });
     renderQuestion();
   }
 

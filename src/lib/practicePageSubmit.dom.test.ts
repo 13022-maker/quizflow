@@ -228,3 +228,60 @@ describe('填空練習頁：線上送出', () => {
     expect((doc.getElementById('resultOverlay') as HTMLElement).hidden).toBe(true);
   });
 });
+
+describe('填空練習頁：多格題', () => {
+  const html = buildFillBlankPracticePageHtml({
+    title: '光合作用',
+    kick: 'k',
+    questions: [
+      {
+        groupLabel: 'g',
+        before: '光合作用在',
+        after: '。',
+        segments: ['光合作用在', '中進行，產生', '。'],
+        answers: ['葉綠體', '氧氣'],
+        answer: '葉綠體／氧氣',
+      },
+    ],
+  });
+
+  function fill(doc: Document, id: string, typed: string) {
+    const input = doc.getElementById(id) as HTMLInputElement;
+    input.value = typed;
+    input.dispatchEvent(new doc.defaultView!.Event('input'));
+  }
+
+  it('同一題渲染 2 個輸入框', () => {
+    const { doc } = load(html);
+
+    expect(doc.querySelectorAll('#qcard input.blank-input')).toHaveLength(2);
+    expect(doc.getElementById('blankInput')).not.toBeNull();
+    expect(doc.getElementById('blankInput1')).not.toBeNull();
+  });
+
+  it('兩格都對才算對；送出的 typed 用「／」串起各格，跟 answer key 同格式', async () => {
+    const { doc, fetchCalls } = load(injectPracticePageConfig(html, CONFIG));
+    (doc.getElementById('classInput') as HTMLInputElement).value = '301';
+    (doc.getElementById('nameInput') as HTMLInputElement).value = '王小明';
+
+    fill(doc, 'blankInput', '葉綠體');
+    fill(doc, 'blankInput1', '二氧化碳');
+    (doc.getElementById('checkBtn') as HTMLElement).click();
+
+    expect(doc.getElementById('feedback')?.textContent).toContain('還不對');
+
+    fill(doc, 'blankInput1', ' 氧氣 ');
+    (doc.getElementById('checkBtn') as HTMLElement).click();
+
+    expect(doc.getElementById('feedback')?.textContent).toContain('答對了');
+
+    (doc.getElementById('submitBtn') as HTMLElement).click();
+    (doc.getElementById('confirmOkBtn') as HTMLElement).click();
+    await flush();
+    await flush();
+
+    expect(fetchCalls[0]!.body).toMatchObject({
+      answers: [{ typed: '葉綠體／氧氣', hintUses: 0 }],
+    });
+  });
+});
