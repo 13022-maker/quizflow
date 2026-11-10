@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { useServerNow } from '@/hooks/useServerNow';
 import {
@@ -130,7 +131,7 @@ export function LiveBuzzerPlayer({ state, onBuzz, onAnswer, busy }: Props) {
       </div>
 
       <div className="rounded-xl border bg-card p-4">
-        <h2 className="text-lg font-semibold leading-relaxed">{currentQuestion.body}</h2>
+        <QuestionBody text={currentQuestion.body} className="text-lg font-semibold leading-relaxed" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentQuestion.imageUrl} alt="" className="mt-3 max-h-56 rounded-lg" />

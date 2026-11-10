@@ -12,6 +12,7 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import { useEffect, useState } from 'react';
 
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import type { questionSchema } from '@/models/Schema';
 
 type Question = InferSelectModel<typeof questionSchema>;
@@ -95,7 +96,7 @@ export function AIAssistant({ quizId, questions, onExit }: Props) {
             Q
             {index + 1}
           </span>
-          <p className="font-medium leading-snug">{current.body}</p>
+          <QuestionBody text={current.body} className="min-w-0 flex-1 font-medium leading-snug" />
         </div>
 
         {current.imageUrl && (

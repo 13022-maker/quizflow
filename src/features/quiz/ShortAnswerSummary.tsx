@@ -7,6 +7,7 @@
 import { useTransition } from 'react';
 
 import { gradeShortAnswerByTeacher } from '@/actions/responseActions';
+import { stripCodeFences } from '@/lib/codeBlock';
 
 type GradingMeta = {
   reason: string;
@@ -184,7 +185,7 @@ export function ShortAnswerSummary({ groups, labels }: Props) {
                 Q
                 {idx + 1}
               </span>
-              <span className="font-medium">{question.body}</span>
+              <span className="whitespace-pre-wrap font-medium">{stripCodeFences(question.body)}</span>
               <span className="ml-2 text-xs text-muted-foreground">
                 ·
                 {' '}

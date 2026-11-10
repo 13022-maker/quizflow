@@ -121,3 +121,36 @@ describe('練習頁內嵌 script 行為', () => {
     expect(doc.querySelector('.leadok')).not.toBeNull();
   });
 });
+
+describe('練習頁程式題顯示', () => {
+  it('題目內 ``` 程式碼區塊顯示成等寬 <pre>，保留縮排、escape HTML、不顯示 ``` 符號', () => {
+    const codeHtml = buildPracticePageHtml({
+      title: 'C++',
+      kick: 'k',
+      questions: [{
+        id: 1,
+        groupLabel: 'g',
+        question: '下列程式的輸出為何？\n```cpp\nint main() {\n    if (1 < 2) cout << "<b>";\n}\n```',
+        options: ['a', 'b', 'c', 'd'],
+        correctIndex: 0,
+      }],
+    });
+    const { doc } = load(codeHtml);
+    const qbody = doc.querySelector('#qcard .qbody') as HTMLElement;
+    const pre = qbody.querySelector('pre.qcode') as HTMLElement;
+
+    expect(qbody.querySelector('.qtext')!).toHaveTextContent('下列程式的輸出為何？');
+    // normalizeWhitespace: false → 驗證縮排與換行真的被保留
+    expect(pre).toHaveTextContent('int main() {\n    if (1 < 2) cout << "<b>";\n}', { normalizeWhitespace: false });
+    expect(pre.querySelector('b')).toBeNull();
+    expect(qbody).not.toHaveTextContent(/```/);
+  });
+
+  it('一般題目維持單一 .qtext', () => {
+    const { doc } = load(html);
+    const qbody = doc.querySelector('#qcard .qbody') as HTMLElement;
+
+    expect(qbody.querySelectorAll('.qtext')).toHaveLength(1);
+    expect(qbody.querySelector('pre')).toBeNull();
+  });
+});
