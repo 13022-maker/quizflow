@@ -19,6 +19,7 @@
  * export-fillblank-practice-page/route.ts 呼叫。
  */
 
+import { FILL_BLANK_NORMALIZE_CLIENT_JS } from './answerNormalize';
 import { PRACTICE_PAGE_CONFIG_MARKER } from './exportPracticePage';
 import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
 
@@ -276,6 +277,7 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   var HINT_PENALTY_PERCENT=${hintPenaltyPercent};
   var N=QUESTIONS.length;
 ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
+${FILL_BLANK_NORMALIZE_CLIENT_JS}
   var ONLINE_SUBMIT=!!qfSubmitEndpoint(); /* 只有線上分享版才把成績送回 QuizFlow */
   var SID=qfUuid(); /* 每次開頁 = 一次作答 session，只存在記憶體；server 用它擋同一次作答重複送出 */
   var sending=false;
@@ -402,7 +404,8 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     state[cur].typed=typed;
     state[cur].checkedTyped=typed;
     state[cur].checked=true;
-    state[cur].correct=typed!==''&&typed.toLowerCase()===QUESTIONS[cur].answer.trim().toLowerCase();
+    var nt=qfNormalizeAnswer(typed);
+    state[cur].correct=nt!==''&&nt===qfNormalizeAnswer(QUESTIONS[cur].answer);
     renderQuestion();
   }
 
