@@ -17,6 +17,7 @@ import { randomBytes } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { isFillBlankAnswerCorrect } from './answerNormalize';
 import type { FillBlankPracticeQuestion } from './exportFillBlankPracticePage';
 import type { PracticePageQuestion } from './exportPracticePage';
 
@@ -183,8 +184,8 @@ export function scorePracticePageSubmission(key: PracticePageAnswerKey, answers:
       }
       const typed = a.typed.trim();
       const maxPoints = questionPoints(i, total);
-      // 比對規則跟練習頁內嵌 JS 的 doCheck 一致：trim + 不分大小寫
-      const correct = typed !== '' && typed.toLowerCase() === key.items[i]!.answer.trim().toLowerCase();
+      // 比對規則跟練習頁內嵌 JS 的 doCheck 一致：共用 answerNormalize 正規化（上下標、全形、^/**、空白、大小寫）
+      const correct = isFillBlankAnswerCorrect(typed, key.items[i]!.answer);
       const penalty = Math.min(1, (key.hintPenaltyPercent / 100) * a.hintUses);
       const raw = correct ? maxPoints * (1 - penalty) : 0;
       sum += raw;

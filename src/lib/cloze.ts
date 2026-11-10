@@ -5,6 +5,8 @@
  * 讓老師編輯時原樣讀回、可重複編輯；correctAnswers 由伺服器端從 body 推導（見 questionActions.ts）。
  */
 
+import { normalizeFillBlankAnswer } from './answerNormalize';
+
 export const CLOZE_BLANK_REGEX = /\[\[([^[\]]+)\]\]/g;
 
 export type ClozeSegment =
@@ -53,8 +55,9 @@ export function stripClozeMarkers(body: string, placeholder: string = CLOZE_PLAC
     .join('');
 }
 
+// 與填空題共用正規化：全形／上下標轉一般字元、去空白、去 ^ 與 **、不分大小寫（見 answerNormalize.ts）
 export function normalizeClozeAnswer(v: string): string {
-  return v.trim().toLocaleLowerCase();
+  return normalizeFillBlankAnswer(v);
 }
 
 export type ClozeGradeResult = {
@@ -66,7 +69,7 @@ export type ClozeGradeResult = {
 };
 
 /**
- * 逐格比對：trim + 大小寫不敏感的精準字串比對，不叫 AI。
+ * 逐格比對：normalizeClozeAnswer 正規化後的精準字串比對（去空白、不分大小寫、上下標／全形／^ 視為相同），不叫 AI。
  * hintedIndices：用過「💡 提示」的空格 index（見 pickClozeHintOptions），
  * 這些格子即使答對，對 awardedRatio 的貢獻也只算 0.5（不是 1），答錯仍是 0。
  */

@@ -113,6 +113,12 @@ describe('gradeClozeAnswers', () => {
     expect(result.perBlank).toEqual([true]);
   });
 
+  it('比對把上標／下標、全形、次方記號正規化（n2 對 n²、H2O 對 H₂O）', () => {
+    const result = gradeClozeAnswers(['n²', 'H₂O', 'n²'], ['n^2', 'h2o', 'n3']);
+
+    expect(result.perBlank).toEqual([true, true, false]);
+  });
+
   it('學生沒填的空格算錯', () => {
     const result = gradeClozeAnswers(['陽光', '水'], ['陽光', undefined]);
 
