@@ -8,8 +8,10 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 import { isProSafe } from '@/lib/ai/textModel';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
@@ -285,7 +287,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`
-  : ''}
+  : ''}${buildCodeSnippetRule()}
 
 若某題(限選擇題 mc、是非題 tf、填空題 fill)的內容適合用圖表輔助理解（流程步驟、兩者比較、時間先後、概念之間的關係），在該題 JSON 加一個 "diagram" 欄位，格式為以下 4 種之一（不適合就完全不要加這個欄位，不是每題都需要圖，大部分題目不需要）：
 - 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）
@@ -447,6 +449,12 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
           q.type = 'listening';
         }
       }
+    }
+
+    // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+    const codeCheck = ensureCodeSnippets(result.questions);
+    if (codeCheck.repaired || codeCheck.missing.length) {
+      console.warn(`[generate-from-file] ${effectiveModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
     }
 
     // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)

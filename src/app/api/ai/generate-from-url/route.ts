@@ -16,6 +16,8 @@ import { NextResponse } from 'next/server';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -236,7 +238,7 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`;
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}`;
 
   // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
   let effectiveModel = model;
@@ -321,6 +323,12 @@ ${typesPrompt}
           q.type = 'listening';
         }
       }
+    }
+
+    // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+    const codeCheck = ensureCodeSnippets(result.questions);
+    if (codeCheck.repaired || codeCheck.missing.length) {
+      console.warn(`[generate-from-url] ${effectiveModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
     }
 
     return NextResponse.json(result);

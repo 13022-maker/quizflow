@@ -9,7 +9,9 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -273,7 +275,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}${buildCodeSnippetRule()}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
@@ -386,6 +388,12 @@ ${questionsExample}
         q.type = 'listening';
       }
     }
+  }
+
+  // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+  const codeCheck = ensureCodeSnippets(result.questions);
+  if (codeCheck.repaired || codeCheck.missing.length) {
+    console.warn(`[generate-questions] ${usedModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
   }
 
   // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)

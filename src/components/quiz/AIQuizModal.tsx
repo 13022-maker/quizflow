@@ -16,6 +16,7 @@ import { useRef, useState } from 'react';
 
 import { probeAudioDuration } from '@/lib/audioDuration';
 
+import { MissingCodeWarning } from './MissingCodeWarning';
 import { buildChapters, type PdfChapter } from './pdfChapters';
 
 // ─── Types ───────────────────────────────────────────────
@@ -1430,6 +1431,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               </p>
             </div>
           )}
+
+          {/* ── 程式題缺程式碼警告（題目寫「下列程式」卻沒附程式碼） ── */}
+          {result && <MissingCodeWarning questions={result.questions} />}
 
           {/* ── 題庫匯入的解析報告：有解析不出來的段落 / 圖片配對結果，列出來讓老師自己確認 ── */}
           {result && parseReport && (

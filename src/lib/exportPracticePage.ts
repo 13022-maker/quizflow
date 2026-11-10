@@ -183,6 +183,7 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
   .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
   .qbody{padding:20px 22px 6px}
   .qtext{font-size:16px;font-weight:700;margin:0 0 14px;white-space:pre-wrap}
+  .qcode{margin:0 0 14px;padding:12px 14px;background:#f3f6fa;border:1px solid var(--blue-line);border-radius:8px;overflow-x:auto;white-space:pre;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;text-align:left}
   .qimg{margin:0 0 16px;display:flex;justify-content:center}
   .qimg svg{max-width:100%;height:auto}
   .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
@@ -297,6 +298,25 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
 (function(){
   "use strict";
   function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  // 程式題：題目內 markdown 圍欄（三個反引號）包住的程式碼改用等寬 <pre> 顯示，保留縮排；內容一律 esc
+  function qtextHtml(s){
+    var F='\\x60\\x60\\x60';
+    var parts=(''+s).replace(/\\r\\n?/g,'\\n').split(F);
+    if(parts.length<3){return '<p class="qtext">'+esc(s)+'</p>';}
+    var h='';
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i];
+      if(i%2===1){
+        var nl=p.indexOf('\\n');
+        var code=(nl===-1?p:p.slice(nl+1)).replace(/^\\n+|\\n+$/g,'');
+        if(code){h+='<pre class="qcode"><code>'+esc(code)+'</code></pre>';}
+      }else{
+        p=p.replace(/^\\n+|\\n+$/g,'');
+        if(p){h+='<p class="qtext">'+esc(p)+'</p>';}
+      }
+    }
+    return h;
+  }
 
   var QUESTIONS=${toEmbeddableJson(questions)};
 
@@ -433,7 +453,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     qcard.className='qcard'+(isAnswered?' answered':'');
     qcard.innerHTML=
       '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+(cur+1)+' 題</div>'+
-      '<div class="qbody"><p class="qtext">'+esc(q.question)+'</p>'+imgHtml+'</div>'+
+      '<div class="qbody">'+qtextHtml(q.question)+imgHtml+'</div>'+
       '<div class="opts'+(isShortOptions(q.options)?' grid2':'')+'">'+optsHtml+'</div>'+
       explainHtml;
 

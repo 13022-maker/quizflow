@@ -2,6 +2,8 @@
 
 import { useRef, useState } from 'react';
 
+import { MissingCodeWarning } from './MissingCodeWarning';
+
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
 
 type GeneratedQuestion = {
@@ -440,6 +442,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
                       題，確認匯入後會自動加入編輯器
                     </p>
                   </div>
+                  <MissingCodeWarning questions={result.questions} />
                   <div className="flex gap-2">
                     <button
                       onClick={() => setResult(null)}

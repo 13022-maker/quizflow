@@ -187,6 +187,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - **Vercel API Route timeout**：AI 出題 route 需加 `export const maxDuration = 60`
 - **.next 快取損壞**：修復方式 `rm -rf .next && npm run dev`
 - **手機版 PDF 頁數範圍選擇器**：flex 不 wrap 在 375px 溢出，改 `flex-wrap` + 調整 padding
+- **程式題缺程式碼**：出題 prompt 從沒要求附程式碼又規定「不要 markdown」，AI 出「下列程式的輸出為何？」卻不給程式碼。修法：各出題 prompt 加 `buildCodeSnippetRule()`（`src/lib/ai/codeSnippetPrompt.ts`），程式碼一律以 ```lang 圍欄存在題目 body（不加 DB 欄位）；`ensureCodeSnippets()`（`src/lib/codeBlock.ts`）把 AI 放錯欄位的程式碼併回並偵測缺漏；顯示端一律用 `QuestionBody` 元件（等寬 `<pre><code>`，React escape 無 XSS），Word / 練習頁匯出同步支援
 
 ## 功能規格（已實作）
 

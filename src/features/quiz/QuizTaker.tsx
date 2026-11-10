@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { gradeClozeAnswers, stripClozeMarkers } from '@/lib/cloze';
 import type { questionSchema, quizSchema } from '@/models/Schema';
@@ -142,7 +143,7 @@ function QuestionItem({
           {index + 1}
         </span>
         {question.type !== 'cloze' && (
-          <p className="whitespace-pre-wrap text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+          <QuestionBody text={question.body} className="min-w-0 flex-1 text-base font-semibold leading-relaxed sm:text-lg" />
         )}
       </div>
 
@@ -877,13 +878,11 @@ function ResultScreen({
           return (
             <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="whitespace-pre-wrap text-sm font-medium">
-                  Q
-                  {index + 1}
-                  .
-                  {' '}
-                  {question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body}
-                </p>
+                <QuestionBody
+                  className="min-w-0 flex-1 text-sm font-medium"
+                  prefix={`Q${index + 1}. `}
+                  text={question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body}
+                />
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {detail?.points}
                   {' '}
@@ -1170,7 +1169,7 @@ function RetryScreen({
                 : '請 AI 教練給提示';
               return (
                 <div key={q.id} className="rounded-xl border bg-white p-5 shadow-sm">
-                  <p className="whitespace-pre-wrap text-sm font-medium text-gray-900">{q.body}</p>
+                  <QuestionBody text={q.body} className="text-sm font-medium text-gray-900" />
                   <div className="mt-2 space-y-1 text-xs">
                     <p className="text-red-600">
                       你的答案：
@@ -1993,7 +1992,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
             }`}
           >
             <p className="mb-1 text-xs text-amber-600">{q.targetConcept}</p>
-            <p className="mb-3 text-base font-semibold leading-relaxed">{q.question}</p>
+            <QuestionBody text={q.question} className="mb-3 text-base font-semibold leading-relaxed" />
 
             <div className="space-y-2">
               {q.options.map((opt) => {
