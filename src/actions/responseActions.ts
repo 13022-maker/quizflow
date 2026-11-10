@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { gradeClozeAnswers } from '@/lib/cloze';
+import { getMultiBlankCount, joinBlankAnswers, numberBlanks } from '@/lib/fillBlank';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
 import type { SubmitInput } from '@/libs/submitValidation';
@@ -86,9 +87,13 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     const settled = await Promise.allSettled(
       shortAnswerQuestions.map(async (q) => {
         const studentAnswer = answers[q.id.toString()];
-        const studentText = typeof studentAnswer === 'string' ? studentAnswer : '';
+        // 多格填空題前端已合併成字串；保險起見，若收到 string[]（每格一筆）也在這裡合併
+        const studentText = typeof studentAnswer === 'string'
+          ? studentAnswer
+          : Array.isArray(studentAnswer) ? joinBlankAnswers(studentAnswer) : '';
         const grade = await gradeShortAnswer({
-          questionBody: q.body,
+          // 多格填空題：題幹空格標上 (1)(2)，對應學生答案「(1) 甲；(2) 乙」的編號
+          questionBody: getMultiBlankCount(q) > 0 ? numberBlanks(q.body) : q.body,
           referenceAnswer: q.referenceAnswer ?? null,
           studentAnswer: studentText,
           maxPoints: q.points,
