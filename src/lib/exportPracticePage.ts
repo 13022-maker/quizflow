@@ -11,7 +11,7 @@
  * 純函式：不碰 DB、不碰 Request，方便測試；由 export-practice-page/route.ts 呼叫。
  */
 
-import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
+import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS, upgradeLegacyPracticePageSubmitJs } from './practicePageSubmitClient';
 
 export type PracticePageOption = string | { img: string; alt?: string };
 
@@ -131,7 +131,8 @@ export function injectPracticePageConfig(html: string, config: PracticePageRunti
   if (!hasPracticePageAnalytics(html)) {
     return html;
   }
-  return html.replace(
+  // 舊連結的送出 JS 是匯出當下寫死在 Blob 裡的；回傳前換成有逾時保護的新版（見 practicePageSubmitClient.ts）
+  return upgradeLegacyPracticePageSubmitJs(html).replace(
     PRACTICE_PAGE_CONFIG_MARKER,
     `<script>window.__QF_PRACTICE__=${toEmbeddableJson(config)};</script>`,
   );
@@ -543,11 +544,11 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
   /* ---------- 線上分享版：把成績送給老師 ---------- */
   function submitHtml(){
     if(submitState.result){
-      return '<div class="endsec"><div class="qf-ok">✅ 已送出成績給老師（'+esc(submitState.result.score)+' / '+esc(submitState.result.maxScore)+' 分）</div>'+qfClassroomHtml(submitState.result)+'</div>';
+      return '<div class="endsec" id="submitSec"><div class="qf-ok">✅ 已送出成績給老師（'+esc(submitState.result.score)+' / '+esc(submitState.result.maxScore)+' 分）</div>'+qfClassroomHtml(submitState.result)+'</div>';
     }
-    return '<div class="endsec"><div class="endh">把這次成績送給老師（送出後不能修改）</div>'+
+    return '<div class="endsec" id="submitSec"><div class="endh">把這次成績送給老師（送出後不能修改）</div>'+
       '<button type="button" class="btn primary" id="submitScoreBtn"'+(submitState.sending?' disabled':'')+'>'+(submitState.sending?'送出中…':'✅ 確認送出')+'</button>'+
-      '<div class="qf-err" id="submitErr"></div></div>';
+      '<div class="qf-err" id="submitErr" role="alert"></div></div>';
   }
 
   function doSubmitScore(){
@@ -555,22 +556,25 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     var cls=classInput.value.trim(), nm=nameInput.value.trim();
     if(!cls||!nm){
       submitState.error='請先在頁面最上方填寫班級、姓名再送出';
-      renderEnd();
+      renderEnd(); /* 捲回頂端讓學生看到班級姓名欄 */
       try{ classInput.focus(); }catch(e){}
       return;
     }
     submitState.sending=true;
     submitState.error='';
-    renderEnd();
+    renderEnd(true);
     qfSubmit({sessionId:SID,className:cls,studentName:nm,answers:answered.slice()},function(err,data){
       submitState.sending=false;
       if(err){ submitState.error=err; }
       else{ submitState.result=data; classInput.disabled=true; nameInput.disabled=true; }
-      if(showEnd) renderEnd();
+      if(showEnd) renderEnd(true);
     });
   }
 
-  function renderEnd(){
+  /* keepScroll===true：送出流程的重繪，不捲回頂端，改把送出區塊捲進畫面，「送出中… / 已送出 / 錯誤」才看得到。
+     注意 renderEnd 也直接當 click handler（參數是 event），所以要嚴格比對 true */
+  function renderEnd(keepScroll){
+    var stay=keepScroll===true;
     showEnd=true;
     leaveCurrent();
     var n=QUESTIONS.length, c=correctCount(), wrong=[];
@@ -629,7 +633,11 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     nextBtn.disabled=true;
     nextBtn.textContent='下一題 →';
     renderJump();
-    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+    if(stay){
+      try{ var sec=document.getElementById('submitSec'); if(sec&&sec.scrollIntoView) sec.scrollIntoView({block:'nearest',behavior:'smooth'}); }catch(e){}
+    }else{
+      try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+    }
   }
 
   prevBtn.addEventListener('click',goPrev);

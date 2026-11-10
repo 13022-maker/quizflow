@@ -207,6 +207,7 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   .jbtn.done.cur{background:var(--ok);border-color:var(--ok);color:#fff}
 
   .submitbar{margin-top:22px;text-align:center}
+  .btn.primary.notready{opacity:.55}
   .foot{margin-top:22px;text-align:center;font-size:12px;color:var(--hint)}
 
   .overlay{position:fixed;inset:0;background:rgba(15,37,64,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:16px}
@@ -258,7 +259,8 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   <div class="qcard" id="qcard"></div>
 
   <div class="submitbar">
-    <button class="btn primary" id="submitBtn" disabled>✅ 確認送出</button>
+    <button class="btn primary" id="submitBtn">✅ 確認送出</button>
+    <div class="qf-err" id="submitHint" role="alert"></div>
   </div>
 
   <div class="foot">📘 免登入、不計時。請先填寫班級、姓名才能送出；空格請自行輸入，不能貼上；看一次答案會扣該題 ${hintPenaltyPercent}% 分數。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。<br>由 QuizFlow 提供 · 從測驗匯出</div>
@@ -348,6 +350,14 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     return Math.round(sum);
   }
 
+  /* 還不能送出的原因（可以送出時回傳空字串） */
+  function submitBlockReason(){
+    var left=N-checkedCount();
+    if(left>0) return '還有 '+left+' 題沒按「核對答案」，全部核對後才能送出';
+    if(!studentInfoFilled()) return '請先在頁面上方填寫班級、姓名再送出';
+    return '';
+  }
+
   function checkedCount(){
     var n=0;
     for(var i=0;i<N;i++){ if(state[i].checked) n++; }
@@ -425,7 +435,11 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     document.getElementById('progressBar').style.width=(checkedCount()/N*100)+'%';
     prevBtn.disabled=(cur===0);
     nextBtn.disabled=(cur===N-1);
-    submitBtn.disabled=submitted||checkedCount()<N||!studentInfoFilled();
+    /* 條件不足時不再 disabled（disabled 按鈕按了完全沒反應），改成半透明＋按下去說明原因 */
+    submitBtn.disabled=submitted;
+    var notReady=submitBlockReason();
+    submitBtn.className='btn primary'+(notReady?' notready':'');
+    if(!notReady||submitted) document.getElementById('submitHint').textContent='';
     renderJump();
   }
 
@@ -469,7 +483,15 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
   var resultOverlay=document.getElementById('resultOverlay');
 
   submitBtn.addEventListener('click', function(){
-    if(checkedCount()<N||!studentInfoFilled()) return; /* 防呆：按鈕理論上此時已 disabled */
+    if(submitted) return;
+    var reason=submitBlockReason();
+    var hint=document.getElementById('submitHint');
+    if(reason){
+      hint.textContent=reason;
+      if(!studentInfoFilled()){ try{ (classInput.value.trim()?nameInput:classInput).focus(); }catch(e){} }
+      return;
+    }
+    hint.textContent='';
     confirmOverlay.hidden=false;
   });
   var confirmOkBtn=document.getElementById('confirmOkBtn');
