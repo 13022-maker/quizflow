@@ -11,7 +11,11 @@
  * 純函式：不碰 DB、不碰 Request，方便測試；由 export-practice-page/route.ts 呼叫。
  */
 
-import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
+import {
+  PRACTICE_PAGE_SUBMIT_CLIENT_JS,
+  PRACTICE_PAGE_SUBMIT_CSS,
+  upgradeLegacyPracticePageSubmitJs,
+} from './practicePageSubmitClient';
 
 export type PracticePageOption = string | { img: string; alt?: string };
 
@@ -121,6 +125,7 @@ export type PracticePageRuntimeConfig = {
   endpoint: string; // 作答事件 POST 網址
   signupUrl: string; // 身分選「老師」時顯示的 QuizFlow 註冊連結
   submitEndpoint?: string; // 「確認送出」成績回傳網址（/api/p/[id]/submit）；沒有就不顯示班級姓名欄與送出按鈕
+  submitTimeoutMs?: number; // 送出逾時毫秒數；不帶就用練習頁內建預設值（測試用來縮短等待）
 };
 
 export function hasPracticePageAnalytics(html: string): boolean {
@@ -131,7 +136,8 @@ export function injectPracticePageConfig(html: string, config: PracticePageRunti
   if (!hasPracticePageAnalytics(html)) {
     return html;
   }
-  return html.replace(
+  // 已寫進 Blob 的舊版頁面（PR #90–#99）：把送出程式換成新版（逾時 + 成功後保證顯示結果），老師不用重新匯出
+  return upgradeLegacyPracticePageSubmitJs(html).replace(
     PRACTICE_PAGE_CONFIG_MARKER,
     `<script>window.__QF_PRACTICE__=${toEmbeddableJson(config)};</script>`,
   );
@@ -555,22 +561,24 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     var cls=classInput.value.trim(), nm=nameInput.value.trim();
     if(!cls||!nm){
       submitState.error='請先在頁面最上方填寫班級、姓名再送出';
-      renderEnd();
+      renderEnd(true);
       try{ classInput.focus(); }catch(e){}
       return;
     }
     submitState.sending=true;
     submitState.error='';
-    renderEnd();
+    renderEnd(true);
     qfSubmit({sessionId:SID,className:cls,studentName:nm,answers:answered.slice()},function(err,data){
       submitState.sending=false;
       if(err){ submitState.error=err; }
       else{ submitState.result=data; classInput.disabled=true; nameInput.disabled=true; }
-      if(showEnd) renderEnd();
+      if(showEnd) renderEnd(true);
     });
   }
 
-  function renderEnd(){
+  /* keepScroll===true：送出流程的重繪不捲回頂端（手機上送出中／結果／錯誤訊息會被推到畫面外，學生以為當掉）；
+     注意 addEventListener 會傳 event 物件進來，所以用嚴格等於判斷 */
+  function renderEnd(keepScroll){
     showEnd=true;
     leaveCurrent();
     var n=QUESTIONS.length, c=correctCount(), wrong=[];
@@ -629,7 +637,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     nextBtn.disabled=true;
     nextBtn.textContent='下一題 →';
     renderJump();
-    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+    if(keepScroll!==true){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){} }
   }
 
   prevBtn.addEventListener('click',goPrev);
