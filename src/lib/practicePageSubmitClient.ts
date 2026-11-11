@@ -120,15 +120,33 @@ export const LEGACY_QF_SUBMIT_JS = `  /* cb(錯誤訊息字串或 null, server �
 `;
 
 /**
+ * PR #90–#101 產生的 Classroom 提示行（qfClassroomHtml 裡的一行字串拼接）。
+ * 必須與舊 HTML 逐字相同，upgradeLegacyPracticePageSubmitJs 才換得掉；不要修改。
+ */
+export const LEGACY_QF_CLASSROOM_TIP_LINE = `      '<div class="qf-tip">會開啟 Google Classroom，<b>請選老師出的那份作業 → 按「繳交」</b>，老師才會收到！</div>'+
+`;
+
+/** 目前版本的 Classroom 提示行（同樣是 qfClassroomHtml 裡的字串拼接一行） */
+const QF_CLASSROOM_TIP_LINE = `      '<div class="qf-tip">會開啟 Google Classroom，<b>請選老師出的那份作業 → 按「繳交」</b>，老師才會收到！'+
+      '<div style="margin-top:6px;font-size:12px;color:#8a5a00">⚠️ 需先由老師在 Classroom 建立作業。若 Classroom 顯示「請選取近期有作業的課程」、按鈕按不下去，代表這個課程還沒有作業，請告訴老師。</div></div>'+
+`;
+
+/**
  * /api/p/[id] 回傳練習頁時呼叫（經 injectPracticePageConfig）：把 Blob 裡舊版 qfSubmit 換成新版，
  * 已發出的連結不用老師重新匯出就吃到修正。找不到舊版片段（離線檔、加送出功能前的版本、已是新版）就原樣回傳。
  */
 export function upgradeLegacyPracticePageSubmitJs(html: string): string {
-  const idx = html.indexOf(LEGACY_QF_SUBMIT_JS);
-  if (idx === -1) {
-    return html;
+  let out = html;
+  const idx = out.indexOf(LEGACY_QF_SUBMIT_JS);
+  if (idx !== -1) {
+    out = out.slice(0, idx) + QF_SUBMIT_JS + out.slice(idx + LEGACY_QF_SUBMIT_JS.length);
   }
-  return html.slice(0, idx) + QF_SUBMIT_JS + html.slice(idx + LEGACY_QF_SUBMIT_JS.length);
+  // Classroom 繳交提示：舊版沒有「需先由老師建立作業」，學生在 Classroom 卡在「請選取近期有作業的課程」不知道為什麼
+  const tipIdx = out.indexOf(LEGACY_QF_CLASSROOM_TIP_LINE);
+  if (tipIdx !== -1) {
+    out = out.slice(0, tipIdx) + QF_CLASSROOM_TIP_LINE + out.slice(tipIdx + LEGACY_QF_CLASSROOM_TIP_LINE.length);
+  }
+  return out;
 }
 
 export const PRACTICE_PAGE_SUBMIT_CLIENT_JS = `
@@ -147,8 +165,7 @@ ${QF_SUBMIT_JS}  /* 送出成功後的 Classroom 分享按鈕：只接受 Classr
     if(href.indexOf('https://classroom.google.com/')!==0) return '';
     return '<div class="qf-classroom">'+
       '<a class="btn classroom" href="'+esc(href)+'" target="_blank" rel="noopener">📤 繳交到 Google Classroom</a>'+
-      '<div class="qf-tip">會開啟 Google Classroom，<b>請選老師出的那份作業 → 按「繳交」</b>，老師才會收到！</div>'+
-      (resultUrl.indexOf('https://')===0||resultUrl.indexOf('http://')===0
+${QF_CLASSROOM_TIP_LINE}      (resultUrl.indexOf('https://')===0||resultUrl.indexOf('http://')===0
         ?'<div class="qf-link">成績連結：<a href="'+esc(resultUrl)+'" target="_blank" rel="noopener">'+esc(resultUrl)+'</a></div>'
         :'')+
       '</div>';
