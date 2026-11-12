@@ -12,10 +12,16 @@ import {
   fileExtToImageMimeType,
   validateSubjectUploadFiles,
 } from '@/libs/adaptive/subjectFileValidation';
+import {
+  createHeartbeatNdjsonStream,
+  NDJSON_CONTENT_TYPE,
+} from '@/libs/adaptive/subjectGenerationStream';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// 生成學科約需 1～3 分鐘（Opus thinking + 驗證失敗重試一次），60 秒會被 Vercel 砍掉，
+// 對齊 /api/test/generate-subject 的 300 秒
+export const maxDuration = 300;
 
 export async function POST(request: Request) {
   const { userId } = await auth();
@@ -86,14 +92,26 @@ export async function POST(request: Request) {
     }
   }
 
-  let generated: Awaited<ReturnType<typeof generateSubject>>;
-  try {
-    generated = await generateSubject(topic, undefined, media);
-  } catch (err) {
-    console.error('[generate-subject-from-file] AI 生成失敗：', err);
-    return NextResponse.json({ error: friendlyAIGenerationError(err) }, { status: 500 });
-  }
+  // 生成要 1～3 分鐘：改回傳 NDJSON 串流並定時送心跳。
+  // 舊版等 AI 完成才回應，iOS Safari 約 60 秒收不到任何位元組就斷線 → 前端只看到「Load failed」。
+  const stream = createHeartbeatNdjsonStream(
+    async () => {
+      const generated = await generateSubject(topic, undefined, media);
+      return saveGeneratedSubject(userId, topic, generated);
+    },
+    {
+      toErrorMessage: (err) => {
+        console.error('[generate-subject-from-file] AI 生成失敗：', err);
+        return friendlyAIGenerationError(err);
+      },
+    },
+  );
 
-  const result = await saveGeneratedSubject(userId, topic, generated);
-  return NextResponse.json(result);
+  return new Response(stream, {
+    headers: {
+      'Content-Type': NDJSON_CONTENT_TYPE,
+      'Cache-Control': 'no-cache, no-transform',
+      'X-Accel-Buffering': 'no',
+    },
+  });
 }
