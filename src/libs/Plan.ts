@@ -15,10 +15,27 @@ import { subscriptionSchema } from '@/models/Schema';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 import { db } from './DB';
+import { ACTIVE_SUBSCRIPTION_STATUSES, pickEffectiveSubscription } from './paddleConfig';
 import { ensureTrialRecord } from './trial';
 
-// 視為「有效付費」的 Paddle 訂閱狀態
-const ACTIVE_STATUSES = new Set(['active', 'trialing', 'past_due']);
+// 視為「有效付費」的 Paddle 訂閱狀態（定義在 paddleConfig，與 webhook 共用）
+const ACTIVE_STATUSES = ACTIVE_SUBSCRIPTION_STATUSES;
+
+/**
+ * 取用戶「目前生效」的訂閱：同一用戶可能有多筆（取消後重訂、換方案），
+ * 不能只 .limit(1) 拿到任意一筆（可能是已取消那筆而把付費用戶降成 Free）。
+ */
+async function findEffectiveSubscription(userId: string) {
+  const rows = await db
+    .select({
+      plan: subscriptionSchema.plan,
+      status: subscriptionSchema.status,
+      updatedAt: subscriptionSchema.updatedAt,
+    })
+    .from(subscriptionSchema)
+    .where(eq(subscriptionSchema.clerkUserId, userId));
+  return pickEffectiveSubscription(rows);
+}
 
 // subscription.plan 字串 ↔ PLAN_ID
 function mapPlan(plan: string): string {
@@ -52,14 +69,7 @@ export async function getUserPlanId(_userId: string): Promise<string> {
     return PLAN_ID.FREE;
   }
 
-  const [sub] = await db
-    .select({
-      plan: subscriptionSchema.plan,
-      status: subscriptionSchema.status,
-    })
-    .from(subscriptionSchema)
-    .where(eq(subscriptionSchema.clerkUserId, userId))
-    .limit(1);
+  const sub = await findEffectiveSubscription(userId);
 
   if (!sub || !ACTIVE_STATUSES.has(sub.status)) {
     return PLAN_ID.FREE;
@@ -105,14 +115,7 @@ export async function isUserProOrAbove(userId: string): Promise<boolean> {
     return false;
   }
 
-  const [sub] = await db
-    .select({
-      plan: subscriptionSchema.plan,
-      status: subscriptionSchema.status,
-    })
-    .from(subscriptionSchema)
-    .where(eq(subscriptionSchema.clerkUserId, userId))
-    .limit(1);
+  const sub = await findEffectiveSubscription(userId);
 
   if (sub && ACTIVE_STATUSES.has(sub.status)) {
     const plan = mapPlan(sub.plan);

@@ -1,6 +1,8 @@
 import { auth } from '@clerk/nextjs/server';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
+import { ManageSubscriptionButton } from '@/features/billing/ManageSubscriptionButton';
+import { UpgradeProButton } from '@/features/billing/UpgradeProButton';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { getUserPlanId } from '@/libs/Plan';
 import { getTrialStatus } from '@/libs/trial';
@@ -145,14 +147,7 @@ export default async function BillingPage() {
                   {' '}
                   方案。
                 </p>
-                {/* TODO: 串接 Paddle Customer Portal（管理訂閱、取消、變更付款方式） */}
-                <button
-                  type="button"
-                  disabled
-                  className="rounded-lg border border-destructive/30 px-5 py-2 text-sm text-destructive opacity-60"
-                >
-                  管理訂閱（開發中）
-                </button>
+                <ManageSubscriptionButton />
               </div>
             )
           : (
@@ -169,17 +164,10 @@ export default async function BillingPage() {
                   <FeatureItem text="班級 AI 分析報表" />
                   <FeatureItem text="CSV 成績匯出" />
                 </ul>
-                {/* TODO: 串接 Paddle Checkout overlay（hooks/useCheckout） */}
-                <button
-                  type="button"
-                  disabled
-                  className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60"
-                >
-                  即將推出 — NT$299/月
-                </button>
-                <p className="mt-2 text-center text-xs text-muted-foreground">
-                  付款功能開發中，敬請期待
-                </p>
+                <UpgradeProButton
+                  monthlyPriceTwd={PricingPlanList[PLAN_ID.PREMIUM]!.price}
+                  yearlyPriceTwd={PricingPlanList[PLAN_ID.PREMIUM]!.yearlyPrice}
+                />
               </div>
             )}
 
