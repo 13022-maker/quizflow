@@ -73,6 +73,29 @@ describe('POST /api/paddle/checkout', () => {
     expect(getOrCreateMock).not.toHaveBeenCalled();
   });
 
+  it('學校方案暫不開放：TEAM price env 未設 → team priceId 被拒 400 INVALID_PRICE', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY', '');
+    vi.stubEnv('NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY', '');
+
+    for (const priceId of ['pri_team_m', 'pri_team_y']) {
+      const res = await post({ priceId });
+
+      expect(res.status).toBe(400);
+      expect((await res.json()).code).toBe('INVALID_PRICE');
+    }
+
+    expect(getOrCreateMock).not.toHaveBeenCalled();
+  });
+
+  it('學校方案暫不開放時，Pro 仍可正常結帳', async () => {
+    vi.stubEnv('NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY', '');
+    vi.stubEnv('NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY', '');
+    const res = await post({ priceId: 'pri_pro_y' });
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).priceId).toBe('pri_pro_y');
+  });
+
   it('缺 priceId → 400 INVALID_PRICE', async () => {
     const res = await post({});
 

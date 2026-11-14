@@ -352,8 +352,10 @@ Vercel env 現況（2026-11-14 只讀檢查，值未讀取）：
 4 個 production Price ID（金額需與 `AppConfig.ts` / `PricingSection.tsx` 一致，`AppConfig.pricing.test.ts` 守門）：
 - `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`（NT$299/月）
 - `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`（NT$2,490/年）
-- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`（NT$1,990/月）
-- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`（NT$16,990/年）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`（NT$1,990/月）——**暫不設定**（學校方案未開放）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`（NT$16,990/年）——**暫不設定**（學校方案未開放）
+
+**學校方案（Team）暫不開放結帳**：上線時**不要**設 `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY/YEARLY`（席次 / 團隊功能尚未實作）；未設時定價頁學校卡顯示「即將開放」、checkout 拒收 team priceId（`PricingCard.test.tsx` / `route.test.ts` 守門）。Paddle 端 Team price 保留但不對外。
 
 Production webhook destination：`https://quizflow-psi.vercel.app/api/webhook`（與 sandbox `ntfset_01kp66qw6wj7f3z0htq5ktg2qy` 不同條），事件勾 `subscription.*` 8 種。
 `NEXT_PUBLIC_*` 是 build 時 inline，改完 env 一定要 redeploy。

@@ -44,17 +44,18 @@
 
 ## 3. Paddle live 產品 / 價格核對
 
-- [ ] Catalog → Products 確認 4 個 Price 都是 **Active**，幣別 **TWD**，金額與網站一致：
+- [ ] Catalog → Products 確認 Price 都是 **Active**，幣別 **TWD**，金額與網站一致（學校方案 2 個 Price 見下方註記）：
 
 | env | Price ID | 方案 | 金額 | 週期 |
 |---|---|---|---|---|
 | `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` | `pri_01kp3nbts21fh1saqfxgat7kgb` | Pro 老師 | NT$299 | 每月 |
 | `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` | `pri_01kp3nerfqeama1ga5b54vgpk6` | Pro 老師 | NT$2,490 | 每年 |
-| `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` | `pri_01kp3nhjp1xw9g1jyxvxynhtp4` | 學校方案 | NT$1,990 | 每月 |
-| `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` | `pri_01kp3nnjdzkj64jv7ra0ygtaf1` | 學校方案 | NT$16,990 | 每年 |
+| `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` | `pri_01kp3nhjp1xw9g1jyxvxynhtp4` | 學校方案（**暫不設定 env**） | NT$1,990 | 每月 |
+| `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` | `pri_01kp3nnjdzkj64jv7ra0ygtaf1` | 學校方案（**暫不設定 env**） | NT$16,990 | 每年 |
 
   > 網站顯示價格來源：`src/utils/AppConfig.ts`（`price` / `yearlyPrice`，有 `AppConfig.pricing.test.ts` 守門）與 `src/components/pricing/PricingSection.tsx`。改價要三處一起改。
-- [ ] 確認上面 4 個 ID 是在 **live** 帳號看到的（sandbox 的 ID 在 live 不存在，結帳會失敗）
+  > **學校方案（Team）暫不開放**：Paddle 端的 Team 月/年 Price 可以保留（Active 也無妨），但**不要對外**（不要放進任何 payment link、email、文件）。網站上不會出現 Team 結帳入口，因為 Vercel 不設 `NEXT_PUBLIC_PADDLE_PRICE_TEAM_*`（見第 6 節）。
+- [ ] 確認 Pro 2 個 ID 是在 **live** 帳號看到的（sandbox 的 ID 在 live 不存在，結帳會失敗）
 - [ ] 確認稅務設定（Tax category = SaaS；價格是否含稅）符合你的預期
 
 ## 4. Paddle live 金鑰
@@ -85,7 +86,12 @@
 目前 production（2026-11-14 只讀檢查）**已有**：`NEXT_PUBLIC_PADDLE_ENV`、4 個 `NEXT_PUBLIC_PADDLE_PRICE_*`（2026-04-20 建立、類型 sensitive，值無法讀回確認）。
 **缺**：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`PADDLE_WEBHOOK_SECRET`。
 
-因為已存在的 5 個值看不到，**建議全部刪掉重設一次**，確保是 live 值：
+> **學校方案暫不開放：不要設定 `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` / `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY`。**
+> 原因：程式尚未實作學校方案的席次 / 團隊功能（`teamMember: 30` 只是設定值，沒有邀請老師、共用席次的流程），現在開放結帳會收到錢卻給不出承諾的功能。
+> 兩個 TEAM env 未設時：定價頁學校卡按鈕顯示「即將開放」且無法點（`PricingCard.test.tsx` 守門）；就算有人直接打 API 帶 Team priceId，`/api/paddle/checkout` 也會回 400 `INVALID_PRICE`（`route.test.ts` 守門）。
+> 既有的 2 個 production TEAM env 要**刪掉不重設**（下面指令已處理）。
+
+因為已存在的值看不到，**建議全部刪掉、只重設需要的**，確保是 live 值：
 
 ```bash
 # 在 repo 目錄，已 vercel link 到 quizflow 專案
@@ -99,8 +105,7 @@ vercel env rm NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY production -y
 printf 'production' | vercel env add NEXT_PUBLIC_PADDLE_ENV production
 printf 'pri_01kp3nbts21fh1saqfxgat7kgb' | vercel env add NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY production
 printf 'pri_01kp3nerfqeama1ga5b54vgpk6' | vercel env add NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY production
-printf 'pri_01kp3nhjp1xw9g1jyxvxynhtp4' | vercel env add NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY production
-printf 'pri_01kp3nnjdzkj64jv7ra0ygtaf1' | vercel env add NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY production
+# 學校方案暫不開放：TEAM 兩個 env 刪掉後「不要」加回
 
 # 秘密值：不加 pipe，讓 CLI 互動式提示貼上（避免留在 shell history）
 vercel env add PADDLE_API_KEY production              # 貼 pdl_live_apikey_...
@@ -108,7 +113,7 @@ vercel env add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN production  # 貼 live_...
 vercel env add PADDLE_WEBHOOK_SECRET production       # 貼 pdl_ntfset_...
 ```
 
-- [ ] `vercel env ls production | grep PADDLE` 確認 8 個都在
+- [ ] `vercel env ls production | grep PADDLE` 確認 6 個都在（ENV、PRO_MONTHLY、PRO_YEARLY、API_KEY、CLIENT_TOKEN、WEBHOOK_SECRET），而且**沒有** `NEXT_PUBLIC_PADDLE_PRICE_TEAM_*`
 - [ ] **不需要**設 `NEXT_PUBLIC_PRICING_ENABLED`（預設就是開啟；它只是回滾用的 kill switch）
 - [ ] **重新部署 production**（`NEXT_PUBLIC_*` 是 build 時寫進 bundle，改 env 後一定要 redeploy）：Vercel Dashboard → Deployments → 最新 production → Redeploy（不要勾 use existing build cache）
 
@@ -132,7 +137,7 @@ done
 
 ## 8. 上線後快速檢查（不花錢）
 
-- [ ] `https://quizflow-psi.vercel.app/zh/pricing`：付費方案按鈕顯示「立即訂閱」（不是「即將開放」）
+- [ ] `https://quizflow-psi.vercel.app/zh/pricing`：Pro 方案按鈕顯示「立即訂閱」（不是「即將開放」）；學校方案按鈕顯示「即將開放」且無法點（月繳 / 年繳都要切換確認）
 - [ ] 未登入點「立即訂閱」→ 導到登入頁，登入後回定價頁
 - [ ] `curl -s -o /dev/null -w '%{http_code}\n' -X POST https://quizflow-psi.vercel.app/api/webhook -d '{}'` → 應為 **400**（簽章錯誤）。若是 **503** 代表 `PADDLE_WEBHOOK_SECRET` 沒生效（忘了 redeploy？）
 - [ ] 瀏覽器 DevTools Console 沒有 Paddle.js 初始化錯誤
