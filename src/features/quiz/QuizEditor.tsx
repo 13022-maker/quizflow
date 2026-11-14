@@ -860,6 +860,7 @@ export function QuizEditor({
           defaultTopic={aiPrefill || buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
+          isPro={isPro}
         />
       )}
 
@@ -868,6 +869,7 @@ export function QuizEditor({
         <FileQuizGenerator
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
+          isPro={isPro}
         />
       )}
 
