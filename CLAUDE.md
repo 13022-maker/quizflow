@@ -21,11 +21,11 @@ QuizFlow 是專為**台灣老師**設計的 AI 測驗 SaaS 平台。
 
 ## 技術架構
 - **Framework**: Next.js 14+ App Router + TypeScript (Strict Mode)
-- **Auth**: Clerk（以 Organization 為 tenant，`ownerId = orgId`，多租戶）
+- **Auth**: Clerk（已移除 Clerk Organization，所有資源以 Clerk `userId` 為單位，`ownerId = userId`；見 `src/libs/Plan.ts`）
 - **Database**: Drizzle ORM + PostgreSQL（本地開發用 PGlite in-memory）
 - **UI**: Tailwind CSS + Shadcn UI（基於 Radix primitives）
-- **i18n**: next-intl（預設 `zh` 繁體中文，支援 `en`）
-- **AI 出題**: Gemma 4 E4B（透過 Ollama 本地運行）／Claude API（分析功能）
+- **i18n**: next-intl（預設 `zh` 繁體中文，支援 `en`、`ja`）
+- **AI 出題**: Gemini 2.5 Flash 為主；付費方案首選 Claude，備援 Grok → OpenAI（統一入口 `src/lib/ai/textModel.ts`，詳見下方「模型指定」）
 - **其他**: Zod 驗證、Playwright 測試
 
 ## 專案結構重點
@@ -40,10 +40,10 @@ src/
 │   └── dashboard/       # TitleBar、MessageState、DashboardHeader
 ├── components/
 │   └── onboarding/      # OnboardingSteps（新手引導）
-├── lib/ai/              # 所有 AI 提示詞與生成邏輯（統一放這裡）
+├── lib/ai/              # 共用 AI 邏輯（textModel.ts provider 分流、prompt 規則片段）
 ├── models/Schema.ts     # Drizzle 所有資料表定義
 ├── actions/             # Server Actions（quizActions、questionActions、responseActions）
-└── locales/             # zh.json / en.json
+└── locales/             # zh.json / en.json / ja.json
 ```
 
 ## 常用指令
@@ -68,10 +68,10 @@ npm run db:studio              # 開啟 Drizzle Studio
 
 **Server Actions**
 - 所有寫入操作必須透過 Server Action
-- 必須先驗證 `orgId`，使用 Zod 進行嚴格輸入驗證
+- 必須先驗證 `userId`（`auth()`），使用 Zod 進行嚴格輸入驗證
 
 **i18n**
-- 新增任何翻譯 key，**必須**同時更新 `src/locales/zh.json` 與 `src/locales/en.json`
+- 新增任何翻譯 key，**必須**同時更新 `src/locales/zh.json`、`src/locales/en.json` 與 `src/locales/ja.json`（`src/locales/locales.test.ts` 會檢查三語 key 對齊）
 
 **資料庫**
 - 修改 `src/models/Schema.ts` 後，**必須**執行 `npm run db:generate` 並 commit migration
@@ -82,7 +82,7 @@ npm run db:studio              # 開啟 Drizzle Studio
   4. 改完跑一次 `npm run db:generate` 確認顯示「No schema changes, nothing to migrate」，代表 drizzle-kit 認得重新命名後的狀態
 
 **安全性**
-- 絕對禁止在 Client Component 直接呼叫 AI/Ollama
+- 絕對禁止在 Client Component 直接呼叫 AI 服務（Gemini / Claude / Grok / OpenAI）
 - 必須走 Server Action 或 API Route
 
 **API Routes**
@@ -119,12 +119,21 @@ QuizFlow 專屬觸發:
 
 ## AI 出題核心規則（最重要部分）
 
-AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗）。
+Free 方案**可以**使用 AI 出題，有每月額度：每月 30 次（`src/utils/AppConfig.ts` 的 `aiQuota`；PR #107 由 10 改為 30，merge 前 main 仍為 10），最多建立 10 份測驗（`website: 10`）。Pro／學校方案與 30 天 Pro 試用中的帳號 AI 無限次（`isProOrAbove`）。
 
 **模型指定**
-- Ollama 本地模型名稱：`gemma4:e4b`
-- 分析類功能（弱點分析、班級建議）：Claude API（`claude-sonnet-4-20250514`）
-- 所有 AI 相關邏輯統一放在 `src/lib/ai/` 目錄下
+- 統一入口 `generateAIText()`（`src/lib/ai/textModel.ts`）分流：
+  - 付費（`isProOrAbove`，含試用中）且有 `ANTHROPIC_API_KEY` → Claude 優先，失敗 fallback Gemini
+  - 免費／未登入／學生端 → 直接 Gemini，**永遠不會用到 Claude**（成本閘門，PR #106）
+  - Gemini 失敗 → Grok（`grok-4-fast`，`api.x.ai`）→ 最後 OpenAI（`gpt-4o-mini`）
+  - 每個 provider 另有帳號 key pool（`*_API_KEY_BACKUP`，逗號分隔）
+- Gemini 模型：`gemini-2.5-flash`（`generate-questions`、`generate-from-file` 等出題 route 預設）
+- Claude 模型 id：
+  - `claude-sonnet-4-6`：`generateAIText` 預設，涵蓋出題、簡答批改、弱點分析、班級建議
+  - `claude-opus-4-8`：適性學習科目生成（`src/libs/adaptive/`，開 adaptive thinking）
+  - `claude-haiku-4-5-20251001`：`bloom-studio`
+- 語音合成：OpenAI `tts-1`；客語走 Google Translate TTS（`/api/ai/tts`）
+- 共用 AI 邏輯放在 `src/lib/ai/`；各功能的 API route 在 `src/app/api/ai/`，適性學習在 `src/libs/adaptive/`
 
 **生成輸出格式（標準 JSON Schema）**
 每題必須包含以下欄位：
@@ -147,13 +156,13 @@ AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗
 }
 ```
 
-**Gemma 4 多模態提示規則**
-- 先放置 `<image>`、`<audio>` 等多模態內容，再接文字指令
+**多模態提示規則（Gemini / Claude）**
+- 先放置圖片／PDF 等多模態內容，再接文字指令（`textModel.ts` 的 `buildClaudeMediaBlocks` / `buildGeminiMediaParts` 已照此順序組裝）
 - 明確要求輸出結構化 JSON，包含題目、選項、正確答案、解析
-- 建議使用 Thinking Mode（step by step）提升生成品質
+- Gemini 端關閉 thinking 讓 token 全給輸出；Claude Opus 4.8 需以 `claudeThinking: true` 開 adaptive thinking
 
 **提示詞管理**
-- 所有 Gemma 4 / Claude 提示詞統一放在 `src/lib/ai/prompts.ts`
+- 共用的 prompt 規則片段放在 `src/lib/ai/`（如 `singleAnswerPrompt.ts`、`codeSnippetPrompt.ts`、`lessonPrepPromptBuilder.ts`），各功能主 prompt 寫在各自的 route（例如 `generate-questions/route.ts` 的 `FRAMEWORK_PROMPTS`）；不存在 `src/lib/ai/prompts.ts`
 
 ## 重要設定檔
 
@@ -163,7 +172,7 @@ AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗
 | `src/libs/Env.ts` | 環境變數驗證（Zod） |
 | `src/models/Schema.ts` | Drizzle 所有資料表定義 |
 | `src/locales/zh.json` | 主要翻譯檔（繁體中文） |
-| `src/lib/ai/` | Gemma 4 / Claude 相關程式碼與提示詞 |
+| `src/lib/ai/` | AI provider 分流（`textModel.ts`）與共用 prompt 規則 |
 
 ## 環境變數（開發環境）
 開發時只需 `.env.local`，`DATABASE_URL` 可省略（自動使用 PGlite）：
@@ -172,7 +181,10 @@ CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 STRIPE_SECRET_KEY=any_fake_value
-# ANTHROPIC_API_KEY= （analyze-weak-points / analyze-class-performance 需要）
+# GEMINI_API_KEY= （AI 出題主力；免費用戶與學生端只走 Gemini）
+# ANTHROPIC_API_KEY= （付費方案首選 Claude；未設則全部走 Gemini）
+# GROK_API_KEY= （Gemini 失敗時的備援，可省略）
+# OPENAI_API_KEY= （TTS 語音 + 最後一道 AI 備援）
 # YOUTUBE_API_KEY= （適性學習「搜尋教學影片」需要，Google Cloud Console 啟用 YouTube Data API v3
 #   後建立；未設則「搜尋影片」入口整個隱藏，不影響 YouTube 匯入既有的貼網址流程）
 ```
@@ -194,7 +206,7 @@ STRIPE_SECRET_KEY=any_fake_value
 
 - **題型**：single_choice、multiple_choice、true_false、short_answer、ranking（排序題）
 - **排序題（ranking）**：學生端用 `survey-react-ui` ranking widget（`next/dynamic` + `ssr:false` 動態載入），老師端輸入順序即正確答案，批改為全對才給分，學生端永遠強制打亂選項
-- **AI quota**：免費版每月 10 次，Pro 無限（4 月測試期全 Pro）
+- **AI quota**：免費版每月 30 次（PR #107，merge 前 main 為 10），Pro／學校方案無限；新帳號 30 天 Pro 試用期間也無限（`src/libs/trial.ts`，`TRIAL_DAYS = 30`）
 - **AI 出題**：文字模式 + 檔案模式（PDF/圖片），支援 mc/tf/fill/short/rank 五種題型
 - **快閃卡**（`FlashCard.tsx`）：3D 翻牌 + 進度追蹤
 - **考試模式防作弊**：`quiz.preventLeave` boolean 控制；學生端 `beforeunload` 攔截 + `visibilitychange` 偵測切換分頁；`response.leaveCount` 記錄離開次數；老師成績頁顯示「⚠️ 離開 N 次」紅色標記 + CSV 匯出
@@ -214,11 +226,11 @@ STRIPE_SECRET_KEY=any_fake_value
 ## 目前完成進度
 
 ### ✅ 已完成
-- 品牌設定、雙語支援（zh/en）、定價方案
+- 品牌設定、多語支援（zh/en/ja）、定價方案
 - 資料模型：quiz、question、response、answer + ai_usage
 - 測驗 CRUD + 拖曳排序 + 平均配分（總分 100）
 - 學生公開作答頁面（`/quiz/[accessCode]`）與自動批改
-- AI 出題（文字提示 + PDF/圖片上傳，使用 Claude API，支援 5 種題型含排序題）
+- AI 出題（文字提示 + PDF/圖片上傳，Gemini 2.5 Flash 為主、付費方案 Claude 優先，支援 5 種題型含排序題）
 - AI 出題完成後自動把試卷主題接到預設標題後面（「AI 出題 4/26 - 光合作用」，≤7 字，僅當標題仍是預設 pattern 才覆寫，PR #49）
 - AI 出題命題框架下拉選單（`src/components/quiz/AIQuizModal.tsx` select + `src/app/api/ai/generate-questions/route.ts` `FRAMEWORK_PROMPTS`），分組：
   - 108 課綱素養（國中／高中各 6 科）
@@ -231,7 +243,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 學生成績頁 AI 弱點分析（`/api/ai/analyze-weak-points`）
 - 錯題重做功能（本機批改，不計入統計）
 - 老師成績報表：可排序表格、CSV 匯出（含離開次數）、前 3 難題、AI 班級建議
-- AI 出題 quota 限制（Free 10次/月，Pro 無限）
+- AI 出題 quota 限制（Free 30 次/月〔PR #107〕，Pro 無限）
 - Billing 方案頁面（用量顯示 + 方案比較表）
 - 題目插入圖片功能（URL 貼上 + Google 搜尋 + 預覽）
 - 是非題選項修復（自動補上預設「正確/錯誤」選項）
@@ -303,7 +315,7 @@ STRIPE_SECRET_KEY=any_fake_value
   - 單 channel 即可（不用依 host/player 分），channel 計費 = 遊戲數
   - 無隱私洩漏（player 分數 / 排名走 REST 認證層，channel 全 public subscribe）
   - REST endpoint 仍是權威 state 來源，adapter 僅替換「何時觸發 fetch」
-- **Token endpoint**：單一 `/api/live/ably-auth` 用 `?role=host|player` 分流；host 驗 Clerk orgId 擁有 game、player 驗 playerToken
+- **Token endpoint**：單一 `/api/live/ably-auth` 用 `?role=host|player` 分流；host 驗 Clerk userId 擁有 game（`game.hostUserId`）、player 驗 playerToken
 - **Middleware 陷阱（踩過 2 次，謹記）**：
   - 不可把 `/api/live/ably-auth` 放進 `isPublicApiRoute`（會整個 skip `clerkMiddleware`，endpoint 內 `auth()` 炸 500）
   - 正解：`isOptionalAuthRoute` matcher + 條件式 `if (isProtectedRoute && !isOptionalAuthRoute) auth.protect(...)` → 保留 Clerk context 但不強制登入
@@ -324,14 +336,14 @@ STRIPE_SECRET_KEY=any_fake_value
 目前前端用 pdf-lib 裁切後上傳（繞過 Vercel 4.5MB body 限制）。
 長期改法：改用 Vercel Blob 直傳，server 端從 Blob URL 讀取，不受 body size 限制。尚未實作。
 
-### Stripe 金鑰
-目前用測試金鑰（`STRIPE_SECRET_KEY`），5 月替換為正式金鑰。
+### ~~Stripe 金鑰~~（已過時）
+金流已改由 Paddle（Merchant of Record）處理，`src/` 已無任何 Stripe 呼叫；`STRIPE_*` 只剩 `src/libs/Env.ts` 的 optional 欄位與 `package.json` 的 `stripe` 依賴，可擇期清除。
 
-### ECPay 金流
-5 月整合，需綠界商店帳號與 API 金鑰。
+### ~~ECPay 金流~~（已過時）
+未整合，金流改走 Paddle，不再規劃。
 
-### GitHub Actions CI 紅燈
-`.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
+### ~~GitHub Actions CI 紅燈~~（已解決）
+`.github/workflows/CI.yml` 已直接帶 `NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in`，不再依賴 secret；main 上 CI 為綠燈。
 
 ### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15，分支已刪 2026-04-30）
 `feature/paddle-sandbox` 分支綁 Paddle Sandbox 環境，完整 flow 驗證：訂閱 → webhook → DB upsert → 取消 → status=canceled。
