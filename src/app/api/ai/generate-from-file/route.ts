@@ -11,7 +11,7 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
-import { isProSafe } from '@/lib/ai/textModel';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
@@ -318,8 +318,11 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
   // 音檔只能走 Gemini（Claude 不支援音檔多模態）
   let effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
 
+  // 成本閘門：只有 Pro 才能用到 Claude（首選、Gemini 未設 key、截斷重出都算）
+  const allowClaude = await canUseClaude();
+
   // 免費用戶選 Claude → 靜默轉 Gemini（付費者才走 Claude；UI 照舊可選，由 server 分流）
-  if (effectiveModel === 'claude' && !(await isProSafe())) {
+  if (effectiveModel === 'claude' && !allowClaude) {
     console.warn('[generate-from-file] 非付費用戶選 Claude，靜默轉 Gemini');
     effectiveModel = 'gemini';
   }
@@ -331,6 +334,9 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         { error: '伺服器尚未設定 GEMINI_API_KEY，無法處理音檔 / 聽力題。請改上傳 PDF 或圖片，或聯繫管理員設定金鑰。' },
         { status: 503 },
       );
+    }
+    if (!allowClaude) {
+      return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
     }
     if (!hasAnthropicKey) {
       return NextResponse.json(
@@ -415,8 +421,8 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         ? await generateWithClaude(media, prompt)
         : await generateWithGemini(media, prompt);
     } catch (err) {
-      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
-        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
+      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey && allowClaude) {
+        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY，且限 Pro）
         raw = await generateWithClaude(media, prompt);
       } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
         // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
@@ -480,6 +486,14 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     }
 
     const msg = err instanceof Error ? err.message : '未知錯誤';
+
+    // Gemini 截斷且不能走 Claude 重出（非 Pro 或沒設 Claude 金鑰）
+    if (msg === 'GEMINI_TRUNCATED') {
+      return NextResponse.json(
+        { error: 'AI 輸出過長被截斷，請減少題數或縮小頁數範圍後再試', retryable: true },
+        { status: 503 },
+      );
+    }
 
     // 金鑰未設定（generateWithGemini / generateWithClaude 丟出）
     if (msg === 'GEMINI_API_KEY_MISSING') {
