@@ -40,9 +40,6 @@ const isPublicApiRoute = createRouteMatcher([
   // TTS 發音：學生單字卡練習需要
   '/api/ai/tts',
   '/:locale/api/ai/tts',
-  // 錯題單字卡：學生作答後建立
-  '/api/ai/generate-flashcards',
-  '/:locale/api/ai/generate-flashcards',
   // 儲存單字卡集：學生作答後儲存
   '/api/vocab/save',
   '/:locale/api/vocab/save',
@@ -98,6 +95,11 @@ const isOptionalAuthRoute = createRouteMatcher([
   '/:locale/api/live/ably-auth',
   '/api/review/ably-auth',
   '/:locale/api/review/ably-auth',
+  // 錯題單字卡：學生作答後匿名建立（不強制登入），但老師端也會呼叫；
+  // route 內用 canUseClaude() 讀 session 判斷 Pro 才能走 Claude 備援，
+  // 放 isPublicApiRoute 會整個 skip clerkMiddleware → auth() 炸掉 → Pro 也被當成 Free
+  '/api/ai/generate-flashcards',
+  '/:locale/api/ai/generate-flashcards',
 ]);
 
 // 公開頁但需要 Clerk context 讓 server component 內的 auth() 可選擇性讀 session,
