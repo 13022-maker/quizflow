@@ -9,11 +9,13 @@ import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { questionNdjsonResponse } from '@/lib/ai/questionNdjsonStream';
 import { isProSafe } from '@/lib/ai/textModel';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Hobby + Fluid compute 上限 300 秒；原本寫死 60 秒，圖片 / PDF 出 10 題常常被砍（2026-11 preview 實測）
+export const maxDuration = 300;
 
 type ModelChoice = 'gemini' | 'claude';
 const DEFAULT_MODEL: ModelChoice = 'gemini';
@@ -49,6 +51,7 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
       if (!retryable || i === maxRetries - 1) {
         throw err;
       }
+      console.warn(`[generate-from-file] AI 回 ${status ?? '過載'}，第 ${i + 1} 次重試`);
       await new Promise(r => setTimeout(r, (i + 1) * 1500));
     }
   }
@@ -57,6 +60,28 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
 
 // 一份多模態素材：mimeType + base64
 type Media = { mimeType: string; base64: string };
+
+// Gemini 請求內容（一般 / 串流共用）
+function geminiRequest(media: Media[], prompt: string) {
+  return {
+    model: GEMINI_MODEL_NAME,
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          ...media.map(m => ({ inlineData: { mimeType: m.mimeType, data: m.base64 } })),
+          { text: prompt },
+        ],
+      },
+    ],
+    // 關掉 thinking 讓 100% token 給 JSON；上限提到 16384 防長題（含聽力 listeningText）截斷
+    config: {
+      maxOutputTokens: 16384,
+      responseMimeType: 'application/json',
+      thinkingConfig: { thinkingBudget: 0 },
+    },
+  };
+}
 
 // 呼叫 Gemini 2.5 Flash（省錢快速、多模態品質佳）
 // 支援多份 media（例如多張照片一次出題）
@@ -67,25 +92,7 @@ async function generateWithGemini(
   if (!genAI) {
     throw new Error('GEMINI_API_KEY_MISSING');
   }
-  const response = await callWithRetry(() =>
-    genAI.models.generateContent({
-      model: GEMINI_MODEL_NAME,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            ...media.map(m => ({ inlineData: { mimeType: m.mimeType, data: m.base64 } })),
-            { text: prompt },
-          ],
-        },
-      ],
-      // 關掉 thinking 讓 100% token 給 JSON；上限提到 16384 防長題（含聽力 listeningText）截斷
-      config: {
-        maxOutputTokens: 16384,
-        responseMimeType: 'application/json',
-        thinkingConfig: { thinkingBudget: 0 },
-      },
-    }));
+  const response = await callWithRetry(() => genAI.models.generateContent(geminiRequest(media, prompt)));
 
   // finishReason 非 STOP = 輸出被截斷,丟 sentinel error 讓外層 catch 改走 Claude 重出
   const finishReason = response.candidates?.[0]?.finishReason;
@@ -163,6 +170,60 @@ const TYPE_EXAMPLES: Record<string, string> = {
   listening: '    { "type": "listening", "question": "根據內容，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明", "listeningText": "根據文件內容改寫成口語化的朗讀文字，作為學生聽力素材" }',
 };
 
+// 把 AI 呼叫錯誤轉成給老師看的訊息（JSON 與串流兩種回應共用）
+function describeAiError(err: unknown, model: ModelChoice): { status: number; error: string; retryable?: boolean } {
+  const status = (err as { status?: number; code?: number }).status
+    ?? (err as { code?: number }).code;
+  const overloaded
+    = status === 429
+    || status === 529
+    || (typeof status === 'number' && status >= 500)
+    || (err instanceof Error && err.message.includes('overloaded'));
+  if (overloaded) {
+    return { status: 503, error: 'AI 伺服器目前忙碌，請稍後再試', retryable: true };
+  }
+
+  const msg = err instanceof Error ? err.message : '未知錯誤';
+
+  // 金鑰未設定（generateWithGemini / generateWithClaude 丟出）
+  if (msg === 'GEMINI_API_KEY_MISSING') {
+    return { status: 503, error: '伺服器尚未設定 GEMINI_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' };
+  }
+  if (msg === 'ANTHROPIC_API_KEY_MISSING') {
+    return { status: 503, error: '伺服器尚未設定 ANTHROPIC_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' };
+  }
+
+  // Google API 未授權（金鑰無效 / 被撤銷 / 帳單未啟用）
+  const permissionDenied
+    = status === 403
+    || msg.includes('PERMISSION_DENIED')
+    || msg.includes('unregistered callers')
+    || msg.includes('API key not valid');
+  if (permissionDenied) {
+    return { status: 503, error: 'AI 金鑰驗證失敗：伺服器的 GEMINI_API_KEY 無效或未授權此 API，請聯繫管理員檢查設定。' };
+  }
+
+  console.error(`[generate-from-file] ${model} 呼叫失敗：`, err);
+  return { status: 500, error: `AI 命題失敗：${msg}` };
+}
+
+// 單題後處理：聽力題 type 修正 + 圖解 SVG
+function postProcessQuestion(q: Record<string, any>, types: string[]) {
+  const requestedTypes = new Set(types);
+  if (requestedTypes.has('listening')) {
+    // AI 可能回傳 mc 而非 listening
+    if (q.listeningText && q.type !== 'listening') {
+      q.type = 'listening';
+    }
+    if (q.type === 'mc' && !requestedTypes.has('mc')) {
+      q.type = 'listening';
+    }
+  }
+  // mc/tf/fill 題型若 AI 判斷需要，附上 diagramSvg（fail-open，失敗就不附圖）
+  attachDiagramSvgs([q as { type: string; diagram?: unknown; diagramSvg?: string }]);
+  return q;
+}
+
 export async function POST(request: Request) {
   const { userId } = await auth();
   if (!userId) {
@@ -192,6 +253,8 @@ export async function POST(request: Request) {
 
   // 使用者選的模型（'gemini' | 'claude'），預設 gemini
   const modelRaw = (formData.get('model') as string) || DEFAULT_MODEL;
+  // NDJSON 串流（AIQuizModal 會帶；FileQuizGenerator 沒帶，維持一次回傳 JSON）
+  const wantsStream = formData.get('stream') === 'true';
   const model: ModelChoice = modelRaw === 'claude' ? 'claude' : 'gemini';
 
   if (uploaded.length === 0) {
@@ -405,6 +468,38 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     });
   }
 
+  if (wantsStream) {
+    const geminiFirst = effectiveModel === 'gemini';
+    return questionNdjsonResponse({
+      logTag: 'generate-from-file',
+      primaryModel: 'gemini',
+      // Gemini：邊生邊推；串流連線本身遇到 429/5xx 一樣自動重試
+      primary: geminiFirst && genAI
+        ? () => callWithRetry(() => genAI.models.generateContentStream(geminiRequest(media, prompt)))
+        : undefined,
+      // 比照非串流行為：Gemini 只有「截斷 / 沒產出」才改走 Claude；其他錯誤（金鑰、過載）直接回報
+      shouldFallback: err => err instanceof Error && err.message.startsWith('STREAM_'),
+      fallback: geminiFirst
+        ? (hasAnthropicKey && !isAudio
+            ? async () => ({ raw: await generateWithClaude(media, prompt), usedModel: 'claude' })
+            : undefined)
+        : async () => {
+          try {
+            return { raw: await generateWithClaude(media, prompt), usedModel: 'claude' };
+          } catch (err) {
+            // Claude 失敗（額度不足/過載等）→ fallback Gemini
+            if (!hasGeminiKey || isAudio) {
+              throw err;
+            }
+            console.warn('[generate-from-file] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
+            return { raw: await generateWithGemini(media, prompt), usedModel: 'gemini' };
+          }
+        },
+      postProcess: q => postProcessQuestion(q, types),
+      errorMessage: err => describeAiError(err, effectiveModel).error,
+    });
+  }
+
   try {
     let raw: string;
     try {
@@ -436,70 +531,13 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       return NextResponse.json({ error: 'AI 回傳格式錯誤，請重試' }, { status: 500 });
     }
 
-    // 後處理：確保聽力題 type 正確（AI 可能回傳 mc 而非 listening）
-    if (hasListening && result.questions) {
-      const requestedTypes = new Set(types);
-      for (const q of result.questions) {
-        if (q.listeningText && q.type !== 'listening') {
-          q.type = 'listening';
-        }
-        if (requestedTypes.has('listening') && q.type === 'mc' && !requestedTypes.has('mc')) {
-          q.type = 'listening';
-        }
-      }
-    }
-
-    // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
-    if (result.questions) {
-      attachDiagramSvgs(result.questions);
+    if (Array.isArray(result.questions)) {
+      result.questions = result.questions.map((q: Record<string, any>) => postProcessQuestion(q, types));
     }
 
     return NextResponse.json(result);
   } catch (err) {
-    const status = (err as { status?: number; code?: number }).status
-      ?? (err as { code?: number }).code;
-    const overloaded
-      = status === 429
-      || status === 529
-      || (typeof status === 'number' && status >= 500)
-      || (err instanceof Error && err.message.includes('overloaded'));
-    if (overloaded) {
-      return NextResponse.json(
-        { error: 'AI 伺服器目前忙碌，請稍後再試', retryable: true },
-        { status: 503 },
-      );
-    }
-
-    const msg = err instanceof Error ? err.message : '未知錯誤';
-
-    // 金鑰未設定（generateWithGemini / generateWithClaude 丟出）
-    if (msg === 'GEMINI_API_KEY_MISSING') {
-      return NextResponse.json(
-        { error: '伺服器尚未設定 GEMINI_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' },
-        { status: 503 },
-      );
-    }
-    if (msg === 'ANTHROPIC_API_KEY_MISSING') {
-      return NextResponse.json(
-        { error: '伺服器尚未設定 ANTHROPIC_API_KEY，AI 命題暫時無法使用。請聯繫管理員。' },
-        { status: 503 },
-      );
-    }
-
-    // Google API 未授權（金鑰無效 / 被撤銷 / 帳單未啟用）
-    const permissionDenied
-      = status === 403
-      || msg.includes('PERMISSION_DENIED')
-      || msg.includes('unregistered callers')
-      || msg.includes('API key not valid');
-    if (permissionDenied) {
-      return NextResponse.json(
-        { error: 'AI 金鑰驗證失敗：伺服器的 GEMINI_API_KEY 無效或未授權此 API，請聯繫管理員檢查設定。' },
-        { status: 503 },
-      );
-    }
-
-    console.error(`[generate-from-file] ${effectiveModel} 呼叫失敗：`, err);
-    return NextResponse.json({ error: `AI 命題失敗：${msg}` }, { status: 500 });
+    const { status, error, retryable } = describeAiError(err, effectiveModel);
+    return NextResponse.json(retryable ? { error, retryable } : { error }, { status });
   }
 }

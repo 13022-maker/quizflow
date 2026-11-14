@@ -49,8 +49,9 @@ describe('POST /api/ai/generate-questions', () => {
   beforeEach(() => {
     streamMock.mockReset();
     generateMock.mockReset();
-    // route 在 fallback / 截斷時會 console.warn，測試裡靜音（vitest-fail-on-console）
+    // route 在 fallback / 截斷 / 失敗時會寫 log，測試裡靜音（vitest-fail-on-console）
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
   });
 
   it('stream: true → NDJSON：title、逐題、done', async () => {

@@ -18,11 +18,12 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { questionNdjsonResponse } from '@/lib/ai/questionNdjsonStream';
 import { buildQuestionPrompt } from '@/lib/ai/questionPrompt';
-import { QuestionStreamParser } from '@/lib/ai/questionStreamParser';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Hobby + Fluid compute 上限 300 秒；Gemini → OpenAI → Claude 三段備援全跑一輪可能超過 60 秒
+export const maxDuration = 300;
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 
@@ -157,85 +158,19 @@ async function generateOnce(prompt: string, types: string[]) {
   return result;
 }
 
-// ── 串流模式 ──
+// ── 串流模式：Gemini 串流為主，一題都沒出才走 OpenAI → Claude 備援 ──
 function generateStream(prompt: string, types: string[]): Response {
-  const encoder = new TextEncoder();
-
-  const stream = new ReadableStream({
-    async start(controller) {
-      const send = (obj: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
-      let emitted = 0;
-      let titleSent = false;
-
-      try {
-        const parser = new QuestionStreamParser();
-        let finishReason: string | undefined;
-        try {
-          const response = await gemini.models.generateContentStream({
-            model: 'gemini-2.5-flash',
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            config: GEMINI_CONFIG,
-          });
-          for await (const chunk of response) {
-            const fr = chunk.candidates?.[0]?.finishReason;
-            if (fr) {
-              finishReason = fr;
-            }
-            const { title, questions } = parser.push(chunk.text ?? '');
-            if (title !== undefined) {
-              titleSent = true;
-              send({ type: 'title', title });
-            }
-            for (const q of questions) {
-              send({ type: 'question', question: postProcessQuestion(q, types) });
-              emitted++;
-            }
-          }
-          if (finishReason && finishReason !== 'STOP') {
-            throw new Error(`GEMINI_${finishReason}`);
-          }
-          if (emitted === 0) {
-            throw new Error('GEMINI_EMPTY');
-          }
-          send({ type: 'done', count: emitted, model: 'gemini' });
-          return;
-        } catch (geminiErr) {
-          const msg = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
-          if (emitted > 0) {
-            // 已經吐出部分題目：保留，不重出（避免老師看到的題目被整批換掉）
-            console.warn(`[generate-questions] Gemini 串流中斷（已出 ${emitted} 題）：${msg}`);
-            send({ type: 'warning', message: `AI 輸出中斷，已保留前 ${emitted} 題，可再補出題目` });
-            send({ type: 'done', count: emitted, model: 'gemini' });
-            return;
-          }
-          console.warn('[generate-questions] Gemini 串流失敗，fallback OpenAI：', msg);
-        }
-
-        // Gemini 一題都沒出 → 備援鏈（非串流），拿到後一次推完
-        const { raw, usedModel } = await runFallbackChain(prompt);
-        const result = parseResult(raw, usedModel);
-        if (!titleSent && result.title) {
-          send({ type: 'title', title: result.title });
-        }
-        for (const q of result.questions ?? []) {
-          send({ type: 'question', question: postProcessQuestion(q, types) });
-          emitted++;
-        }
-        send({ type: 'done', count: emitted, model: usedModel });
-      } catch (err) {
-        send({ type: 'error', error: err instanceof Error ? err.message : 'AI 命題失敗，請重試' });
-      } finally {
-        controller.close();
-      }
-    },
-  });
-
-  return new Response(stream, {
-    headers: {
-      'Content-Type': 'application/x-ndjson; charset=utf-8',
-      'Cache-Control': 'no-cache, no-transform',
-      'X-Accel-Buffering': 'no',
-    },
+  return questionNdjsonResponse({
+    logTag: 'generate-questions',
+    primaryModel: 'gemini',
+    primary: () => gemini.models.generateContentStream({
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      config: GEMINI_CONFIG,
+    }),
+    fallback: () => runFallbackChain(prompt),
+    postProcess: q => postProcessQuestion(q, types),
+    errorMessage: err => (err instanceof Error ? err.message : 'AI 命題失敗，請重試'),
   });
 }
 

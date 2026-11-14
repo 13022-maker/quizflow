@@ -165,9 +165,13 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       fd.append('model', model);
 
       const res = await fetch('/api/ai/generate-from-file', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || '命題失敗');
+      // Vercel 逾時（504）回的是 HTML，直接 res.json() 會丟出英文的 JSON 解析錯誤給老師看
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        throw new Error(data?.error
+          || (res.status === 504
+            ? 'AI 出題時間太長被中斷了，請減少題數或頁數後再試一次'
+            : `命題失敗（錯誤代碼 ${res.status}），請稍後再試`));
       }
       setResult(data);
     } catch (e: unknown) {

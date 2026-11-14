@@ -400,7 +400,27 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     });
   }
 
-  // 讀 generate-questions 的 NDJSON 串流，逐題更新預覽
+  // API 錯誤轉成給老師看的訊息；Vercel 逾時（504）等非 JSON 回應也要說清楚，不只顯示「命題失敗」
+  async function readErrorMessage(res: Response, fallback: string): Promise<string> {
+    try {
+      const errData = await res.json();
+      if (errData.upgradeRequired) {
+        setUpgradeRequired(true);
+      }
+      if (errData.error) {
+        return errData.error;
+      }
+    } catch { /* 回應非 JSON（例如 Vercel 逾時頁） */ }
+    if (res.status === 504) {
+      return 'AI 出題時間太長被中斷了，請減少題數、頁數或圖片張數後再試一次';
+    }
+    if (res.status === 413) {
+      return '上傳的檔案太大，請壓縮或減少張數後再試';
+    }
+    return `${fallback}（錯誤代碼 ${res.status}），請稍後再試`;
+  }
+
+  // 讀 generate-questions / generate-from-file 的 NDJSON 串流，逐題更新預覽
   async function readQuestionStream(res: Response): Promise<GeneratedResult> {
     if (!res.body) {
       return res.json();
@@ -410,6 +430,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     let buffer = '';
     let title = '';
     let warning = '';
+    let finished = false;
     const qs: GeneratedQuestion[] = [];
 
     const handleLine = (line: string) => {
@@ -427,6 +448,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         qs.push(evt.question);
         setStreamingQs([...qs]);
         setStep(`已生成 ${qs.length} 題…`);
+      } else if (evt.type === 'done') {
+        finished = true;
       } else if (evt.type === 'warning') {
         warning = evt.message;
       } else if (evt.type === 'error') {
@@ -446,8 +469,14 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     }
     handleLine(buffer + decoder.decode());
 
+    // 沒收到 done 就斷線 = 伺服器端逾時或連線中斷
     if (qs.length === 0) {
-      throw new Error('AI 沒有產生題目，請重試');
+      throw new Error(finished
+        ? 'AI 沒有產生題目，請重試'
+        : 'AI 出題時間太長被中斷了，請減少題數、頁數或圖片張數後再試一次');
+    }
+    if (!finished && !warning) {
+      warning = `連線中斷，已保留前 ${qs.length} 題，可再補出題目`;
     }
     if (warning) {
       setError(warning);
@@ -513,17 +542,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           }),
         });
         if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
+          throw new Error(await readErrorMessage(res, '命題失敗'));
         }
         data = await readQuestionStream(res);
       } else if (mode === 'file') {
@@ -571,22 +590,14 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('count', String(effectiveCount));
         fd.append('difficulty', difficulty);
         fd.append('model', model);
+        // NDJSON 串流：每生完一題就推過來，邊生邊顯示
+        fd.append('stream', 'true');
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
+          throw new Error(await readErrorMessage(res, '命題失敗'));
         }
-        data = await res.json();
+        data = await readQuestionStream(res);
       } else if (mode === 'exambank') {
         // 題庫匯入模式：貼上文字 或 上傳題庫 PDF，題幹/選項/正解由後端 examBankParser
         // 直接解析，AI 只補詳解（見 parse-exam-bank/route.ts 開頭註解）
@@ -614,17 +625,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             }),
           });
         if (!res.ok) {
-          let errMsg = '題庫解析失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
+          throw new Error(await readErrorMessage(res, '題庫解析失敗'));
         }
         const parsed = await res.json();
         setParseReport(parsed.parseReport ?? null);
@@ -645,17 +646,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           }),
         });
         if (!res.ok) {
-          let errMsg = '命題失敗';
-          try {
-            const errData = await res.json();
-            if (errData.upgradeRequired) {
-              setUpgradeRequired(true);
-            }
-            if (errData.error) {
-              errMsg = errData.error;
-            }
-          } catch { /* 回應非 JSON */ }
-          throw new Error(errMsg);
+          throw new Error(await readErrorMessage(res, '命題失敗'));
         }
         data = await res.json();
       }
