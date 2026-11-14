@@ -15,6 +15,8 @@ import { Buffer } from 'node:buffer';
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
 
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
+
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
@@ -87,6 +89,10 @@ async function generateOpenAITTS(text: string, voice: string, speed: number, api
 }
 
 export async function POST(req: Request) {
+  const limited = await enforcePublicAiLimit(req, 'tts');
+  if (limited) {
+    return limited;
+  }
   try {
     const body = await req.json();
     const text: string = body.text?.trim();
