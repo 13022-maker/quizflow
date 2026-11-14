@@ -188,6 +188,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - **.next 快取損壞**：修復方式 `rm -rf .next && npm run dev`
 - **手機版 PDF 頁數範圍選擇器**：flex 不 wrap 在 375px 溢出，改 `flex-wrap` + 調整 padding
 - **程式題缺程式碼**：出題 prompt 從沒要求附程式碼又規定「不要 markdown」，AI 出「下列程式的輸出為何？」卻不給程式碼。修法：各出題 prompt 加 `buildCodeSnippetRule()`（`src/lib/ai/codeSnippetPrompt.ts`），程式碼一律以 ```lang 圍欄存在題目 body（不加 DB 欄位）；`ensureCodeSnippets()`（`src/lib/codeBlock.ts`）把 AI 放錯欄位的程式碼併回並偵測缺漏；顯示端一律用 `QuestionBody` 元件（等寬 `<pre><code>`，React escape 無 XSS），Word / 練習頁匯出同步支援
+- **單選題出現兩個正解**：否定題幹（「下列何者不是網域名稱的一部分？」）AI 拿相鄰概念（URL 的「協定」）當干擾項，結果也成立。修法：各選擇題出題 prompt（generate-questions / from-file / from-url / regenerate / remedial / bloom-studio / aiActions / 備課助手）串接 `buildSingleAnswerRule()`（`src/lib/ai/singleAnswerPrompt.ts`）：正解唯一、否定題幹干擾項須符合正向條件、選項用語精確、輸出前逐題自我檢查、explanation 說明各干擾項為何錯（無詳解欄位時傳 `explanationField: null`，不新增輸出欄位）
 
 ## 功能規格（已實作）
 

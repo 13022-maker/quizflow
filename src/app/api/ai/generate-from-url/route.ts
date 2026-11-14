@@ -17,6 +17,7 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
@@ -238,7 +239,7 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}`;
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
   // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
   let effectiveModel = model;
