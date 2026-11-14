@@ -16,6 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import type { InferSelectModel } from 'drizzle-orm';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
@@ -29,14 +30,9 @@ import {
   updateQuestion,
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
-import AIQuizModal from '@/components/quiz/AIQuizModal';
 import { ExportFillBlankPracticePageDialog } from '@/components/quiz/ExportFillBlankPracticePageDialog';
 import { ExportPracticePageDialog } from '@/components/quiz/ExportPracticePageDialog';
-import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
-import ShareModal from '@/components/quiz/ShareModal';
-import VocabAIModal from '@/components/quiz/VocabAIModal';
-import VocabCardModal from '@/components/quiz/VocabCardModal';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -56,6 +52,13 @@ import { InlineQuestionCard } from './InlineQuestionCard';
 import { QuestionCard } from './QuestionCard';
 import type { QuestionFormValues } from './QuestionForm';
 import { QuestionForm } from './QuestionForm';
+
+// 以下 Modal 都是老師點按鈕才開，改成按需載入，不佔編輯頁首次載入的 JS
+const AIQuizModal = dynamic(() => import('@/components/quiz/AIQuizModal'), { ssr: false });
+const FileQuizGenerator = dynamic(() => import('@/components/quiz/FileQuizGenerator'), { ssr: false });
+const ShareModal = dynamic(() => import('@/components/quiz/ShareModal'), { ssr: false });
+const VocabAIModal = dynamic(() => import('@/components/quiz/VocabAIModal'), { ssr: false });
+const VocabCardModal = dynamic(() => import('@/components/quiz/VocabCardModal'), { ssr: false });
 
 // FileQuizGenerator 回傳的題目格式（純文字 answer，不含 rank）
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';

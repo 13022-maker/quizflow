@@ -5,18 +5,14 @@
  * 成績頁「各題答對率」表格，支援展開每列看選項分佈 BarChart
  */
 
+import dynamic from 'next/dynamic';
 import { useState } from 'react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  LabelList,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+
+// recharts 很肥（~140 kB gzip），只在展開選項分佈時才載入
+const OptionDistributionChart = dynamic(() => import('./OptionDistributionChart'), {
+  ssr: false,
+  loading: () => <div className="h-full animate-pulse rounded-md bg-muted/40" />,
+});
 
 // 序列化傳入（Date 省略，只要用得到的欄位）
 export type BreakdownQuestion = {
@@ -198,29 +194,7 @@ function RowGroup({
                 )
               : (
                   <div style={{ width: '100%', height: 200 }}>
-                    <ResponsiveContainer>
-                      <BarChart data={chartData} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis
-                          dataKey="name"
-                          tick={{ fontSize: 12 }}
-                          interval={0}
-                          height={40}
-                        />
-                        <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                        <Tooltip
-                          cursor={{ fill: 'rgba(0,0,0,0.04)' }}
-                          formatter={(value: unknown) => [`${Number(value)} 人`, '選擇人數']}
-                        />
-                        <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                          <LabelList dataKey="count" position="top" style={{ fontSize: 12 }} />
-                          {/* 每個 bar 依正解與否改色 */}
-                          {chartData.map((d, idx) => (
-                            <Cell key={`${d.name}-${idx}`} fill={d.isCorrect ? '#22c55e' : '#94a3b8'} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
+                    <OptionDistributionChart data={chartData} />
                   </div>
                 )}
           </td>
