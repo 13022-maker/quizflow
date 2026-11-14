@@ -12,6 +12,7 @@ import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
@@ -330,7 +331,10 @@ ${questionsExample}
     } catch (openaiErr) {
       console.error('[generate-questions] OpenAI fallback 失敗，嘗試 Claude：', openaiErr);
 
-      // OpenAI 也失敗 → 第三備援 Claude
+      // OpenAI 也失敗 → 第三備援 Claude（成本閘門：只有 Pro 才能用到 Claude）
+      if (!(await canUseClaude())) {
+        return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
+      }
       const anthropicKey = process.env.ANTHROPIC_API_KEY;
       if (!anthropicKey) {
         const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';

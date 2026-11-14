@@ -11,6 +11,7 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
+import { isProOrAbove } from '@/libs/Plan';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -74,6 +75,14 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: '未登入' }, { status: 401 });
+    }
+
+    // Pro 限定：本 route 固定用 Claude，Free 用戶不可花到 Claude 的錢（先擋方案再扣額度）
+    if (!(await isProOrAbove(userId))) {
+      return NextResponse.json(
+        { error: 'Bloom 認知層次出題為 Pro 方案功能，請升級後再使用', upgradeRequired: true },
+        { status: 403 },
+      );
     }
 
     const quota = await checkAndIncrementAiUsage(userId);
