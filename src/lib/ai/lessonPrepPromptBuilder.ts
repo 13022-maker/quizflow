@@ -3,6 +3,8 @@
 // 是給看得到 repo 的人參考的靜態預設版本，網頁版才是老師實際會用到、
 // 可自訂的版本，兩邊維護時記得同步規則段落的文字。
 
+import { buildSingleAnswerRule } from './singleAnswerPrompt';
+
 export type LessonPrepQuestionType = 'mc' | 'tf' | 'short' | 'rank' | 'cloze';
 
 export type LessonPrepStageConfig = {
@@ -106,5 +108,5 @@ ${quizzesLines}
 # 產題規則
 ${stageRuleLines}
 - 每題必附 explanation；教材不足以支撐某難度或排序題時，於 teacherNotes 說明缺口，不得虛構
-- 不要輸出 imageUrl / diagramSvg / audioUrl / position 等欄位，交由 QuizFlow pipeline 或匯入時自動處理`;
+- 不要輸出 imageUrl / diagramSvg / audioUrl / position 等欄位，交由 QuizFlow pipeline 或匯入時自動處理${buildSingleAnswerRule()}`;
 }

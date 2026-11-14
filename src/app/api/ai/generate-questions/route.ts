@@ -11,6 +11,7 @@ import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
@@ -275,7 +276,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}${buildCodeSnippetRule()}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;

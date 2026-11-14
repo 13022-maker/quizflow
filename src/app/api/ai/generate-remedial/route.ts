@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { generateAIText } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { db } from '@/libs/DB';
@@ -65,7 +66,7 @@ JSON 格式：
       "targetConcept": "針對的弱點概念"
     }
   ]
-}${buildCodeSnippetRule()}`;
+}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
     // 統一走 generateAIText：付費 Claude（失敗備援 Gemini）、免費 Gemini
     const { text: raw, usedModel } = await generateAIText({
