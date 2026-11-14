@@ -17,6 +17,7 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { QUIZ_MODEL_OPTIONS } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
@@ -278,7 +279,7 @@ ${typesPrompt}
     if (effectiveModel === 'claude') {
       const message = await callWithRetry(() =>
         anthropic!.messages.create({
-          model: 'claude-sonnet-4-6',
+          model: QUIZ_MODEL_OPTIONS.claude.id,
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
         }));
@@ -286,7 +287,7 @@ ${typesPrompt}
     } else {
       const response = await callWithRetry(() =>
         genAI!.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: QUIZ_MODEL_OPTIONS.gemini.id,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           // 關掉 thinking 讓 100% token 給 JSON;上限提到 16384 防長題截斷
           config: {
@@ -303,7 +304,7 @@ ${typesPrompt}
         if (hasAnthropicKey && allowClaude) {
           const message = await callWithRetry(() =>
             anthropic!.messages.create({
-              model: 'claude-sonnet-4-6',
+              model: QUIZ_MODEL_OPTIONS.claude.id,
               max_tokens: 4096,
               messages: [{ role: 'user', content: prompt }],
             }));

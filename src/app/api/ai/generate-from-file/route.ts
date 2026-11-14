@@ -10,6 +10,7 @@ import { PDFDocument } from 'pdf-lib';
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { QUIZ_MODEL_OPTIONS, type QuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
@@ -18,11 +19,12 @@ import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type ModelChoice = 'gemini' | 'claude';
+type ModelChoice = QuizModelChoice;
 const DEFAULT_MODEL: ModelChoice = 'gemini';
 
-const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
-const CLAUDE_MODEL_NAME = 'claude-sonnet-4-6';
+// 與前端 AIModelPicker 顯示名稱同一來源
+const GEMINI_MODEL_NAME = QUIZ_MODEL_OPTIONS.gemini.id;
+const CLAUDE_MODEL_NAME = QUIZ_MODEL_OPTIONS.claude.id;
 
 // 判斷伺服器端是否已配置對應 API 金鑰
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
