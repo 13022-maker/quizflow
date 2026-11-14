@@ -36,13 +36,33 @@ export async function ensureTrialRecord(clerkUserId: string): Promise<TrialStatu
   const now = new Date();
   const endsAt = new Date(now.getTime() + TRIAL_DAYS * MS_PER_DAY);
 
-  await db.insert(userTrialSchema).values({
-    clerkUserId,
-    startedAt: now,
-    endsAt,
-  });
+  // 並行請求（例：全班學生同時送出同一位老師的測驗、或 dashboard 首次載入的平行 render）
+  // 可能同時「查無 → INSERT」，第二筆會撞 clerk_user_id unique 而 throw，
+  // 在 Server Action / Server Component 裡會變成 production 的 Server Components render error。
+  // 改成 ON CONFLICT DO NOTHING：沒插進去代表別的請求先建好了，回頭讀那筆。
+  const [inserted] = await db
+    .insert(userTrialSchema)
+    .values({
+      clerkUserId,
+      startedAt: now,
+      endsAt,
+    })
+    .onConflictDoNothing({ target: userTrialSchema.clerkUserId })
+    .returning();
 
-  return computeStatus(now, endsAt);
+  if (inserted) {
+    return computeStatus(inserted.startedAt, inserted.endsAt);
+  }
+
+  const [winner] = await db
+    .select()
+    .from(userTrialSchema)
+    .where(eq(userTrialSchema.clerkUserId, clerkUserId))
+    .limit(1);
+
+  return winner
+    ? computeStatus(winner.startedAt, winner.endsAt)
+    : computeStatus(now, endsAt);
 }
 
 // 純查詢版本，不會建立新紀錄（給 Dashboard 顯示用）
