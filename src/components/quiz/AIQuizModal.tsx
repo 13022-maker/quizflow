@@ -219,6 +219,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [error, setError] = useState('');
   const [upgradeRequired, setUpgradeRequired] = useState(false);
   const [result, setResult] = useState<GeneratedResult | null>(null);
+  // 串流中已收到的題目（文字模式），生成過程中即時預覽
+  const [streamingQs, setStreamingQs] = useState<GeneratedQuestion[]>([]);
   const stepTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const STEP_MESSAGES = [
@@ -398,6 +400,61 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     });
   }
 
+  // 讀 generate-questions 的 NDJSON 串流，逐題更新預覽
+  async function readQuestionStream(res: Response): Promise<GeneratedResult> {
+    if (!res.body) {
+      return res.json();
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let title = '';
+    let warning = '';
+    const qs: GeneratedQuestion[] = [];
+
+    const handleLine = (line: string) => {
+      if (!line.trim()) {
+        return;
+      }
+      const evt = JSON.parse(line);
+      if (evt.type === 'title') {
+        title = evt.title;
+      } else if (evt.type === 'question') {
+        if (qs.length === 0 && stepTimerRef.current) {
+          clearInterval(stepTimerRef.current);
+          stepTimerRef.current = null;
+        }
+        qs.push(evt.question);
+        setStreamingQs([...qs]);
+        setStep(`已生成 ${qs.length} 題…`);
+      } else if (evt.type === 'warning') {
+        warning = evt.message;
+      } else if (evt.type === 'error') {
+        throw new Error(evt.error);
+      }
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      lines.forEach(handleLine);
+    }
+    handleLine(buffer + decoder.decode());
+
+    if (qs.length === 0) {
+      throw new Error('AI 沒有產生題目，請重試');
+    }
+    if (warning) {
+      setError(warning);
+    }
+    return { title: title || 'AI 命題', questions: qs };
+  }
+
   // ── Generate ──
   async function generate() {
     if (mode === 'exambank') {
@@ -433,6 +490,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     setUpgradeRequired(false);
     setResult(null);
     setParseReport(null);
+    setStreamingQs([]);
     startStepTimer();
 
     try {
@@ -450,6 +508,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             difficulty,
             // 命題框架選填：空字串時不送（server 端會視為未指定）
             framework: framework || undefined,
+            // NDJSON 串流：每生完一題就推過來，邊生邊顯示
+            stream: true,
           }),
         });
         if (!res.ok) {
@@ -465,7 +525,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
           } catch { /* 回應非 JSON */ }
           throw new Error(errMsg);
         }
-        data = await res.json();
+        data = await readQuestionStream(res);
       } else if (mode === 'file') {
         setStep('讀取檔案…');
         const fd = new FormData();
@@ -654,6 +714,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
     } finally {
       stopStepTimer();
       setLoading(false);
+      setStreamingQs([]);
     }
   }
 
@@ -1411,6 +1472,27 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
                   升級至 Pro 方案
                 </button>
               )}
+            </div>
+          )}
+
+          {/* ── 串流預覽：生成中逐題出現 ── */}
+          {loading && !result && streamingQs.length > 0 && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="mb-2 text-sm font-bold text-amber-800">
+                ✍️ 生成中…已完成
+                {' '}
+                {streamingQs.length}
+                {' / '}
+                {effectiveCount * types.length}
+                {' '}
+                題
+              </p>
+              <ol className="max-h-48 list-decimal space-y-1 overflow-y-auto pl-5 text-xs text-amber-900">
+                {streamingQs.map((q, i) => (
+                  // eslint-disable-next-line react/no-array-index-key -- 串流中題目只會 append，index 穩定
+                  <li key={i} className="line-clamp-1">{q.question.replace(/\[\[|\]\]/g, '')}</li>
+                ))}
+              </ol>
             </div>
           )}
 
