@@ -1,11 +1,11 @@
 {
   "Index": {
-    "meta_title": "QuizFlow - AI 智慧測驗平台，出題改考分析一次搞定",
-    "meta_description": "幾分鐘內建立測驗，一鍵分享給學生，即時查看作答結果。免費方案提供 10 份測驗，升級 Pro 方案可無限出題並使用 AI 自動生題功能。"
+    "meta_title": "QuizFlow - 給台灣老師的 AI 出題平台，幾分鐘出一份好卷子",
+    "meta_description": "輸入主題或上傳講義，AI 幾分鐘幫你出 20 題，還能選 108 課綱素養命題。學生掃 QR code 免註冊作答，交卷自動批改，誰還沒懂一眼就知道。免費方案即可開始。"
   },
   "PricingPage": {
-    "meta_title": "QuizFlow 定價方案 - 免費開始，隨時升級",
-    "meta_description": "免費方案提供 10 份測驗。升級 Pro 方案（$9/月）可無限出題並使用 AI 自動生題功能。"
+    "meta_title": "QuizFlow 定價方案 - 免費開始，用得順手再升級",
+    "meta_description": "免費方案可建立 10 份測驗、每月 10 次 AI 出題。Pro 方案 NT$299/月（年繳 NT$2,490），測驗與 AI 出題都不限次數。"
   },
   "Navbar": {
     "sign_in": "登入",
@@ -19,64 +19,96 @@
   },
   "Hero": {
     "follow_twitter": "在 Twitter 追蹤 QuizFlow",
-    "title": "更聰明的方式，<important>出題、分享、分析</important>學生作答成效。",
-    "description": "幾分鐘內建立吸引人的測驗，一個連結即可分享，即時掌握學生學習狀況。為現代教育者而生，讓出題、改考、分析一次搞定。",
+    "title": "週五下午三點，<important>也來得及出一份好卷子</important>。",
+    "description": "不用從頭打字。說個主題或丟一份講義，幾分鐘就有 20 題可以挑，還能對齊 108 課綱素養。學生掃 QR code 就能作答，不用註冊帳號。",
     "primary_button": "免費開始使用",
-    "secondary_button": "了解如何運作"
+    "secondary_button": "看看怎麼用",
+    "banner": "給台灣老師的 AI 出題助手"
   },
   "Sponsors": {
     "title": "受到以下學校老師信賴"
   },
   "Features": {
     "section_subtitle": "功能特色",
-    "section_title": "老師出題所需的一切功能",
-    "section_description": "QuizFlow 提供您建立、分享與分析測驗所需的工具，簡單直覺，不需複雜設定。",
-    "feature1_title": "快速出題工具",
-    "feature2_title": "一鍵分享連結",
-    "feature3_title": "即時作答結果",
-    "feature4_title": "AI 自動生題",
-    "feature5_title": "學生學習分析",
-    "feature6_title": "匯出成績報告",
-    "feature1_description": "支援選擇題、是非題、填空題與問答題，拖曳即可排序題目，幾分鐘內完成出題。",
-    "feature2_description": "測驗建立後自動產生專屬連結，貼到 LINE 或黑板即可，學生無需下載任何 App。",
-    "feature3_description": "學生送出答案後立即自動批改，分數與每題詳解即時顯示，無需等待。",
-    "feature4_description": "上傳課本、簡報或圖片，AI 自動生成試題並附解析，省去手動出題的時間（Pro 限定）。",
-    "feature5_description": "查看每道題的答對率與全班作答分佈，快速找出學生的學習盲點。",
-    "feature6_description": "將所有作答記錄匯出為 CSV 檔，方便輸入成績簿或與行政系統整合。"
+    "section_title": "把打題目的時間，還給你自己",
+    "section_description": "不用學一套新系統。從出題、發卷到看結果，都照你原本上課的節奏走。",
+    "feature1_title": "說個主題或丟講義，題目就生出來了",
+    "feature2_title": "學生掃 QR code 就能作答",
+    "feature3_title": "交卷就改好，學生馬上看到詳解",
+    "feature4_title": "選擇、填空、排序、簡答，想要哪種就選哪種",
+    "feature5_title": "哪些學生還沒懂，不用改完卷才知道",
+    "feature6_title": "段考卷直接匯出 Word",
+    "feature1_description": "輸入主題，或上傳 PDF、Word、圖片、錄音檔，也能貼 YouTube 連結，AI 幫你出題並附上詳解。哪一題不滿意，單獨重出那一題就好。",
+    "feature2_description": "不用註冊帳號，也不用下載 App。投影 QR code、貼連結到 LINE 群組，或一鍵分享到 Google Classroom 都可以。",
+    "feature3_description": "學生一送出就自動批改，分數和每題詳解立刻出現。想讓複習課熱鬧一點，也可以開 Live Mode 全班即時搶答。",
+    "feature4_description": "單選、多選、是非、填空、排序、簡答都支援。考試模式會打亂題目與選項順序，學生切換分頁也會記錄下來。",
+    "feature5_description": "每一題的答對率、全班的答題分布即時更新，AI 還會整理出班上的共同弱點，給你下一堂課的教學建議。",
+    "feature6_description": "一鍵匯出 Word 段考卷格式，老師卷附答案、學生卷留白；成績也能匯出 CSV，直接貼進成績冊。"
   },
   "Pricing": {
-    "section_subtitle": "方案價格",
-    "section_title": "簡單透明的定價",
-    "section_description": "免費開始使用，有需要時再升級。沒有隱藏費用。",
+    "section_subtitle": "方案與定價",
+    "section_title": "每個月省下的備課時間，比訂閱費值錢多了",
+    "section_description": "免費開始，用得順手再升級。沒有隱藏費用，隨時可以取消。",
     "button_text": "立即開始"
   },
   "PricingPlan": {
     "free_plan_name": "免費版",
     "premium_plan_name": "Pro 方案",
     "enterprise_plan_name": "企業方案",
-    "free_plan_description": "適合剛開始嘗試的老師",
-    "premium_plan_description": "適合需要無限出題的老師",
-    "enterprise_plan_description": "適合學校與教育機構",
+    "free_plan_description": "先試試看，不需要信用卡",
+    "premium_plan_description": "適合每週都要出題的老師",
+    "enterprise_plan_description": "全校老師一起用",
     "feature_team_member": "{number} 個老師帳號",
     "feature_website": "{number} 份測驗",
-    "feature_storage": "AI 自動生題功能（Pro 限定）",
+    "feature_storage": "AI 出題不限次數",
     "feature_transfer": "無限作答次數",
     "feature_email_support": "電子郵件支援",
     "plan_interval_month": "月",
     "plan_interval_year": "年",
     "next_renew_date": "您的訂閱將於 {date} 自動續約"
   },
+  "PricingSection": {
+    "section_subtitle": "方案與定價",
+    "section_title": "每個月省下的備課時間，比訂閱費值錢多了",
+    "section_description": "選擇適合你的方案，隨時可以升級或取消",
+    "billing_monthly": "月繳",
+    "billing_yearly": "年繳",
+    "billing_yearly_badge": "省最多",
+    "free_name": "免費版",
+    "free_description": "新帳號前 30 天享 Pro 完整功能，之後也能繼續免費用",
+    "free_feature1": "最多 10 份測驗",
+    "free_feature2": "每月 10 次 AI 出題",
+    "free_feature3": "所有題型：選擇、是非、填空、排序、簡答",
+    "free_feature4": "學生掃 QR code 作答，不用註冊",
+    "free_feature5": "匯出 Word 試卷",
+    "free_cta_hint": "先試試看，不需要信用卡，出一張卷子再決定",
+    "pro_name": "Pro 老師",
+    "pro_description": "適合每週都要出題、改考卷的老師",
+    "pro_feature1": "測驗份數不限",
+    "pro_feature2": "AI 出題不限次數，幾分鐘就有 20 題",
+    "pro_feature3": "上傳 PDF、Word、圖片、錄音檔直接出題",
+    "pro_feature4": "可選 108 課綱素養、會考、Bloom 等命題框架",
+    "pro_feature5": "AI 整理班級弱點與教學建議",
+    "pro_feature6": "匯出 Word 段考卷格式",
+    "pro_cta_hint": "一個月的訂閱費，抵不上你一個週末的備課時間",
+    "school_name": "學校方案",
+    "school_description": "適合整個學校或教學團隊",
+    "school_feature1": "最多 30 位老師帳號",
+    "school_feature2": "Pro 方案所有功能",
+    "school_feature3": "專屬客服支援",
+    "school_cta_hint": "全校老師一起用，段考出題週不用再人人熬夜"
+  },
   "FAQ": {
-    "question1": "免費方案可以建立幾份測驗？",
-    "answer1": "免費方案最多可建立 10 份測驗。每份測驗題數不限，可分享給任意數量的學生作答。如果需要更多測驗或想使用 AI 自動生題功能，可升級至每月 $9 美元的 Pro 方案，享有無限測驗與所有進階功能。",
+    "question1": "免費方案可以用到什麼程度？",
+    "answer1": "免費方案最多可以建立 10 份測驗，每月可以用 AI 出題 10 次；每份測驗的題數和作答人數都不限。新帳號前 30 天另外享有 Pro 完整功能。如果之後需要更多，Pro 方案每月 NT$299（年繳 NT$2,490），測驗與 AI 出題都不限次數。",
     "question2": "學生需要帳號才能作答嗎？",
-    "answer2": "不需要。學生只要點擊您分享的連結，即可直接在瀏覽器中作答，無需事先註冊或登入任何帳號。作答完成後，系統會立即顯示分數與每題詳解，老師也可以在後台查看所有作答記錄。",
-    "question3": "AI 自動生題支援哪些格式？",
-    "answer3": "Pro 方案的 AI 出題功能支援多種素材格式，包含純文字、PDF 文件、圖片（JPG、PNG）、影片（MP4）以及語音檔案（MP3）。您只需上傳教材內容，AI 會自動生成選擇題、是非題、填空題或問答題，並附上每題的詳細解析。"
+    "answer2": "不需要。學生掃 QR code 或點你分享的連結，就能直接在手機或電腦上作答，不用註冊、也不用下載 App。交卷後馬上看到分數和每題詳解，你在後台也能即時看到全班的作答結果。",
+    "question3": "可以丟哪些教材給 AI 出題？",
+    "answer3": "可以直接輸入主題或貼上文字，也可以上傳 PDF、Word、圖片（JPG、PNG 等）、錄音檔（MP3、WAV 等），或貼上 YouTube、Google 文件連結。AI 會依你選的題型出題並附上詳解，題型包含單選、多選、是非、填空、排序與簡答。免費方案每月可用 10 次，Pro 方案不限次數。"
   },
   "CTA": {
-    "title": "準備好讓出題更輕鬆了嗎？",
-    "description": "加入使用 QuizFlow 的老師行列，節省出題時間，更深入了解學生學習狀況。",
+    "title": "下一次小考，先讓 AI 幫你出初稿",
+    "description": "註冊免費，不需要信用卡。新帳號前 30 天 Pro 功能全開，出一份卷子試試看。",
     "button_text": "免費開始使用"
   },
   "Footer": {
@@ -173,6 +205,19 @@
     "col_actions": "操作",
     "action_edit": "編輯",
     "action_results": "成績"
+  },
+  "Onboarding": {
+    "title": "你的第一份 AI 試卷，幾分鐘後就能發給學生",
+    "subtitle": "跟著三個步驟走，下一節課就用得上",
+    "dismiss": "不再顯示",
+    "dismiss_aria": "關閉引導",
+    "step1_title": "開一份新測驗",
+    "step1_description": "先取個標題就好，例如「第三課 小考」，其他設定之後再慢慢調。",
+    "step1_action": "立即建立",
+    "step2_title": "讓 AI 幫你出題",
+    "step2_description": "輸入主題或上傳講義，選好題型和題數，幾分鐘就有一份題目可以挑。不滿意的題目可以單題重出，也能自己手動加題。",
+    "step3_title": "發給學生",
+    "step3_description": "發佈後讓學生掃 QR code，或把連結貼到 LINE、Google Classroom，學生不用註冊帳號就能作答。"
   },
   "UserProfile": {
     "title_bar": "使用者資料",

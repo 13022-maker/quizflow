@@ -17,6 +17,8 @@ export type PricingPlan = {
   features: string[];
   highlighted?: boolean;
   ctaLabel: string;
+  // CTA 按鈕上方的情境說明（老師生活場景）
+  ctaHint?: string;
 };
 
 type Props = {
@@ -113,6 +115,10 @@ export function PricingCard({ plan, billingCycle }: Props) {
           </li>
         ))}
       </ul>
+
+      {plan.ctaHint && (
+        <p className="mb-3 text-sm text-muted-foreground">{plan.ctaHint}</p>
+      )}
 
       {error && <p className="mb-3 text-xs text-destructive">{error}</p>}
 
