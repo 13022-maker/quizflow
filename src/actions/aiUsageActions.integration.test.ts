@@ -2,7 +2,7 @@
 //
 // 背景：原本 Pro / 30 天試用 / VIP 直接 early return、不寫 ai_usage，
 // 導致拿不到老師實際用量。改為「照樣累加 count、但永遠允許」；Free 行為不變（超過額度擋）。
-// 期望值全部手算（Free aiQuota = 10，見 src/utils/AppConfig.ts）。
+// 期望值全部手算（Free aiQuota = 30，見 src/utils/AppConfig.ts）。
 import { and, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -57,18 +57,18 @@ describe('checkAndIncrementAiUsage', () => {
     expect(await usageCount(userId)).toBe(1);
   });
 
-  it('試用 / Pro 帳號：超過 Free 額度（第 11、12 次）仍允許，count 持續累加', async () => {
+  it('試用 / Pro 帳號：超過 Free 額度（第 31、32 次）仍允許，count 持續累加', async () => {
     state.isPro = true;
     const userId = nextUser();
-    await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth: currentYearMonth(), count: 10 });
+    await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth: currentYearMonth(), count: 30 });
 
     const r1 = await checkAndIncrementAiUsage(userId);
     const r2 = await checkAndIncrementAiUsage(userId);
 
     expect(r1).toEqual({ allowed: true, remaining: 999 });
     expect(r2).toEqual({ allowed: true, remaining: 999 });
-    // 10 + 1 + 1 = 12
-    expect(await usageCount(userId)).toBe(12);
+    // 30 + 1 + 1 = 32
+    expect(await usageCount(userId)).toBe(32);
   });
 
   it('VIP 白名單：同樣累加 count 且允許', async () => {
@@ -81,28 +81,28 @@ describe('checkAndIncrementAiUsage', () => {
     expect(await usageCount(userId)).toBe(1);
   });
 
-  it('Free 帳號：額度內允許，remaining = 10 - 用過次數', async () => {
+  it('Free 帳號：額度內允許，remaining = 30 - 用過次數', async () => {
     const userId = nextUser();
     await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth: currentYearMonth(), count: 3 });
 
     const res = await checkAndIncrementAiUsage(userId);
 
-    // 呼叫前已用 3 次 → 這次是第 4 次 → 剩 10 - 4 = 6
-    expect(res).toEqual({ allowed: true, remaining: 6 });
+    // 呼叫前已用 3 次 → 這次是第 4 次 → 剩 30 - 4 = 26
+    expect(res).toEqual({ allowed: true, remaining: 26 });
     expect(await usageCount(userId)).toBe(4);
   });
 
-  it('Free 帳號：已用滿 10 次 → 擋下且 count 不再增加', async () => {
+  it('Free 帳號：已用滿 30 次 → 擋下且 count 不再增加', async () => {
     const userId = nextUser();
-    await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth: currentYearMonth(), count: 10 });
+    await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth: currentYearMonth(), count: 30 });
 
     const res = await checkAndIncrementAiUsage(userId);
 
     expect(res).toEqual({
       allowed: false,
-      reason: '本月 AI 出題次數已達上限（10 次），升級 Pro 方案即可無限使用',
+      reason: '本月 AI 出題次數已達上限（30 次），升級 Pro 方案即可無限使用',
       remaining: 0,
     });
-    expect(await usageCount(userId)).toBe(10);
+    expect(await usageCount(userId)).toBe(30);
   });
 });

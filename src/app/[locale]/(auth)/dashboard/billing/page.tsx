@@ -198,7 +198,7 @@ export default async function BillingPage() {
               </thead>
               <tbody className="divide-y">
                 <CompareRow feature="測驗數量" free="10 份" pro="無限" enterprise="無限" />
-                <CompareRow feature="AI 出題" free="10 次/月" pro="無限" enterprise="無限" />
+                <CompareRow feature="AI 出題" free={`${PricingPlanList[PLAN_ID.FREE]!.features.aiQuota} 次/月`} pro="無限" enterprise="無限" />
                 <CompareRow feature="團隊成員" free="1 人" pro="1 人" enterprise="最多 30 人" />
                 <CompareRow feature="AI 班級分析" free="—" pro="✓" enterprise="✓" />
                 <CompareRow feature="CSV 匯出" free="—" pro="✓" enterprise="✓" />

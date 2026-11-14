@@ -154,7 +154,7 @@ export const toolsComparePosts: BlogPost[] = [
           'Microsoft Forms：功能類似 Google 表單，校園授權時可考慮。',
           'Kahoot Free：可建立 5 題，超過要付費。',
           'Quizizz Free：可無限建立，但 AI 出題限次。',
-          'QuizFlow Free：可建立 3 份、AI 出題每月 10 次、有成績分析。',
+          'QuizFlow Free：可建立 10 份、AI 出題每月 30 次、有成績分析。',
           'Canva Quiz：以設計取勝，但批改功能弱。',
         ],
       },

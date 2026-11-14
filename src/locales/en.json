@@ -1,11 +1,11 @@
 {
   "Index": {
-    "meta_title": "QuizFlow - AI-Powered Quiz Platform for Modern Educators",
-    "meta_description": "Create quizzes in minutes, share with students, and get instant results. Free plan includes 10 quizzes. Upgrade to Pro for unlimited quizzes and AI question generation."
+    "meta_title": "QuizFlow - AI Quiz Maker for Teachers: A Good Quiz in Minutes",
+    "meta_description": "Type a topic or upload a handout and get a set of questions to pick from in minutes, optionally aligned to Taiwan's 108 curriculum. Students scan a QR code to answer — no sign-up. Auto-grading shows you who's still lost. Start free."
   },
   "PricingPage": {
-    "meta_title": "QuizFlow Pricing - Start Free, Upgrade Anytime",
-    "meta_description": "Free plan includes 10 quizzes. Upgrade to Pro ($9/month) for unlimited quizzes and AI question generation."
+    "meta_title": "QuizFlow Pricing - Start Free, Upgrade When It Clicks",
+    "meta_description": "The free plan includes 10 quizzes and 30 AI generations per month. Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation."
   },
   "Navbar": {
     "sign_in": "Sign In",
@@ -19,64 +19,96 @@
   },
   "Hero": {
     "follow_twitter": "Follow QuizFlow on Twitter",
-    "title": "The smarter way to <important>create and share quizzes</important> for your students.",
-    "description": "Build engaging quizzes in minutes, share with a single link, and get real-time results. Built for modern educators — create, grade, and analyze in one place.",
+    "title": "It's 3 p.m. on Friday. <important>There's still time for a good quiz.</important>",
+    "description": "Stop typing questions from scratch. Give it a topic or drop in a handout, and you'll have a set of questions to pick from in minutes — aligned to Taiwan's 108 curriculum if you like. Students scan a QR code and start; no accounts needed.",
     "primary_button": "Start for Free",
-    "secondary_button": "See How It Works"
+    "secondary_button": "See How It Works",
+    "banner": "The AI quiz assistant for teachers"
   },
   "Sponsors": {
     "title": "Trusted by teachers at"
   },
   "Features": {
     "section_subtitle": "Features",
-    "section_title": "Everything a Teacher Needs to Run Great Quizzes",
-    "section_description": "QuizFlow gives you the tools to create, share, and analyze quizzes — without the complexity.",
-    "feature1_title": "Quick Quiz Builder",
-    "feature2_title": "One-Link Sharing",
-    "feature3_title": "Real-Time Results",
-    "feature4_title": "AI Question Generation",
-    "feature5_title": "Student Analytics",
-    "feature6_title": "Export Reports",
-    "feature1_description": "Build quizzes with multiple-choice, true/false, fill-in-the-blank, and short-answer questions. Drag to reorder — done in minutes.",
-    "feature2_description": "Every quiz gets a shareable link. Post it to LINE or write it on the board — no app download required for students.",
-    "feature3_description": "Answers are graded automatically the moment a student submits. Scores and explanations appear instantly, no waiting.",
-    "feature4_description": "Upload a textbook, slide deck, or image and let AI draft the questions with explanations — saving hours of manual work (Pro only).",
-    "feature5_description": "See per-question correct rates and answer distributions across your class to quickly identify gaps in understanding.",
-    "feature6_description": "Export all student responses as a CSV file to import into your gradebook or school administration system."
+    "section_title": "Get Your Evenings Back from Quiz Writing",
+    "section_description": "No new system to learn. Writing, handing out, and reviewing quizzes all fit the way you already teach.",
+    "feature1_title": "Name a topic or drop in a handout — the questions write themselves",
+    "feature2_title": "Students scan a QR code and start",
+    "feature3_title": "Graded the moment they hit submit",
+    "feature4_title": "Multiple choice, fill-in, ordering, short answer — your call",
+    "feature5_title": "Know who's lost before you finish grading",
+    "feature6_title": "Export exam papers straight to Word",
+    "feature1_description": "Type a topic, upload a PDF, Word file, image, or audio clip, or paste a YouTube link. AI drafts the questions with explanations. Don't like one? Regenerate just that question.",
+    "feature2_description": "No accounts, no app downloads. Project the QR code, drop the link in your LINE group, or share to Google Classroom in one click.",
+    "feature3_description": "Every submission is graded instantly, and students see their score and explanations right away. Want a livelier review session? Run Live Mode for a real-time class competition.",
+    "feature4_description": "Single choice, multiple choice, true/false, fill-in-the-blank, ordering, and short answer. Exam mode shuffles questions and options and logs when students switch tabs.",
+    "feature5_description": "Per-question correct rates and answer distributions update live, and AI sums up your class's common gaps with suggestions for your next lesson.",
+    "feature6_description": "Export a formatted Word exam in one click — a teacher copy with answers and a blank student copy. Scores export to CSV for your gradebook."
   },
   "Pricing": {
     "section_subtitle": "Pricing",
-    "section_title": "Simple, Transparent Pricing",
-    "section_description": "Start free and upgrade when you need more. No hidden fees.",
+    "section_title": "The Prep Time You Save Is Worth More Than the Subscription",
+    "section_description": "Start free and upgrade once it clicks. No hidden fees, cancel anytime.",
     "button_text": "Get Started"
   },
   "PricingPlan": {
     "free_plan_name": "Free",
     "premium_plan_name": "Pro",
     "enterprise_plan_name": "Enterprise",
-    "free_plan_description": "For teachers just getting started",
-    "premium_plan_description": "For teachers who want unlimited power",
-    "enterprise_plan_description": "For schools and institutions",
+    "free_plan_description": "Try it out — no credit card needed",
+    "premium_plan_description": "For teachers who write quizzes every week",
+    "enterprise_plan_description": "For the whole school",
     "feature_team_member": "{number} Teacher Account",
     "feature_website": "{number} Quizzes",
-    "feature_storage": "AI Question Generation (Pro only)",
+    "feature_storage": "Unlimited AI question generation",
     "feature_transfer": "Unlimited quiz attempts",
     "feature_email_support": "Email Support",
     "plan_interval_month": "month",
     "plan_interval_year": "year",
     "next_renew_date": "Your subscription renews on {date}"
   },
+  "PricingSection": {
+    "section_subtitle": "Plans & Pricing",
+    "section_title": "The Prep Time You Save Is Worth More Than the Subscription",
+    "section_description": "Pick the plan that fits. Upgrade or cancel anytime.",
+    "billing_monthly": "Monthly",
+    "billing_yearly": "Yearly",
+    "billing_yearly_badge": "Best value",
+    "free_name": "Free",
+    "free_description": "New accounts get full Pro features for 30 days, then keep using it free",
+    "free_feature1": "Up to 10 quizzes",
+    "free_feature2": "30 AI generations per month",
+    "free_feature3": "All question types: choice, true/false, fill-in, ordering, short answer",
+    "free_feature4": "Students join by QR code — no sign-up",
+    "free_feature5": "Export quizzes to Word",
+    "free_cta_hint": "Try it first — no credit card. Make one quiz, then decide.",
+    "pro_name": "Pro Teacher",
+    "pro_description": "For teachers who write and grade quizzes every week",
+    "pro_feature1": "Unlimited quizzes",
+    "pro_feature2": "Unlimited AI generation — a set of questions to pick from in minutes",
+    "pro_feature3": "Generate from PDFs, Word files, images, and audio",
+    "pro_feature4": "Frameworks like Taiwan's 108 curriculum, CAP, and Bloom's",
+    "pro_feature5": "AI summaries of class weak spots with teaching tips",
+    "pro_feature6": "Export formatted Word exam papers",
+    "pro_cta_hint": "A month of Pro costs less than one weekend of lesson prep.",
+    "school_name": "School",
+    "school_description": "For whole schools and teaching teams",
+    "school_feature1": "Up to 30 teacher accounts",
+    "school_feature2": "Everything in Pro",
+    "school_feature3": "Priority email replies",
+    "school_cta_hint": "Get every teacher on board — no more late nights during exam week."
+  },
   "FAQ": {
-    "question1": "How many quizzes can I create on the free plan?",
-    "answer1": "The free plan allows you to create up to 10 quizzes. Each quiz can have unlimited questions and can be shared with any number of students. If you need more quizzes or want access to AI question generation, upgrade to the Pro plan for $9/month.",
+    "question1": "How far does the free plan go?",
+    "answer1": "The free plan lets you create up to 10 quizzes and use AI generation 30 times a month, with no limit on questions per quiz or the number of students. New accounts also get full Pro features for their first 30 days. If you need more, Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
     "question2": "Do students need an account to take a quiz?",
-    "answer2": "No account needed. Students simply click the link you share and answer directly in their browser — no sign-up or login required. Once submitted, the score and answer explanations are shown instantly. You can view all responses in your dashboard.",
-    "question3": "What formats does AI question generation support?",
-    "answer3": "The Pro plan's AI generation supports plain text, PDF documents, images (JPG, PNG), video (MP4), and audio files (MP3). Just upload your teaching materials and the AI will generate multiple-choice, true/false, fill-in-the-blank, or short-answer questions with detailed explanations for each."
+    "answer2": "No. Students scan the QR code or tap the link you share and answer right in their browser — no sign-up, no app. They see their score and explanations as soon as they submit, and you see the whole class's results live in your dashboard.",
+    "question3": "What materials can I give the AI?",
+    "answer3": "Type a topic or paste text, upload a PDF, Word file, image (JPG, PNG, etc.), or audio file (MP3, WAV, etc.), or paste a YouTube or Google Docs link. The AI writes questions in the types you choose — single choice, multiple choice, true/false, fill-in-the-blank, ordering, and short answer — with explanations. Free accounts get 30 generations a month; Pro is unlimited."
   },
   "CTA": {
-    "title": "Ready to make quizzes easier?",
-    "description": "Join teachers who use QuizFlow to save time and get better insights from their students.",
+    "title": "Let AI Draft Your Next Quiz",
+    "description": "Sign-up is free, no credit card required. New accounts get every Pro feature for 30 days — try it on one quiz.",
     "button_text": "Start for Free"
   },
   "Footer": {
@@ -173,6 +205,19 @@
     "col_actions": "Actions",
     "action_edit": "Edit",
     "action_results": "Results"
+  },
+  "Onboarding": {
+    "title": "Your first AI-made quiz can be in students' hands in minutes",
+    "subtitle": "Three quick steps and it's ready for your next class",
+    "dismiss": "Don't show again",
+    "dismiss_aria": "Close guide",
+    "step1_title": "Start a new quiz",
+    "step1_description": "Just give it a title, like \"Unit 3 Quiz\". You can tweak the settings later.",
+    "step1_action": "Create now",
+    "step2_title": "Let AI write the questions",
+    "step2_description": "Type a topic or upload a handout, pick question types and how many, and you'll have questions to choose from in minutes. Regenerate any you don't like, or add your own.",
+    "step3_title": "Send it to students",
+    "step3_description": "Publish, then have students scan the QR code, or post the link to LINE or Google Classroom. No student accounts needed."
   },
   "UserProfile": {
     "title_bar": "User Profile",
