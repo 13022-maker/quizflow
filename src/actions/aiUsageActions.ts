@@ -1,6 +1,6 @@
 'use server';
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
@@ -18,37 +18,22 @@ function getCurrentYearMonth(): string {
 }
 
 /**
- * 檢查 AI 出題 quota 並遞增使用次數
- * 回傳 { allowed: true } 或 { allowed: false, reason, remaining }
+ * 當月用量 +1（不存在就建立）。
+ * 用原子 SQL `count + 1`，避免同一老師併發出題時 read-modify-write 少算。
  */
-export async function checkAndIncrementAiUsage(userId: string): Promise<
-  | { allowed: true; remaining: number }
-  | { allowed: false; reason: string; remaining: number }
-> {
-  // VIP 白名單不限制
-  const { isVipUser } = await import('@/libs/vip');
-  if (await isVipUser()) {
-    return { allowed: true, remaining: 999 };
+async function incrementUsage(userId: string, yearMonth: string, existingId: number | undefined) {
+  if (existingId !== undefined) {
+    await db
+      .update(aiUsageSchema)
+      .set({ count: sql`${aiUsageSchema.count} + 1` })
+      .where(eq(aiUsageSchema.id, existingId));
+    return;
   }
+  await db.insert(aiUsageSchema).values({ ownerId: userId, yearMonth, count: 1 });
+}
 
-  // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
-  if (await isProOrAbove(userId)) {
-    return { allowed: true, remaining: 999 };
-  }
-
-  // 取得方案
-  const planId = await getUserPlanId(userId);
-  const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
-  const quota = plan.features.aiQuota;
-
-  // Pro / Enterprise（999）直接放行
-  if (quota >= 999) {
-    return { allowed: true, remaining: 999 };
-  }
-
-  const yearMonth = getCurrentYearMonth();
-
-  // 查詢當月使用記錄
+/** 查當月用量紀錄（沒有則 undefined） */
+async function findUsage(userId: string, yearMonth: string) {
   const [usage] = await db
     .select()
     .from(aiUsageSchema)
@@ -59,6 +44,42 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
       ),
     )
     .limit(1);
+  return usage;
+}
+
+/**
+ * 檢查 AI 出題 quota 並遞增使用次數
+ * 回傳 { allowed: true } 或 { allowed: false, reason, remaining }
+ *
+ * 無上限方案（VIP / Pro / 30 天試用 / aiQuota >= 999）：一樣累加 ai_usage.count
+ * 以便統計老師實際用量，但永遠允許、remaining 固定回 999（呼叫端只看 allowed / reason）。
+ * Free：超過 aiQuota 擋下，不累加。
+ */
+export async function checkAndIncrementAiUsage(userId: string): Promise<
+  | { allowed: true; remaining: number }
+  | { allowed: false; reason: string; remaining: number }
+> {
+  const yearMonth = getCurrentYearMonth();
+
+  // VIP 白名單不限制；試用中老師享 Pro 待遇（與 isProOrAbove 一致）
+  const { isVipUser } = await import('@/libs/vip');
+  let unlimited = (await isVipUser()) || (await isProOrAbove(userId));
+
+  let quota = 999;
+  if (!unlimited) {
+    const planId = await getUserPlanId(userId);
+    const plan = PricingPlanList[planId] ?? PricingPlanList[PLAN_ID.FREE]!;
+    quota = plan.features.aiQuota;
+    // Pro / Enterprise（999）視為無上限
+    unlimited = quota >= 999;
+  }
+
+  const usage = await findUsage(userId, yearMonth);
+
+  if (unlimited) {
+    await incrementUsage(userId, yearMonth, usage?.id);
+    return { allowed: true, remaining: 999 };
+  }
 
   const currentCount = usage?.count ?? 0;
   const remaining = Math.max(0, quota - currentCount);
@@ -72,19 +93,7 @@ export async function checkAndIncrementAiUsage(userId: string): Promise<
     };
   }
 
-  // 遞增計數
-  if (usage) {
-    await db
-      .update(aiUsageSchema)
-      .set({ count: currentCount + 1 })
-      .where(eq(aiUsageSchema.id, usage.id));
-  } else {
-    await db.insert(aiUsageSchema).values({
-      ownerId: userId,
-      yearMonth,
-      count: 1,
-    });
-  }
+  await incrementUsage(userId, yearMonth, usage?.id);
 
   return { allowed: true, remaining: remaining - 1 };
 }
