@@ -194,11 +194,12 @@ export type PlayerBuzzPhase =
   | { kind: 'no_team' }
   | { kind: 'reading'; secondsLeft: number }
   | { kind: 'open' }
-  | { kind: 'queued'; position: number; answeringTeamName: string | null }
+  // order = 全場搶答名次（第幾個搶到）；position = 目前排隊中的第幾位
+  | { kind: 'queued'; order: number; position: number; answeringTeamName: string | null }
   | { kind: 'answering_me'; secondsLeft: number }
   | { kind: 'answering_teammate'; nickname: string; secondsLeft: number }
-  | { kind: 'other_team_answering'; teamName: string; canBuzz: boolean }
-  | { kind: 'my_team_failed' }
+  | { kind: 'other_team_answering'; teamName: string; secondsLeft: number; canBuzz: boolean }
+  | { kind: 'my_team_failed'; result: 'wrong' | 'timeout'; answeringTeamName: string | null }
   | { kind: 'revealed' };
 
 export function derivePlayerBuzzPhase(params: {
@@ -236,18 +237,63 @@ export function derivePlayerBuzzPhase(params: {
       : { kind: 'answering_teammate', nickname: mine.nickname, secondsLeft: answerSecondsLeft(mine) };
   }
   if (mine && FAILED_RESULTS.includes(mine.result)) {
-    return { kind: 'my_team_failed' };
+    return {
+      kind: 'my_team_failed',
+      result: mine.result === 'timeout' ? 'timeout' : 'wrong',
+      answeringTeamName: answering?.teamName ?? null,
+    };
   }
   if (mine?.result === 'queued') {
     const queued = buzzes.filter(b => b.result === 'queued');
     return {
       kind: 'queued',
+      order: mine.order,
       position: queued.findIndex(b => b.teamId === myTeamId) + 1,
       answeringTeamName: answering?.teamName ?? null,
     };
   }
   if (answering) {
-    return { kind: 'other_team_answering', teamName: answering.teamName, canBuzz: !mine };
+    return {
+      kind: 'other_team_answering',
+      teamName: answering.teamName,
+      secondsLeft: answerSecondsLeft(answering),
+      canBuzz: !mine,
+    };
   }
   return { kind: 'open' };
+}
+
+export type BuzzFeedEvent =
+  // 某組答錯 / 逾時，作答權已交給下一組
+  | { kind: 'passed'; failedTeamName: string; failedResult: 'wrong' | 'timeout'; nextTeamName: string }
+  // 某組答錯 / 逾時，沒有排隊的組 → 重新開放搶答
+  | { kind: 'reopened'; failedTeamName: string; failedResult: 'wrong' | 'timeout' };
+
+/**
+ * 「最新動態」提示：只描述現行規則已經做的事（答錯 −50 → 作答權交給下一個排隊的組；
+ * 沒人排隊就回到開放搶答），不是新規則。題目已有組答對時不顯示（交給揭曉畫面）。
+ */
+export function latestBuzzEvent(
+  entries: { order: number; teamName: string; result: BuzzResult }[],
+): BuzzFeedEvent | null {
+  const sorted = [...entries].sort((a, b) => a.order - b.order);
+  if (sorted.some(b => b.result === 'correct')) {
+    return null;
+  }
+  const failed = sorted.filter(b => FAILED_RESULTS.includes(b.result));
+  const lastFailed = failed[failed.length - 1];
+  if (!lastFailed) {
+    return null;
+  }
+  const failedResult = lastFailed.result === 'timeout' ? 'timeout' : 'wrong';
+  const answering = sorted.find(b => b.result === 'answering');
+  if (answering) {
+    return answering.order > lastFailed.order
+      ? { kind: 'passed', failedTeamName: lastFailed.teamName, failedResult, nextTeamName: answering.teamName }
+      : null;
+  }
+  if (sorted.some(b => b.result === 'queued')) {
+    return null; // 作答權交接中的瞬間（下一次 reconcile 就會發給排隊的組）
+  }
+  return { kind: 'reopened', failedTeamName: lastFailed.teamName, failedResult };
 }

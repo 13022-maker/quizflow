@@ -16,6 +16,7 @@ import type {
   Unsubscribe,
 } from './realtimeAdapter';
 import type {
+  LiveBuzzerBoard,
   LiveHostState,
   LivePlayerState,
 } from './types';
@@ -40,6 +41,54 @@ async function createRealtime(
   });
 }
 
+/**
+ * 連 Ably 並訂閱 live:{gameId}：
+ *   - tick：照舊 fetch REST
+ *   - board（小組搶答完整看板）：交給 onBoard 直接套用，免一次 REST round trip；沒有 onBoard 或回 'refetch' 才 fetch
+ *   - 斷線後重新 attach 且訊息沒能接續（resumed=false）→ 可能漏了訊息，fetch 一次 REST 校正
+ */
+async function connect(
+  authParams: Record<string, string>,
+  fetchAndCb: () => Promise<void>,
+  opts: SubscribeHostOptions | SubscribePlayerOptions | undefined,
+  isCancelled: () => boolean,
+  setRealtime: (r: AblyTypes.Realtime) => void,
+): Promise<void> {
+  try {
+    const realtime = await createRealtime(authParams);
+    if (isCancelled()) {
+      realtime.close();
+      return;
+    }
+    setRealtime(realtime);
+    const channel = realtime.channels.get(`live:${authParams.gameId}`);
+    let firstAttach = true;
+    channel.on('attached', (change) => {
+      if (firstAttach) {
+        firstAttach = false; // 第一次 attach 前的 state 已由初始 REST 負責
+        return;
+      }
+      if (!change.resumed) {
+        void fetchAndCb();
+      }
+    });
+    await channel.subscribe((msg) => {
+      if (msg.name === 'tick') {
+        void fetchAndCb();
+        return;
+      }
+      if (msg.name === 'board') {
+        const handled = opts?.onBoard?.(msg.data as LiveBuzzerBoard);
+        if (handled !== 'handled') {
+          void fetchAndCb();
+        }
+      }
+    });
+  } catch (err) {
+    opts?.onError?.(err);
+  }
+}
+
 export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
   subscribeHostState(
     gameId: number,
@@ -61,27 +110,11 @@ export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
       }
     };
 
-    (async () => {
-      // 1. 初始 state 用 REST 拉
-      await fetchAndCb();
-      if (cancelled) {
-        return;
-      }
-
-      // 2. 連 Ably 訂 tick
-      try {
-        realtime = await createRealtime({
-          role: 'host',
-          gameId: String(gameId),
-        });
-        const channel = realtime.channels.get(`live:${gameId}`);
-        await channel.subscribe('tick', () => {
-          void fetchAndCb();
-        });
-      } catch (err) {
-        opts?.onError?.(err);
-      }
-    })();
+    // 初始 REST 與 Ably 連線同時進行（原本先等 REST 回來才開始連 Ably，冷啟動多等一整段）
+    void fetchAndCb();
+    void connect({ role: 'host', gameId: String(gameId) }, fetchAndCb, opts, () => cancelled, (r) => {
+      realtime = r;
+    });
 
     return () => {
       cancelled = true;
@@ -114,27 +147,16 @@ export class AblyRealtimeAdapter implements LiveRealtimeAdapter {
       }
     };
 
-    (async () => {
-      await fetchAndCb();
-      if (cancelled) {
-        return;
-      }
-
-      try {
-        realtime = await createRealtime({
-          role: 'player',
-          gameId: String(gameId),
-          playerId: String(playerId),
-          playerToken,
-        });
-        const channel = realtime.channels.get(`live:${gameId}`);
-        await channel.subscribe('tick', () => {
-          void fetchAndCb();
-        });
-      } catch (err) {
-        opts?.onError?.(err);
-      }
-    })();
+    void fetchAndCb();
+    void connect(
+      { role: 'player', gameId: String(gameId), playerId: String(playerId), playerToken },
+      fetchAndCb,
+      opts,
+      () => cancelled,
+      (r) => {
+        realtime = r;
+      },
+    );
 
     return () => {
       cancelled = true;

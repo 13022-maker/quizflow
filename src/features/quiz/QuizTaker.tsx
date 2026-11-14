@@ -6,12 +6,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { SubmitResult } from '@/actions/responseActions';
 import { checkAttemptCount, submitQuizResponse } from '@/actions/responseActions';
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { gradeClozeAnswers, stripClozeMarkers } from '@/lib/cloze';
+import { getMultiBlankCount, joinBlankAnswers, numberBlanks } from '@/lib/fillBlank';
 import { mergeAnswerKey, shouldRedactAnswers } from '@/libs/quizRedaction';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { ClozeQuestion } from './ClozeQuestion';
+import { FillBlankInputs } from './FillBlankInputs';
 import { FlashCard } from './FlashCard';
 
 // 只有當測驗包含 ranking 題時才會載入 survey-react-ui，
@@ -131,6 +134,9 @@ function QuestionItem({
 
   const handleSingleChange = (optionId: string) => onChange(optionId);
 
+  // 填空題（short_answer 且題幹有 2 個以上 ___）：每格一個輸入框，0 = 維持原本單一 textarea
+  const multiBlankCount = getMultiBlankCount(question);
+
   const handleMultiChange = (optionId: string, checked: boolean) => {
     const current = Array.isArray(answer) ? answer : [];
     onChange(checked ? [...current, optionId] : current.filter(id => id !== optionId));
@@ -143,7 +149,10 @@ function QuestionItem({
           {index + 1}
         </span>
         {question.type !== 'cloze' && (
-          <p className="text-base font-semibold leading-relaxed sm:text-lg">{question.body}</p>
+          <QuestionBody
+            text={multiBlankCount > 0 ? numberBlanks(question.body) : question.body}
+            className="min-w-0 flex-1 text-base font-semibold leading-relaxed sm:text-lg"
+          />
         )}
       </div>
 
@@ -263,8 +272,17 @@ function QuestionItem({
         </div>
       )}
 
-      {/* 簡答題 */}
-      {question.type === 'short_answer' && (
+      {/* 多格填空題：每個空格一個輸入框，編號對應題幹的 ___(1)___ */}
+      {multiBlankCount > 0 && (
+        <FillBlankInputs
+          count={multiBlankCount}
+          value={Array.isArray(answer) ? answer : undefined}
+          onChange={v => onChange(v)}
+        />
+      )}
+
+      {/* 簡答題 / 單一空格填空題 */}
+      {question.type === 'short_answer' && multiBlankCount === 0 && (
         <textarea
           value={typeof answer === 'string' ? answer : ''}
           onChange={e => onChange(e.target.value)}
@@ -871,13 +889,13 @@ function ResultScreen({
           return (
             <div key={question.id} className={`rounded-xl border p-5 ${borderColor}`}>
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-medium">
-                  Q
-                  {index + 1}
-                  .
-                  {' '}
-                  {question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body}
-                </p>
+                <QuestionBody
+                  className="min-w-0 flex-1 text-sm font-medium"
+                  prefix={`Q${index + 1}. `}
+                  text={question.type === 'cloze'
+                    ? stripClozeMarkers(question.body)
+                    : getMultiBlankCount(question) > 0 ? numberBlanks(question.body) : question.body}
+                />
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {detail?.points}
                   {' '}
@@ -890,15 +908,17 @@ function ResultScreen({
                 <>
                   <div className="mt-2 text-sm">
                     <span className="text-muted-foreground">你的答案：</span>
-                    {Array.isArray(studentAnswer)
-                      ? studentAnswer
-                        .map(id => options.find(o => o.id === id)?.text ?? id)
-                        .join(question.type === 'ranking' ? ' → ' : '、')
-                      : typeof studentAnswer === 'string'
-                        ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
-                            <span className="italic text-muted-foreground">未作答</span>
-                          )
-                        : <span className="italic text-muted-foreground">未作答</span>}
+                    {isShort && Array.isArray(studentAnswer)
+                      ? (joinBlankAnswers(studentAnswer) || <span className="italic text-muted-foreground">未作答</span>)
+                      : Array.isArray(studentAnswer)
+                        ? studentAnswer
+                          .map(id => options.find(o => o.id === id)?.text ?? id)
+                          .join(question.type === 'ranking' ? ' → ' : '、')
+                        : typeof studentAnswer === 'string'
+                          ? (options.find(o => o.id === studentAnswer)?.text ?? studentAnswer) || (
+                              <span className="italic text-muted-foreground">未作答</span>
+                            )
+                          : <span className="italic text-muted-foreground">未作答</span>}
                   </div>
 
                   {!isShort && detail?.isCorrect === false && question.correctAnswers && (
@@ -1164,7 +1184,7 @@ function RetryScreen({
                 : '請 AI 教練給提示';
               return (
                 <div key={q.id} className="rounded-xl border bg-white p-5 shadow-sm">
-                  <p className="text-sm font-medium text-gray-900">{q.body}</p>
+                  <QuestionBody text={q.body} className="text-sm font-medium text-gray-900" />
                   <div className="mt-2 space-y-1 text-xs">
                     <p className="text-red-600">
                       你的答案：
@@ -1520,7 +1540,12 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
 
       const stringKeyAnswers: Record<string, string | string[]> = {};
       for (const [key, value] of Object.entries(answers)) {
-        stringKeyAnswers[String(key)] = value;
+        // 多格填空題作答時是 string[]（每格一筆），送出前合併成「(1) 甲；(2) 乙」單一字串，
+        // 後端簡答 AI 批改、answer 欄位、老師成績頁都沿用原本 short_answer 的字串格式
+        const q = displayQuestions.find(item => String(item.id) === String(key));
+        stringKeyAnswers[String(key)] = q?.type === 'short_answer' && Array.isArray(value)
+          ? joinBlankAnswers(value)
+          : value;
       }
       // 克漏字題提示使用紀錄：用合成 key（questionId__hints）夾帶，
       // 不動 answer 本身的格式，伺服器端 responseActions.ts 會讀這個 key
@@ -1995,7 +2020,7 @@ function RemedialPractice({ weakPoints, responseId }: { weakPoints: WeakPoint[];
             }`}
           >
             <p className="mb-1 text-xs text-amber-600">{q.targetConcept}</p>
-            <p className="mb-3 text-base font-semibold leading-relaxed">{q.question}</p>
+            <QuestionBody text={q.question} className="mb-3 text-base font-semibold leading-relaxed" />
 
             <div className="space-y-2">
               {q.options.map((opt) => {

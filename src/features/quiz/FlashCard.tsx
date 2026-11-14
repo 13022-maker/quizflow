@@ -3,7 +3,9 @@
 import type { InferSelectModel } from 'drizzle-orm';
 import { useCallback, useRef, useState } from 'react';
 
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
+import { stripCodeFences } from '@/lib/codeBlock';
 import type { questionSchema } from '@/models/Schema';
 
 type Question = InferSelectModel<typeof questionSchema>;
@@ -229,13 +231,11 @@ export function FlashCard({
               </div>
             )}
 
-            <p className="text-lg font-medium leading-relaxed">
-              {question.body}
-            </p>
+            <QuestionBody text={question.body} className="text-lg font-medium leading-relaxed" />
 
             {/* 發音按鈕 */}
             <div className="mt-3">
-              <SpeakerButton text={question.body} />
+              <SpeakerButton text={stripCodeFences(question.body)} />
             </div>
 
             {/* 選項提示（選擇題時） */}

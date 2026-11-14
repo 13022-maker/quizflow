@@ -5,18 +5,32 @@
 // 選擇邏輯在檔尾
 
 import { AblyRealtimeAdapter } from './ablyAdapter';
-import type { LiveHostState, LivePlayerState } from './types';
+import type { LiveBuzzerBoard, LiveHostState, LivePlayerState } from './types';
 
 export type Unsubscribe = () => void;
 
+/**
+ * 小組搶答看板快照的處理結果：'handled' = 已直接套用（不用再打 REST）；
+ * 'refetch' = 快照不夠用（例如已換題，題目內容只有 REST 有）→ adapter 改打 REST 重抓
+ */
+export type BoardHandlerResult = 'handled' | 'refetch';
+
+// 輪詢間隔可以給函式：hook 依 state（例如小組搶答要快）動態調整，不必為了改間隔重新訂閱
+export type IntervalOption = number | (() => number);
+
+const resolveInterval = (v: IntervalOption | undefined, fallback: number) =>
+  typeof v === 'function' ? v() : v ?? fallback;
+
 export type SubscribeHostOptions = {
-  intervalMs?: number; // default 1500
+  intervalMs?: IntervalOption; // default 1500
   onError?: (err: unknown) => void;
+  onBoard?: (board: LiveBuzzerBoard) => BoardHandlerResult; // 只有 Ably 會推看板；polling 無此訊息
 };
 
 export type SubscribePlayerOptions = {
-  intervalMs?: number; // default 2000
+  intervalMs?: IntervalOption; // default 2000
   onError?: (err: unknown) => void;
+  onBoard?: (board: LiveBuzzerBoard) => BoardHandlerResult;
 };
 
 export type LiveRealtimeAdapter = {
@@ -50,7 +64,6 @@ export class PollingRealtimeAdapter implements LiveRealtimeAdapter {
     cb: (state: LiveHostState) => void,
     opts?: SubscribeHostOptions,
   ): Unsubscribe {
-    const intervalMs = opts?.intervalMs ?? 1500;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -67,7 +80,7 @@ export class PollingRealtimeAdapter implements LiveRealtimeAdapter {
         opts?.onError?.(err);
       } finally {
         if (!cancelled) {
-          timer = setTimeout(tick, intervalMs);
+          timer = setTimeout(tick, resolveInterval(opts?.intervalMs, 1500));
         }
       }
     };
@@ -90,7 +103,6 @@ export class PollingRealtimeAdapter implements LiveRealtimeAdapter {
     cb: (state: LivePlayerState) => void,
     opts?: SubscribePlayerOptions,
   ): Unsubscribe {
-    const intervalMs = opts?.intervalMs ?? 2000;
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -109,7 +121,7 @@ export class PollingRealtimeAdapter implements LiveRealtimeAdapter {
         opts?.onError?.(err);
       } finally {
         if (!cancelled) {
-          timer = setTimeout(tick, intervalMs);
+          timer = setTimeout(tick, resolveInterval(opts?.intervalMs, 2000));
         }
       }
     };

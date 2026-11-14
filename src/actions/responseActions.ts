@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { gradeClozeAnswers } from '@/lib/cloze';
+import { getMultiBlankCount, joinBlankAnswers, numberBlanks } from '@/lib/fillBlank';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
 import type { AnswerKeyEntry } from '@/libs/quizRedaction';
@@ -43,6 +44,27 @@ export async function checkAttemptCount(quizId: number, email: string): Promise<
 }
 
 export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResult | { error: string }> {
+  try {
+    return await submitQuizResponseInner(data);
+  } catch (err) {
+    // 非預期錯誤（DB 連線、constraint 等）：production 上 Server Action throw 會被遮罩成
+    // "An error occurred in the Server Components render"，Vercel log 也只剩 digest。
+    // 這裡留結構化 log 方便下次定位（只記 quizId 與錯誤資訊，不記學生姓名/email/作答內容），
+    // 並回傳友善錯誤讓學生可以重送。
+    const e = err as { name?: string; message?: string; code?: string; cause?: { code?: string; message?: string } };
+    console.error('[quiz-submit] submitQuizResponse 非預期錯誤', JSON.stringify({
+      route: 'action:submitQuizResponse',
+      quizId: typeof data?.quizId === 'number' ? data.quizId : null,
+      errorName: e?.name ?? null,
+      errorMessage: e?.message ?? String(err),
+      errorCode: e?.code ?? e?.cause?.code ?? null,
+      causeMessage: e?.cause?.message ?? null,
+    }));
+    return { error: '提交失敗，請稍候再按一次送出（作答內容仍保留在畫面上）' };
+  }
+}
+
+async function submitQuizResponseInner(data: SubmitInput): Promise<SubmitResult | { error: string }> {
   // 驗證失敗回傳結構化錯誤（不 throw）：production 上 Server Action throw 的
   // 訊息會被 Next.js 遮罩，學生看不到真正原因，且 server 會留下 error log
   const parsed = parseSubmitInput(data);
@@ -92,9 +114,13 @@ export async function submitQuizResponse(data: SubmitInput): Promise<SubmitResul
     const settled = await Promise.allSettled(
       shortAnswerQuestions.map(async (q) => {
         const studentAnswer = answers[q.id.toString()];
-        const studentText = typeof studentAnswer === 'string' ? studentAnswer : '';
+        // 多格填空題前端已合併成字串；保險起見，若收到 string[]（每格一筆）也在這裡合併
+        const studentText = typeof studentAnswer === 'string'
+          ? studentAnswer
+          : Array.isArray(studentAnswer) ? joinBlankAnswers(studentAnswer) : '';
         const grade = await gradeShortAnswer({
-          questionBody: q.body,
+          // 多格填空題：題幹空格標上 (1)(2)，對應學生答案「(1) 甲；(2) 乙」的編號
+          questionBody: getMultiBlankCount(q) > 0 ? numberBlanks(q.body) : q.body,
           referenceAnswer: q.referenceAnswer ?? null,
           studentAnswer: studentText,
           maxPoints: q.points,

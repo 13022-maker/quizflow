@@ -65,6 +65,8 @@ export async function POST(
     ownerId: userId,
     url: blob.url,
     questionRange,
+    answerKey: result.answerKey,
+    kind: 'choice',
   }).returning();
 
   const origin = new URL(req.url).origin;
@@ -97,7 +99,11 @@ export async function GET(
       createdAt: practicePageShareSchema.createdAt,
     })
     .from(practicePageShareSchema)
-    .where(and(eq(practicePageShareSchema.quizId, quizId), eq(practicePageShareSchema.ownerId, userId)))
+    .where(and(
+      eq(practicePageShareSchema.quizId, quizId),
+      eq(practicePageShareSchema.ownerId, userId),
+      eq(practicePageShareSchema.kind, 'choice'),
+    ))
     .orderBy(desc(practicePageShareSchema.createdAt));
 
   const origin = new URL(req.url).origin;

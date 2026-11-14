@@ -2,7 +2,10 @@ import { eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { generateAIText } from '@/lib/ai/textModel';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { db } from '@/libs/DB';
 import { enforcePublicAiLimit } from '@/libs/rateLimit';
 import { responseSchema } from '@/models/Schema';
@@ -73,7 +76,7 @@ JSON 格式：
       "targetConcept": "針對的弱點概念"
     }
   ]
-}`;
+}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
     // 統一走 generateAIText：付費 Claude（失敗備援 Gemini）、免費 Gemini
     const { text: raw, usedModel } = await generateAIText({
@@ -89,6 +92,8 @@ JSON 格式：
     }
 
     const result = JSON.parse(match[0]);
+    // 程式題:AI 把程式碼放在獨立欄位就併回題目
+    ensureCodeSnippets(result.questions);
     return NextResponse.json(result);
   } catch (err) {
     const msg = err instanceof Error ? err.message : '補強題生成失敗';

@@ -8,8 +8,11 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
-import { isProSafe } from '@/lib/ai/textModel';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
@@ -144,7 +147,7 @@ const DIFF_LABELS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   mc: '選擇題（4選1，標明正確選項字母）',
   tf: '是非題（答案為「○」或「✕」）',
-  fill: '填空題（用 ___ 標空格，附答案）',
+  fill: '填空題（用 ___ 標空格，附答案；同一題有多個空格時，answer 依空格順序用「、」分隔，例如「葉綠體、氧氣」）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
   cloze: '克漏字題（80-150 字短文，挑 3-5 個關鍵詞彙用 [[詞彙]] 標記挖空，question 欄位放整段含標記的文章，不需要 answer 欄位）',
@@ -255,7 +258,7 @@ export async function POST(request: Request) {
     { "type": "listening", "question": "根據音檔，以下哪個說法正確？", "options": ["(A)..","(B)..","(C)..","(D).."], "answer": "A", "explanation": "說明" }
   ]
 }
-7. 正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母`
+7. 正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母${buildSingleAnswerRule()}`
     : `請根據以上文件內容出題。
 
 難度：${diffLabel}
@@ -285,7 +288,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`
-  : ''}
+  : ''}${buildCodeSnippetRule()}${buildSingleAnswerRule()}
 
 若某題(限選擇題 mc、是非題 tf、填空題 fill)的內容適合用圖表輔助理解（流程步驟、兩者比較、時間先後、概念之間的關係），在該題 JSON 加一個 "diagram" 欄位，格式為以下 4 種之一（不適合就完全不要加這個欄位，不是每題都需要圖，大部分題目不需要）：
 - 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）
@@ -315,8 +318,11 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
   // 音檔只能走 Gemini（Claude 不支援音檔多模態）
   let effectiveModel: ModelChoice = isAudio ? 'gemini' : model;
 
+  // 成本閘門：只有 Pro 才能用到 Claude（首選、Gemini 未設 key、截斷重出都算）
+  const allowClaude = await canUseClaude();
+
   // 免費用戶選 Claude → 靜默轉 Gemini（付費者才走 Claude；UI 照舊可選，由 server 分流）
-  if (effectiveModel === 'claude' && !(await isProSafe())) {
+  if (effectiveModel === 'claude' && !allowClaude) {
     console.warn('[generate-from-file] 非付費用戶選 Claude，靜默轉 Gemini');
     effectiveModel = 'gemini';
   }
@@ -328,6 +334,9 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         { error: '伺服器尚未設定 GEMINI_API_KEY，無法處理音檔 / 聽力題。請改上傳 PDF 或圖片，或聯繫管理員設定金鑰。' },
         { status: 503 },
       );
+    }
+    if (!allowClaude) {
+      return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
     }
     if (!hasAnthropicKey) {
       return NextResponse.json(
@@ -412,8 +421,8 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         ? await generateWithClaude(media, prompt)
         : await generateWithGemini(media, prompt);
     } catch (err) {
-      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey) {
-        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY）
+      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey && allowClaude) {
+        // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY，且限 Pro）
         raw = await generateWithClaude(media, prompt);
       } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
         // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
@@ -449,6 +458,12 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       }
     }
 
+    // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+    const codeCheck = ensureCodeSnippets(result.questions);
+    if (codeCheck.repaired || codeCheck.missing.length) {
+      console.warn(`[generate-from-file] ${effectiveModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
+    }
+
     // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)
     if (result.questions) {
       attachDiagramSvgs(result.questions);
@@ -471,6 +486,14 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     }
 
     const msg = err instanceof Error ? err.message : '未知錯誤';
+
+    // Gemini 截斷且不能走 Claude 重出（非 Pro 或沒設 Claude 金鑰）
+    if (msg === 'GEMINI_TRUNCATED') {
+      return NextResponse.json(
+        { error: 'AI 輸出過長被截斷，請減少題數或縮小頁數範圍後再試', retryable: true },
+        { status: 503 },
+      );
+    }
 
     // 金鑰未設定（generateWithGemini / generateWithClaude 丟出）
     if (msg === 'GEMINI_API_KEY_MISSING') {

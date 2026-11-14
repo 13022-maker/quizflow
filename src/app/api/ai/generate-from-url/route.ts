@@ -16,6 +16,10 @@ import { NextResponse } from 'next/server';
 import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -127,7 +131,7 @@ const DIFF_LABELS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   mc: '選擇題（4選1，標明正確選項字母）',
   tf: '是非題（答案為「○」或「✕」）',
-  fill: '填空題（用 ___ 標空格，附答案）',
+  fill: '填空題（用 ___ 標空格，附答案；同一題有多個空格時，answer 依空格順序用「、」分隔，例如「葉綠體、氧氣」）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
   cloze: '克漏字題（80-150 字短文，挑 3-5 個關鍵詞彙用 [[詞彙]] 標記挖空，question 欄位放整段含標記的文章，不需要 answer 欄位）',
@@ -236,11 +240,22 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。`;
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
+
+  // 成本閘門：只有 Pro 才能用到 Claude（首選或備援都算）
+  const allowClaude = await canUseClaude();
 
   // 選定模型：Gemini 未設 key 時自動 fallback 到 Claude
   let effectiveModel = model;
+  // 免費用戶選 Claude → 靜默轉 Gemini（比照 generate-from-file）
+  if (effectiveModel === 'claude' && !allowClaude) {
+    console.warn('[generate-from-url] 非付費用戶選 Claude，靜默轉 Gemini');
+    effectiveModel = 'gemini';
+  }
   if (effectiveModel !== 'claude' && !hasGeminiKey) {
+    if (!allowClaude) {
+      return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
+    }
     if (!hasAnthropicKey) {
       return NextResponse.json(
         { error: 'AI 命題服務尚未啟用：伺服器缺少 GEMINI_API_KEY 與 ANTHROPIC_API_KEY，請聯繫管理員。' },
@@ -285,7 +300,7 @@ ${typesPrompt}
       const finishReason = response.candidates?.[0]?.finishReason;
       if (finishReason && finishReason !== 'STOP') {
         console.warn(`[generate-from-url] Gemini finishReason=${finishReason}（${raw.length} 字），改走 Claude 重出`);
-        if (hasAnthropicKey) {
+        if (hasAnthropicKey && allowClaude) {
           const message = await callWithRetry(() =>
             anthropic!.messages.create({
               model: 'claude-sonnet-4-6',
@@ -294,7 +309,7 @@ ${typesPrompt}
             }));
           raw = (message.content[0] as { type: string; text: string }).text ?? '';
         }
-        // 沒 Claude key 就把已截斷的 raw 留給 JSON.parse 失敗後回前端錯誤
+        // 沒 Claude key 或非 Pro：把已截斷的 raw 留給 JSON.parse 失敗後回前端錯誤
       }
     }
 
@@ -321,6 +336,12 @@ ${typesPrompt}
           q.type = 'listening';
         }
       }
+    }
+
+    // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+    const codeCheck = ensureCodeSnippets(result.questions);
+    if (codeCheck.repaired || codeCheck.missing.length) {
+      console.warn(`[generate-from-url] ${effectiveModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
     }
 
     return NextResponse.json(result);

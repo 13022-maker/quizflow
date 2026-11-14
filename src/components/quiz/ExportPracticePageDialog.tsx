@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import QRCode from 'react-qr-code';
 
@@ -38,6 +39,10 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
   const [historyLoading, setHistoryLoading] = useState(true);
   const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState<number | null>(null);
+  // 「更新到最新版」：同一個分享網址重新產生 HTML（啟用作答統計與結束畫面）
+  const [refreshingId, setRefreshingId] = useState<number | null>(null);
+  const [refreshedId, setRefreshedId] = useState<number | null>(null);
+  const [refreshError, setRefreshError] = useState('');
 
   const fetchHistory = async () => {
     setHistoryLoading(true);
@@ -66,6 +71,29 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
       setCopiedHistoryId(item.id);
       setTimeout(() => setCopiedHistoryId(null), 2000);
     });
+  };
+
+  const handleRefreshShare = async (item: ShareHistoryItem) => {
+    setRefreshError('');
+    setRefreshingId(item.id);
+    try {
+      const res = await fetch(`/api/quizzes/${quizId}/export-practice-page/share/${item.id}`, {
+        method: 'PUT',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setRefreshError(data?.error ?? '更新失敗');
+        return;
+      }
+      setRefreshedId(item.id);
+      setTimeout(() => setRefreshedId(null), 2500);
+      fetchHistory();
+    } catch {
+      setRefreshError('更新失敗，請稍後再試');
+    } finally {
+      setRefreshingId(null);
+    }
   };
 
   const validateRange = () => {
@@ -192,151 +220,179 @@ export function ExportPracticePageDialog({ quizId, quizTitle, totalQuestions, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-center justify-between">
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b p-6 pb-5">
           <h2 className="text-lg font-bold">匯出成靜態練習頁</h2>
           <button type="button" onClick={onClose} className="text-2xl text-gray-400 hover:text-gray-600">×</button>
         </div>
 
-        <div className="space-y-4">
-          <p className="text-sm text-gray-500">
-            產生一份獨立的 HTML 練習頁（免登入、不計時，答題立即顯示對錯），下載後可放到任何網頁空間分享，也可以直接產生分享連結。目前只支援單選題與是非題，其他題型會自動略過。
-          </p>
+        <div className="overflow-y-auto p-6 pt-4">
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500">
+              產生一份獨立的 HTML 練習頁（免登入、不計時，答題立即顯示對錯），下載後可放到任何網頁空間分享，也可以直接產生分享連結。目前只支援單選題與是非題，其他題型會自動略過。
+            </p>
 
-          <div className="flex items-center gap-3">
-            <label className="flex-1 text-sm font-medium">
-              從第幾題
-              <input
-                type="number"
-                min={1}
-                max={totalQuestions}
-                value={start}
-                onChange={e => setStart(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </label>
-            <span className="mt-5 text-gray-400">～</span>
-            <label className="flex-1 text-sm font-medium">
-              到第幾題
-              <input
-                type="number"
-                min={1}
-                max={totalQuestions}
-                value={end}
-                onChange={e => setEnd(Number(e.target.value))}
-                className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </label>
-          </div>
-          <p className="text-xs text-gray-400">
-            共
-            {' '}
-            {totalQuestions}
-            {' '}
-            題，預設匯出全部
-          </p>
-
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          {doneMsg && <p className="text-sm text-green-700">{doneMsg}</p>}
-
-          <div className="flex gap-3">
-            <Button onClick={handleExport} disabled={loading} className="flex-1">
-              {loading ? '匯出中…' : '🌐 下載練習頁'}
-            </Button>
-            <Button
-              onClick={handleGenerateShareLink}
-              disabled={shareLoading}
-              variant="outline"
-              className="flex-1"
-            >
-              {shareLoading ? '產生中…' : '🔗 產生分享連結'}
-            </Button>
-          </div>
-
-          {shareError && <p className="text-sm text-red-600">{shareError}</p>}
-
-          {shareUrl && (
-            <div className="space-y-3 rounded-xl border bg-gray-50 p-4">
-              <div className="flex items-center gap-2">
-                <a
-                  href={shareUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex-1 truncate text-sm text-blue-600 underline"
-                >
-                  {shareUrl}
-                </a>
-                <Button onClick={handleCopyLink} variant="outline" className="shrink-0 px-3 py-1 text-xs">
-                  {linkCopied ? '已複製' : '複製連結'}
-                </Button>
-              </div>
-
-              <div ref={qrRef} className="flex justify-center rounded-lg bg-white p-3">
-                <QRCode value={shareUrl} size={140} bgColor="#ffffff" fgColor="#000000" />
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleDownloadQrCode} variant="outline" className="flex-1 text-xs">
-                  下載 QR Code
-                </Button>
-                <Button onClick={handleShareLine} variant="outline" className="flex-1 bg-[#06C755] text-xs text-white hover:bg-[#06C755]/90">
-                  LINE 分享
-                </Button>
-                <Button onClick={handleShareClassroom} variant="outline" className="flex-1 text-xs">
-                  Google Classroom
-                </Button>
-              </div>
+            <div className="flex items-center gap-3">
+              <label className="flex-1 text-sm font-medium">
+                從第幾題
+                <input
+                  type="number"
+                  min={1}
+                  max={totalQuestions}
+                  value={start}
+                  onChange={e => setStart(Number(e.target.value))}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
+              <span className="mt-5 text-gray-400">～</span>
+              <label className="flex-1 text-sm font-medium">
+                到第幾題
+                <input
+                  type="number"
+                  min={1}
+                  max={totalQuestions}
+                  value={end}
+                  onChange={e => setEnd(Number(e.target.value))}
+                  className="mt-1 w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </label>
             </div>
-          )}
+            <p className="text-xs text-gray-400">
+              共
+              {' '}
+              {totalQuestions}
+              {' '}
+              題，預設匯出全部
+            </p>
 
-          {!historyLoading && history.length > 0 && (
-            <div className="space-y-2">
-              <p className="text-xs font-medium text-gray-500">之前產生過的分享連結</p>
-              <ul className="max-h-48 space-y-2 overflow-y-auto">
-                {history.map(item => (
-                  <li key={item.id} className="rounded-lg border bg-gray-50 p-2.5 text-xs">
-                    <div className="flex items-center gap-2">
-                      <a
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 truncate text-blue-600 underline"
-                      >
-                        {item.url}
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => handleCopyHistoryLink(item)}
-                        className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
-                      >
-                        {copiedHistoryId === item.id ? '已複製' : '複製'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedHistoryId(expandedHistoryId === item.id ? null : item.id)}
-                        className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
-                      >
-                        QR Code
-                      </button>
-                    </div>
-                    <p className="mt-1 text-gray-400">
-                      第
-                      {' '}
-                      {item.questionRange}
-                      {' '}
-                      題．
-                      {new Date(item.createdAt).toLocaleString('zh-TW')}
-                    </p>
-                    {expandedHistoryId === item.id && (
-                      <div className="mt-2 flex justify-center rounded-lg bg-white p-3">
-                        <QRCode value={item.url} size={120} bgColor="#ffffff" fgColor="#000000" />
+            {error && <p className="text-sm text-red-600">{error}</p>}
+            {doneMsg && <p className="text-sm text-green-700">{doneMsg}</p>}
+
+            <div className="flex gap-3">
+              <Button onClick={handleExport} disabled={loading} className="flex-1">
+                {loading ? '匯出中…' : '🌐 下載練習頁'}
+              </Button>
+              <Button
+                onClick={handleGenerateShareLink}
+                disabled={shareLoading}
+                variant="outline"
+                className="flex-1"
+              >
+                {shareLoading ? '產生中…' : '🔗 產生分享連結'}
+              </Button>
+            </div>
+
+            {shareError && <p className="text-sm text-red-600">{shareError}</p>}
+
+            {shareUrl && (
+              <div className="space-y-3 rounded-xl border bg-gray-50 p-4">
+                <div className="flex items-center gap-2">
+                  <a
+                    href={shareUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 truncate text-sm text-blue-600 underline"
+                  >
+                    {shareUrl}
+                  </a>
+                  <Button onClick={handleCopyLink} variant="outline" className="shrink-0 px-3 py-1 text-xs">
+                    {linkCopied ? '已複製' : '複製連結'}
+                  </Button>
+                </div>
+
+                <div ref={qrRef} className="flex justify-center rounded-lg bg-white p-3">
+                  <QRCode value={shareUrl} size={140} bgColor="#ffffff" fgColor="#000000" />
+                </div>
+
+                <div className="flex gap-2">
+                  <Button onClick={handleDownloadQrCode} variant="outline" className="flex-1 text-xs">
+                    下載 QR Code
+                  </Button>
+                  <Button onClick={handleShareLine} variant="outline" className="flex-1 bg-[#06C755] text-xs text-white hover:bg-[#06C755]/90">
+                    LINE 分享
+                  </Button>
+                  <Button onClick={handleShareClassroom} variant="outline" className="flex-1 text-xs">
+                    Google Classroom
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {!historyLoading && history.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-gray-500">之前產生過的分享連結</p>
+                  <Link
+                    href={`/dashboard/quizzes/${quizId}/practice-stats`}
+                    className="text-xs text-blue-600 underline"
+                  >
+                    📊 作答統計與學生成績
+                  </Link>
+                </div>
+                {refreshError && <p className="text-xs text-red-600">{refreshError}</p>}
+                <ul className="max-h-48 space-y-2 overflow-y-auto">
+                  {history.map(item => (
+                    <li key={item.id} className="rounded-lg border bg-gray-50 p-2.5 text-xs">
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 truncate text-blue-600 underline"
+                        >
+                          {item.url}
+                        </a>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyHistoryLink(item)}
+                          className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
+                        >
+                          {copiedHistoryId === item.id ? '已複製' : '複製'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setExpandedHistoryId(expandedHistoryId === item.id ? null : item.id)}
+                          className="shrink-0 rounded border px-2 py-1 text-gray-600 hover:bg-gray-100"
+                        >
+                          QR Code
+                        </button>
                       </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                        <p className="flex-1 text-gray-400">
+                          第
+                          {' '}
+                          {item.questionRange}
+                          {' '}
+                          題．
+                          {new Date(item.createdAt).toLocaleString('zh-TW')}
+                        </p>
+                        <Link
+                          href={`/dashboard/quizzes/${quizId}/practice-stats?share=${item.id}`}
+                          className="text-blue-600 underline"
+                        >
+                          統計／成績
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => handleRefreshShare(item)}
+                          disabled={refreshingId !== null}
+                          title="用目前的題目重新產生，網址不變；舊連結也會開始收集作答統計"
+                          className="text-gray-600 underline disabled:opacity-50"
+                        >
+                          {refreshingId === item.id ? '更新中…' : refreshedId === item.id ? '✅ 已更新' : '更新到最新版'}
+                        </button>
+                      </div>
+                      {expandedHistoryId === item.id && (
+                        <div className="mt-2 flex justify-center rounded-lg bg-white p-3">
+                          <QRCode value={item.url} size={120} bgColor="#ffffff" fgColor="#000000" />
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

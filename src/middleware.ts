@@ -24,6 +24,8 @@ const isPublicApiRoute = createRouteMatcher([
   // 靜態練習頁分享連結代理：學生點連結開頁面，匿名、不需登入
   // （Vercel Blob 原生網址對 .html 一律強制 Content-Disposition: attachment 會變下載，
   // 所以改走這個 route 代理讀取 blob 內容再原樣回傳，瀏覽器才會直接渲染而不是下載）
+  // 同一條也涵蓋 POST /api/p/[id]/events（練習頁匿名作答事件）、POST /api/p/[id]/submit（學生送出成績）、
+  // GET /api/p/[id]/r/[token]（唯讀成績結果頁）；這幾支 route 內都不呼叫 auth()，放這裡安全
   '/api/p/(.*)',
   '/:locale/api/p/(.*)',
   // 蘇格拉底式錯題重做提示：學生匿名作答所以不需登入
@@ -38,9 +40,6 @@ const isPublicApiRoute = createRouteMatcher([
   // TTS 發音：學生單字卡練習需要
   '/api/ai/tts',
   '/:locale/api/ai/tts',
-  // 錯題單字卡：學生作答後建立
-  '/api/ai/generate-flashcards',
-  '/:locale/api/ai/generate-flashcards',
   // 儲存單字卡集：學生作答後儲存
   '/api/vocab/save',
   '/:locale/api/vocab/save',
@@ -96,6 +95,11 @@ const isOptionalAuthRoute = createRouteMatcher([
   '/:locale/api/live/ably-auth',
   '/api/review/ably-auth',
   '/:locale/api/review/ably-auth',
+  // 錯題單字卡：學生作答後匿名建立（不強制登入），但老師端也會呼叫；
+  // route 內用 canUseClaude() 讀 session 判斷 Pro 才能走 Claude 備援，
+  // 放 isPublicApiRoute 會整個 skip clerkMiddleware → auth() 炸掉 → Pro 也被當成 Free
+  '/api/ai/generate-flashcards',
+  '/:locale/api/ai/generate-flashcards',
 ]);
 
 // 公開頁但需要 Clerk context 讓 server component 內的 auth() 可選擇性讀 session,
@@ -105,7 +109,10 @@ const isOptionalAuthRoute = createRouteMatcher([
 const isOptionalAuthPageRoute = createRouteMatcher([
   '/',
   '/pricing',
-  ...AllLocales.flatMap(locale => [`/${locale}`, `/${locale}/pricing`]),
+  // 題庫市集：匿名訪客可瀏覽，但複製/上架等 server action 需要 auth() 讀 session，
+  // 不加會踩「Clerk: auth() was called but Clerk can't detect usage of clerkMiddleware()」
+  '/marketplace(.*)',
+  ...AllLocales.flatMap(locale => [`/${locale}`, `/${locale}/pricing`, `/${locale}/marketplace(.*)`]),
 ]);
 
 const isProtectedRoute = createRouteMatcher([

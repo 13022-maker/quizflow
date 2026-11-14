@@ -6,6 +6,8 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { useState, useTransition } from 'react';
 
 import { updateQuestion } from '@/actions/questionActions';
+import { QuestionBody } from '@/components/quiz/QuestionBody';
+import { hasCodeBlock, needsCodeSnippet } from '@/lib/codeBlock';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -57,6 +59,8 @@ export function InlineQuestionCard({
   const [regenerateError, setRegenerateError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
+  const bodyHasCode = hasCodeBlock(body);
+  const bodyMissingCode = needsCodeSnippet(body);
   const isSingle = question.type === 'single_choice';
 
   // 呼叫 updateQuestion，overrides 允許傳入最新值（避免 setState 非同步）
@@ -204,10 +208,22 @@ export function InlineQuestionCard({
               save();
             }
           }}
-          rows={2}
-          className="w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring"
+          // 程式題（含 ``` 程式碼區塊）自動撐高並改等寬字體，老師才看得到完整程式碼與縮排
+          rows={bodyHasCode ? Math.min(Math.max(body.split('\n').length, 4), 20) : 2}
+          className={`w-full resize-y rounded-md border border-transparent bg-transparent px-2 py-1.5 text-sm hover:border-input focus:border-input focus:outline-none focus:ring-1 focus:ring-ring ${bodyHasCode ? 'font-mono' : ''}`}
           placeholder="題目內容"
         />
+        {bodyHasCode && (
+          <div className="mt-1 rounded-md border border-dashed border-slate-200 px-2 py-1.5">
+            <p className="mb-1 text-[11px] text-muted-foreground">學生端預覽</p>
+            <QuestionBody text={body} className="text-sm" />
+          </div>
+        )}
+        {bodyMissingCode && (
+          <p className="mt-1 text-xs text-amber-600">
+            ⚠️ 題目提到程式碼，但沒有附上程式碼。請用 ```cpp 換行貼上程式碼、換行再以 ``` 結尾，或按「重生」。
+          </p>
+        )}
 
         {/* 選項清單：每行 [checkbox/radio] + [inline text input] */}
         <div className="mt-2 space-y-1.5">

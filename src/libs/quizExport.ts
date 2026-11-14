@@ -12,11 +12,12 @@
 
 import type { Buffer } from 'node:buffer';
 
-import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, TextRun } from 'docx';
+import { AlignmentType, Document, HeadingLevel, Packer, Paragraph, ShadingType, TextRun } from 'docx';
 import type { InferSelectModel } from 'drizzle-orm';
 
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { parseCodeBlocks } from '@/lib/codeBlock';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -29,6 +30,12 @@ const TF_DEFAULTS = [
   { id: 'tf-true', text: '正確' },
   { id: 'tf-false', text: '錯誤' },
 ];
+
+// docx 的 TextRun.text 不會把 \n 轉成換行，要切成多個 TextRun 用 break 屬性串起來
+function textRunsWithLineBreaks(text: string): TextRun[] {
+  return text.split('\n').map((line, i) =>
+    i === 0 ? new TextRun({ text: line }) : new TextRun({ text: line, break: 1 }));
+}
 
 // 將 option id 陣列翻成顯示文字
 function answerToText(question: Question, ids: string[] | null): string {
@@ -51,16 +58,37 @@ function questionToParagraphs(question: Question, index: number, variant: Export
   // 不論教師版或學生版都要先去標記，不能讓標記符號原樣出現在紙本上
   const safeBody = question.type === 'cloze' ? stripClozeMarkers(question.body) : question.body;
   const pointsText = variant === 'teacher' ? `（${question.points} 分）` : '';
+  // 程式題：``` 圍欄內的程式碼另起段落、用等寬字體（Consolas）並保留縮排，不印出 ``` 符號
+  const segments = parseCodeBlocks(safeBody);
+  const first = segments[0];
+  const leadText = first?.kind === 'text' ? first.text : '';
+  const rest = first?.kind === 'text' ? segments.slice(1) : segments;
   paragraphs.push(
     new Paragraph({
       spacing: { before: 240, after: 120 },
       children: [
         new TextRun({ text: `${index + 1}. `, bold: true }),
-        new TextRun({ text: safeBody }),
+        ...textRunsWithLineBreaks(leadText),
         ...(pointsText ? [new TextRun({ text: pointsText, color: '666666', size: 20 })] : []),
       ],
     }),
   );
+  for (const seg of rest) {
+    paragraphs.push(
+      seg.kind === 'code'
+        ? new Paragraph({
+          spacing: { before: 60, after: 120 },
+          indent: { left: 360 },
+          shading: { type: ShadingType.CLEAR, fill: 'F3F4F6', color: 'auto' },
+          children: seg.code.split('\n').map((line, i) =>
+            new TextRun({ text: line, font: 'Consolas', size: 20, ...(i > 0 ? { break: 1 } : {}) })),
+        })
+        : new Paragraph({
+          spacing: { before: 60, after: 120 },
+          children: textRunsWithLineBreaks(seg.text),
+        }),
+    );
+  }
 
   // 圖片提示（不嵌入實際圖片）
   if (question.imageUrl) {

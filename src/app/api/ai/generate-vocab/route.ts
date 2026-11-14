@@ -12,6 +12,7 @@ import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -112,6 +113,10 @@ export async function POST(request: Request) {
       const msg = geminiErr instanceof Error ? geminiErr.message : '未知錯誤';
       console.error('[generate-vocab] Gemini 失敗（非過載非截斷）：', geminiErr);
       return NextResponse.json({ error: `AI 生成失敗：${msg}` }, { status: 500 });
+    }
+    // 成本閘門：只有 Pro 才能用到 Claude；Free 到這裡就回錯誤
+    if (!(await canUseClaude())) {
+      return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
     }
     console.warn(`[generate-vocab] ${isTruncated ? 'Gemini 截斷' : 'Gemini 過載'}，fallback Claude`);
     usedModel = 'claude';

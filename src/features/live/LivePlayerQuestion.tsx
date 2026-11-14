@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { useCountdown } from '@/hooks/useCountdown';
 import { LISTENING_FALLBACK_SEC } from '@/services/live/questionDuration';
@@ -167,9 +168,7 @@ export function LivePlayerQuestion({ state, onSubmit, submitting }: Props) {
       )}
 
       <div className="rounded-xl border bg-card p-4">
-        <h2 className="text-lg font-semibold leading-relaxed">
-          {currentQuestion.body}
-        </h2>
+        <QuestionBody text={currentQuestion.body} className="text-lg font-semibold leading-relaxed" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img

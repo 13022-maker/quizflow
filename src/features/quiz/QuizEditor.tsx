@@ -30,6 +30,7 @@ import {
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
+import { ExportFillBlankPracticePageDialog } from '@/components/quiz/ExportFillBlankPracticePageDialog';
 import { ExportPracticePageDialog } from '@/components/quiz/ExportPracticePageDialog';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
@@ -48,6 +49,8 @@ import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { stripCodeFences } from '@/lib/codeBlock';
+import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { InlineQuestionCard } from './InlineQuestionCard';
@@ -371,6 +374,8 @@ export function QuizEditor({
 
   // 控制「匯出成靜態練習頁」Dialog 顯示
   const [showExportPracticeDialog, setShowExportPracticeDialog] = useState(false);
+  // 控制「匯出成填空練習頁」Dialog 顯示
+  const [showExportFillBlankDialog, setShowExportFillBlankDialog] = useState(false);
 
   // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
   // 不自動彈 ShareModal，避免打斷老師審題
@@ -595,6 +600,17 @@ export function QuizEditor({
     router.refresh();
   };
 
+  // 開啟段考命題助手（public/tools 靜態頁，同源）：把目前題目轉成助手草稿，經 localStorage 帶過去
+  const openExamComposer = () => {
+    const payload = quizToComposerImport(initialQuiz.title, questions);
+    try {
+      window.localStorage.setItem(EXAM_COMPOSER_IMPORT_KEY, JSON.stringify(payload));
+    } catch {
+      // 無痕模式等無法寫入時仍開啟工具，只是不帶入題目
+    }
+    window.open(EXAM_COMPOSER_URL, '_blank', 'noopener');
+  };
+
   const handleDeleteQuestion = (id: number) => {
     setDeletingId(id);
     startTransition(async () => {
@@ -770,6 +786,17 @@ export function QuizEditor({
                 <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)}>
                   🌐 匯出成靜態練習頁
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowExportFillBlankDialog(true)}>
+                  ✏️ 匯出成填空練習頁
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/api/quizzes/${initialQuiz.id}/export-questions-csv`}>
+                    📊 匯出成 CSV
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openExamComposer}>
+                  🧮 段考命題助手
+                </DropdownMenuItem>
               </>
             )}
             {status === 'published' && (
@@ -807,6 +834,16 @@ export function QuizEditor({
           quizTitle={initialQuiz.title}
           totalQuestions={questions.length}
           onClose={() => setShowExportPracticeDialog(false)}
+        />
+      )}
+
+      {/* 匯出成填空練習頁 Dialog */}
+      {showExportFillBlankDialog && (
+        <ExportFillBlankPracticePageDialog
+          quizId={initialQuiz.id}
+          quizTitle={initialQuiz.title}
+          totalQuestions={questions.length}
+          onClose={() => setShowExportFillBlankDialog(false)}
         />
       )}
 
@@ -1218,7 +1255,7 @@ export function QuizEditor({
                     </span>
                   </div>
                   <p className="line-clamp-2 text-sm font-medium text-foreground/80">
-                    {pq.body}
+                    {stripCodeFences(pq.body)}
                   </p>
                   {pq.hasOptions && pq.options.length > 0 && (
                     <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">

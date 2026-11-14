@@ -9,7 +9,11 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildClozeCausalChainNote } from '@/lib/ai/clozeNote';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -25,7 +29,7 @@ const DIFF_LABELS: Record<string, string> = {
 const TYPE_LABELS: Record<string, string> = {
   mc: '選擇題（4選1，標明正確選項字母）',
   tf: '是非題（答案為「○」或「✕」）',
-  fill: '填空題（用 ___ 標空格，附答案）',
+  fill: '填空題（用 ___ 標空格，附答案；同一題有多個空格時，answer 依空格順序用「、」分隔，例如「葉綠體、氧氣」）',
   short: '簡答題（附參考答案）',
   rank: '排序題（提供 3-5 個項目，answer 為依正確順序排列的項目陣列）',
   cloze: '克漏字題（80-150 字短文，挑 3-5 個關鍵詞彙用 [[詞彙]] 標記挖空，question 欄位放整段含標記的文章，不需要 answer 欄位）',
@@ -273,7 +277,7 @@ ${typesPrompt}
 ${questionsExample}
   ]
 }
-每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}`;
+每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。${answerDistNote}${listeningNote}${clozeNote}${diagramNote}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw: string;
@@ -327,7 +331,10 @@ ${questionsExample}
     } catch (openaiErr) {
       console.error('[generate-questions] OpenAI fallback 失敗，嘗試 Claude：', openaiErr);
 
-      // OpenAI 也失敗 → 第三備援 Claude
+      // OpenAI 也失敗 → 第三備援 Claude（成本閘門：只有 Pro 才能用到 Claude）
+      if (!(await canUseClaude())) {
+        return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
+      }
       const anthropicKey = process.env.ANTHROPIC_API_KEY;
       if (!anthropicKey) {
         const msg = openaiErr instanceof Error ? openaiErr.message : '未知錯誤';
@@ -386,6 +393,12 @@ ${questionsExample}
         q.type = 'listening';
       }
     }
+  }
+
+  // 程式題:AI 把程式碼放在獨立欄位就併回題目;仍缺程式碼的題目記 log(前端會另外警告老師)
+  const codeCheck = ensureCodeSnippets(result.questions);
+  if (codeCheck.repaired || codeCheck.missing.length) {
+    console.warn(`[generate-questions] ${usedModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
   }
 
   // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)

@@ -132,7 +132,24 @@ describe('小組搶答完整場景（整合）', () => {
 
     // 第 2、3 組排隊
     expect(await recordBuzz({ gameId, playerId: p2, questionId: q1 })).toMatchObject({ ok: true, order: 2, granted: false });
-    expect(await recordBuzz({ gameId, playerId: p3, questionId: q1 })).toMatchObject({ ok: true, order: 3, granted: false });
+
+    const third = await recordBuzz({ gameId, playerId: p3, questionId: q1 });
+
+    expect(third).toMatchObject({ ok: true, order: 3, granted: false });
+
+    // 回應直接帶完整看板（Ably 發的也是同一份）：學生端不用再打 REST 就看得到全場順序
+    const board = (third as { board: { questionId: number; status: string; buzzes: { order: number; teamName: string; result: string }[]; correctAnswers: unknown } }).board;
+
+    expect(board.questionId).toBe(q1);
+    expect(board.status).toBe('playing');
+    expect(board.buzzes.map(b => [b.order, b.teamName, b.result])).toEqual([
+      [1, '第 1 組', 'answering'],
+      [2, '第 2 組', 'queued'],
+      [3, '第 3 組', 'queued'],
+    ]);
+    // 揭曉前不帶正解、也不帶任何人的所選答案（看板會廣播給全場）
+    expect(board.correctAnswers).toBeNull();
+    expect(JSON.stringify(board)).not.toContain('selectedOptionId');
 
     // 學生端拿到的 state 不含正解
     const ps = await getPlayerState(gameId, p2);
@@ -154,8 +171,15 @@ describe('小組搶答完整場景（整合）', () => {
       .toMatchObject({ ok: false, code: 'NOT_YOUR_TURN' });
 
     // 第 1 組答錯（選 a，正解 b）→ −50，作答權交給第 2 組
-    expect(await recordBuzzAnswer({ gameId, playerId: p1, questionId: q1, selectedOptionId: 'a' }))
-      .toMatchObject({ ok: true, isCorrect: false });
+    const wrong = await recordBuzzAnswer({ gameId, playerId: p1, questionId: q1, selectedOptionId: 'a' });
+
+    expect(wrong).toMatchObject({ ok: true, isCorrect: false, delta: -50 });
+
+    // 看板已反映：第 1 組 −50、作答權到第 2 組（同一個回應，不用再讀一次）
+    const wrongBoard = (wrong as { board: { teams: { score: number }[]; buzzes: { result: string }[] } }).board;
+
+    expect(wrongBoard.buzzes.map(b => b.result)).toEqual(['wrong', 'answering', 'queued']);
+    expect(wrongBoard.teams.map(t => t.score)).toEqual([-50, 0, 0]);
 
     const afterWrong = await getHostState(gameId);
 

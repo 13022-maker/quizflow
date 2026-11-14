@@ -3,6 +3,8 @@
 import { AlertCircle, RotateCcw, Volume2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { highlightKeyword } from '@/lib/highlightKeyword';
+
 // ---------- 型別定義 ----------
 export type FlashcardLang = 'zh' | 'en' | 'hak';
 export type RatingAction = 'again' | 'good' | 'easy';
@@ -565,6 +567,13 @@ function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, sty
         : 'text-[56px] tracking-wider';
   }
   const pronClass = content.pronClass === 'poj' ? 'italic tracking-wider' : 'tracking-[0.15em]';
+  // EN 對照列：沒有翻譯、等於「意思」、或不含拉丁字母（舊資料把中文解釋塞進來）時不顯示
+  const crossEn = card.cross.en?.trim() ?? '';
+  const showEnRow = langs.includes('en')
+    && crossEn.length > 0
+    && crossEn !== card.meaning.trim()
+    && /[a-z]/i.test(crossEn);
+  const showHakRow = langs.includes('hak') && (card.cross.hak?.trim() ?? '').length > 0;
 
   return (
     <div
@@ -617,17 +626,17 @@ function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, sty
           <div className="mb-3.5 font-serif text-[20px] font-medium leading-snug text-slate-900">
             {card.meaning}
           </div>
-          {(langs.includes('en') || langs.includes('hak')) && (
+          {(showEnRow || showHakRow) && (
             <>
               <div className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-slate-400">其他語言</div>
               <div className="mb-3 flex flex-col gap-2">
-                {langs.includes('en') && (
+                {showEnRow && (
                   <div className="flex items-baseline gap-2.5 text-[13px]">
                     <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">EN</span>
-                    <span className="flex-1 text-slate-900">{card.cross.en}</span>
+                    <span className="flex-1 text-slate-900">{crossEn}</span>
                   </div>
                 )}
-                {langs.includes('hak') && (
+                {showHakRow && (
                   <div className="flex items-baseline gap-2.5 text-[13px]">
                     <span className="min-w-[36px] text-[9px] font-bold uppercase tracking-wider text-slate-400">客</span>
                     <span className="flex-1 text-slate-900">{card.cross.hak}</span>
@@ -636,10 +645,12 @@ function CardFace({ card, lang, flipped, langs = DEFAULT_LANGS, onPlayAudio, sty
               </div>
             </>
           )}
-          <div className="mt-auto rounded-xl border-l-[3px] border-blue-600 bg-slate-50 p-3 text-[12px] leading-relaxed text-slate-600">
-            <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400">例句</span>
-            {card.example}
-          </div>
+          {card.example && (
+            <div className="mt-auto rounded-xl border-l-[3px] border-blue-600 bg-slate-50 p-3 text-lg leading-relaxed text-slate-800 md:text-xl">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-widest text-slate-400">例句</span>
+              {highlightKeyword(card.example, [card.zh.word, card.en.word, card.hak.word])}
+            </div>
+          )}
         </div>
       </div>
     </div>

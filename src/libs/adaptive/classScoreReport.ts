@@ -8,6 +8,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/libs/DB';
 import { adaptiveStudentStateSchema } from '@/models/Schema';
 
+import { calcAdaptiveScore } from './adaptiveScore';
 import type { DateRange } from './dateRangeFilter';
 import { filterActiveStudentKeys } from './dateRangeFilter';
 import { getAdaptiveService } from './service';
@@ -58,19 +59,10 @@ export async function buildClassScoreReport(
   // 第一位學生不同導致欄位順序跳動）
   const knowledgeColumns = students[0]?.diagnosis ?? [];
 
-  // 學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100，排除鎖定中知識點
-  const scoredStudents = visibleStudents.map((s) => {
-    const unlocked = s.diagnosis.filter(d => d.status !== 'locked');
-    return {
-      ...s,
-      score: unlocked.length > 0
-        ? Math.round(
-          (unlocked.reduce((sum, d) => sum + d.mastery, 0) / unlocked.length) * 100,
-        )
-        : null,
-      totalAttempts: s.diagnosis.reduce((sum, d) => sum + d.attempts, 0),
-    };
-  });
+  const scoredStudents = visibleStudents.map(s => ({
+    ...s,
+    ...calcAdaptiveScore(s.diagnosis),
+  }));
 
   const header = ['姓名', '學號', ...knowledgeColumns.map(k => k.name), '學習後分數', '總作答次數'];
   const rows = scoredStudents.map((s) => {

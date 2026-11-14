@@ -39,6 +39,22 @@ export async function publishTick(gameId: number): Promise<void> {
   }
 }
 
+// 小組搶答專用：發完整搶答看板快照（LiveBuzzerBoard）到 live:{gameId}，client 直接套用、不用再 fetch REST。
+// 內容只有同場所有人本來就看得到的資訊（組名、組分、搶答順序與結果、揭曉後的正解），不含任何人的所選答案。
+// 發的是完整狀態而非增量：漏收一則也不會錯位，下一則就自動校正。
+// 失敗不 throw（同 publishTick）；client 端還有 REST 輪詢 / tick 當保底
+export async function publishBoard(gameId: number, board: unknown): Promise<void> {
+  if (!isAblyEnabled()) {
+    return;
+  }
+  try {
+    const channel = getAbly().channels.get(`live:${gameId}`);
+    await channel.publish('board', board);
+  } catch (err) {
+    console.warn('[ablyServer] publishBoard failed', { gameId, err });
+  }
+}
+
 // 發 short-lived token request 給 client 訂閱用
 // client 只能 subscribe 自己那場 game 的 channel，且不能 publish
 export async function createAblyTokenRequest(params: {

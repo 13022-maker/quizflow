@@ -11,7 +11,10 @@ import { and, eq } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
+import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
 import { questionSchema, quizSchema } from '@/models/Schema';
@@ -133,7 +136,7 @@ ${hint ? `老師額外要求：${hint}` : ''}
   "options": ["(A)...", "(B)...", "(C)...", "(D)..."],
   "answer": ${isMulti ? '"A,C"' : '"A"'},
   "explanation": "解析說明"
-}`;
+}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw = '';
@@ -174,6 +177,8 @@ ${hint ? `老師額外要求：${hint}` : ''}
   } catch {
     return NextResponse.json({ error: 'AI 回傳格式錯誤' }, { status: 500 });
   }
+  // 程式題:AI 把程式碼放在獨立欄位就併回題目
+  ensureCodeSnippets([parsed]);
 
   const newBody = typeof parsed.question === 'string' ? parsed.question.trim() : '';
   const newOptionTexts = Array.isArray(parsed.options)

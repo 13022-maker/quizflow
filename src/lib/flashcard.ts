@@ -17,13 +17,24 @@ export type VocabCardRow = {
  *   - zh.word     ← front（題面，多為中文）
  *   - zh.pron     ← phonetic
  *   - meaning     ← back（翻牌後看到的意思）
- *   - en.word     ← back（如果 back 是英文翻譯）
+ *   - en.word     ← front/back 中「看起來是英文」的那個（皆非英文時退回 back）
+ *   - cross.en    ← 同上，但皆非英文時留空（背面 EN 列會自動隱藏）
+ *     註：back 多為「中文解釋」而非英文翻譯，不能直接當 EN 對照（伺服器 → 提供服務的電腦或程式。）
  *   - hak         ← 留空、tts: false（客語語音先 disable）
- *   - cross.en/hak ← 同上
+ *   - cross.hak   ← 留空
  *
  * 客語、閩南語的真實資料等之後 schema 擴充後再從這裡接。
  */
+// 有拉丁字母、且沒有中日韓字元，才視為英文
+export function looksEnglish(text: string | null | undefined): boolean {
+  if (!text) {
+    return false;
+  }
+  return /[a-z]/i.test(text) && !/[\u3400-\u9FFF\uF900-\uFAFF]/.test(text);
+}
+
 export function mapToFlashcardData(row: VocabCardRow): FlashcardData {
+  const english = looksEnglish(row.back) ? row.back : looksEnglish(row.front) ? row.front : '';
   return {
     id: String(row.id),
     zh: {
@@ -33,7 +44,7 @@ export function mapToFlashcardData(row: VocabCardRow): FlashcardData {
       tts: true,
     },
     en: {
-      word: row.back,
+      word: english || row.back,
       pron: '',
       pill: 'WORD',
       tts: true,
@@ -47,7 +58,7 @@ export function mapToFlashcardData(row: VocabCardRow): FlashcardData {
     meaning: row.back,
     example: row.example ?? '',
     cross: {
-      en: row.back,
+      en: english,
       hak: '',
     },
   };

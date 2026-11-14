@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { GoogleGenAI } from '@google/genai';
 import { NextResponse } from 'next/server';
 
+import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { enforcePublicAiLimit } from '@/libs/rateLimit';
 
 export const runtime = 'nodejs';
@@ -90,7 +91,10 @@ export async function POST(request: Request) {
     }
   }
 
-  // Fallback: Claude
+  // Fallback: Claude（成本閘門：只有 Pro 才能用到 Claude；學生匿名 / Free 到這裡就停）
+  if (!(await canUseClaude())) {
+    return NextResponse.json({ error: FREE_AI_UNAVAILABLE_MESSAGE }, { status: 503 });
+  }
   try {
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
