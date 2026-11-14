@@ -1,11 +1,11 @@
 {
   "Index": {
     "meta_title": "QuizFlow - 給台灣老師的 AI 出題平台，幾分鐘出一份好卷子",
-    "meta_description": "輸入主題或上傳講義，AI 幾分鐘幫你出 20 題，還能選 108 課綱素養命題。學生掃 QR code 免註冊作答，交卷自動批改，誰還沒懂一眼就知道。免費方案即可開始。"
+    "meta_description": "輸入主題或上傳講義，AI 幾分鐘就幫你備好一份可以挑的題目，還能選 108 課綱素養命題。學生掃 QR code 免註冊作答，交卷自動批改，誰還沒懂一眼就知道。免費方案即可開始。"
   },
   "PricingPage": {
     "meta_title": "QuizFlow 定價方案 - 免費開始，用得順手再升級",
-    "meta_description": "免費方案可建立 10 份測驗、每月 10 次 AI 出題。Pro 方案 NT$299/月（年繳 NT$2,490），測驗與 AI 出題都不限次數。"
+    "meta_description": "免費方案可建立 10 份測驗、每月 30 次 AI 出題。Pro 方案 NT$299/月（年繳 NT$2,490），測驗與 AI 出題都不限次數。"
   },
   "Navbar": {
     "sign_in": "登入",
@@ -20,7 +20,7 @@
   "Hero": {
     "follow_twitter": "在 Twitter 追蹤 QuizFlow",
     "title": "週五下午三點，<important>也來得及出一份好卷子</important>。",
-    "description": "不用從頭打字。說個主題或丟一份講義，幾分鐘就有 20 題可以挑，還能對齊 108 課綱素養。學生掃 QR code 就能作答，不用註冊帳號。",
+    "description": "不用從頭打字。說個主題或丟一份講義，幾分鐘就有一份可以挑的題目，還能對齊 108 課綱素養。學生掃 QR code 就能作答，不用註冊帳號。",
     "primary_button": "免費開始使用",
     "secondary_button": "看看怎麼用",
     "banner": "給台灣老師的 AI 出題助手"
@@ -77,7 +77,7 @@
     "free_name": "免費版",
     "free_description": "新帳號前 30 天享 Pro 完整功能，之後也能繼續免費用",
     "free_feature1": "最多 10 份測驗",
-    "free_feature2": "每月 10 次 AI 出題",
+    "free_feature2": "每月 30 次 AI 出題",
     "free_feature3": "所有題型：選擇、是非、填空、排序、簡答",
     "free_feature4": "學生掃 QR code 作答，不用註冊",
     "free_feature5": "匯出 Word 試卷",
@@ -85,7 +85,7 @@
     "pro_name": "Pro 老師",
     "pro_description": "適合每週都要出題、改考卷的老師",
     "pro_feature1": "測驗份數不限",
-    "pro_feature2": "AI 出題不限次數，幾分鐘就有 20 題",
+    "pro_feature2": "AI 出題不限次數，幾分鐘就有一份可以挑的題目",
     "pro_feature3": "上傳 PDF、Word、圖片、錄音檔直接出題",
     "pro_feature4": "可選 108 課綱素養、會考、Bloom 等命題框架",
     "pro_feature5": "AI 整理班級弱點與教學建議",
@@ -95,16 +95,16 @@
     "school_description": "適合整個學校或教學團隊",
     "school_feature1": "最多 30 位老師帳號",
     "school_feature2": "Pro 方案所有功能",
-    "school_feature3": "專屬客服支援",
+    "school_feature3": "Email 優先回覆",
     "school_cta_hint": "全校老師一起用，段考出題週不用再人人熬夜"
   },
   "FAQ": {
     "question1": "免費方案可以用到什麼程度？",
-    "answer1": "免費方案最多可以建立 10 份測驗，每月可以用 AI 出題 10 次；每份測驗的題數和作答人數都不限。新帳號前 30 天另外享有 Pro 完整功能。如果之後需要更多，Pro 方案每月 NT$299（年繳 NT$2,490），測驗與 AI 出題都不限次數。",
+    "answer1": "免費方案最多可以建立 10 份測驗，每月可以用 AI 出題 30 次；每份測驗的題數和作答人數都不限。新帳號前 30 天另外享有 Pro 完整功能。如果之後需要更多，Pro 方案每月 NT$299（年繳 NT$2,490），測驗與 AI 出題都不限次數。",
     "question2": "學生需要帳號才能作答嗎？",
     "answer2": "不需要。學生掃 QR code 或點你分享的連結，就能直接在手機或電腦上作答，不用註冊、也不用下載 App。交卷後馬上看到分數和每題詳解，你在後台也能即時看到全班的作答結果。",
     "question3": "可以丟哪些教材給 AI 出題？",
-    "answer3": "可以直接輸入主題或貼上文字，也可以上傳 PDF、Word、圖片（JPG、PNG 等）、錄音檔（MP3、WAV 等），或貼上 YouTube、Google 文件連結。AI 會依你選的題型出題並附上詳解，題型包含單選、多選、是非、填空、排序與簡答。免費方案每月可用 10 次，Pro 方案不限次數。"
+    "answer3": "可以直接輸入主題或貼上文字，也可以上傳 PDF、Word、圖片（JPG、PNG 等）、錄音檔（MP3、WAV 等），或貼上 YouTube、Google 文件連結。AI 會依你選的題型出題並附上詳解，題型包含單選、多選、是非、填空、排序與簡答。免費方案每月可用 30 次，Pro 方案不限次數。"
   },
   "CTA": {
     "title": "下一次小考，先讓 AI 幫你出初稿",

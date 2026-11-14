@@ -194,7 +194,7 @@ STRIPE_SECRET_KEY=any_fake_value
 
 - **題型**：single_choice、multiple_choice、true_false、short_answer、ranking（排序題）
 - **排序題（ranking）**：學生端用 `survey-react-ui` ranking widget（`next/dynamic` + `ssr:false` 動態載入），老師端輸入順序即正確答案，批改為全對才給分，學生端永遠強制打亂選項
-- **AI quota**：免費版每月 10 次，Pro 無限（4 月測試期全 Pro）
+- **AI quota**：免費版每月 30 次（2026-11 由 10 次調高，見 `AppConfig.ts`），Pro 無限
 - **AI 出題**：文字模式 + 檔案模式（PDF/圖片），支援 mc/tf/fill/short/rank 五種題型
 - **快閃卡**（`FlashCard.tsx`）：3D 翻牌 + 進度追蹤
 - **考試模式防作弊**：`quiz.preventLeave` boolean 控制；學生端 `beforeunload` 攔截 + `visibilitychange` 偵測切換分頁；`response.leaveCount` 記錄離開次數；老師成績頁顯示「⚠️ 離開 N 次」紅色標記 + CSV 匯出
@@ -231,7 +231,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 學生成績頁 AI 弱點分析（`/api/ai/analyze-weak-points`）
 - 錯題重做功能（本機批改，不計入統計）
 - 老師成績報表：可排序表格、CSV 匯出（含離開次數）、前 3 難題、AI 班級建議
-- AI 出題 quota 限制（Free 10次/月，Pro 無限）
+- AI 出題 quota 限制（Free 30次/月，Pro 無限）
 - Billing 方案頁面（用量顯示 + 方案比較表）
 - 題目插入圖片功能（URL 貼上 + Google 搜尋 + 預覽）
 - 是非題選項修復（自動補上預設「正確/錯誤」選項）

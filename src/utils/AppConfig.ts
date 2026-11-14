@@ -38,7 +38,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
       website: 10, // 最多 10 個測驗
       storage: 0,
       transfer: 0,
-      aiQuota: 10, // 免費用戶每月 10 次 AI 出題
+      aiQuota: 30, // 免費用戶每月 30 次 AI 出題
     },
   },
   [PLAN_ID.PREMIUM]: {

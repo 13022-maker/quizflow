@@ -84,7 +84,7 @@ export async function generateAIQuestions(
     return { success: false, error: '此功能僅限 Pro 方案使用', upgradeRequired: true };
   }
 
-  // 檢查 AI 出題 quota（Free 用戶每月 10 次）
+  // 檢查 AI 出題 quota（Free 用戶每月 30 次，額度見 AppConfig）
   const quotaCheck = await checkAndIncrementAiUsage(userId);
   if (!quotaCheck.allowed) {
     return { success: false, error: quotaCheck.reason, upgradeRequired: true };

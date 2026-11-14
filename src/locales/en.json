@@ -1,11 +1,11 @@
 {
   "Index": {
     "meta_title": "QuizFlow - AI Quiz Maker for Teachers: A Good Quiz in Minutes",
-    "meta_description": "Type a topic or upload a handout and get 20 questions in minutes, optionally aligned to Taiwan's 108 curriculum. Students scan a QR code to answer — no sign-up. Auto-grading shows you who's still lost. Start free."
+    "meta_description": "Type a topic or upload a handout and get a set of questions to pick from in minutes, optionally aligned to Taiwan's 108 curriculum. Students scan a QR code to answer — no sign-up. Auto-grading shows you who's still lost. Start free."
   },
   "PricingPage": {
     "meta_title": "QuizFlow Pricing - Start Free, Upgrade When It Clicks",
-    "meta_description": "The free plan includes 10 quizzes and 10 AI generations per month. Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation."
+    "meta_description": "The free plan includes 10 quizzes and 30 AI generations per month. Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation."
   },
   "Navbar": {
     "sign_in": "Sign In",
@@ -20,7 +20,7 @@
   "Hero": {
     "follow_twitter": "Follow QuizFlow on Twitter",
     "title": "It's 3 p.m. on Friday. <important>There's still time for a good quiz.</important>",
-    "description": "Stop typing questions from scratch. Give it a topic or drop in a handout, and you'll have 20 questions to pick from in minutes — aligned to Taiwan's 108 curriculum if you like. Students scan a QR code and start; no accounts needed.",
+    "description": "Stop typing questions from scratch. Give it a topic or drop in a handout, and you'll have a set of questions to pick from in minutes — aligned to Taiwan's 108 curriculum if you like. Students scan a QR code and start; no accounts needed.",
     "primary_button": "Start for Free",
     "secondary_button": "See How It Works",
     "banner": "The AI quiz assistant for teachers"
@@ -77,7 +77,7 @@
     "free_name": "Free",
     "free_description": "New accounts get full Pro features for 30 days, then keep using it free",
     "free_feature1": "Up to 10 quizzes",
-    "free_feature2": "10 AI generations per month",
+    "free_feature2": "30 AI generations per month",
     "free_feature3": "All question types: choice, true/false, fill-in, ordering, short answer",
     "free_feature4": "Students join by QR code — no sign-up",
     "free_feature5": "Export quizzes to Word",
@@ -85,7 +85,7 @@
     "pro_name": "Pro Teacher",
     "pro_description": "For teachers who write and grade quizzes every week",
     "pro_feature1": "Unlimited quizzes",
-    "pro_feature2": "Unlimited AI generation — 20 questions in minutes",
+    "pro_feature2": "Unlimited AI generation — a set of questions to pick from in minutes",
     "pro_feature3": "Generate from PDFs, Word files, images, and audio",
     "pro_feature4": "Frameworks like Taiwan's 108 curriculum, CAP, and Bloom's",
     "pro_feature5": "AI summaries of class weak spots with teaching tips",
@@ -95,16 +95,16 @@
     "school_description": "For whole schools and teaching teams",
     "school_feature1": "Up to 30 teacher accounts",
     "school_feature2": "Everything in Pro",
-    "school_feature3": "Dedicated support",
+    "school_feature3": "Priority email replies",
     "school_cta_hint": "Get every teacher on board — no more late nights during exam week."
   },
   "FAQ": {
     "question1": "How far does the free plan go?",
-    "answer1": "The free plan lets you create up to 10 quizzes and use AI generation 10 times a month, with no limit on questions per quiz or the number of students. New accounts also get full Pro features for their first 30 days. If you need more, Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
+    "answer1": "The free plan lets you create up to 10 quizzes and use AI generation 30 times a month, with no limit on questions per quiz or the number of students. New accounts also get full Pro features for their first 30 days. If you need more, Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
     "question2": "Do students need an account to take a quiz?",
     "answer2": "No. Students scan the QR code or tap the link you share and answer right in their browser — no sign-up, no app. They see their score and explanations as soon as they submit, and you see the whole class's results live in your dashboard.",
     "question3": "What materials can I give the AI?",
-    "answer3": "Type a topic or paste text, upload a PDF, Word file, image (JPG, PNG, etc.), or audio file (MP3, WAV, etc.), or paste a YouTube or Google Docs link. The AI writes questions in the types you choose — single choice, multiple choice, true/false, fill-in-the-blank, ordering, and short answer — with explanations. Free accounts get 10 generations a month; Pro is unlimited."
+    "answer3": "Type a topic or paste text, upload a PDF, Word file, image (JPG, PNG, etc.), or audio file (MP3, WAV, etc.), or paste a YouTube or Google Docs link. The AI writes questions in the types you choose — single choice, multiple choice, true/false, fill-in-the-blank, ordering, and short answer — with explanations. Free accounts get 30 generations a month; Pro is unlimited."
   },
   "CTA": {
     "title": "Let AI Draft Your Next Quiz",
