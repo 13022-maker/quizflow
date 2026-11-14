@@ -10,6 +10,7 @@ import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { gradeClozeAnswers, stripClozeMarkers } from '@/lib/cloze';
 import { getMultiBlankCount, joinBlankAnswers, numberBlanks } from '@/lib/fillBlank';
+import { mergeAnswerKey, shouldRedactAnswers } from '@/libs/quizRedaction';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 import { ClozeQuestion } from './ClozeQuestion';
@@ -432,6 +433,7 @@ function ResultScreen({
   questions,
   answers,
   showAnswers,
+  retryableWrongCount,
   onRetry,
 }: {
   quizId: number;
@@ -440,6 +442,7 @@ function ResultScreen({
   questions: Question[];
   answers: Record<number, string | string[]>;
   showAnswers: boolean;
+  retryableWrongCount: number;
   onRetry: () => void;
 }) {
   const percentage = result.totalPoints > 0
@@ -447,15 +450,6 @@ function ResultScreen({
     : 0;
 
   const hasShortAnswer = questions.some(q => q.type === 'short_answer');
-
-  // 可重做的錯題（排除簡答題）
-  const retryableWrongCount = result.details.filter((d) => {
-    if (d.isCorrect !== false) {
-      return false;
-    }
-    const qType = questions.find(q => q.id === d.questionId)?.type;
-    return qType !== 'short_answer' && qType !== 'cloze';
-  }).length;
 
   // 錯題單字卡
   const [vocabLoading, setVocabLoading] = useState(false);
@@ -1459,6 +1453,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
       q =>
         q.type !== 'short_answer'
         && q.type !== 'cloze'
+        // 錯題重做在 client 端批改，需要正解；老師不顯示解答時拿不到正解，也就不提供重做
+        && !!q.correctAnswers
         && result.details.some(d => d.questionId === q.id && d.isCorrect === false),
     );
   }, [result, displayQuestions]);
@@ -1571,6 +1567,10 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         setError(res.error);
         return;
       }
+      // 交卷後才拿到正解（作答頁可能已在 server 端遮蔽答案），合併回題目給成績／錯題重做畫面使用
+      if (res.answerKey) {
+        setDisplayQuestions(prev => mergeAnswerKey(prev, res.answerKey!));
+      }
       setResult(res);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1646,6 +1646,7 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
         questions={displayQuestions}
         answers={answers}
         showAnswers={quiz.showAnswers}
+        retryableWrongCount={retryQuestions.length}
         onRetry={() => setRetryMode(true)}
       />
     );
@@ -1713,7 +1714,8 @@ export function QuizTaker({ quiz, questions }: { quiz: Quiz; questions: Question
           )}
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {!preventLeave && (
+          {/* 複習模式會直接顯示正解：答案被遮蔽（考試模式或老師不顯示解答）時不提供 */}
+          {!shouldRedactAnswers(quiz) && (
             <button
               type="button"
               onClick={() => setFlashCardMode(true)}
