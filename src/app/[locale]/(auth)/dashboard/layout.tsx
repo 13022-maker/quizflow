@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
+import { isPricingEnabled } from '@/libs/paddleConfig';
 import { ensureTrialRecord } from '@/libs/trial';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -57,6 +58,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 href: '/marketplace',
                 label: '市集',
               },
+              // 定價入口（取代舊 PR #58；部落格 / 範本不加，避免 dashboard nav 過擠）
+              ...(isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED)
+                ? [{ href: '/pricing', label: '定價' }]
+                : []),
             ]}
           />
         </div>

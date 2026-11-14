@@ -15,6 +15,7 @@ export type BillingInterval = EnumValues<typeof BILLING_INTERVAL>;
 export type PricingPlan = {
   id: PlanId;
   price: number; // 月繳價（NT$）
+  yearlyPrice: number; // 年繳價（NT$），須與 Paddle 年繳 Price 金額一致
   interval: BillingInterval;
   features: {
     teamMember: number;

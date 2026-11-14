@@ -1,5 +1,6 @@
 import { getTranslations, unstable_setRequestLocale } from 'next-intl/server';
 
+import { isPricingEnabled } from '@/libs/paddleConfig';
 import { CTA } from '@/templates/CTA';
 import { DemoBanner } from '@/templates/DemoBanner';
 import { FAQ } from '@/templates/FAQ';
@@ -30,8 +31,8 @@ const IndexPage = (props: { params: { locale: string } }) => {
       <Navbar />
       <Hero />
       <Features />
-      {/* Paddle production 上線前先隱藏定價（NEXT_PUBLIC_PRICING_ENABLED=true 才顯示） */}
-      {process.env.NEXT_PUBLIC_PRICING_ENABLED === 'true' && <Pricing />}
+      {/* 2026-11 正式收費：定價區塊常態顯示；NEXT_PUBLIC_PRICING_ENABLED=false 可緊急隱藏 */}
+      {isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED) && <Pricing />}
       <FAQ />
       <CTA />
       <Footer />

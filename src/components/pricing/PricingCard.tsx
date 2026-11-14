@@ -6,6 +6,7 @@
  */
 
 import { useCheckout } from '@/hooks/useCheckout';
+import { isPaddleClientReady, readPaddlePublicEnv } from '@/libs/paddleConfig';
 
 export type PricingPlan = {
   name: string;
@@ -33,8 +34,20 @@ export function PricingCard({ plan, billingCycle }: Props) {
   const priceId = billingCycle === 'yearly' ? plan.priceIdYearly : plan.priceIdMonthly;
   const displayPrice = billingCycle === 'yearly' ? plan.yearlyPrice : plan.monthlyPrice;
 
-  // Paddle production 環境變數未設時，付費方案按鈕 disabled
-  const paddleReady = !!priceId;
+  // Paddle 環境變數（client token / price ID）未設時，付費方案按鈕 disabled 並顯示「即將開放」
+  const paddleReady = isPaddleClientReady({
+    clientToken: readPaddlePublicEnv().clientToken,
+    priceId,
+  });
+
+  // 按鈕文字：免費方案用方案自訂 CTA；付費方案依 Paddle 是否就緒切換
+  const buttonLabel = loading
+    ? '處理中...'
+    : isFree
+      ? plan.ctaLabel
+      : paddleReady
+        ? '立即訂閱'
+        : '即將開放';
 
   const handleClick = () => {
     if (isFree) {
@@ -132,7 +145,7 @@ export function PricingCard({ plan, billingCycle }: Props) {
             : 'border bg-card text-foreground hover:border-foreground/30 hover:bg-muted/40'
         }`}
       >
-        {loading ? '處理中...' : plan.ctaLabel}
+        {buttonLabel}
       </button>
     </div>
   );

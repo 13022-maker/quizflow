@@ -257,8 +257,12 @@ STRIPE_SECRET_KEY=any_fake_value
 - Paddle Billing 整合（sandbox smoke test 全通過）：
   - `/zh/pricing` 頁用 `components/pricing/PricingSection`，三方案 + 月/年切換
   - `POST /api/paddle/checkout` 建立 customer（含 try/catch），`useCheckout` hook 開 overlay
-  - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 created/updated/canceled
-  - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix）
+  - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 subscription.created/updated/activated/canceled/past_due/paused/resumed/trialing，以 `paddle_subscription_id` 原子 upsert
+  - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix，有整合測試 `src/app/api/webhook/route.integration.test.ts` 守門）
+  - 2026-11 production-ready：env 判斷集中在 `src/libs/paddleConfig.ts`（純函數）；Paddle SDK 改 lazy `getPaddle()`；checkout 只收 env 白名單 price（`INVALID_PRICE`）、缺 `PADDLE_API_KEY` 回 503 `PADDLE_NOT_CONFIGURED`；webhook 缺 secret 回 503；前端缺 client token / price ID 時按鈕顯示「即將開放」
+  - `/dashboard/billing`：`UpgradeProButton`（月/年切換，取代舊 PR #32）+ `ManageSubscriptionButton` → `POST /api/paddle/portal`（Paddle Customer Portal：取消、換卡、收據）
+  - 定價入口（navbar / footer / 首頁區塊 / dashboard nav「定價」/ `/pricing`）預設顯示；`NEXT_PUBLIC_PRICING_ENABLED=false` 為緊急 kill switch。`/pricing` 對所有訪客顯示完整方案（Paddle domain approval 要求），首頁區塊仍走 `getPricingVisibility`
+  - `Plan.ts` 用 `pickEffectiveSubscription`：同用戶多筆訂閱時有效狀態優先、取最新，不再 `.limit(1)` 拿到任意一筆
 - **Live Mode**（Kahoot 風格直播競賽 MVP）：6 碼 PIN 加入、老師主控 + 學生同步、Kahoot 式計分（500 底分 + 最多 500 速度加成）、即時排行榜
   - Realtime：**抽象 adapter 介面**（`src/services/live/realtimeAdapter.ts`）雙實作
     - Polling（預設）：setInterval + REST fetch，host 每 1.5s、player 每 2s
@@ -289,7 +293,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 適性學習班級儀表板「匯出班級成績」新增 Google Sheet 匯出選項（借用 Clerk 既有 Google 登入連線 + Sheets API v4，每次建一張新表；CSV 下載維持原樣）
 
 ### 🔥 下一步優先順序（依序開發）
-1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補
+1. **Paddle production 上線**（階段 2）：使用者 2026-11 決定正式上線（取代原「破 100 用戶」觸發條件）。程式碼端已就緒（PR `feat/paddle-production-ready`），剩 Dashboard / Vercel env 手動步驟，照 `docs/paddle-production-go-live.md` 逐項勾選
 2. ~~免費試用機制（Pro 功能 30 天體驗，到期自動降級）~~ ✅ 2026-04-30 完成 4 缺口修補（Fix 1: AI quota 走 isProOrAbove；Fix 2: billing 頁試用狀態四分支；Fix 3: 到期 banner 限期 7 天；Fix 4: dashboard layout eager trigger，30 天從進 dashboard 起算）。spec: `docs/superpowers/specs/2026-04-30-pro-trial-fixes-design.md`、plan: `docs/superpowers/plans/2026-04-30-pro-trial-fixes.md`
 3. 多語系擴展（日語、韓語、英語、簡體中文）
    - **Phase 1：日文 (ja)** ✅ 2026-05-21 完成（commit c2af1cb）。spec: `docs/superpowers/specs/2026-05-20-i18n-japanese-design.md`、譯者註記: `src/locales/ja.translation-notes.md`、工具: `scripts/translate-locale.ts`（可重用於 Phase 2/3）
@@ -318,7 +322,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - **所有 publish 只在 server 端**（`ablyServer.publishTick`），client token capability 只含 `subscribe`，防訊息偽造
 - **reactionMs 由 server 計算**（`Date.now() - game.questionStartedAt`），client 傳來的時間戳完全不信任（防竄改瀏覽器時鐘拉分）
 - **Server fallback**：`ABLY_API_KEY` 未設時 `publishTick` 直接 no-op，不會 throw；也就是拔掉 env 即自動回滾 polling
-- Ably 免費 tier：200 併發、3M msg/月，tick-only 模式訊息量低（每 mutation 一則），規劃**跟 Paddle production 同 trigger**（用戶破 100 再評估付費方案）
+- Ably 免費 tier：200 併發、3M msg/月，tick-only 模式訊息量低（每 mutation 一則），用戶破 100 再評估付費方案（原本與 Paddle production 同 trigger；Paddle 已於 2026-11 提前上線，Ably 維持原條件）
 
 ### Drizzle migration snapshot 脫鉤（已存在問題，非本次造成）
 `migrations/meta/` 缺 0015/0016/0017 的 snapshot，導致下次 `npm run db:generate` 會把 vocab 表、quiz marketplace 欄位等既有內容當 diff 又塞一次到新產 migration 裡。**每次產新 migration 後必須檢視 SQL，手動刪除不屬於本次改動的 CREATE TABLE / ALTER TABLE**（本次 `0018_flashy_pete_wisdom.sql` 已處理）。長期解法：重建 snapshot，但要在本機 PGlite + Neon 都驗證。
@@ -348,19 +352,25 @@ STRIPE_SECRET_KEY=any_fake_value
 - Paddle Sandbox webhook destination：`ntfset_01kp66qw6wj7f3z0htq5ktg2qy`（目前指到 preview URL）
 - production merge 前要處理：移除 Vercel preview 的 sandbox env（或窄化成只綁該分支）、刪 Neon preview branch、Paddle sandbox webhook destination 移除或獨立
 
-### Paddle production 上線清單（階段 2，未做）
-**Trigger 條件**：用戶數破 100 **且** 命題人數超過 10 人（避免 production webhook 過早啟用導致誤觸發訂閱）。
-production Vercel env 目前**完全沒有 PADDLE_*** 變數，正式上線當天再一次性補齊：
-1. `vercel env add PADDLE_API_KEY production`（production key `pdl_apikey_*`）
-2. `vercel env add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN production`（live_*）
-3. `vercel env add NEXT_PUBLIC_PADDLE_ENV production` value=`production`
-4. `vercel env add PADDLE_WEBHOOK_SECRET production`（取自 production Paddle Dashboard）
-5. 4 個 production Price ID：
-   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`
-   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`
-   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`
-   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`
-6. 更新 Paddle **Production** Dashboard webhook destination 指到 `https://quizflow-psi.vercel.app/api/webhook`（與 sandbox 那條不同個）
+### Paddle production 上線清單（階段 2）
+**Trigger 條件**：使用者 2026-11 決定正式上線（覆蓋原本「用戶數破 100 且命題人數超過 10 人」的條件）。
+**完整可勾選清單**：`docs/paddle-production-go-live.md`（法務頁修正、Paddle 驗證 / domain approval、Vercel env 指令、webhook 事件、smoke test、回滾）。
+
+Vercel env 現況（2026-11-14 只讀檢查，值未讀取）：
+- production **已有**：`NEXT_PUBLIC_PADDLE_ENV`、4 個 `NEXT_PUBLIC_PADDLE_PRICE_*`（2026-04-20 建立、sensitive 無法讀回 → 清單建議刪掉重設）
+- production **缺**：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`PADDLE_WEBHOOK_SECRET`
+- preview：sandbox 那組全部只綁 `feature/paddle-sandbox` 分支（已刪分支），實際無作用，清單附刪除指令
+
+4 個 production Price ID（金額需與 `AppConfig.ts` / `PricingSection.tsx` 一致，`AppConfig.pricing.test.ts` 守門）：
+- `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`（NT$299/月）
+- `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`（NT$2,490/年）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`（NT$1,990/月）——**暫不設定**（學校方案未開放）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`（NT$16,990/年）——**暫不設定**（學校方案未開放）
+
+**學校方案（Team）暫不開放結帳**：上線時**不要**設 `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY/YEARLY`（席次 / 團隊功能尚未實作）；未設時定價頁學校卡顯示「即將開放」、checkout 拒收 team priceId（`PricingCard.test.tsx` / `route.test.ts` 守門）。Paddle 端 Team price 保留但不對外。
+
+Production webhook destination：`https://quizflow-psi.vercel.app/api/webhook`（與 sandbox `ntfset_01kp66qw6wj7f3z0htq5ktg2qy` 不同條），事件勾 `subscription.*` 8 種。
+`NEXT_PUBLIC_*` 是 build 時 inline，改完 env 一定要 redeploy。
 
 ## Agent 任務工作流
 1. 開場先跑 `gh issue list --label "狀態:待處理" --json number,title,body` 找任務
