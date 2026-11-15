@@ -36,7 +36,8 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     interval: BILLING_INTERVAL.MONTH,
     features: {
       teamMember: 1,
-      website: 10, // 最多 10 個測驗
+      website: 999, // 2026-11 起不設測驗總數上限
+      dailyQuizLimit: 5, // 試用期結束後每天最多建立 5 份，第 6 份導向定價頁
       storage: 0,
       transfer: 0,
       aiQuota: 30, // 免費用戶每月 30 次 AI 出題

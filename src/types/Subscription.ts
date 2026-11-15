@@ -20,6 +20,7 @@ export type PricingPlan = {
   features: {
     teamMember: number;
     website: number; // 測驗數量上限（999 = 無限）
+    dailyQuizLimit?: number; // 每日建立測驗上限（台北時間計日；undefined = 不限）
     storage: number;
     transfer: number;
     aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）

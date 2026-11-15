@@ -93,12 +93,12 @@ export default async function BillingPage() {
         <div className="rounded-lg border bg-card p-6">
           <h2 className="mb-4 text-lg font-semibold">使用狀況</h2>
           <div className="space-y-4">
-            {/* 測驗數量（試用中也視為無限，與 quizActions 的 isProOrAbove 待遇一致） */}
+            {/* 每日建立測驗（試用中也視為無限，與 quizActions 的 getDailyQuizQuota 待遇一致） */}
             <UsageRow
-              label="測驗數量上限"
-              value={(isPaidPro || isTrialing) || plan.features.website >= 999
+              label="每日建立測驗"
+              value={(isPaidPro || isTrialing) || plan.features.dailyQuizLimit === undefined
                 ? '無限制'
-                : `${plan.features.website} 份`}
+                : `${plan.features.dailyQuizLimit} 份/天`}
             />
             {/* AI 出題次數 */}
             <div>
@@ -185,7 +185,7 @@ export default async function BillingPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                <CompareRow feature="測驗數量" free="10 份" pro="無限" enterprise="無限" />
+                <CompareRow feature="建立測驗" free={`${PricingPlanList[PLAN_ID.FREE]!.features.dailyQuizLimit} 份/天`} pro="無限" enterprise="無限" />
                 <CompareRow feature="AI 出題" free={`${PricingPlanList[PLAN_ID.FREE]!.features.aiQuota} 次/月`} pro="無限" enterprise="無限" />
                 <CompareRow feature="團隊成員" free="1 人" pro="1 人" enterprise="最多 30 人" />
                 <CompareRow feature="AI 班級分析" free="—" pro="✓" enterprise="✓" />
