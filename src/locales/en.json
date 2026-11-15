@@ -421,5 +421,33 @@
     "col_result": "Result page",
     "view_result": "View",
     "fillblank_no_analytics": "Fill-in-the-blank practice pages do not collect anonymous analytics; only submitted scores are shown here."
+  },
+  "Demo": {
+    "meta_title": "Example: a quiz made by AI - QuizFlow",
+    "meta_description": "No sign-up needed. See a middle-school science quiz QuizFlow created for a teacher, and how students answer on their phones with automatic grading.",
+    "eyebrow": "No sign-up — see the result first",
+    "title": "Here's a quiz QuizFlow made",
+    "description": "The teacher typed one line. AI wrote the questions, answers, and explanations; the teacher reviewed them and shared with students. Switch to \"Student view\" to take it yourself.",
+    "tabs_label": "Switch view",
+    "tab_teacher": "Teacher view",
+    "tab_student": "Student view",
+    "teacher_prompt_label": "Teacher typed:",
+    "teacher_meta": "{count} questions · answers, explanations, curriculum and Bloom's level tags included",
+    "type_single_choice": "Single choice",
+    "type_multiple_choice": "Multiple choice",
+    "type_true_false": "True/False",
+    "explanation_label": "Explanation: ",
+    "student_intro": "Students scan a QR code or enter a 6-character room code, then see their score and explanations right after submitting. Try it:",
+    "student_no_login": "Students don't need an account",
+    "multi_hint": "(Select all that apply)",
+    "submit_button": "Submit",
+    "retry_button": "Try again",
+    "score_unit": "pts",
+    "score_detail": "{correct} / {total} correct",
+    "result_correct": "✓ Correct.",
+    "result_wrong": "✗ Incorrect.",
+    "cta_title": "Try it with next week's unit",
+    "cta_description": "New accounts get every Pro feature for 30 days. No credit card required.",
+    "cta_button": "Start free and make my first quiz"
   }
 }
