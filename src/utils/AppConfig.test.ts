@@ -8,7 +8,12 @@ describe('PricingPlanList', () => {
     expect(PricingPlanList[PLAN_ID.FREE]!.features.aiQuota).toBe(30);
   });
 
-  it('Free 方案測驗數上限維持 10 份', () => {
-    expect(PricingPlanList[PLAN_ID.FREE]!.features.website).toBe(10);
+  it('Free 方案不設測驗總數上限，改為每天最多建立 5 份', () => {
+    expect(PricingPlanList[PLAN_ID.FREE]!.features.website).toBe(999);
+    expect(PricingPlanList[PLAN_ID.FREE]!.features.dailyQuizLimit).toBe(5);
+  });
+
+  it('付費方案沒有每日建立上限', () => {
+    expect(PricingPlanList[PLAN_ID.PREMIUM]!.features.dailyQuizLimit).toBeUndefined();
   });
 });

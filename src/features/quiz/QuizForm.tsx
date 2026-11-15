@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 
 import { createQuiz } from '@/actions/quizActions';
 import { Button } from '@/components/ui/button';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH } from '@/libs/quizQuota';
 
 type TemplateItem = {
   icon: string;
@@ -54,7 +55,7 @@ export function QuizForm() {
       if (result?.error) {
         setPendingKey(null);
         if (result.error === 'QUOTA_EXCEEDED') {
-          window.location.href = '/dashboard/billing';
+          window.location.href = DAILY_QUIZ_LIMIT_PRICING_PATH;
           return;
         }
         setError(result.error);

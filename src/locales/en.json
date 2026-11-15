@@ -5,7 +5,8 @@
   },
   "PricingPage": {
     "meta_title": "QuizFlow Pricing - Start Free, Upgrade When It Clicks",
-    "meta_description": "The free plan includes 10 quizzes and 30 AI generations per month. Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation."
+    "meta_description": "The free plan includes 5 new quizzes per day and 30 AI generations per month. Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
+    "daily_limit_notice": "You've created {limit} quizzes today, the free plan's daily limit. You can create more tomorrow, or upgrade to Pro for unlimited quizzes."
   },
   "Navbar": {
     "sign_in": "Sign In",
@@ -76,7 +77,7 @@
     "billing_yearly_badge": "Best value",
     "free_name": "Free",
     "free_description": "New accounts get full Pro features for 30 days, then keep using it free",
-    "free_feature1": "Up to 10 quizzes",
+    "free_feature1": "Up to 5 new quizzes per day",
     "free_feature2": "30 AI generations per month",
     "free_feature3": "All question types: choice, true/false, fill-in, ordering, short answer",
     "free_feature4": "Students join by QR code — no sign-up",
@@ -100,7 +101,7 @@
   },
   "FAQ": {
     "question1": "How far does the free plan go?",
-    "answer1": "The free plan lets you create up to 10 quizzes and use AI generation 30 times a month, with no limit on questions per quiz or the number of students. New accounts also get full Pro features for their first 30 days. If you need more, Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
+    "answer1": "New accounts get full Pro features for their first 30 days. After the trial, the free plan lets you create up to 5 quizzes per day and use AI generation 30 times a month, with no limit on questions per quiz or the number of students. If you need more, Pro is NT$299/month (NT$2,490/year) with unlimited quizzes and AI generation.",
     "question2": "Do students need an account to take a quiz?",
     "answer2": "No. Students scan the QR code or tap the link you share and answer right in their browser — no sign-up, no app. They see their score and explanations as soon as they submit, and you see the whole class's results live in your dashboard.",
     "question3": "What materials can I give the AI?",
