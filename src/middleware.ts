@@ -169,5 +169,6 @@ export default function middleware(
 }
 
 export const config = {
-  matcher: ['/((?!.+\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'], // Also exclude tunnelRoute used in Sentry from the matcher
+  // 排除 Sentry tunnelRoute（monitoring）與 Vercel Web Analytics 的 /_vercel/insights/*，避免被 i18n 重導向到 /zh/_vercel/...
+  matcher: ['/((?!.+\\.[\\w]+$|_next|_vercel|monitoring).*)', '/', '/(api|trpc)(.*)'],
 };
