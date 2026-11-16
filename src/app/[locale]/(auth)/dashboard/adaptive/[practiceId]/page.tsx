@@ -19,6 +19,7 @@ import { adaptiveEventSchema, adaptivePracticeSchema, adaptiveStudentStateSchema
 
 import { AutoRefresh } from '../AutoRefresh';
 import { CopyLinkButton } from '../CopyLinkButton';
+import { ShareClassroomButton } from '../ShareClassroomButton';
 import { AdaptiveExportButtons } from './AdaptiveExportButtons';
 import { DeletePracticeButton } from './DeleteButton';
 import { GenerateWeakpointFlashcardsButton } from './GenerateWeakpointFlashcardsButton';
@@ -212,10 +213,11 @@ export default async function AdaptiveBoardPage({
           {' '}
           {practice.title}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StartLiveModeButton practiceId={practice.id} itemCount={service.subject.itemBank.items.length} />
           <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} topWrongItems={topWrongItems} />
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
+          <ShareClassroomButton path={`/adaptive/${practice.accessCode}`} title={practice.title} />
           <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />
           <DeletePracticeButton id={practice.id} />
         </div>
