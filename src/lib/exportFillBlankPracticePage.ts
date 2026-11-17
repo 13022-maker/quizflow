@@ -46,6 +46,9 @@ export type FillBlankPracticeQuestion = {
   // 練習頁送出時 typed 也用同一個分隔符串起來，server 端整串比對即可，不用改 server 邏輯
   answer: string;
   explanation?: string;
+  // 題目附圖（相對路徑或完整網址），顯示在題幹上方；例：識圖題的電路符號
+  image?: string;
+  imageAlt?: string;
 };
 
 // 多格填空題把各格答案串成一個字串的分隔符（全形斜線，學生幾乎不會在單格答案裡打這個字）。
@@ -169,6 +172,8 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
   @keyframes pop{from{transform:translateY(6px);opacity:0}to{transform:none;opacity:1}}
   .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
   .qbody{padding:22px 22px 20px}
+  .qimg{margin:0 0 14px;display:flex;justify-content:center}
+  .qimg img{max-width:100%;max-height:320px;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
   .sentence{font-size:17px;font-weight:700;line-height:2.1}
   .blank-input{display:inline-block;min-width:110px;max-width:220px;margin:0 4px;padding:4px 8px;font-size:16px;font-weight:700;font-family:inherit;border:none;border-bottom:2.5px solid var(--blue);background:var(--blue-soft);border-radius:6px 6px 0 0;color:var(--ink);text-align:center}
   .blank-input:focus{outline:none;border-color:var(--blue-dark);background:#fff}
@@ -381,6 +386,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     qcard.innerHTML=
       '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+(cur+1)+' 題</div>'+
       '<div class="qbody">'+
+        (q.image ? '<div class="qimg"><img src="'+esc(q.image)+'" alt="'+esc(q.imageAlt||('第 '+(cur+1)+' 題附圖'))+'" loading="lazy"></div>' : '')+
         '<div class="sentence">'+q.segments.map(function(seg,bi){
           if(bi===0) return esc(seg);
           var label=q.answers.length>1?' aria-label="第 '+bi+' 格" placeholder="('+bi+')"':'';
