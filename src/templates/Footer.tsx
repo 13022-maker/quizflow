@@ -101,6 +101,17 @@ export const Footer = () => {
             {t('practice')}
           </a>
         </li>
+        {/* 免費題庫的填充題版本（20 題一回），同樣是 public/practice/ 下的靜態頁 */}
+        <li>
+          <a href="/practice/circuit-diagram-fill-1.html" target="_blank" rel="noopener noreferrer">
+            {t('practice_fill_1')}
+          </a>
+        </li>
+        <li>
+          <a href="/practice/circuit-diagram-fill-2.html" target="_blank" rel="noopener noreferrer">
+            {t('practice_fill_2')}
+          </a>
+        </li>
       </CenteredFooter>
     </Section>
   );
