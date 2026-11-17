@@ -5,7 +5,6 @@ import { LocaleSwitcher } from '@/components/LocaleSwitcher';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { CenteredMenu } from '@/features/landing/CenteredMenu';
 import { Section } from '@/features/landing/Section';
-import { isPricingEnabled } from '@/libs/paddleConfig';
 
 import { Logo } from './Logo';
 
@@ -33,12 +32,7 @@ export const Navbar = () => {
           </>
         )}
       >
-        {/* 2026-11 正式收費：定價入口常態顯示；NEXT_PUBLIC_PRICING_ENABLED=false 可緊急隱藏 */}
-        {isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED) && (
-          <li>
-            <Link href="/pricing">{t('pricing')}</Link>
-          </li>
-        )}
+        {/* 2026-11：公開頁訪客皆為新使用者，navbar 不顯示定價入口（footer 保留，Paddle 審核需要） */}
         <li>
           <Link href="/blog">{t('blog')}</Link>
         </li>
