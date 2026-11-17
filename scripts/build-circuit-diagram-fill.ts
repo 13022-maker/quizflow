@@ -9,6 +9,9 @@
  *   需要特定寫法的（英文縮寫、含符號的指令）在題幹括號註明格式
  * - q3（選項本身是四張右側視圖）無法改成填空，略過，共 48 題
  *
+ * 產出三份：完整版 circuit-diagram-fill.html（48 題）、第一回 -1.html（前 20 題）、
+ * 第二回 -2.html（後 20 題）。
+ *
  * 用法：npx tsx scripts/build-circuit-diagram-fill.ts
  * 改題目只改這支，再重跑產生 HTML；不要直接手改產出的 HTML。
  */
@@ -86,13 +89,26 @@ const questions: FillBlankPracticeQuestion[] = ITEMS.map((item) => {
   return item.image ? { ...q, image: item.image, imageAlt: `官方題號 ${item.id.slice(1)} 附圖` } : q;
 });
 
-const html = buildFillBlankPracticePageHtml({
-  title: '電腦、電子及電機機械識圖 填充題練習',
-  kick: '12000 電腦硬體裝修 丙級',
-  enSubtitle: `題目與答案取自勞動部技能檢定學科題庫工作項目 01，改寫為填充題（共 ${questions.length} 題）；詳解為非官方補充。`,
-  questions,
-});
+// 完整版 48 題 + 兩份 20 題分回練習（前 20 題、後 20 題；中間 8 題只在完整版）
+const PART_SIZE = 20;
+const ids = ITEMS.map(item => item.id);
+const officialRange = (from: number, to: number) => `官方題號 ${ids[from]!.slice(1)}–${ids[to - 1]!.slice(1)}`;
 
-const out = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'public', 'practice', 'circuit-diagram-fill.html');
-writeFileSync(out, html);
-console.log(`已產生 ${out}（${questions.length} 題）`);
+const PAGES = [
+  { file: 'circuit-diagram-fill.html', title: '電腦、電子及電機機械識圖 填充題練習', from: 0, to: questions.length, range: '' },
+  { file: 'circuit-diagram-fill-1.html', title: '電腦、電子及電機機械識圖 填充題練習（第一回）', from: 0, to: PART_SIZE, range: officialRange(0, PART_SIZE) },
+  { file: 'circuit-diagram-fill-2.html', title: '電腦、電子及電機機械識圖 填充題練習（第二回）', from: questions.length - PART_SIZE, to: questions.length, range: officialRange(questions.length - PART_SIZE, questions.length) },
+];
+
+const outDir = join(resolve(dirname(fileURLToPath(import.meta.url)), '..'), 'public', 'practice');
+for (const page of PAGES) {
+  const pageQuestions = questions.slice(page.from, page.to);
+  const html = buildFillBlankPracticePageHtml({
+    title: page.title,
+    kick: '12000 電腦硬體裝修 丙級',
+    enSubtitle: `題目與答案取自勞動部技能檢定學科題庫工作項目 01，改寫為填充題（共 ${pageQuestions.length} 題${page.range ? `，${page.range}` : ''}）；詳解為非官方補充。`,
+    questions: pageQuestions,
+  });
+  writeFileSync(join(outDir, page.file), html);
+  console.log(`已產生 ${page.file}（${pageQuestions.length} 題${page.range ? `，${page.range}` : ''}）`);
+}
