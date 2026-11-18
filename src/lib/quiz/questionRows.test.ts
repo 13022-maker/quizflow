@@ -5,6 +5,21 @@ import { describe, expect, it } from 'vitest';
 import { buildQuestionInsertRows, type GeneratedQuestion } from './questionRows';
 
 describe('buildQuestionInsertRows', () => {
+  it('從原始檔截圖的 imageUrl 寫入 image_url；沒有圖時為 null（AI 帶的 figure 定位欄位不寫入）', () => {
+    const rows = buildQuestionInsertRows(
+      [
+        { type: 'fill', question: '如圖所示之電路，R 值應為 ___ Ω。', answer: '6', imageUrl: 'https://blob.example/quiz-images/1/a.png', figure: { page: 1, bbox: null } } as GeneratedQuestion,
+        { type: 'fill', question: '無圖題 ___', answer: '1' },
+      ],
+      1,
+      1,
+    );
+
+    expect(rows[0]!.imageUrl).toBe('https://blob.example/quiz-images/1/a.png');
+    expect(rows[1]!.imageUrl).toBeNull();
+    expect('figure' in rows[0]!).toBe(false);
+  });
+
   it('mc：answer 用字母時，依 options 順序比對出正確 id', () => {
     const rows = buildQuestionInsertRows(
       [{ type: 'mc', question: '光合作用發生在哪？', options: ['葉綠體', '粒線體', '細胞核', '液泡'], answer: 'B' }],

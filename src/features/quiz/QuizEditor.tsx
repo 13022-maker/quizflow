@@ -75,6 +75,7 @@ type FileGeneratedQuestion = {
   answer: string;
   explanation?: string;
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
+  imageUrl?: string; // 從原始檔截取的題目附圖（已上傳 Blob）
 };
 
 // AIQuizModal 回傳的題目格式（支援 rank，answer 可能為陣列）
@@ -88,6 +89,7 @@ type AIGeneratedQuestion = {
   listeningText?: string; // 聽力題口語化文字
   audioUrl?: string; // 聽力題 TTS 音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
+  imageUrl?: string; // 題目圖片（題庫匯入配對或檔案出題截圖，已上傳 Blob；/api/quizzes/[id]/questions 寫入 image_url）
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有)
 };
 
@@ -548,6 +550,7 @@ export function QuizEditor({
           options,
           correctAnswers: matched ? [matched.id] : undefined,
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       } else if (q.type === 'tf') {
@@ -563,6 +566,7 @@ export function QuizEditor({
           ],
           correctAnswers: [isTrue ? 'tf-true' : 'tf-false'],
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       } else {
@@ -572,6 +576,7 @@ export function QuizEditor({
           body: q.question,
           correctAnswers: q.answer ? [q.answer] : undefined,
           diagramSvg: q.diagramSvg || undefined,
+          imageUrl: q.imageUrl || undefined,
           points: 1,
         });
       }
@@ -897,6 +902,7 @@ export function QuizEditor({
       )}
       {showAIModal && initialQuiz.quizMode !== 'vocab' && (
         <AIQuizModal
+          quizId={String(initialQuiz.id)}
           defaultTopic={aiPrefill || buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
@@ -907,6 +913,7 @@ export function QuizEditor({
       {/* 上傳講義命題 Modal */}
       {showFileGenerator && (
         <FileQuizGenerator
+          quizId={initialQuiz.id}
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
           isPro={isPro}

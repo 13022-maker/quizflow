@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildNoFigureReferenceRule } from './figureReferencePrompt';
+import { buildFigureLocatorRule, buildFigureRuleForSource, buildNoFigureReferenceRule } from './figureReferencePrompt';
 import { buildLessonPrepPrompt, DEFAULT_LESSON_PREP_STAGES } from './lessonPrepPromptBuilder';
 
 describe('buildNoFigureReferenceRule', () => {
@@ -31,5 +31,44 @@ describe('buildNoFigureReferenceRule', () => {
 describe('buildLessonPrepPrompt', () => {
   it('備課 prompt 包含圖表依賴規則', () => {
     expect(buildLessonPrepPrompt(DEFAULT_LESSON_PREP_STAGES)).toContain('【圖表依賴規則】');
+  });
+});
+
+describe('buildFigureLocatorRule', () => {
+  it('允許題幹寫「如圖所示」並要求輸出 figure 欄位（page + bbox）', () => {
+    const rule = buildFigureLocatorRule();
+
+    expect(rule).toContain('【圖表依賴規則】');
+    expect(rule).toContain('如圖所示');
+    expect(rule).toContain('"figure"');
+    expect(rule).toContain('page');
+    expect(rule).toContain('bbox');
+  });
+
+  it('要求題幹精簡、不要把整張圖改寫成長段文字', () => {
+    const rule = buildFigureLocatorRule();
+
+    expect(rule).toContain('精簡');
+    expect(rule).not.toContain('完整寫進題目');
+  });
+
+  it('找不到圖的位置就不要出依賴圖的題目', () => {
+    expect(buildFigureLocatorRule()).toContain('不要出這題');
+  });
+
+  it('圖片來源時 page 指第幾張圖片', () => {
+    expect(buildFigureLocatorRule('question', 'image')).toContain('第幾張圖片');
+  });
+});
+
+describe('buildFigureRuleForSource', () => {
+  it('PDF / 圖片來源 → 截圖定位版本', () => {
+    expect(buildFigureRuleForSource('pdf')).toBe(buildFigureLocatorRule('question', 'pdf'));
+    expect(buildFigureRuleForSource('image')).toBe(buildFigureLocatorRule('question', 'image'));
+  });
+
+  it('純文字來源 → 維持 PR #119 的「改寫成文字」版本', () => {
+    expect(buildFigureRuleForSource('text')).toBe(buildNoFigureReferenceRule());
+    expect(buildFigureRuleForSource('text', 'content')).toBe(buildNoFigureReferenceRule('content'));
   });
 });
