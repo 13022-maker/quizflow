@@ -9,6 +9,7 @@ import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { probeAudioDuration } from '@/lib/audioDuration';
 import { countClozeBlanks } from '@/lib/cloze';
 import { hasCodeBlock } from '@/lib/codeBlock';
+import { MISSING_FIGURE_WARNING, needsFigure } from '@/lib/figureReference';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -108,6 +109,17 @@ export function QuestionCard({ question, index, onEdit, onDelete, isDeleting, on
         {hasCodeBlock(question.body)
           ? <QuestionBody text={question.body} className="text-sm" />
           : <p className="line-clamp-2 text-sm">{question.body}</p>}
+        {needsFigure(question) && (
+          <p className="mt-1 text-xs text-amber-600">
+            ⚠️
+            {' '}
+            {MISSING_FIGURE_WARNING}
+            {' '}
+            <button type="button" onClick={onEdit} className="font-medium underline underline-offset-2 hover:text-amber-700">
+              上傳題目圖片
+            </button>
+          </p>
+        )}
         {question.imageUrl && (
           <div className="mt-2 inline-block overflow-hidden rounded">
             {/* eslint-disable-next-line @next/next/no-img-element */}

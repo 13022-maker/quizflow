@@ -17,6 +17,7 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
 import { QUIZ_MODEL_OPTIONS } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
@@ -241,7 +242,7 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}`;
 
   // 成本閘門：只有 Pro 才能用到 Claude（首選或備援都算）
   const allowClaude = await canUseClaude();

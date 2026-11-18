@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { Env } from '@/libs/Env';
 import { isProOrAbove } from '@/libs/Plan';
@@ -131,7 +132,7 @@ export async function generateAIQuestions(
 - correctAnswers 只含一個正確選項的 id（字串陣列）
 - 題目清楚明確，難度適中（高中程度）
 - 所有文字使用繁體中文
-- 直接輸出 JSON 陣列，第一個字是 [，最後一個字是 ]，無任何其他內容${buildSingleAnswerRule({ explanationField: null })}`;
+- 直接輸出 JSON 陣列，第一個字是 [，最後一個字是 ]，無任何其他內容${buildSingleAnswerRule({ explanationField: null })}${buildNoFigureReferenceRule('body')}`;
 
   try {
     const message = await client.messages.create({

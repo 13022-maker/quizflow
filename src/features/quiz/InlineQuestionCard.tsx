@@ -8,6 +8,7 @@ import { useState, useTransition } from 'react';
 import { updateQuestion } from '@/actions/questionActions';
 import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { hasCodeBlock, needsCodeSnippet } from '@/lib/codeBlock';
+import { MISSING_FIGURE_WARNING, needsFigure } from '@/lib/figureReference';
 import type { questionSchema } from '@/models/Schema';
 
 import { QUESTION_TYPE_LABELS } from './QuestionForm';
@@ -61,6 +62,7 @@ export function InlineQuestionCard({
 
   const bodyHasCode = hasCodeBlock(body);
   const bodyMissingCode = needsCodeSnippet(body);
+  const bodyMissingFigure = needsFigure({ body, imageUrl: question.imageUrl, diagramSvg: question.diagramSvg });
   const isSingle = question.type === 'single_choice';
 
   // 呼叫 updateQuestion，overrides 允許傳入最新值（避免 setState 非同步）
@@ -222,6 +224,17 @@ export function InlineQuestionCard({
         {bodyMissingCode && (
           <p className="mt-1 text-xs text-amber-600">
             ⚠️ 題目提到程式碼，但沒有附上程式碼。請用 ```cpp 換行貼上程式碼、換行再以 ``` 結尾，或按「重生」。
+          </p>
+        )}
+        {bodyMissingFigure && (
+          <p className="mt-1 text-xs text-amber-600">
+            ⚠️
+            {' '}
+            {MISSING_FIGURE_WARNING}
+            {' '}
+            <button type="button" onClick={onEdit} className="font-medium underline underline-offset-2 hover:text-amber-700">
+              上傳題目圖片
+            </button>
           </p>
         )}
 

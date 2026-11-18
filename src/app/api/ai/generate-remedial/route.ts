@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { generateAIText } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
@@ -76,7 +77,7 @@ JSON 格式：
       "targetConcept": "針對的弱點概念"
     }
   ]
-}${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
+}${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}`;
 
     // 統一走 generateAIText：付費 Claude（失敗備援 Gemini）、免費 Gemini
     const { text: raw, usedModel } = await generateAIText({
