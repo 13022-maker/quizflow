@@ -3,8 +3,11 @@
 import { useRef, useState } from 'react';
 
 import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
+import type { FigureLocator } from '@/lib/figureLocator';
 
 import { AIModelPicker } from './AIModelPicker';
+import { captureFigures } from './figureCapture';
+import { FigurePreview } from './FigurePreview';
 import { MissingCodeWarning } from './MissingCodeWarning';
 
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
@@ -16,6 +19,8 @@ type GeneratedQuestion = {
   answer: string;
   explanation?: string;
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有;由 generate-questions/generate-from-file 附上)
+  imageUrl?: string; // 依 figure 從原始檔截圖上傳後的題目圖片網址
+  figure?: FigureLocator; // AI 標示的原始檔附圖位置（截圖後即移除）
 };
 
 type GeneratedResult = {
@@ -24,6 +29,8 @@ type GeneratedResult = {
 };
 
 type Props = {
+  /** 截圖上傳題目附圖用（/api/upload/quiz-image/[quizId]）；未提供時不截圖 */
+  quizId?: string | number;
   onImport: (questions: GeneratedQuestion[], title: string) => void;
   onClose: () => void;
   /** Pro 或以上（含 30 天試用）；非 Pro 時 Claude 模型選項 disabled */
@@ -61,7 +68,7 @@ function formatSize(bytes: number) {
 // Vercel Serverless request body 上限 ~4.5MB，超過就要在前端裁切
 const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
 
-export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
+export default function FileQuizGenerator({ quizId, onImport, onClose, isPro }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [types, setTypes] = useState<QuestionType[]>(['mc']);
   const [count, setCount] = useState(5);
@@ -137,6 +144,8 @@ export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
 
     try {
       const fd = new FormData();
+      // 截圖用：AI 收到的 PDF 第 1 頁對應原始檔第幾頁（前端裁切大 PDF 時才 > 0；伺服器端裁切已在 route 換算過）
+      let figurePageOffset = 0;
 
       // 大 PDF 且已讀到頁數：前端先裁切成小 PDF 再上傳（繞過 Vercel 4.5MB body 限制）
       const isPdf = file.name.split('.').pop()?.toLowerCase() === 'pdf';
@@ -156,6 +165,7 @@ export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
         const trimmedBytes = await newDoc.save();
         const trimmedFile = new File([trimmedBytes as BlobPart], file.name, { type: 'application/pdf' });
         fd.append('file', trimmedFile);
+        figurePageOffset = safeStart - 1;
         // 裁切過的檔案已只含選中頁面，不需再傳 startPage/endPage
       } else {
         fd.append('file', file);
@@ -176,7 +186,21 @@ export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
       if (!res.ok) {
         throw new Error(data.error || '命題失敗');
       }
-      setResult(data);
+
+      // 題目依賴原始檔的圖（電路圖等）：依 AI 標的 figure 位置截圖，上傳成題目圖片
+      const generated = data as GeneratedResult;
+      const fileExt = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const isImage = ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(fileExt);
+      if (quizId && (isPdf || isImage) && generated.questions?.some(q => q.figure)) {
+        await captureFigures(
+          generated.questions,
+          isPdf ? { kind: 'pdf', file, pageOffset: figurePageOffset } : { kind: 'images', files: [file] },
+          quizId,
+        );
+      } else {
+        generated.questions?.forEach(q => delete q.figure);
+      }
+      setResult(generated);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : '命題失敗，請重試');
     } finally {
@@ -425,6 +449,13 @@ export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
                     </p>
                   </div>
                   <MissingCodeWarning questions={result.questions} />
+                  <FigurePreview
+                    questions={result.questions}
+                    onRemoveImage={index => setResult(prev => prev && {
+                      ...prev,
+                      questions: prev.questions.map((q, i) => (i === index ? { ...q, imageUrl: undefined } : q)),
+                    })}
+                  />
                   <div className="flex gap-2">
                     <button
                       onClick={() => setResult(null)}
