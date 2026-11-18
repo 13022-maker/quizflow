@@ -14,6 +14,7 @@
 
 import { useRef, useState } from 'react';
 
+import { describeAiHttpFailure } from '@/lib/ai/httpFailureMessage';
 import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { probeAudioDuration } from '@/lib/audioDuration';
 
@@ -519,7 +520,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: 
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         if (!res.ok) {
-          let errMsg = '命題失敗';
+          // 先用狀態碼給具體訊息（Vercel 逾時回的 504 不是 JSON），有 JSON error 再覆蓋
+          let errMsg = describeAiHttpFailure(res.status);
           try {
             const errData = await res.json();
             if (errData.upgradeRequired) {
