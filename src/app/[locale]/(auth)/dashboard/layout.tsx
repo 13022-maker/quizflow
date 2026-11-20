@@ -50,6 +50,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 badge: '熱門',
               },
               {
+                href: '/dashboard/sims',
+                label: '實作模擬',
+              },
+              {
                 href: '/dashboard/quizzes',
                 label: t('quizzes'),
               },
