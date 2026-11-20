@@ -81,6 +81,9 @@ const isPublicApiRoute = createRouteMatcher([
   // 適性學習：學生免登入作答（分享碼防猜測，同 quiz 匿名作答哲學）
   '/api/adaptive/(.*)',
   '/:locale/api/adaptive/(.*)',
+  // 實作模擬（hdfix3）：學生免登入讀取指定值、回報進度／交卷（分享碼防猜測，route 內不呼叫 auth()）
+  '/api/sim/(.*)',
+  '/:locale/api/sim/(.*)',
   // E2E 測試專用：路由 handler 內三重防線（NODE_ENV !== 'production'、ENABLE_TEST_ENDPOINTS === 'true'、
   // 未設 DATABASE_URL）任一不滿足就回 404，所以加進白名單只在本機 PGlite + Playwright 跑得起來，
   // 不會踩到「白名單裡放需要 auth() 的端點」那個陷阱（這條本來就不需要 auth()）

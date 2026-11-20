@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>電腦硬體裝修丙級｜監評指定內容表 測驗</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f7f6;--card:#fff;--ink:#1d2b2a;--mut:#5d6f6d;--line:#d9e3e1;--acc:#0f7d74;--acc2:#e6f4f2;--ok:#1a7f37;--okbg:#e8f6ec;--bad:#c62828;--badbg:#fdecec;--warn:#9a6700;--warnbg:#fff6dd;--mono:'JetBrains Mono',Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Noto Sans TC',system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.65}
+button{font:inherit;cursor:pointer}
+input,select,textarea{font:inherit}
+.top{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 20px;background:#0f3d3a;color:#fff}
+.top h1{font-size:17px;margin:0;font-weight:700;flex:1;min-width:220px}
+.top h1 small{display:block;font-weight:400;opacity:.75;font-size:12.5px}
+.station{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:10px}
+.station b{font-family:var(--mono);font-size:20px;letter-spacing:1px;background:#fff;color:#0f3d3a;padding:0 8px;border-radius:6px}
+.tbtn{background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:5px 11px;font-size:13.5px}
+.tbtn:hover{background:rgba(255,255,255,.25)}
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);min-height:calc(100vh - 62px)}
+.side{border-right:1px solid var(--line);background:#fff;padding:12px 10px;overflow:auto}
+.prog{margin:2px 6px 12px;font-size:13px;color:var(--mut)}
+.bar{height:6px;background:var(--line);border-radius:4px;margin-top:5px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc);transition:width .3s}
+.nav{list-style:none;margin:0;padding:0}
+.nav li button{width:100%;display:flex;align-items:center;gap:9px;text-align:left;background:none;border:0;padding:7px 8px;border-radius:8px;color:var(--ink)}
+.nav li button:hover{background:var(--acc2)}
+.nav li button.on{background:var(--acc);color:#fff}
+.nav .n{width:24px;height:24px;flex:none;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--line);color:var(--ink)}
+.nav .on .n{background:#fff;color:var(--acc)}
+.nav .done .n{background:var(--ok);color:#fff}
+.nav .t{flex:1;font-size:14px}
+.nav .os{font-size:10.5px;opacity:.7}
+.main{padding:22px 28px 60px;max-width:1040px;width:100%;min-width:0}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.head .big{width:42px;height:42px;border-radius:12px;background:var(--acc);color:#fff;display:grid;place-items:center;font-size:20px;font-weight:700;flex:none}
+.head h2{margin:0;font-size:22px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:20px;background:var(--acc2);color:var(--acc);margin-left:4px;font-weight:500;vertical-align:middle}
+.tag.lx{background:#fff1e0;color:#b45309}
+.passed{margin-left:auto;font-size:13px;color:var(--ok);font-weight:700}
+.req{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 18px;margin-bottom:16px}
+.lbl{font-size:12px;font-weight:700;color:var(--mut);letter-spacing:.5px;margin-bottom:2px}
+.req p{margin:0 0 10px}
+.specv{overflow-wrap:anywhere;font-size:16px;font-weight:700;color:#0f3d3a;background:#e9f6f3;border-left:4px solid var(--acc);padding:7px 12px;border-radius:6px}
+.specv code{font-size:15px}
+.tabs{display:flex;gap:6px;margin-bottom:-1px}
+.tabs button{border:1px solid var(--line);border-bottom:0;background:#eef2f1;padding:8px 18px;border-radius:10px 10px 0 0;color:var(--mut);font-weight:500}
+.tabs button.on{background:#fff;color:var(--acc);font-weight:700}
+.panel{background:#fff;border:1px solid var(--line);border-radius:0 12px 12px 12px;padding:18px 20px}
+ol.steps{margin:0;padding-left:0;list-style:none;counter-reset:s}
+ol.steps>li{counter-increment:s;position:relative;padding:0 0 12px 38px}
+ol.steps>li::before{content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--acc2);color:var(--acc);font-weight:700;font-size:13px;display:grid;place-items:center}
+.sub{font-size:13.5px;font-weight:700;color:var(--acc);margin:14px 0 8px;padding-bottom:4px;border-bottom:1px dashed var(--line)}
+.sub:first-child{margin-top:0}
+code,.k{font-family:var(--mono);font-size:13.5px;background:#eef3f2;padding:1px 5px;border-radius:4px;overflow-wrap:anywhere}
+.k{background:#fff;border:1px solid #c9d4d2;border-bottom-width:2px;font-family:inherit;font-size:12.5px}
+pre.cmd{background:#122;color:#d7f5ee;font-family:var(--mono);font-size:13px;padding:10px 12px;border-radius:8px;overflow-x:auto;margin:6px 0;white-space:pre}
+.tip{background:var(--warnbg);border:1px solid #f0d78c;border-radius:10px;padding:10px 14px;margin-top:10px;font-size:14px}
+.tip b{color:var(--warn)}
+.tip ul{margin:4px 0 0;padding-left:20px}
+.note{font-size:13px;color:var(--mut)}
+.simintro{font-size:14px;color:var(--mut);margin:0 0 12px}
+.win{border:1px solid #9aa;border-radius:6px;background:#f0f0f0;box-shadow:0 3px 12px rgba(0,0,0,.08);margin-bottom:14px;overflow:visible;font-family:'Segoe UI','Noto Sans TC',sans-serif;font-size:14px}
+.win .tt{background:#fff;padding:6px 10px;font-size:13px;border-bottom:1px solid #ccc;display:flex;align-items:center;gap:8px;border-radius:6px 6px 0 0}
+.win .tt::after{content:'✕';margin-left:auto;color:#666}
+.win .bd{padding:12px 14px}
+.gn{border:1px solid #ccc;border-radius:12px;background:#fafafa;margin-bottom:14px;overflow:hidden;font-family:Ubuntu,'Noto Sans TC',sans-serif;font-size:14px}
+.gn .tt{background:#ebebeb;padding:7px 12px;font-weight:700;font-size:13px;text-align:center}
+.gn .bd{padding:12px 14px}
+.row{display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap}
+.row label.w{width:150px;flex:none}
+.row input[type=text],.row input[type=number],.row select{padding:4px 7px;border:1px solid #aab;border-radius:4px;background:#fff;min-width:0}
+.mono{font-family:var(--mono)}
+.btn{background:#e1e1e1;border:1px solid #adadad;padding:3px 14px;border-radius:3px;font-size:13.5px}
+.btn:hover{background:#e5f1fb;border-color:#0078d7}
+.btn.pri{background:#0078d7;color:#fff;border-color:#0067b8}
+table.dk{width:100%;border-collapse:collapse;background:#fff;font-size:13.5px}
+table.dk th,table.dk td{border-bottom:1px solid #e3e3e3;padding:5px 8px;text-align:left}
+table.dk th{background:#f7f7f7;font-weight:500}
+table.dk tr.sel td{background:#cce8ff}
+table.dk tbody tr{cursor:pointer}
+.checkbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.cbtn{border:0;border-radius:8px;padding:8px 18px;font-weight:700}
+.cbtn.go{background:var(--acc);color:#fff}
+.cbtn.go:hover{background:#0b6159}
+.cbtn.ghost{background:#eef2f1;color:var(--ink)}
+.result{margin-top:12px;border-radius:10px;padding:10px 14px;font-size:14px;display:none}
+.result.ok{display:block;background:var(--okbg);border:1px solid #9fd5ae}
+.result.bad{display:block;background:var(--badbg);border:1px solid #f1b1b1}
+.result ul{margin:4px 0 0;padding-left:20px;list-style:none}
+.result li.y{color:var(--ok)}.result li.n{color:var(--bad)}.result li.w{color:var(--warn)}
+.term{background:#0c0c0c;color:#ccc;font-family:var(--mono);font-size:13px;border-radius:6px;padding:8px 10px;height:300px;display:flex;flex-direction:column;cursor:text}
+.term.lx{background:#300a24;color:#eee}
+.tout{flex:1;overflow:auto;white-space:pre-wrap;word-break:break-all}
+.tin{display:flex;white-space:pre}
+.tin input{flex:1;background:transparent;border:0;outline:0;color:inherit;font:inherit;padding:0;min-width:40px}
+.wall{display:inline-flex;flex-direction:column;align-items:center;gap:3px;border:2px solid transparent;border-radius:8px;padding:3px;background:none;font-size:12px}
+.wall i{display:block;width:74px;height:46px;border-radius:5px}
+.wall.on{border-color:#e95420}
+.lst{background:#fff;border:1px solid #aaa;height:150px;overflow:auto;min-width:200px;flex:1}
+.lst div{padding:2px 8px;cursor:pointer;white-space:nowrap}
+.lst div.sel{background:#0078d7;color:#fff}
+.dlg{background:#fff;border:1px solid #0078d7;padding:10px 12px;margin:10px 0;border-radius:4px;font-size:13.5px}
+.kb{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #ddd;padding:6px 10px;margin:4px 0 4px 20px;border-radius:4px}
+.kb span{flex:1}
+.lang{font-weight:700;margin-top:8px}
+.files{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px;background:#fff;border:1px solid #ccc;padding:8px;min-height:120px}
+.files div{padding:6px;border-radius:3px;text-align:center;font-size:12.5px;cursor:default;word-break:break-all;user-select:none}
+.files div .ic{font-size:26px;display:block}
+.files div.sel{background:#cce8ff}
+.ctx{position:absolute;background:#f2f2f2;border:1px solid #999;box-shadow:2px 2px 6px rgba(0,0,0,.25);font-size:13px;z-index:20;min-width:190px}
+.ctx div{padding:5px 22px;cursor:pointer}
+.ctx div:hover{background:#cce8ff}
+.ctx .dis{color:#999}
+.ctx hr{margin:2px 0;border:0;border-top:1px solid #ccc}
+.preview{background:#fff;border:1px solid #ccc;min-height:90px;padding:10px;color:#000;font-family:'Times New Roman','PMingLiU',serif;font-size:16px}
+textarea.code{width:100%;height:170px;font-family:var(--mono);font-size:13px;border:1px solid #aaa;padding:8px;border-radius:4px}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
+.modal.show{display:flex}
+.modal .box{background:#fff;border-radius:14px;max-width:720px;width:100%;padding:20px 22px}
+.modal h3{margin:0 0 4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;margin:12px 0}
+.grid2 label{font-size:13px;color:var(--mut);display:flex;flex-direction:column}
+.grid2 input,.grid2 select{padding:5px 8px;border:1px solid #bbb;border-radius:6px;color:var(--ink);font-size:14px}
+@media(max-width:800px){.wrap{grid-template-columns:minmax(0,1fr)}.side{border-right:0;border-bottom:1px solid var(--line)}.nav{display:flex;overflow:auto;gap:4px}.nav li button{flex-direction:column;gap:2px;width:auto;min-width:70px}.nav .t{font-size:11.5px;text-align:center}.nav .os{display:none}.main{padding:16px 12px 50px}.grid2{grid-template-columns:1fr}.row label.w{width:auto}}
+
+/* 工作排程器 */
+.ts{position:relative;font-family:'Segoe UI','Microsoft JhengHei','Noto Sans TC',sans-serif;font-size:13px;background:#fff;border:1px solid #8a8a8a;box-shadow:0 4px 16px rgba(0,0,0,.12);margin-bottom:10px}
+.ts .tbar{padding:6px 10px;border-bottom:1px solid #e3e3e3;display:flex}
+.ts .menu{padding:2px 6px;border-bottom:1px solid #e3e3e3;font-size:12.5px}.ts .menu span{padding:0 8px}
+.ts .tsb{display:grid;grid-template-columns:170px 1fr 180px;min-height:300px}
+.ts .tree{border-right:1px solid #ddd;padding:6px 4px;font-size:12.5px}.ts .tree div{padding:2px 4px;white-space:nowrap}.ts .tree .sel{background:#cce8ff}
+.ts .center{min-width:0;display:flex;flex-direction:column}.ts .tlw{overflow:auto;max-height:220px}
+.ts table.tl{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+.ts table.tl th{background:#fff;border-right:1px solid #e5e5e5;border-bottom:1px solid #e5e5e5;text-align:left;font-weight:400;padding:3px 6px;color:#333;position:sticky;top:0}
+.ts table.tl td{padding:3px 6px;border-bottom:1px solid #f3f3f3}.ts table.tl tr{cursor:default}.ts table.tl tr.sel td{background:#cce8ff}
+.ts .detb{border-top:1px solid #ddd;padding:8px 10px;font-size:12.5px;background:#fafafa;line-height:1.8}
+.ts .acts{border-left:1px solid #ddd;background:#fff;font-size:12.5px}
+.ts .acts h4{margin:0;padding:4px 8px;font-size:12.5px;font-weight:400;border-bottom:1px solid #ddd}
+.ts .acts .ah{background:#dfe9f5;padding:3px 8px;font-weight:700}
+.ts .acts div[data-a]{padding:3px 10px 3px 14px;cursor:pointer;color:#0b3d91}.ts .acts div[data-a]:hover{background:#e5f1fb}
+.ts .taskbar{background:#1f2430;color:#fff;text-align:right;padding:3px 12px;font-size:11.5px;line-height:1.35;min-height:34px}
+.mcover{position:absolute;inset:0;background:rgba(255,255,255,.35);z-index:9}
+.wz{position:absolute;left:50%;top:26px;transform:translateX(-50%);width:min(640px,96%);background:#fff;border:1px solid #2b79d8;box-shadow:0 10px 36px rgba(0,0,0,.35);z-index:10}
+.wz .wt{padding:6px 10px;display:flex;font-size:12.5px}
+.wz .wh{padding:6px 14px 12px;font-size:17px;display:flex;gap:10px;align-items:center;border-bottom:1px solid #e3e3e3}
+.wz .wb{display:grid;grid-template-columns:150px 1fr;min-height:250px;background:#f0f0f0}
+.wz .ws{padding:12px 0 12px 10px;font-size:12.5px}.wz .ws div{padding:3px 8px;color:#333}.wz .ws .cur{font-weight:700;background:#fff}
+.wz .wc{padding:14px 16px;background:#fff}
+.wz .wf{display:flex;justify-content:flex-end;gap:6px;padding:10px;border-top:1px solid #ddd;background:#f0f0f0}
+.wz label.w2{width:150px;flex:none}.wz input[type=text],.wz textarea{border:1px solid #7a7a7a;padding:3px 5px;border-radius:0;font-size:13px}
+.wz .btn:disabled{opacity:.45}
+.sumt td{padding:2px 8px 2px 0;vertical-align:top}.sumt td:first-child{white-space:nowrap;width:80px}
+.brl{background:#fff;border:1px solid #aaa;margin:4px 0;max-width:340px}.brl div{padding:2px 8px;cursor:pointer}.brl div[data-pk]:hover{background:#cce8ff}
+.msgbox{position:absolute;left:50%;top:70px;transform:translateX(-50%);background:#fff;border:1px solid #2b79d8;box-shadow:0 8px 28px rgba(0,0,0,.35);z-index:12;width:min(400px,92%)}
+.msgbox .mt{padding:6px 10px;font-size:12.5px}.msgbox .mc{padding:10px 18px 16px;font-size:13.5px;word-break:break-all}.msgbox .mf{background:#f0f0f0;padding:10px;display:flex;justify-content:flex-end;gap:6px}
+.dtree{background:#fff;border:1px solid #ccc;padding:6px;font-size:13.5px;min-height:70px}.dtree .di{cursor:pointer;padding:1px 4px}.dtree .di.sel{background:#cce8ff}
+/* 考場下載網站 */
+.brwwrap{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:70;display:flex;padding:14px}
+.brw{position:relative;margin:auto;width:100%;max-width:1000px;height:100%;max-height:760px;background:#fff;border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.brw .bt{background:#dee1e6;display:flex;align-items:flex-end;gap:8px;padding:8px 10px 0}
+.brw .tabt{background:#fff;padding:6px 14px;border-radius:8px 8px 0 0;font-size:12.5px;max-width:60%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brw .bx{margin-left:auto;margin-bottom:6px;border:0;background:#c62828;color:#fff;border-radius:6px;padding:3px 10px;font-size:12.5px}
+.brw .addr{display:flex;gap:12px;align-items:center;padding:6px 12px;border-bottom:1px solid #ddd;font-size:14px;color:#555}
+.brw .url{flex:1;background:#f1f3f4;border-radius:14px;padding:4px 12px;color:#222;font-family:var(--mono);font-size:13px}
+.brw .pg{flex:1;overflow:auto;background:#FFFFCC;font-family:'標楷體','DFKai-SB','BiauKai','Kaiti TC',serif;color:#000;padding:10px 10px 30px}
+.brw .h1{font-size:30px;color:#000080;margin:12px 0;text-align:center}
+.brw table.st{border-collapse:collapse;width:59%;min-width:min(600px,100%);margin:0 auto}
+.brw td.sc{border:1px solid #111;padding:8px 6px;height:52px}
+.brw b.th{color:#003366;font-size:30px}.brw td.lab b{color:#D4143C;font-size:24px}.brw mark{background:yellow;color:inherit}
+.brw td.sc a{color:#000066;font-size:18px}.brw td.note1{font-size:22px;color:#003366}.brw .foot{text-align:center;color:#666;font-size:14px}
+.brw .acover{position:absolute;inset:0;background:rgba(0,0,0,.25)}
+.brw .alertbox{position:absolute;top:90px;left:50%;transform:translateX(-50%);background:#fff;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.35);padding:18px 22px;width:min(460px,92%);font-size:15px}
+.brw .dlb{position:absolute;right:14px;top:96px;background:#fff;border:1px solid #ccc;border-radius:10px;padding:10px 14px;box-shadow:0 4px 16px rgba(0,0,0,.2);font-size:13px}
+@media(max-width:800px){.ts .tsb{grid-template-columns:1fr}.ts .tree{display:none}.ts .acts{border-left:0;border-top:1px solid #ddd}
+.wz{top:6px}.wz .wb{grid-template-columns:1fr}.wz .ws{display:none}.wz label.w2{width:auto}
+.brw .h1{font-size:20px}.brw b.th{font-size:20px}.brw td.lab b{font-size:16px}.brw td.sc a{font-size:14px}.brw td.note1{font-size:15px}.brw table.st{width:100%}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>電腦硬體裝修丙級｜監評指定內容表 測驗<small id="who">測驗模式・不提供解答</small></h1>
+  <div class="station">工作崗位號碼 XX = <b id="xx">--</b></div>
+  <div class="station">⏱ <span id="tlabel">經過</span> <b id="timer">00:00:00</b></div>
+  <button class="tbtn" id="site">🌐 考場下載網站</button>
+  <button class="tbtn" id="submit" style="background:#e9a23b;border-color:#e9a23b;color:#1d2b2a;font-weight:700">📤 交卷</button>
+  <button class="tbtn" id="restart">↺ 重新開始</button>
+</div>
+<div class="wrap">
+  <aside class="side">
+    <div class="prog">已通過 <b id="pc">0</b> / 15 項<div class="bar"><i id="pb" style="width:0"></i></div></div>
+    <ul class="nav" id="nav"></ul>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+
+<div class="modal" id="startm"><div class="box" style="max-width:480px;margin-top:5vh">
+  <h3>電腦硬體裝修丙級｜監評指定內容表 測驗</h3>
+  <div class="note">輸入資料後按「開始測驗」。測驗中指定值不可修改；每題可按「✔ 檢查」，只顯示通過／未通過，系統會記錄檢查次數。完成後按右上「交卷」。</div>
+  <div class="grid2" style="grid-template-columns:1fr">
+    <label>姓名<input id="f_name" maxlength="20" autocomplete="off"></label>
+    <label>座號／學號<input id="f_sid" maxlength="20" autocomplete="off"></label>
+    <label>工作崗位號碼 XX（01–24）<span style="display:flex;gap:6px"><input id="f_xx" maxlength="2" inputmode="numeric" style="flex:1"><button class="cbtn ghost" id="f_rnd" type="button">🎲 隨機</button></span></label>
+  </div>
+  <div class="note" id="f_info" style="color:var(--warn)"></div>
+  <div id="f_err" style="color:var(--bad);font-size:13.5px;min-height:1.4em"></div>
+  <div style="display:flex;justify-content:flex-end"><button class="cbtn go" id="f_go">開始測驗</button></div>
+</div></div>
+
+<script>
+const DEF={sysGB:80,dataGB:30,vmRAM:2,winName:'cXX',linName:'vXX',winIP:'static',linIP:'dhcp',ipPrefix:'192.168.240.1',
+backupMin:1,backupFile:'hosts',backupDest:'D:\\XX',u1:'u01',p1:'p123456',u2:'u02',p2:'go8868@TW',printerMfr:'Generic',printerModel:'MS Publisher Color Printer',
+saverMin:3,ime:'微軟倉頡',font:'漢鼎繁勘亭',office:['word'],ftpIP:'192.168.240.200',ftpPwd:'go8868@TW',
+transfer:'C:\\windows\\win.ini',zip:'C:\\windows\\twain_32.dll',color:'red'};
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const Q=new URLSearchParams(location.search);
+/* ---------- QuizFlow 連線模式：網址帶 ?code= 時，指定值／限時由老師在 QuizFlow 設定並鎖定，交卷自動上傳 ---------- */
+const QF_CODE=(()=>{const c=(Q.get('code')||'').trim();return /^[A-Za-z0-9_-]{1,64}$/.test(c)?c:''})();
+let QF=QF_CODE?{code:QF_CODE,title:'',timeLimitMin:0}:null;
+const QF_STU='hdfix3_student@'+QF_CODE;
+function b64enc(s){const b=new TextEncoder().encode(s);let x='';for(let i=0;i<b.length;i+=0x8000)x+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(x)}
+function b64dec(s){s=String(s).trim().replace(/ /g,'+').replace(/-/g,'+').replace(/_/g,'/');while(s.length%4)s+='=';const x=atob(s);return new TextDecoder().decode(Uint8Array.from(x,c=>c.charCodeAt(0)))}
+function cleanSpec(o){const r={};if(!o||typeof o!=='object')return r;
+  const EN={winIP:['static','dhcp'],linIP:['static','dhcp'],color:['red','green','blue'],ime:['微軟注音','微軟倉頡','微軟速成']};
+  Object.keys(DEF).forEach(k=>{if(!(k in o)||o[k]==null)return;const d=DEF[k];
+    if(Array.isArray(d)){if(Array.isArray(o[k]))r[k]=o[k].filter(x=>['word','excel','ppt'].includes(x))}
+    else if(typeof d==='number'){const n=+o[k];if(isFinite(n)&&n>0)r[k]=n}
+    else{const v=String(o[k]).trim();if(v&&(!EN[k]||EN[k].includes(v)))r[k]=v}});
+  return r}
+function urlSpec(){const p=Q.get('spec');if(!p)return{};
+  try{return cleanSpec(JSON.parse(b64dec(p)))}catch(e){console.warn('spec 參數無法解析，使用預設值');return{}}}
+let URLSPEC=QF?{}:urlSpec(),MIN=QF?0:Math.max(0,parseFloat(Q.get('min'))||0);
+const EXKEY=QF?'hw3_exam_state@'+QF.code:'hw3_exam_state';
+let EX=store.get(EXKEY);if(!EX||typeof EX!=='object'||!EX.startedAt||!EX.items||!EX.seat)EX=null;
+let S=Object.assign({},DEF,EX&&EX.spec?EX.spec:URLSPEC);
+let XX=EX?EX.seat:'01';
+let cur=1,simCache={};
+function rndXX(){return String(1+Math.floor(Math.random()*24)).padStart(2,'0')}
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sub=s=>String(s).replace(/XX/g,XX);
+const ipv=()=>S.ipPrefix+XX;
+const baseOf=p=>p.split('\\').pop();
+const dirOf=p=>p.split('\\').slice(0,-1).join('\\');
+const OFFICE={word:'文書軟體（Word）',excel:'電子試算表（Excel）',ppt:'簡報軟體（PowerPoint）'};
+const COLOR={red:'紅',green:'綠',blue:'藍'};
+const HOSTS='C:\\Windows\\System32\\drivers\\etc\\hosts';
+const backupPath=()=>S.backupFile.toLowerCase()==='hosts'?HOSTS:S.backupFile;
+let FTP,DESK,DL,INST,CLIP;const REFRESH=new Set();
+function resetShared(){FTP={pwd:'passwd'+XX,changed:false,uploads:[]};DESK=[];DL=[];INST=new Set();CLIP=null}
+resetShared();
+
+const ITEMS=[
+{id:1,t:'硬碟磁區規劃',os:'win',d:'規劃硬碟系統磁區及資料磁區，兩磁區容量總計不得低於 110GB，其中系統磁區容量不得低於 100GB，1 GBytes 可以換算為 1000 MBytes 或 1024 MBytes。',
+ spec:()=>`系統磁區：${S.sysGB} GB　資料磁區：${S.dataGB} GB`},
+{id:2,t:'虛擬機記憶體',os:'lx',d:'使用虛擬電腦軟體安裝 Linux 作業系統時所配置之主記憶體容量，其值不得高於實體機主記憶體容量。',
+ spec:()=>`Linux 虛擬機記憶體：${S.vmRAM} GB（= ${S.vmRAM*1024} MB）`},
+{id:3,t:'電腦名稱',os:'both',d:'設定電腦名稱，XX 表示應檢人工作崗位號碼。',
+ spec:()=>`Windows：<code>${sub(S.winName)}</code>　Linux：<code>${sub(S.linName)}</code>`},
+{id:4,t:'TCP/IP 設定',os:'both',d:'TCP/IP 設定。固定式之 TCP/IP 位址範圍為 192.168.240.1XX，XX 表示應檢人工作崗位號碼。',
+ spec:()=>`Windows：${S.winIP==='static'?'固定式 <code>'+ipv()+'</code>':'動態式（DHCP）'}　Linux：${S.linIP==='static'?'固定式 <code>'+ipv()+'</code>':'動態式（DHCP）'}`},
+{id:5,t:'自動排程備份',os:'win',d:'在兩種不同之作業系統之一，設定自動排程備份功能，指定檔案為 hosts。',
+ spec:()=>`Windows：<b>${S.backupMin}</b> 分鐘後啟動，備份 <code>${esc(S.backupFile)}</code> → <code>${esc(sub(S.backupDest))}</code>`},
+{id:6,t:'新增使用者',os:'lx',d:'在兩種不同之作業系統之一，新增兩個使用者及設定密碼，每一使用者有不同桌面或背景，密碼 6 個字元以上。',
+ spec:()=>`Linux：<code>${esc(S.u1)}</code> / <code>${esc(S.p1)}</code>　<code>${esc(S.u2)}</code> / <code>${esc(S.p2)}</code>`},
+{id:7,t:'印表機',os:'win',d:'在兩種不同之作業系統之一，設定印表機廠牌型號。',
+ spec:()=>`Windows：${esc(S.printerMfr)} ${esc(S.printerModel)}`},
+{id:8,t:'螢幕保護時間',os:'lx',d:'在兩種不同之作業系統之一，設定啟動螢幕保護模式時間。',
+ spec:()=>`Linux：<b>${S.saverMin}</b> 分鐘`},
+{id:9,t:'中文輸入法',os:'win',d:'在微軟作業系統中，設定中文輸入法種類，其餘須移除，但得保留「美式鍵盤」之設定。',
+ spec:()=>`只留 <b>${esc(S.ime)}</b>（可保留美式鍵盤）`},
+{id:10,t:'中文字型',os:'win',d:'在微軟作業系統中，設定中文字型名稱。',
+ spec:()=>`安裝字型：<b>${esc(S.font)}</b>`},
+{id:11,t:'Office 安裝',os:'win',d:'在微軟作業系統中，安裝 office 應用軟體，只能安裝勾選之軟體。',
+ spec:()=>`只安裝：${S.office.map(o=>OFFICE[o]).join('、')||'（無）'}`},
+{id:12,t:'FTP 改密碼',os:'win',d:'登入 FTP 主機更改個人 FTP 密碼，設定的密碼為 6 個字元以上，FTP 主機的 IP 為 192.168.240.200，登入帳號為 tXX，密碼初始值為 passwdXX，XX 表示工作崗位號碼，範圍 01~24。',
+ spec:()=>`主機 <code>${S.ftpIP}</code>　帳號 <code>t${XX}</code>　舊密碼 <code>passwd${XX}</code> → 新密碼 <code>${esc(S.ftpPwd)}</code>`},
+{id:13,t:'檔案傳輸',os:'win',d:'檔案傳輸之目錄或檔案名稱。',
+ spec:()=>`上傳 <code>${esc(S.transfer)}</code> 到 FTP 主機`},
+{id:14,t:'壓縮檔案',os:'win',d:'在微軟作業系統中，壓縮目錄或檔案之名稱。',
+ spec:()=>`壓縮 <code>${esc(S.zip)}</code>`},
+{id:15,t:'網頁字體顏色',os:'win',d:'網頁字體顏色。',
+ spec:()=>`網頁文字顏色：<b style="color:${S.color}">${COLOR[S.color]}色</b>`}
+];
+
+function checkBar(box,fn){
+  const id=cur;
+  const bar=document.createElement('div');bar.className='checkbar';
+  bar.innerHTML=`<button class="cbtn go">✔ 檢查</button><button class="cbtn ghost">↺ 重做</button><span class="note" style="align-self:center;margin-left:auto"></span>`;
+  const res=document.createElement('div');res.className='result';
+  box.append(bar,res);
+  const cnt=bar.children[2],upd=()=>{const r=EX&&EX.items[id];cnt.textContent=`本題已檢查 ${r?r.attempts:0} 次`};
+  bar.children[0].onclick=()=>{
+    if(!EX||EX.submittedAt)return;
+    let ok=false;try{const r=fn();ok=Array.isArray(r)&&r.length>0&&r.every(Boolean)}catch(e){console.error(e)}
+    const it=rec(id);it.attempts++;if(ok&&!it.passed){it.passed=true;it.firstPassSec=elapsedSec()}saveEx();
+    res.className='result '+(ok?'ok':'bad');res.innerHTML=ok?'<b>✔ 通過</b>':'<b>✘ 未通過</b>';
+    renderNav();const p=$('#passtag');if(p&&isP(id))p.textContent='✔ 已通過';upd();
+  };
+  bar.children[1].onclick=()=>{delete simCache[id];renderPanel()};
+  upd();
+}
+function makeTerm(el,{prompt,onLine,banner,lx}){
+  el.innerHTML=`<div class="term${lx?' lx':''}"><div class="tout"></div><div class="tin"><span class="tp"></span><input spellcheck="false" autocomplete="off" autocapitalize="off"></div></div>`;
+  const out=$('.tout',el),inp=$('input',el),tp=$('.tp',el);let pending=null,hist=[],hi=0;
+  const T={prompt,
+    print(s){const d=document.createElement('div');d.textContent=s;out.appendChild(d);out.scrollTop=out.scrollHeight},
+    setPrompt(p){T.prompt=p;if(!pending)tp.textContent=p},
+    ask(q,masked,cb){pending={q,masked,cb};tp.textContent=q;inp.type=masked?'password':'text'},
+    clear(){out.innerHTML=''}};
+  tp.textContent=prompt;if(banner)T.print(banner);
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){const v=inp.value;inp.value='';
+      if(pending){const p=pending;pending=null;inp.type='text';T.print(p.q+(p.masked?'':v));tp.textContent=T.prompt;p.cb(v)}
+      else{T.print(T.prompt+v);if(v.trim())hist.push(v);hi=hist.length;onLine(v.trim(),T)}}
+    else if(e.key==='ArrowUp'&&!pending){if(hi>0){hi--;inp.value=hist[hi]}e.preventDefault()}
+    else if(e.key==='ArrowDown'&&!pending){if(hi<hist.length-1){hi++;inp.value=hist[hi]}else{hi=hist.length;inp.value=''}e.preventDefault()}
+  });
+  $('.term',el).addEventListener('click',()=>inp.focus());
+  return T;
+}
+
+const SIM={
+1(box){
+  const DISK=122880;let parts=[],sel=-1;
+  box.innerHTML=`<p class="simintro">模擬 Windows 安裝程式「您要將 Windows 安裝在哪裡？」畫面。磁碟機 0 共 120 GB。</p>
+  <div class="win"><div class="tt">Windows 安裝程式</div><div class="bd">
+  <div style="font-size:16px;margin-bottom:8px">您要將 Windows 安裝在哪裡？</div>
+  <table class="dk"><thead><tr><th>名稱</th><th>總大小</th><th>可用空間</th><th>類型</th></tr></thead><tbody></tbody></table>
+  <div class="row" style="margin-top:10px"><button class="btn" data-del>✕ 刪除</button><button class="btn" data-new>✱ 新增</button>
+  <span data-sz style="display:none">大小： <input type="number" style="width:110px"> MB <button class="btn pri" data-apply>套用</button></span></div>
+  <div data-dlg></div></div></div>`;
+  const tb=$('tbody',box),sz=$('[data-sz]',box),inp=$('input',sz),dlg=$('[data-dlg]',box);
+  const free=()=>DISK-parts.reduce((a,p)=>a+p.mb,0);
+  const gb=mb=>(mb/1024).toFixed(1)+' GB';
+  function draw(){
+    const rows=parts.map((p,i)=>`<tr data-i="${i}" class="${sel===i?'sel':''}"><td>磁碟機 0 磁碟分割 ${i+1}</td><td>${p.mb<1024?p.mb+' MB':gb(p.mb)}</td><td>${p.mb<1024?p.mb+' MB':gb(p.mb)}</td><td>${p.type}</td></tr>`);
+    if(free()>0)rows.push(`<tr data-i="-2" class="${sel===-2?'sel':''}"><td>磁碟機 0 未配置的空間</td><td>${gb(free())}</td><td>${gb(free())}</td><td></td></tr>`);
+    tb.innerHTML=rows.join('');
+    $$('tr',tb).forEach(r=>r.onclick=()=>{sel=+r.dataset.i;sz.style.display='none';draw()});
+  }
+  $('[data-new]',box).onclick=()=>{if(sel!==-2){dlg.innerHTML='<div class="dlg">請先點選「未配置的空間」。</div>';return}dlg.innerHTML='';inp.value=free();sz.style.display='inline'};
+  $('[data-del]',box).onclick=()=>{if(sel<0)return;parts.splice(sel,1);if(!parts.some(p=>p.type==='主要'))parts=[];sel=-1;draw()};
+  $('[data-apply]',box).onclick=()=>{let n=Math.floor(+inp.value);if(!n||n<1)return;n=Math.min(n,free());
+    if(!parts.length){if(n<1000){dlg.innerHTML='<div class="dlg">空間太小。</div>';return}
+      parts.push({mb:529,type:'修復'},{mb:100,type:'系統'},{mb:16,type:'MSR (保留)'},{mb:n-645,type:'主要'});
+      dlg.innerHTML='<div class="dlg">ℹ 為確保 Windows 的所有功能都能正確運作，Windows 可能會建立額外的磁碟分割，以存放系統檔案。（已按「確定」）</div>';}
+    else{parts.push({mb:n,type:'主要'});dlg.innerHTML=''}
+    sz.style.display='none';sel=-1;draw()};
+  draw();
+  checkBar(box,()=>{const pr=parts.filter(p=>p.type==='主要');if(pr.length<2)return[false];const c=pr[0].mb,d=pr[1].mb;
+    return[c>=S.sysGB*1000,d>=S.dataGB*1000,c+d>=(S.sysGB+S.dataGB)*1000]});
+},
+2(box){
+  const HOST=8192;
+  box.innerHTML=`<p class="simintro">模擬 VirtualBox「建立虛擬機器」精靈。這台實體機記憶體為 <b>8 GB（8192 MB）</b>。</p>
+  <div class="win"><div class="tt">建立虛擬機器</div><div class="bd">
+  <div class="row"><label class="w">名稱</label><input type="text" value="${sub(S.linName)}"></div>
+  <div class="row"><label class="w">類型 / 版本</label><select><option>Linux</option><option>Microsoft Windows</option></select>
+  <select><option>Ubuntu (64-bit)</option><option>Fedora (64-bit)</option><option>Red Hat (64-bit)</option></select></div>
+  <div class="row"><label class="w">記憶體大小</label><input type="range" min="4" max="${HOST}" step="4" value="1024" style="flex:1;min-width:160px" data-r><input type="number" value="1024" style="width:90px" data-m> MB</div>
+  <div class="row note">4 MB ←——— 綠：安全　黃：超過一半　紅：接近上限 ———→ ${HOST} MB</div></div></div>`;
+  const r=$('[data-r]',box),m=$('[data-m]',box);r.oninput=()=>m.value=r.value;m.oninput=()=>r.value=m.value;
+  checkBar(box,()=>{const v=+m.value;return[v===S.vmRAM*1024,v<=HOST]});
+},
+3(box){
+  box.innerHTML=`<p class="simintro">分別在兩個系統設定電腦名稱（你的崗位號碼是 <b>${XX}</b>）。</p>
+  <div class="win"><div class="tt">電腦名稱/網域變更（Windows）</div><div class="bd">
+  <div class="row"><label class="w">電腦名稱(C):</label><input type="text" data-w value="DESKTOP-7K2QF1M"></div>
+  <div class="row"><label class="w">完整電腦名稱:</label><span data-wf class="mono">DESKTOP-7K2QF1M</span></div>
+  <div class="row"><label><input type="checkbox" data-rb> 已重新啟動電腦</label></div></div></div>
+  <div class="gn"><div class="tt">Linux 終端機</div><div class="bd"><div data-t></div></div></div>`;
+  const w=$('[data-w]',box);w.oninput=()=>$('[data-wf]',box).textContent=w.value.toUpperCase();
+  let host='localhost';
+  makeTerm($('[data-t]',box),{lx:true,prompt:'student@localhost:~$ ',onLine(l,T){
+    const a=l.split(/\s+/);if(!l)return;
+    if(a[0]==='sudo'&&a[1]==='hostnamectl'&&a[2]==='set-hostname'&&a[3]){host=a[3]}
+    else if(a[0]==='hostnamectl'&&a[1]==='set-hostname'){T.print('Could not set static hostname: Access denied（需要 sudo）')}
+    else if(a[0]==='hostname')T.print(host);
+    else if(a[0]==='hostnamectl')T.print('   Static hostname: '+host);
+    else if(a[0]==='clear')T.clear();
+    else T.print(a[0]+'：指令找不到');
+    T.setPrompt(`student@${host}:~$ `)}});
+  checkBar(box,()=>[w.value.trim().toLowerCase()===sub(S.winName).toLowerCase(),host===sub(S.linName)]);
+},
+4(box){
+  box.innerHTML=`<p class="simintro">模擬兩個系統的 IPv4 設定畫面（崗位 <b>${XX}</b>）。</p>
+  <div class="win"><div class="tt">網際網路通訊協定第 4 版 (TCP/IPv4) - 內容</div><div class="bd">
+  <div class="row"><label><input type="radio" name="w4" value="dhcp" checked> 自動取得 IP 位址(O)</label></div>
+  <div class="row"><label><input type="radio" name="w4" value="static"> 使用下列的 IP 位址(S):</label></div>
+  <div style="margin-left:24px" data-wf>
+  <div class="row"><label class="w">IP 位址(I):</label><input type="text" class="mono" data-ip></div>
+  <div class="row"><label class="w">子網路遮罩(U):</label><input type="text" class="mono" data-mk></div>
+  <div class="row"><label class="w">預設閘道(D):</label><input type="text" class="mono" placeholder="依考場公告"></div></div></div></div>
+  <div class="gn"><div class="tt">有線 — IPv4</div><div class="bd">
+  <div class="row"><label class="w">IPv4 方式</label>
+  <label><input type="radio" name="l4" value="dhcp"> 自動 (DHCP)</label><label><input type="radio" name="l4" value="ll"> 僅本地連結</label>
+  <label><input type="radio" name="l4" value="static" checked> 手動</label><label><input type="radio" name="l4" value="off"> 停用</label></div>
+  <div class="row"><label class="w">位址</label><input type="text" class="mono" data-lip value="10.0.2.15"><label>網路遮罩</label><input type="text" class="mono" data-lmk value="255.255.255.0"></div></div></div>`;
+  const wv=()=>$('[name=w4]:checked',box).value,lv=()=>$('[name=l4]:checked',box).value;
+  const sync=()=>{$$('[data-wf] input',box).forEach(i=>i.disabled=wv()!=='static');$$('[data-lip],[data-lmk]',box).forEach(i=>i.disabled=lv()!=='static')};
+  $$('input[type=radio]',box).forEach(r=>r.onchange=sync);sync();
+  checkBar(box,()=>{const r=[];
+    if(S.winIP==='static')r.push(wv()==='static',$('[data-ip]',box).value.trim()===ipv(),$('[data-mk]',box).value.trim()==='255.255.255.0');
+    else r.push(wv()==='dhcp');
+    if(S.linIP==='static')r.push(lv()==='static',$('[data-lip]',box).value.trim()===ipv());
+    else r.push(lv()==='dhcp');
+    return r});
+},
+5(box){
+  const pad=n=>String(n).padStart(2,'0');
+  const fmtT=d=>`${d.getHours()<12?'上午':'下午'} ${pad(d.getHours()%12||12)}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  const fmtD=d=>`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+  const fmt=d=>fmtD(d)+' '+fmtT(d);
+  const dest=()=>sub(S.backupDest);
+  const Dv={folders:{'d:':'D:'},files:{}};
+  const now0=new Date(),tmr=new Date(now0.getTime()+86400000);
+  const tasks=[
+   {sys:true,name:'MicrosoftEdgeUpdateTaskMachineCore',status:'就緒',trigS:'在每天 上午 10:12 - 觸發程序在 1 天後到期。',next:fmtD(tmr)+' 上午 10:12:00',last:fmtD(now0)+' 上午 10:12:01',res:'作業已順利完成。 (0x0)'},
+   {sys:true,name:'OneDrive Reporting Task-S-1-5-21',status:'就緒',trigS:'在每天 上午 09:30',next:fmtD(tmr)+' 上午 09:30:00',last:fmtD(now0)+' 上午 09:30:04',res:'作業已順利完成。 (0x0)'},
+   {sys:true,name:'User_Feed_Synchronization-{8A3F}',status:'就緒',trigS:'在每天 下午 08:14',next:fmtD(now0)+' 下午 08:14:00',last:fmtD(new Date(now0-86400000))+' 下午 08:14:02',res:'作業已順利完成。 (0x0)'}];
+  let selT=-1,w=null,dSel=null;
+  const SKIP=['電腦啟動時','當我登入時','特定事件被記錄時'];
+  box.innerHTML=`<p class="simintro">模擬 Windows 10「工作排程器」。工作建立後依<b>真實時間</b>觸發（看右下角時鐘），也可以按「⏩ 快轉」立即觸發。資料磁區 D: 目前是空的。</p>
+  <div class="ts"><div class="tbar">🕒 工作排程器<span style="margin-left:auto;letter-spacing:12px">—☐✕</span></div>
+  <div class="menu"><span>檔案(F)</span><span>動作(A)</span><span>檢視(V)</span><span>說明(H)</span></div>
+  <div class="tsb"><div class="tree"><div>🕒 工作排程器 (本機)</div><div class="sel" style="padding-left:14px">📁 工作排程器程式庫</div><div style="padding-left:30px">📁 Microsoft</div></div>
+  <div class="center"><div class="tlw"><table class="tl"><thead><tr><th>名稱</th><th>狀態</th><th>觸發程序</th><th>下次執行時間</th><th>上次執行時間</th><th>上次執行結果</th></tr></thead><tbody data-tl></tbody></table></div><div data-det></div></div>
+  <div class="acts" data-acts></div></div>
+  <div class="taskbar"><span data-clk></span></div><div data-wz></div><div data-mb></div></div>
+  <div class="row" style="margin-bottom:12px"><button class="btn" data-ff>⏩ 快轉：立即觸發所有已排程的工作</button></div>
+  <div class="win"><div class="tt">檔案總管 — 資料 (D:)</div><div class="bd">
+  <div class="row"><button class="btn" data-nf>📁 新增資料夾</button><span data-nfb style="display:none"><input type="text" style="width:110px" placeholder="資料夾名稱"> <button class="btn pri" data-nfok>確定</button></span><button class="btn" data-dd>✕ 刪除</button></div>
+  <div class="dtree" data-dt></div></div></div>`;
+  const tl=$('[data-tl]',box),acts=$('[data-acts]',box),wzEl=$('[data-wz]',box),mb=$('[data-mb]',box),det=$('[data-det]',box);
+  function msg(title,text,btns){
+    mb.innerHTML=`<div class="mcover"></div><div class="msgbox"><div class="mt">${title}</div><div class="mc">${text}</div><div class="mf">${btns.map((b,i)=>`<button class="btn${i===0?' pri':''}" data-i="${i}">${b[0]}</button>`).join('')}</div></div>`;
+    $$('[data-i]',mb).forEach(x=>x.onclick=()=>{mb.innerHTML='';const f=btns[+x.dataset.i][1];if(f)f()})}
+  function drawTasks(){
+    tl.innerHTML=tasks.map((t,i)=>`<tr data-i="${i}" class="${i===selT?'sel':''}"><td>🕒 ${esc(t.name)}</td><td>${t.status}</td><td>${esc(t.trigS)}</td><td>${t.next}</td><td>${t.last}</td><td>${esc(t.res)}</td></tr>`).join('');
+    $$('tr',tl).forEach(r=>r.onclick=()=>{selT=+r.dataset.i;drawTasks()});
+    const t=tasks[selT];
+    det.innerHTML=t&&t.user?`<div class="detb"><b>一般</b>　名稱：${esc(t.name)}<br><b>觸發程序</b>　${esc(t.trig)}　${esc(t.trigS)}<br><b>動作</b>　啟動程式　程式：<span class="mono">${esc(t.prog)}</span>　引數：<span class="mono">${esc(t.args)||'（無）'}</span></div>`:'';
+    acts.innerHTML=`<h4>動作</h4><div class="ah">工作排程器程式庫 ▴</div><div data-a="basic">🕒 建立基本工作...</div><div data-a="adv">🕒 建立工作...</div><div data-a="x">匯入工作...</div><div data-a="x">顯示所有執行中的工作</div><div data-a="x">新資料夾...</div><div data-a="ref">🔄 重新整理</div>`+(t?`<div class="ah">選取的項目 ▴</div><div data-a="run">▶ 執行</div><div data-a="x">■ 結束</div><div data-a="x">⬇ 停用</div><div data-a="x">匯出...</div><div data-a="x">內容</div><div data-a="del">✕ 刪除</div>`:'');
+    $$('[data-a]',acts).forEach(a=>a.onclick=()=>{const k=a.dataset.a;
+      if(k==='basic')openWiz();else if(k==='adv')msg('工作排程器','本練習請使用「建立基本工作...」。',[['確定']]);
+      else if(k==='ref')drawTasks();else if(k==='run'){if(t.user)run(t);else{t.last=fmt(new Date());drawTasks()}}
+      else if(k==='del')msg('工作排程器',`確定要刪除這個工作嗎？<br><br><b>${esc(t.name)}</b>`,[['是(Y)',()=>{tasks.splice(selT,1);selT=-1;drawTasks()}],['否(N)']])})}
+  function drawD(){const dt=$('[data-dt]',box);const fs=Object.keys(Dv.folders).filter(k=>k!=='d:').sort(),files=Object.keys(Dv.files);
+    let h='<div>💽 資料 (D:)</div>'+fs.map(f=>`<div class="di${dSel===f?' sel':''}" data-p="${esc(f)}" style="padding-left:18px">📁 ${esc(baseOf(Dv.folders[f]))}</div>`+files.filter(x=>dirOf(x)===f).map(x=>`<div class="di${dSel===x?' sel':''}" data-p="${esc(x)}" style="padding-left:40px">📄 ${esc(baseOf(Dv.files[x]))}</div>`).join('')).join('')
+      +files.filter(x=>dirOf(x)==='d:').map(x=>`<div class="di${dSel===x?' sel':''}" data-p="${esc(x)}" style="padding-left:18px">📄 ${esc(baseOf(Dv.files[x]))}</div>`).join('');
+    if(!fs.length&&!files.length)h+='<div class="note" style="padding-left:18px">（此資料夾是空的）</div>';
+    dt.innerHTML=h;$$('.di',dt).forEach(d=>d.onclick=()=>{dSel=d.dataset.p;drawD()})}
+  $('[data-nf]',box).onclick=()=>{const b=$('[data-nfb]',box);b.style.display='inline';$('input',b).value=XX;$('input',b).focus()};
+  $('[data-nfok]',box).onclick=()=>{const v=$('[data-nfb] input',box).value.trim();if(!v||/[\\/:*?"<>|]/.test(v))return;const k='d:\\'+v.toLowerCase();
+    if(Dv.files[k]){alertD('已有名為「'+v+'」的檔案，請先刪除');return}Dv.folders[k]='D:\\'+v;$('[data-nfb]',box).style.display='none';drawD()};
+  $('[data-dd]',box).onclick=()=>{if(!dSel)return;if(Dv.folders[dSel]){Object.keys(Dv.files).forEach(f=>{if(dirOf(f)===dSel)delete Dv.files[f]});delete Dv.folders[dSel]}else delete Dv.files[dSel];dSel=null;drawD()};
+  function alertD(m){const d=document.createElement('div');d.className='dlg';d.textContent=m;$('[data-dt]',box).before(d);setTimeout(()=>d.remove(),2500)}
+  const tok=s=>(s.match(/"[^"]*"|\S+/g)||[]).map(x=>x.replace(/^"|"$/g,''));
+  const TXT={'0x0':'作業已順利完成。 (0x0)','0x1':'(0x1)','0x80070002':'系統找不到指定的檔案。 (0x80070002)','0x41301':'工作目前正在執行。 (0x41301)'};
+  const R=(code,extra)=>Object.assign({code,text:TXT[code]},extra||{});
+  function simulate(t,apply){
+    const p=t.prog.replace(/"/g,'').trim(),b=baseOf(p).toLowerCase().replace(/\.exe$/,'');let inner,hangAfter=false;
+    if(b==='cmd'){const a=tok(t.args);if(!a.length)return R('0x41301',{hang:true});const s=a[0].toLowerCase();
+      if(s==='/k')hangAfter=true;else if(s!=='/c')return R('0x41301',{hang:true});inner=a.slice(1)}
+    else if(b==='xcopy'||b==='robocopy')inner=[b,...tok(t.args)];
+    else return R('0x80070002');
+    if(!inner.length)return R('0x1');
+    const c=inner[0].toLowerCase();if(!['copy','xcopy','robocopy'].includes(c))return R('0x1');
+    const ex=s=>s.replace(/%(windir|systemroot)%/ig,'C:\\Windows');
+    const rest=inner.slice(1),sw=rest.filter(x=>x.startsWith('/')).map(x=>x.toLowerCase()),ps=rest.filter(x=>!x.startsWith('/')).map(ex);
+    let src=ps[0],dst=ps[1];if(c==='robocopy'&&ps[2])src=ps[0].replace(/\\$/,'')+'\\'+ps[2];
+    const want=backupPath();
+    if(!src||src.toLowerCase()!==want.toLowerCase()||!dst)return R('0x1');
+    const trail=/\\$/.test(dst);let dl=dst.replace(/\\+$/,'').toLowerCase();
+    if(!/^d:/.test(dl))return R('0x1');
+    const fname=baseOf(want).toLowerCase();let target,mis=false;
+    if(Dv.folders[dl])target=dl+'\\'+fname;
+    else if(trail)return R('0x1');
+    else if(Dv.folders[dirOf(dl)]){if(c==='xcopy')return R('0x41301',{hang:true});target=dl;mis=true}
+    else return R('0x1');
+    const disp=(Dv.folders[dirOf(target)]||'D:')+'\\'+(mis?dst.replace(/\\+$/,'').split('\\').pop():baseOf(want));
+    if(Dv.files[target]&&!sw.includes('/y')&&c==='copy')return R('0x41301',{hang:true});
+    if(apply)Dv.files[target]=disp;
+    return R(hangAfter?'0x41301':'0x0',{hang:hangAfter,target,mis,disp});
+  }
+  function run(t){const r=simulate(t,true);t.ran=true;t.runRes=r;t.last=fmt(new Date());t.res=r.text;t.status=r.hang?'執行中':'就緒';if(t.trig==='一次')t.next='';drawTasks();drawD()}
+  const iv=setInterval(()=>{if(simCache[5]!==box&&!box.isConnected){clearInterval(iv);return}const n=new Date();const ck=$('[data-clk]',box);if(ck)ck.innerHTML=fmtT(n)+'<br>'+fmtD(n);
+    tasks.forEach(t=>{if(t.user&&!t.ran&&t.start&&n>=t.start)run(t)})},1000);
+  $('[data-ff]',box).onclick=()=>{const p=tasks.filter(t=>t.user&&!t.ran&&t.start);if(!p.length){msg('快轉','沒有等待觸發的工作。（開始時間已過、或觸發程序為「電腦啟動時」等的工作不會觸發）',[['確定']]);return}p.forEach(run)};
+  // ---- 精靈 ----
+  function openWiz(){const n=new Date();w={i:0,name:'',desc:'',trig:'每天',date:fmtD(n),time:fmtT(n),sync:false,every:'1',act:'啟動程式',prog:'',args:'',cwd:''};drawWiz()}
+  const steps=()=>{const s=['name','trig'];if(!SKIP.includes(w.trig))s.push('when');s.push('act',w.act==='啟動程式'?'prog':'dep','sum');return s};
+  const lab=k=>({name:'建立基本工作',trig:'觸發程序',when:w.trig,act:'動作',prog:'啟動程式',dep:w.act,sum:'完成'})[k];
+  const head=k=>({name:'建立基本工作',trig:'工作觸發程序',when:w.trig,act:'動作',prog:'啟動程式',dep:w.act,sum:'摘要'})[k];
+  function save(){$$('[data-f]',wzEl).forEach(i=>{const f=i.dataset.f;if(i.type==='radio'){if(i.checked)w[f]=i.value}else if(i.type==='checkbox')w[f]=i.checked;else w[f]=i.value})}
+  function parseDT(){const a=String(w.date).match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/),b=String(w.time).match(/(上午|下午|AM|PM)?\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/i);if(!a||!b)return null;
+    let h=+b[2];const ap=(b[1]||'').toUpperCase();if((ap==='下午'||ap==='PM')&&h<12)h+=12;if((ap==='上午'||ap==='AM')&&h===12)h=0;if(h>23||+b[3]>59||+(b[4]||0)>59)return null;return new Date(+a[1],+a[2]-1,+a[3],h,+b[3],+(b[4]||0))}
+  function trigText(){const d=parseDT();if(w.trig==='一次')return d?`在 ${fmt(d)}`:'';if(w.trig==='每天')return d?`在每天 ${fmtT(d)}`:'';if(w.trig==='每週')return d?`在每週 ${fmtT(d)}`:'';if(w.trig==='每月')return '在每月';if(w.trig==='電腦啟動時')return '在系統啟動時';if(w.trig==='當我登入時')return '在任何使用者登入時';return '在事件記錄時'}
+  function drawWiz(){if(!w){wzEl.innerHTML='';return}const st=steps(),k=st[w.i];let c='';
+    if(k==='name')c=`<div class="row"><label class="w2">名稱(A):</label><input type="text" data-f="name" value="${esc(w.name)}" style="flex:1"></div><div class="row" style="align-items:flex-start"><label class="w2">描述(D):</label><textarea data-f="desc" style="flex:1;height:70px">${esc(w.desc)}</textarea></div>`;
+    if(k==='trig')c=`<div style="margin-bottom:8px">您希望工作何時開始？</div>`+['每天(D)','每週(W)','每月(M)','一次(O)','電腦啟動時(H)','當我登入時(L)','特定事件被記錄時(E)'].map(x=>{const v=x.replace(/\(.\)/,'');return `<div style="margin:5px 0 5px 12px"><label><input type="radio" name="wt5" data-f="trig" value="${v}"${w.trig===v?' checked':''}> ${x}</label></div>`}).join('');
+    if(k==='when')c=`<div class="row"><label class="w2">開始(S):</label><input type="text" data-f="date" value="${esc(w.date)}" style="width:104px" class="mono"><input type="text" data-f="time" value="${esc(w.time)}" style="width:118px" class="mono"><label><input type="checkbox" data-f="sync"${w.sync?' checked':''}> 跨時區同步(Z)</label></div>`
+      +(w.trig==='每天'?`<div class="row"><label class="w2">每隔(C):</label><input type="text" data-f="every" value="${esc(w.every)}" style="width:44px"> 天重複</div>`:w.trig==='每週'?`<div class="row"><label class="w2">每隔(C):</label><input type="text" data-f="every" value="${esc(w.every)}" style="width:44px"> 週重複於：</div><div class="row" style="margin-left:12px">${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'].map(d=>`<label><input type="checkbox"> ${d}</label>`).join(' ')}</div>`:w.trig==='每月'?'<div class="row"><label class="w2">月份(M):</label><select><option>選取月份...</option></select></div>':'')
+      +`<div class="note" style="margin-top:10px">（模擬：時間欄位可直接改數字，格式「下午 03:27:00」）</div>`;
+    if(k==='act')c=`<div style="margin-bottom:8px">您希望工作執行什麼動作？</div>`+[['啟動程式','啟動程式(T)'],['傳送電子郵件','傳送電子郵件 (已淘汰)(S)'],['顯示訊息','顯示訊息 (已淘汰)(M)']].map(([v,l])=>`<div style="margin:5px 0 5px 12px"><label><input type="radio" name="wa5" data-f="act" value="${v}"${w.act===v?' checked':''}> ${l}</label></div>`).join('');
+    if(k==='prog')c=`<div>程式或指令碼(P):</div><div class="row"><input type="text" data-f="prog" value="${esc(w.prog)}" style="flex:1" class="mono"><button class="btn" data-br>瀏覽(R)...</button></div><div data-brl></div>
+      <div class="row"><label class="w2">新增引數 (選擇性)(A):</label><input type="text" data-f="args" value="${esc(w.args)}" style="flex:1;min-width:150px" class="mono"></div>
+      <div class="row"><label class="w2">開始位置 (選擇性)(T):</label><input type="text" data-f="cwd" value="${esc(w.cwd)}" style="flex:1;min-width:150px" class="mono"></div>`;
+    if(k==='dep')c=`<div>此動作已淘汰，工作排程器不再支援「${w.act}」。<br>請按「上一步」改選「啟動程式」。</div>`;
+    if(k==='sum')c=`<table class="sumt"><tr><td>名稱:</td><td>${esc(w.name)}</td></tr><tr><td>描述:</td><td>${esc(w.desc)}</td></tr></table>
+      <table class="sumt" style="margin-top:14px"><tr><td>觸發程序:</td><td>${w.trig}; ${esc(trigText())}</td></tr><tr><td>動作:</td><td>啟動程式; <span class="mono">${esc(w.prog)}${w.args?' '+esc(w.args):''}</span></td></tr></table>
+      <div style="margin-top:16px"><label><input type="checkbox"> 按 [完成] 時，開啟此工作的 [內容] 對話方塊</label></div><div class="note" style="margin-top:6px">按一下 [完成] 時，新工作將會建立並新增至您的 Windows 排程。</div>`;
+    wzEl.innerHTML=`<div class="mcover"></div><div class="wz"><div class="wt">建立基本工作精靈<span data-c style="margin-left:auto;cursor:pointer">✕</span></div><div class="wh"><span style="font-size:22px">🕒</span> ${head(k)}</div>
+      <div class="wb"><div class="ws">${st.map((s,i)=>`<div class="${i===w.i?'cur':''}">${lab(s)}</div>`).join('')}</div><div class="wc">${c}</div></div>
+      <div class="wf"><button class="btn" data-b ${w.i===0?'disabled':''}>&lt; 上一步(B)</button>${k==='sum'?'<button class="btn pri" data-fin>完成(F)</button>':'<button class="btn pri" data-n>下一步(N) &gt;</button>'}<button class="btn" data-c>取消</button></div></div>`;
+    $$('[data-f=trig],[data-f=act]',wzEl).forEach(r=>r.onchange=()=>{save();drawWiz()});
+    $$('[data-c]',wzEl).forEach(x=>x.onclick=()=>{w=null;drawWiz()});
+    const bk=$('[data-b]',wzEl);bk.onclick=()=>{save();w.i--;drawWiz()};
+    const nx=$('[data-n]',wzEl);if(nx)nx.onclick=()=>{save();validate(k,()=>{w.i++;drawWiz()})};
+    const fn=$('[data-fin]',wzEl);if(fn)fn.onclick=finish;
+    const br=$('[data-br]',wzEl);if(br)br.onclick=()=>{const l=$('[data-brl]',wzEl);l.innerHTML=`<div class="brl"><div class="note">開啟 — C:\\Windows\\System32</div>${['cmd.exe','notepad.exe','Robocopy.exe','xcopy.exe'].map(f=>`<div data-pk="${f}">⚙ ${f}</div>`).join('')}</div>`;
+      $$('[data-pk]',l).forEach(x=>x.onclick=()=>{save();w.prog='C:\\Windows\\System32\\'+x.dataset.pk;drawWiz()})};
+  }
+  function validate(k,go){
+    if(k==='name'&&!w.name.trim())return msg('工作排程器','必須指定工作名稱。',[['確定']]);
+    if(k==='when'&&!parseDT())return msg('工作排程器','指定的開始時間格式不正確。',[['確定']]);
+    if(k==='dep')return msg('工作排程器','此功能已淘汰，無法使用。',[['確定']]);
+    if(k==='prog'){const p=w.prog.trim();if(!p)return msg('工作排程器','必須指定要啟動的程式。',[['確定']]);
+      if(!/^"/.test(p)&&/\s/.test(p)){const i=p.search(/\s/),f=p.slice(0,i),rest=p.slice(i).trim();
+        return msg('工作排程器',`似乎在程式中包含引數。您要執行下列程式嗎？<br><br><span class="mono">${esc(f)}</span><br><br>使用下列引數：<br><br><span class="mono">${esc(rest)}</span>`,[['是(Y)',()=>{w.prog=f;w.args=rest+(w.args?' '+w.args:'');go()}],['否(N)',go]])}}
+    go()}
+  function finish(){const nm=w.name.trim();if(tasks.some(t=>t.name.toLowerCase()===nm.toLowerCase()))return msg('工作排程器','無法建立工作。<br>檔案已存在。（已有同名的工作）',[['確定']]);
+    const d=parseDT(),n=new Date();const t={user:true,name:nm,trig:w.trig,start0:d,start:null,prog:w.prog.trim(),args:w.args.trim(),created:n,status:'就緒',trigS:trigText(),next:'',last:'1999/11/30 上午 12:00:00',res:'此工作尚未執行。 (0x41303)',ran:false};
+    if(!SKIP.includes(w.trig)&&d){let s=new Date(d);if(w.trig!=='一次')while(s<=n)s=new Date(s.getTime()+86400000);if(s>n){t.start=s;t.next=fmt(s)}}
+    tasks.push(t);selT=tasks.length-1;w=null;drawWiz();drawTasks()}
+  drawTasks();drawD();
+  checkBar(box,()=>{const ut=tasks.filter(t=>t.user);if(!ut.length)return[false];
+    const t=ut[ut.length-1],r=[t.trig==='一次'||t.trig==='每天'];
+    if(t.start0){const diff=(t.start0-t.created)/1000;r.push(diff>0&&diff<=S.backupMin*60+59)}else r.push(false);
+    const res=t.ran?t.runRes:simulate(t,false);r.push(res.code==='0x0'&&!res.mis);return r});
+},
+6(box){
+  const users={},bg={};let auth=false;
+  const WP=[['預設','linear-gradient(135deg,#77216f,#e95420)'],['山景','linear-gradient(#8ec5fc,#3a7d44)'],['海洋','linear-gradient(#a1c4fd,#1e3c72)'],['夕陽','linear-gradient(#f6d365,#fd5949)']];
+  box.innerHTML=`<p class="simintro">模擬 Linux 終端機（輸入 help 看可用指令）。下方為各帳號登入後的背景設定。</p>
+  <div data-t></div><div class="gn" style="margin-top:12px"><div class="tt">各使用者登入後的「變更背景」</div><div class="bd" data-bg></div></div>`;
+  const bgBox=$('[data-bg]',box);
+  function drawBg(){const list=Object.keys(users).filter(u=>users[u].home);
+    if(!list.length){bgBox.innerHTML='<span class="note">尚無可登入的一般使用者</span>';return}
+    bgBox.innerHTML=list.map(u=>`<div class="row"><label class="w">以 <b>${esc(u)}</b> 登入：</label>${WP.map((w,i)=>`<button class="wall${(bg[u]||0)===i?' on':''}" data-u="${esc(u)}" data-i="${i}"><i style="background:${w[1]}"></i>${w[0]}</button>`).join('')}</div>`).join('');
+    $$('.wall',bgBox).forEach(b=>b.onclick=()=>{bg[b.dataset.u]=+b.dataset.i;drawBg()})}
+  drawBg();
+  const uid=n=>1001+Object.keys(users).indexOf(n);
+  function askPwd(T,name,after){T.ask('新的 密碼：',true,p1=>T.ask('再次輸入新的 密碼：',true,p2=>{
+    if(p1!==p2){T.print('抱歉，密碼不符合。\npasswd：認證記號處理錯誤\npasswd：密碼未變更');drawBg();return}
+    if(p1.length<8)T.print('不良的密碼：密碼短於 8 個字元');
+    users[name].pwd=p1;T.print('passwd：已成功更新密碼');if(after)after();drawBg()}))}
+  function run(T,a,sudo){const c=a[0],name=a[a.length-1];
+    const needRoot=()=>{if(!sudo){T.print(`${c}: Permission denied.\n${c}: 無法鎖定 /etc/passwd；請稍後再試。`);return true}return false};
+    switch(c){
+    case 'adduser':if(needRoot())return;if(a.length<2){T.print('adduser: 只需要一個或兩個名稱。');return}
+      if(users[name]){T.print(`adduser: 使用者「${name}」已存在。`);return}
+      users[name]={pwd:null,home:true,shell:'/bin/bash'};
+      T.print(`正在新增使用者「${name}」...\n正在新增新群組「${name}」(${uid(name)})...\n正在建立家目錄「/home/${name}」...\n正在從「/etc/skel」複製檔案...`);
+      askPwd(T,name,()=>{T.print('正在變更 '+name+' 的使用者資訊\n請輸入新值，或直接按 ENTER 以使用預設值');T.ask('\t全名 []: ',false,()=>T.ask('這些資訊是否正確？ [Y/n] ',false,()=>{}))});return;
+    case 'useradd':if(needRoot())return;if(a.length<2){T.print('用法：useradd [選項] 登入名稱');return}
+      if(users[name]){T.print(`useradd：使用者「${name}」已存在`);return}
+      users[name]={pwd:null,home:a.includes('-m'),shell:'/bin/sh'};drawBg();return;
+    case 'passwd':{const n=a[1]||'student';
+      if(n!=='student'&&!sudo){T.print(`passwd：您不能檢視或更改 ${n} 的密碼資訊。`);return}
+      if(n==='student'){T.print('（練習環境不變更 student 的密碼）');return}
+      if(!users[n]){T.print(`passwd：使用者「${n}」不存在`);return}askPwd(T,n);return}
+    case 'userdel':if(needRoot())return;if(!users[name]){T.print(`userdel：使用者「${name}」不存在`);return}delete users[name];delete bg[name];drawBg();return;
+    default:T.print(`${c}：指令找不到`)}}
+  makeTerm($('[data-t]',box),{lx:true,prompt:`student@${sub(S.linName)}:~$ `,banner:'輸入 help 查看可用指令',onLine(l,T){
+    if(!l)return;let a=l.split(/\s+/);
+    if(a[0]==='clear'){T.clear();return}
+    if(a[0]==='help'){T.print('可用指令：adduser useradd passwd userdel getent id ls whoami clear sudo');return}
+    if(a[0]==='whoami'){T.print('student');return}
+    if(a[0]==='ls'){if(a[1]==='/home')T.print(['student',...Object.keys(users).filter(u=>users[u].home)].join('  '));else T.print('桌面  文件  下載  音樂  圖片  影片');return}
+    if(a[0]==='getent'&&a[1]==='passwd'){const ns=a.length>2?a.slice(2):Object.keys(users);ns.forEach(n=>{if(users[n])T.print(`${n}:x:${uid(n)}:${uid(n)}::/home/${n}:${users[n].shell}`)});return}
+    if(a[0]==='id'){const n=a[1];if(n&&users[n])T.print(`uid=${uid(n)}(${n}) gid=${uid(n)}(${n}) 群組=${uid(n)}(${n})`);else T.print(`id: 「${n||''}」：無此使用者`);return}
+    let sudo=false;if(a[0]==='sudo'){sudo=true;a=a.slice(1);if(!a.length)return}
+    if(sudo&&!auth){T.ask('[sudo] student 的密碼：',true,()=>{auth=true;run(T,a,true)});return}
+    run(T,a,sudo)}});
+  checkBar(box,()=>{const r=[];
+    [[S.u1,S.p1],[S.u2,S.p2]].forEach(([u,p])=>{const x=users[u];r.push(!!x&&x.home,!!x&&x.pwd===p)});
+    if(users[S.u1]&&users[S.u2])r.push((bg[S.u1]||0)!==(bg[S.u2]||0));return r});
+},
+7(box){
+  const M={'Brother':['Brother DCP-116C','Brother HL-1110 series','Brother MFC-7360'],'Canon':['Canon Inkjet iP100 series','Canon LBP6000'],'Epson':['Epson ESC/P Standard 2','Epson LQ-1170ESC/P 2'],
+   'Generic':['Generic / Text Only','Generic IBM Graphics 9pin','Generic IBM Graphics 9pin wide','MS Publisher Color Printer','MS Publisher Imagesetter'],'HP':['HP Color LaserJet 2800 Series PS','HP LaserJet 1022','HP Universal Printing PCL 6'],'Microsoft':['Microsoft MS-XPS Class Driver 2','Microsoft OpenXPS Class Driver','Microsoft Print To PDF']};
+  if(!M[S.printerMfr])M[S.printerMfr]=[];if(!M[S.printerMfr].includes(S.printerModel))M[S.printerMfr].push(S.printerModel);
+  let mf=null,md=null;
+  box.innerHTML=`<p class="simintro">模擬「新增印表機 → 以手動設定新增本機印表機」→「安裝印表機驅動程式」畫面。</p>
+  <div class="win"><div class="tt">新增印表機</div><div class="bd">
+  <div class="row"><label class="w">使用現有的連接埠</label><select><option>LPT1: (印表機連接埠)</option><option>LPT2: (印表機連接埠)</option><option>COM1: (序列埠)</option><option>FILE: (列印至檔案)</option></select></div>
+  <div style="margin:10px 0 4px">從清單選取您的印表機：</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap"><div style="flex:1;min-width:160px"><div class="note">製造商</div><div class="lst" data-mf></div></div>
+  <div style="flex:2;min-width:220px"><div class="note">印表機</div><div class="lst" data-md></div></div></div>
+  <div class="row" style="margin-top:8px"><label class="w">印表機名稱</label><input type="text" data-nm style="flex:1" readonly></div></div></div>`;
+  const mfB=$('[data-mf]',box),mdB=$('[data-md]',box);
+  function draw(){mfB.innerHTML=Object.keys(M).map(k=>`<div class="${k===mf?'sel':''}">${esc(k)}</div>`).join('');
+    mdB.innerHTML=mf?M[mf].map(k=>`<div class="${k===md?'sel':''}">${esc(k)}</div>`).join(''):'';
+    $$('div',mfB).forEach(d=>d.onclick=()=>{mf=d.textContent;md=null;draw()});
+    $$('div',mdB).forEach(d=>d.onclick=()=>{md=d.textContent;$('[data-nm]',box).value=md;draw()})}
+  draw();
+  checkBar(box,()=>[mf===S.printerMfr,md===S.printerModel]);
+},
+8(box){
+  const opts=[1,2,3,4,5,8,10,12,15];
+  box.innerHTML=`<p class="simintro">模擬 GNOME「設定 → 電源」面板與終端機。</p>
+  <div class="gn"><div class="tt">設定 — 電源</div><div class="bd">
+  <div class="row"><label class="w">螢幕空白</label><select data-s>${opts.map(o=>`<option value="${o*60}"${o===5?' selected':''}>${o} 分鐘</option>`).join('')}<option value="0">永不</option></select></div>
+  <div class="row"><label class="w">自動暫停</label><select><option>關閉</option><option>20 分鐘</option></select></div></div></div>
+  <div data-t></div>`;
+  const sel=$('[data-s]',box);
+  makeTerm($('[data-t]',box),{lx:true,prompt:`student@${sub(S.linName)}:~$ `,onLine(l,T){if(!l)return;const a=l.split(/\s+/);
+    if(a[0]==='gsettings'&&a[2]==='org.gnome.desktop.session'&&a[3]==='idle-delay'){
+      if(a[1]==='set'){const v=parseInt(a[4]);if(isNaN(v)){T.print('值無效');return}
+        if(![...sel.options].some(o=>+o.value===v)){const o=document.createElement('option');o.value=v;o.textContent=(v/60).toFixed(1).replace(/\.0$/,'')+' 分鐘（自訂）';sel.appendChild(o)}sel.value=v}
+      else if(a[1]==='get')T.print('uint32 '+sel.value);}
+    else if(a[0]==='clear')T.clear();else T.print(a[0]+'：指令找不到')}});
+  checkBar(box,()=>[+sel.value===S.saverMin*60]);
+},
+9(box){
+  let L=[{n:'中文(台灣)',k:['微軟注音']},{n:'英文(美國)',k:['美式鍵盤']}];
+  const ZH=['微軟注音','微軟倉頡','微軟速成'];
+  box.innerHTML=`<p class="simintro">模擬「設定 → 時間與語言 → 語言 → 選項」。</p><div class="win"><div class="tt">設定</div><div class="bd" data-b></div></div>`;
+  const b=$('[data-b]',box);
+  function note(m){const d=document.createElement('div');d.className='dlg';d.textContent=m;b.prepend(d);setTimeout(()=>d.remove(),2500)}
+  function draw(){b.innerHTML=L.map((l,li)=>`<div class="lang">${l.n} <button class="btn" data-rl="${li}" style="margin-left:8px">移除語言</button></div>
+    ${l.k.map((k,ki)=>`<div class="kb"><span>⌨ ${k}</span><button class="btn" data-rk="${li},${ki}">移除</button></div>`).join('')}
+    ${l.n.startsWith('中文')?`<div class="kb" style="background:#f7f7f7"><span>＋ 新增鍵盤</span><select data-ad><option value="">選擇…</option>${ZH.filter(z=>!l.k.includes(z)).map(z=>`<option>${z}</option>`).join('')}</select></div>`:''}`).join('')
+    +`<div class="row" style="margin-top:10px"><select data-al><option value="">＋ 新增語言…</option><option>日文</option><option>英文(英國)</option></select></div>`;
+    $$('[data-rk]',b).forEach(x=>x.onclick=()=>{const[li,ki]=x.dataset.rk.split(',').map(Number);if(L[li].k.length===1){note('每個語言至少要保留一個鍵盤；若不需要此語言請「移除語言」');return}L[li].k.splice(ki,1);draw()});
+    $$('[data-rl]',b).forEach(x=>x.onclick=()=>{if(L.length===1){note('至少要保留一個語言');return}L.splice(+x.dataset.rl,1);draw()});
+    const ad=$('[data-ad]',b);if(ad)ad.onchange=()=>{if(ad.value){L.find(l=>l.n.startsWith('中文')).k.push(ad.value);draw()}};
+    const al=$('[data-al]',b);al.onchange=()=>{if(al.value&&!L.some(l=>l.n===al.value)){L.push({n:al.value,k:[al.value==='日文'?'Microsoft IME':'英式鍵盤']});draw()}}}
+  draw();
+  checkBar(box,()=>{const zh=L.find(l=>l.n.startsWith('中文')),ks=zh?zh.k:[];
+    return[ks.includes(S.ime),ks.every(k=>k===S.ime),L.every(l=>l.n.startsWith('中文')||(l.n==='英文(美國)'&&l.k.every(k=>k==='美式鍵盤')))]});
+},
+10(box){
+  const inst=['微軟正黑體','新細明體','標楷體','Arial','Times New Roman'];const mine=[];let selF=null;
+  box.innerHTML=`<p class="simintro">考場提供「軟體下載網站」。</p>
+  <div class="row" style="margin-bottom:10px"><button class="cbtn go" data-site>🌐 開啟考場下載網站</button></div>
+  <div class="win"><div class="tt">檔案總管 — 下載 (C:\\Users\\student\\Downloads)</div><div class="bd"><div class="files" data-f></div>
+  <div class="row"><button class="btn" data-i1>安裝</button><button class="btn" data-i2>為所有使用者安裝</button><button class="btn" data-pv>預覽</button></div><div data-msg></div></div></div>
+  <div class="win"><div class="tt">設定 → 個人化 → 字型</div><div class="bd"><div class="row"><input type="text" placeholder="搜尋字型" data-q style="flex:1"></div><div class="files" data-l style="min-height:60px"></div></div></div>`;
+  const F=$('[data-f]',box),Lb=$('[data-l]',box),q=$('[data-q]',box),M=$('[data-msg]',box);
+  function draw(){F.innerHTML=DL.map(d=>`<div class="${d.file===selF?'sel':''}" data-n="${esc(d.file)}"><span class="ic">${d.kind==='font'?'🅰':d.kind==='arc'?'🗜':'⚙'}</span>${esc(d.file)}</div>`).join('')||'<span class="note">（此資料夾是空的）</span>';
+    $$('[data-n]',F).forEach(d=>d.onclick=()=>{selF=d.dataset.n;draw()});
+    const all=inst.concat(mine.map(m=>m.f)),k=q.value.trim();
+    Lb.innerHTML=all.filter(f=>!k||f.includes(k)).map(f=>`<div><span class="ic" style="font-size:20px">字</span>${f}</div>`).join('')||'<span class="note">找不到符合的字型</span>'}
+  const cur=()=>DL.find(d=>d.file===selF);
+  const doI=all=>{const it=cur();if(!it){M.innerHTML='<div class="dlg">請先點選檔案</div>';return}
+    if(it.kind!=='font'){M.innerHTML=`<div class="dlg">${esc(it.file)} 不是字型檔。</div>`;return}
+    const ex=mine.find(m=>m.f===it.font);if(ex)ex.all=ex.all||all;else mine.push({f:it.font,all});
+    M.innerHTML=`<div class="dlg">正在安裝字型… 已安裝「${esc(it.font)}」${all?'（所有使用者）':'（目前使用者）'}</div>`;draw()};
+  $('[data-i1]',box).onclick=()=>doI(false);$('[data-i2]',box).onclick=()=>doI(true);
+  $('[data-pv]',box).onclick=()=>{const it=cur();if(!it||it.kind!=='font'){M.innerHTML='<div class="dlg">請先點選字型檔</div>';return}M.innerHTML=`<div class="dlg">字型名稱：<b>${esc(it.font)}</b><br>檔案：${esc(it.file)}<br><span style="font-size:22px">電腦硬體裝修 ABC 123</span></div>`};
+  $('[data-site]',box).onclick=openSite;q.oninput=draw;REFRESH.add(draw);draw();
+  checkBar(box,()=>[mine.some(x=>x.f===S.font)]);
+},
+11(box){
+  const APPS=[['word','Microsoft Word'],['excel','Microsoft Excel'],['ppt','Microsoft PowerPoint'],['access','Microsoft Access'],['outlook','Microsoft Outlook'],['onenote','Microsoft OneNote'],['publisher','Microsoft Publisher'],['infopath','Microsoft InfoPath'],['shared','Office 共用功能'],['tools','Office 工具']];
+  box.innerHTML=`<p class="simintro">模擬 Office 安裝的「自訂 → 安裝選項」。</p><div class="win"><div class="tt">Microsoft Office 安裝</div><div class="bd">
+  <div style="margin-bottom:6px">自訂 Microsoft Office 程式的執行方式：</div>
+  ${APPS.map(([k,n])=>`<div class="row" style="margin:3px 0 3px 16px"><select data-k="${k}" style="width:200px"><option value="run">💻 從我的電腦執行</option><option value="first">1 第一次使用時才安裝</option><option value="no">✕ 無法使用</option></select><span>${n}</span></div>`).join('')}
+  </div></div>`;
+  checkBar(box,()=>APPS.slice(0,8).map(([k])=>{const v=$(`[data-k=${k}]`,box).value;return S.office.includes(k)?v==='run':v==='no'}));
+},
+12(box){ftpSim(box,12)},
+13(box){ftpSim(box,13)},
+14(box){
+  const zipBase=baseOf(S.zip),zipDir=dirOf(S.zip);
+  const winF=['bootstat.dat','explorer.exe','HelpPane.exe','notepad.exe','regedit.exe','system.ini','twain_32','twain_32.dll','win.ini','WindowsUpdate.log','write.exe'];
+  if(!winF.includes(zipBase))winF.push(zipBase);
+  const LOCS={win:zipDir,dl:'C:\\Users\\student\\Downloads',desk:'C:\\Users\\student\\Desktop'};
+  let loc='win',selF=null,menu=null;
+  box.innerHTML=`<p class="simintro">模擬檔案總管。觸控裝置請用「⋯ 右鍵選單」。</p>
+  <div class="row" style="margin-bottom:10px"><button class="cbtn go" data-site>🌐 開啟考場下載網站</button></div>
+  <div class="win" style="position:relative"><div class="tt">檔案總管</div><div class="bd">
+  <div class="row"><button class="btn" data-g="win">📁 ${esc(zipDir)}</button><button class="btn" data-g="dl">⬇ 下載</button><button class="btn" data-g="desk">🖥 桌面</button><button class="btn" data-paste style="display:none">📋 貼上</button><button class="btn" data-ctx style="margin-left:auto">⋯ 右鍵選單</button></div>
+  <div class="mono note" data-p></div><div class="files" data-f></div><div data-dlg></div></div></div>`;
+  const F=$('[data-f]',box),wrapEl=$('.win',box),dlg=$('[data-dlg]',box);
+  const stem=n=>n.replace(/\.[^.]+$/,'');
+  const items=()=>loc==='win'?winF.map(n=>({n,dir:!/\./.test(n)})):loc==='dl'?DL.map(d=>({n:d.file,d})):DESK.map(d=>({n:d.name,d}));
+  const icon=it=>it.dir?'📁':/\.rar$/i.test(it.n)?'📚':/\.zip$/i.test(it.n)?'🗜':/\.(exe|msi)$/i.test(it.n)?'⚙':/\.dll$/i.test(it.n)?'🧩':/\.(ttc|ttf)$/i.test(it.n)?'🅰':'📄';
+  const getIt=()=>items().find(x=>x.n===selF);
+  const srcOf=it=>it.d&&it.d.kind==='file'?it.d.src:LOCS[loc]+'\\'+it.n;
+  function uniq(list,n){let k=n,i=2;while(list.some(x=>x===k)){k=stem(n)+` (${i++})`+n.slice(stem(n).length)}return k}
+  function put(name,src,kind){if(loc==='desk')DESK.push({name:uniq(DESK.map(d=>d.name),name),src,kind});else DL.push({file:uniq(DL.map(d=>d.file),name),src,kind});REFRESH.forEach(f=>f())}
+  function draw(){$('[data-p]',box).textContent=LOCS[loc];$('[data-paste]',box).style.display=CLIP?'':'none';
+    F.innerHTML=items().map(it=>`<div class="${it.n===selF?'sel':''}" data-n="${esc(it.n)}"><span class="ic">${icon(it)}</span>${esc(it.n)}</div>`).join('')||'<span class="note">（此資料夾是空的）</span>';
+    $$('[data-n]',F).forEach(d=>{d.onclick=()=>{selF=d.dataset.n;closeM();draw()};d.ondblclick=()=>{selF=d.dataset.n;op('open')};d.oncontextmenu=e=>{e.preventDefault();selF=d.dataset.n;draw();openM(e)}})}
+  function closeM(){if(menu){menu.remove();menu=null}}
+  function openM(e){closeM();const it=getIt();if(!it)return;const r=wrapEl.getBoundingClientRect(),st=esc(stem(it.n));
+    menu=document.createElement('div');menu.className='ctx';
+    menu.style.left=Math.max(4,Math.min((e.clientX||r.left+60)-r.left,r.width-230))+'px';menu.style.top=((e.clientY||r.top+130)-r.top)+'px';
+    menu.innerHTML=`<div data-op="open">開啟(O)</div>`+(INST.has('winrar')?`<hr><div data-op="rarA">📚 加入壓縮檔(A)...</div><div data-op="rarT">📚 加到 "${st}.rar"(T)</div>`:'')+(INST.has('winzip')?`<hr><div data-op="wz">🗜 WinZip ▸ Add to ${st}.zip</div>`:'')
+      +`<hr><div data-s>傳送到(N) ▸</div><div data-sub style="display:none;padding:0;background:#fff;margin-left:12px;border-left:2px solid #ccc"><div data-op="send">🗜 壓縮的 (zipped) 資料夾</div><div data-op="x">🖥 桌面 (建立捷徑)</div><div data-op="x">📄 文件</div></div><hr><div data-op="copy">複製(C)</div><div class="dis">刪除(D)</div><div data-op="x">內容(R)</div>`;
+    wrapEl.appendChild(menu);
+    $('[data-s]',menu).onclick=ev=>{ev.stopPropagation();const s=$('[data-sub]',menu);s.style.display=s.style.display==='none'?'block':'none'};
+    $$('[data-op]',menu).forEach(x=>x.onclick=()=>op(x.dataset.op))}
+  const denied=(tool,name)=>{dlg.innerHTML=`<div class="dlg">⚠ <b>${tool}</b>：無法建立 ${esc(zipDir)}\\${esc(name)}<br>存取被拒。<div class="row"><button class="btn pri" data-k>確定</button></div></div>`;$('[data-k]',dlg).onclick=()=>dlg.innerHTML=''};
+  function op(k){closeM();const it=getIt();if(!it)return;const st=stem(it.n);
+    if(k==='open'){if(loc==='dl'&&it.d&&it.d.app){const a=it.d;
+        if(INST.has(a.app)){dlg.innerHTML=`<div class="dlg">${esc(a.label)} 已經安裝過了。</div>`;return}
+        dlg.innerHTML=`<div class="dlg">⚙ <b>${esc(a.label)} 安裝程式</b><br>目的資料夾：C:\\Program Files\\${esc(a.label)}<div class="row"><button class="btn pri" data-ok>安裝</button><button class="btn" data-no>取消</button></div></div>`;
+        $('[data-ok]',dlg).onclick=()=>{INST.add(a.app);dlg.innerHTML=`<div class="dlg">✔ 已安裝 ${esc(a.label)}</div>`};$('[data-no]',dlg).onclick=()=>dlg.innerHTML=''}
+      else if(it.dir){dlg.innerHTML='<div class="dlg">（模擬中不展開系統資料夾）</div>'}
+      else dlg.innerHTML='';return}
+    if(k==='copy'){CLIP={name:it.n,src:srcOf(it)};dlg.innerHTML=`<div class="dlg">已複製 ${esc(it.n)}</div>`;draw();return}
+    if(k==='send'){const nm=st+'.zip';
+      if(loc==='win'){dlg.innerHTML=`<div class="dlg">📦 壓縮的 (zipped) 資料夾<br>Windows 無法在此處建立壓縮的 (zipped) 資料夾。<br>要改為放在桌面上嗎？<div class="row"><button class="btn pri" data-y>是(Y)</button><button class="btn" data-no>否(N)</button></div></div>`;
+        $('[data-y]',dlg).onclick=()=>{const n=uniq(DESK.map(d=>d.name),nm);DESK.push({name:n,src:srcOf(it),kind:'zip'});dlg.innerHTML='<div class="dlg">✔ 已在桌面建立 '+esc(n)+'</div>'};$('[data-no]',dlg).onclick=()=>dlg.innerHTML=''}
+      else{put(nm,srcOf(it),'zip');draw()}return}
+    if(k==='rarT'){if(loc==='win')return denied('WinRAR',st+'.rar');put(st+'.rar',srcOf(it),'rar');dlg.innerHTML=`<div class="dlg">✔ WinRAR 已建立 ${esc(st)}.rar</div>`;draw();return}
+    if(k==='wz'){if(loc==='win')return denied('WinZip',st+'.zip');put(st+'.zip',srcOf(it),'zip');dlg.innerHTML=`<div class="dlg">✔ WinZip 已建立 ${esc(st)}.zip</div>`;draw();return}
+    if(k==='rarA'){dlg.innerHTML=`<div class="dlg"><b>壓縮檔名稱及參數</b><div class="row"><label>壓縮檔名稱(A)</label><input type="text" data-an value="${esc(st)}.rar" style="flex:1"></div><div class="row">壓縮檔格式：<label><input type="radio" name="af14" value="rar" checked> RAR</label><label><input type="radio" name="af14" value="zip"> ZIP</label></div><div class="row"><button class="btn pri" data-ok>確定</button><button class="btn" data-no>取消</button></div></div>`;
+      $$('[name=af14]',dlg).forEach(r=>r.onchange=()=>{const i=$('[data-an]',dlg);i.value=stem(i.value)+'.'+r.value});
+      $('[data-no]',dlg).onclick=()=>dlg.innerHTML='';
+      $('[data-ok]',dlg).onclick=()=>{const nm=$('[data-an]',dlg).value.trim()||st+'.rar';const f=$('[name=af14]:checked',dlg).value;if(loc==='win')return denied('WinRAR',nm);put(nm,srcOf(it),f);dlg.innerHTML=`<div class="dlg">✔ WinRAR 已建立 ${esc(nm)}</div>`;draw()};return}}
+  $('[data-paste]',box).onclick=()=>{if(!CLIP)return;if(loc==='win'){dlg.innerHTML='<div class="dlg">⚠ 目的資料夾存取被拒：需要系統管理員權限才能複製到此資料夾。</div>';return}put(CLIP.name,CLIP.src,'file');draw()};
+  $$('[data-g]',box).forEach(b=>b.onclick=()=>{loc=b.dataset.g;selF=null;closeM();dlg.innerHTML='';draw()});
+  $('[data-ctx]',box).onclick=e=>{e.stopPropagation();if(!selF){dlg.innerHTML='<div class="dlg">請先點選一個檔案</div>';return}openM({})};
+  $('[data-site]',box).onclick=openSite;
+  box.addEventListener('click',e=>{if(menu&&!menu.contains(e.target)&&!e.target.closest('[data-ctx]'))closeM()});
+  REFRESH.add(draw);draw();
+  checkBar(box,()=>{const arcs=DESK.filter(d=>d.kind!=='file').concat(DL.filter(d=>['zip','rar'].includes(d.kind)));
+    return[arcs.some(a=>a.src&&a.src.toLowerCase()===S.zip.toLowerCase())]});
+},
+15(box){
+  box.innerHTML=`<p class="simintro">模擬「記事本」編輯網頁並另存新檔，下方即時預覽。</p>
+  <div class="win"><div class="tt">未命名 - 記事本</div><div class="bd"><textarea class="code" data-c spellcheck="false">&lt;html&gt;
+&lt;head&gt;&lt;meta charset="utf-8"&gt;&lt;title&gt;練習&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;
+  工作崗位 ${XX} 號
+&lt;/body&gt;
+&lt;/html&gt;</textarea>
+  <div class="row"><label class="w">另存新檔 — 檔名</label><input type="text" data-fn value="*.txt" style="width:160px"></div>
+  <div class="row"><label class="w">存檔類型</label><select data-ty><option value="txt">文字文件 (*.txt)</option><option value="all">所有檔案 (*.*)</option></select>
+  <label>編碼</label><select data-en><option>ANSI</option><option>UTF-16 LE</option><option selected>UTF-8</option></select></div></div></div>
+  <div class="note">瀏覽器預覽：</div><div class="preview" data-pv></div>`;
+  const ta=$('[data-c]',box),pv=$('[data-pv]',box);
+  const render=()=>{const doc=new DOMParser().parseFromString(ta.value,'text/html');$$('script,iframe,object,embed,link',doc).forEach(x=>x.remove());
+    $$('*',doc.body).forEach(el=>[...el.attributes].forEach(a=>{if(/^on/i.test(a.name))el.removeAttribute(a.name)}));
+    let css='';$$('style',doc).forEach(s=>{css+=s.textContent.replace(/\b(body|html)\b/g,'.pvx')});
+    pv.innerHTML=(css?`<style>${css.replace(/([^{}]+)\{/g,(m,s)=>s.split(',').map(x=>x.trim().startsWith('.pvx')?x:'.preview '+x.trim()).join(',')+'{')}</style>`:'')+`<div class="pvx" style="${esc(doc.body.getAttribute('style')||'')}">${doc.body.innerHTML}</div>`;
+    const t=$('.pvx',pv),tx=doc.body.getAttribute('text');if(tx)t.style.color=tx};
+  ta.oninput=render;render();
+  checkBar(box,()=>{render();const want={red:['rgb(255, 0, 0)'],green:['rgb(0, 128, 0)','rgb(0, 255, 0)'],blue:['rgb(0, 0, 255)']}[S.color]||[];
+    const walker=document.createTreeWalker($('.pvx',pv),NodeFilter.SHOW_TEXT);const cols=[];let n;
+    while(n=walker.nextNode()){if(n.textContent.trim()&&n.parentElement.tagName!=='STYLE')cols.push(getComputedStyle(n.parentElement).color)}
+    const fn=$('[data-fn]',box).value.trim(),ty=$('[data-ty]',box).value,en=$('[data-en]',box).value;
+    return[cols.length>0&&cols.every(c=>want.includes(c)),/\.html?$/i.test(fn)&&!/\*/.test(fn),ty==='all',!(/[^\x00-\x7f]/.test(ta.value)&&en!=='UTF-8')]});
+}};
+
+function ftpSim(box,id){
+  box.innerHTML=`<p class="simintro">模擬 Windows 命令提示字元的 ftp 用戶端，FTP 主機 <b>${S.ftpIP}</b>。第 12、13 項共用同一台伺服器：在 12 改過密碼後，13 要用新密碼登入。輸入時按 ↑ 可叫回上一個指令。</p>
+  <div data-t></div><div class="note" style="margin-top:6px">伺服器密碼狀態：<b data-st></b>　｜　伺服器上的檔案：<b data-fs></b>　<button class="btn" data-rs>重設 FTP 伺服器</button></div>`;
+  const st={mode:'cmd',conn:false,logged:false,cwd:'C:\\Users\\student',bin:false};
+  const showSt=()=>{$('[data-st]',box).textContent=FTP.changed?'已變更':'初始 passwd'+XX;$('[data-fs]',box).textContent=FTP.uploads.map(u=>u.name).join('、')||'（無）'};
+  $('[data-rs]',box).onclick=()=>{FTP={pwd:'passwd'+XX,changed:false,uploads:[]};showSt()};
+  const winFiles=()=>{const s=new Set(['win.ini','system.ini','twain_32.dll','notepad.exe','regedit.exe']);[S.transfer,S.zip].forEach(p=>{if(dirOf(p).toLowerCase()==='c:\\windows')s.add(baseOf(p))});return[...s]};
+  const LFS=()=>({'c:\\windows':winFiles(),'c:\\users\\student':['Desktop','Documents','Downloads'],'c:\\users\\student\\desktop':DESK.map(d=>d.name),'c:\\users\\student\\downloads':DL.map(d=>d.file),'c:\\':['Windows','Users','Program Files'],'d:\\':[]});
+  const disp=p=>p.replace(/^([a-z]):/i,(m,d)=>d.toUpperCase()+':');
+  const resolve=p=>{p=p.replace(/\//g,'\\').replace(/"/g,'');if(!/^[a-z]:/i.test(p))p=st.cwd.replace(/\\$/,'')+'\\'+p;p=p.replace(/\\+$/,'');if(/^[a-z]:$/i.test(p))p+='\\';return p};
+  const prompt=()=>st.mode==='ftp'?'ftp> ':st.cwd+'>';
+  function login(T){T.ask(`使用者 (${S.ftpIP}:(none)): `,false,u=>{T.print('331 User name okay, need password.');T.ask('密碼: ',true,p=>{
+    if(u===('t'+XX)&&p===FTP.pwd){st.logged=true;T.print('230 User logged in, proceed.')}
+    else{st.logged=false;T.print('530 Not logged in.\n登入失敗。')}})})}
+  function connect(T,ip){if(ip!==S.ftpIP){T.print(`> ftp: connect :連線逾時（${ip||'未指定主機'}）`);return}
+    T.print(`已連線到 ${ip}。\n220 Serv-U FTP Server v15.1 ready...\n200 OPTS UTF8 command successful - UTF8 encoding now ON.`);st.conn=true;login(T)}
+  makeTerm($('[data-t]',box),{prompt:prompt(),banner:'Microsoft Windows [版本 10.0.19045]\n(c) Microsoft Corporation. 著作權所有，並保留一切權利。\n',onLine(l,T){
+    const a=l.split(/\s+/),c=(a[0]||'').toLowerCase();
+    if(st.mode==='cmd'){
+      if(!l){}
+      else if(c==='ftp'){st.mode='ftp';st.conn=false;st.logged=false;if(a[1])connect(T,a[1])}
+      else if(c==='cd'){if(!a[1])T.print(st.cwd);else{const p=resolve(l.slice(3).trim());if(LFS()[p.toLowerCase()]!==undefined)st.cwd=disp(p);else T.print('系統找不到指定的路徑。')}}
+      else if(c==='dir'){const f=LFS()[st.cwd.toLowerCase()]||[];T.print(` ${st.cwd} 的目錄\n\n`+f.map(x=>'               '+x).join('\n'))}
+      else if(c==='cls')T.clear();
+      else if(c==='ipconfig')T.print(`乙太網路卡 乙太網路:\n   IPv4 位址 . . . . . . . . . . . . : ${S.winIP==='static'?ipv():'192.168.240.'+(150+ +XX)}\n   子網路遮罩 . . . . . . . . . . . . : 255.255.255.0`);
+      else if(c==='ping')T.print(a[1]===S.ftpIP?`Ping ${a[1]} (使用 32 位元組的資料):\n回覆自 ${a[1]}: 位元組=32 時間<1ms TTL=128\n回覆自 ${a[1]}: 位元組=32 時間<1ms TTL=128`:'要求等候逾時。');
+      else T.print(`'${a[0]}' 不是內部或外部命令、可執行的程式或批次檔。`);
+      T.setPrompt(prompt());return}
+    const need=()=>{if(!st.conn){T.print('未連線。');return true}if(!st.logged){T.print('530 Please login with USER and PASS.');return true}return false};
+    switch(c){
+    case '':break;
+    case 'open':if(st.conn)T.print('已連線到 '+S.ftpIP+'，請先使用 close。');else connect(T,a[1]);break;
+    case 'user':if(!st.conn){T.print('未連線。');break}login(T);break;
+    case 'quote':case 'literal':{if(need())break;const x=a.slice(1);
+      if((x[0]||'').toLowerCase()==='site'&&(x[1]||'').toLowerCase()==='pswd'){
+        if(!x[2]||!x[3]){T.print('501 Syntax error in parameters or arguments.');break}
+        if(x[2]!==FTP.pwd){T.print('530 Password change failed: old password incorrect.');break}
+        if(x[3].length<6){T.print('530 Password change failed: password does not meet requirements.');break}
+        FTP.pwd=x[3];FTP.changed=true;T.print('230 Password changed okay.')}
+      else if(!x.length)T.print('用法：quote 指令 參數');else T.print('500 Command not understood.');break}
+    case 'lcd':{if(!a[1]){T.print('目前本機目錄 '+st.cwd+'。');break}const p=resolve(l.slice(4).trim());
+      if(LFS()[p.toLowerCase()]!==undefined){st.cwd=disp(p);T.print('目前本機目錄 '+st.cwd+'。')}else T.print(a[1]+': 找不到檔案');break}
+    case 'put':case 'send':{if(need())break;if(!a[1]){T.print('用法：put 本機檔案 [遠端檔案]');break}
+      const p=resolve(a[1]);const d=dirOf(p).toLowerCase(),f=baseOf(p);const files=LFS()[d]||[];
+      const real=files.find(x=>x.toLowerCase()===f.toLowerCase());
+      if(!real){T.print(a[1]+': 找不到檔案');break}
+      const remote=a[2]||(/[\\:]/.test(a[1])?a[1]:real);
+      if(remote!==real)T.print('（注意：遠端檔名將為「'+remote+'」）');
+      const nm=baseOf(remote.replace(/\//g,'\\'));
+      FTP.uploads=FTP.uploads.filter(u=>u.name.toLowerCase()!==nm.toLowerCase());FTP.uploads.push({name:nm,from:disp(dirOf(p))});
+      T.print(`200 PORT command successful.\n150 Opening ${st.bin?'BINARY':'ASCII'} mode data connection for ${nm}.\n226 Transfer complete.\nftp: 已傳送 ${200+nm.length*37} 位元組，時間 0.00秒`);break}
+    case 'ls':case 'dir':if(need())break;T.print('200 PORT command successful.\n150 Opening ASCII mode data connection for /bin/ls.\n'+FTP.uploads.map(u=>u.name).join('\n')+'\n226 Transfer complete.');break;
+    case 'binary':case 'bin':if(need())break;st.bin=true;T.print('200 Type set to I.');break;
+    case 'ascii':if(need())break;st.bin=false;T.print('200 Type set to A.');break;
+    case 'pwd':if(need())break;T.print('257 "/" is current directory.');break;
+    case 'close':case 'disconnect':st.conn=false;st.logged=false;T.print('221 Goodbye!');break;
+    case 'bye':case 'quit':if(st.conn)T.print('221 Goodbye!');st.mode='cmd';st.conn=false;st.logged=false;break;
+    case 'help':case '?':T.print('可用：open user quote literal lcd put send ls dir binary ascii pwd close bye quit');break;
+    default:T.print('無效的命令。')}
+    T.setPrompt(prompt());showSt()}});
+  showSt();
+  if(id===12)checkBar(box,()=>[FTP.changed&&FTP.pwd===S.ftpPwd]);
+  else checkBar(box,()=>{const u=FTP.uploads.find(x=>x.name.toLowerCase()===baseOf(S.transfer).toLowerCase());return[!!u&&u.from.toLowerCase()===dirOf(S.transfer).toLowerCase()]});
+}
+
+/* 考場下載網站（練習用模擬） */
+function SITE_FONTS(){const f=[{href:'DFFN_S5.TTC',label:'DFFT_S5.TTC',name:'華康行書體'},{href:'DFFN_L3.TTC',label:'DFFT_L3.TTC',name:'華康隸書體'},{href:'DFFN_B5.TTC',label:'DFFT_B5.TTC',name:'華康中黑體'}];
+  if(!f.some(x=>x.name===S.font))f.push({href:S.font+'.TTF',label:S.font+'.TTF',name:S.font});return f}
+const SITE_APPS={'leechftp.exe':['leechftp','LeechFTP'],'cuteftpzt.exe':['cuteftp','CuteFTP'],'putty.msi':['putty','PuTTY'],'cwinzip81.exe':['winzip','WinZip 8.1'],'winrar.exe':['winrar','WinRAR']};
+function openSite(){
+  const f=SITE_FONTS(),n=f.length,h=Math.ceil(n/2);
+  const cell=(href,label,extra)=>`<td align="center" class="sc" ${extra||''}><a href="#" data-dl="${esc(href)}">${label}</a></td>`;
+  const lab=t=>`<td align="center" class="sc lab"><b><mark>${t}</mark></b></td>`;
+  const wrap=document.createElement('div');wrap.className='brwwrap';
+  wrap.innerHTML=`<div class="brw"><div class="bt"><span class="tabt">電腦硬體裝修丙級檢定術科網站</span><button class="bx" data-x>✕ 關閉瀏覽器</button></div>
+  <div class="addr"><span>←</span><span>→</span><span>⟳</span><span class="url">http://192.168.240.200/</span></div>
+  <div class="pg"><p class="h1"><b>📝 即測即評</b></p><p class="h1">電腦硬體裝修(丙級)技能檢定術科測驗軟體下載網站</p>
+  <table class="st"><tr><td align="center" class="sc"><b class="th">軟體類型</b></td><td colspan="${n}" align="center" class="sc"><b class="th">軟體名稱</b></td></tr>
+  <tr>${lab('中 文 字 型')}${f.map(x=>cell(x.href,`${esc(x.label)}<br>${esc(x.name)}`)).join('')}</tr>
+  <tr>${lab('檔案傳輸軟體')}${cell('leechftp.exe','LeechFTP')}${cell('cuteftpzt.exe','CuteFTP')}${cell('putty.msi','Putty',n>3?`colspan="${n-2}"`:'')}</tr>
+  <tr>${lab('壓 縮 軟 體')}${cell('cwinzip81.exe','WinZIP',`colspan="${h}"`)}${cell('winrar.exe','WinRAR',`colspan="${n-h}"`)}</tr>
+  <tr><td colspan="${n+1}" class="sc note1">備註：直接按滑鼠左鍵點選，下載至磁碟機，<strong>請勿直接安裝</strong>。</td></tr></table>
+  <p class="foot">（練習用模擬頁面）</p></div>
+  <div class="acover" data-cv></div><div class="alertbox" data-al><div style="font-size:13px;color:#555">192.168.240.200 顯示</div><div style="margin:10px 0 16px">溫馨提醒：請直接點選滑鼠左鍵下載至磁碟機，請勿直接安裝</div><div style="text-align:right"><button class="btn pri" data-ok>確定</button></div></div>
+  <div class="dlb" data-b style="display:none"></div></div>`;
+  document.body.appendChild(wrap);
+  $('[data-ok]',wrap).onclick=()=>{$('[data-al]',wrap).remove();$('[data-cv]',wrap).remove()};
+  const close=()=>{wrap.remove();REFRESH.forEach(fn=>fn())};
+  $('[data-x]',wrap).onclick=close;wrap.addEventListener('click',e=>{if(e.target===wrap)close()});
+  let tm;
+  $$('[data-dl]',wrap).forEach(a=>a.onclick=e=>{e.preventDefault();const href=a.dataset.dl;
+    if(!DL.some(d=>d.file===href)){const ft=f.find(x=>x.href===href);if(ft)DL.push({file:href,kind:'font',font:ft.name});else{const ap=SITE_APPS[href];DL.push({file:href,kind:'app',app:ap[0],label:ap[1]})}}
+    const b=$('[data-b]',wrap);b.style.display='block';b.innerHTML=`⬇ <b>${esc(href)}</b><br>下載完成 — 已儲存到「下載」資料夾`;clearTimeout(tm);tm=setTimeout(()=>b.style.display='none',3000);REFRESH.forEach(fn=>fn())});
+}
+
+function isP(id){return !!(EX&&EX.items[id]&&EX.items[id].passed)}
+function renderNav(){
+  $('#xx').textContent=EX?XX:'--';
+  $('#nav').innerHTML=ITEMS.map(it=>`<li><button class="${it.id===cur?'on':''} ${isP(it.id)?'done':''}" data-id="${it.id}"><span class="n">${isP(it.id)?'✓':it.id}</span><span class="t">${it.t}</span><span class="os">${it.os==='win'?'Win':it.os==='lx'?'Linux':'Win+Linux'}</span></button></li>`).join('');
+  $$('#nav button').forEach(b=>b.onclick=()=>{if(!EX)return;cur=+b.dataset.id;renderNav();renderMain();window.scrollTo(0,0)});
+  const n=ITEMS.filter(it=>isP(it.id)).length;$('#pc').textContent=n;$('#pb').style.width=(n/15*100)+'%';
+}
+function renderMain(){
+  if(!EX){$('#main').innerHTML='<div class="req">請先輸入基本資料並按「開始測驗」。</div>';return}
+  if(EX.submittedAt){renderResult();return}
+  const it=ITEMS.find(x=>x.id===cur);
+  const tags=it.os==='win'?'<span class="tag">微軟作業系統</span>':it.os==='lx'?'<span class="tag lx">Linux/UNIX</span>':'<span class="tag">微軟作業系統</span><span class="tag lx">Linux/UNIX</span>';
+  $('#main').innerHTML=`<div class="head"><div class="big">${it.id}</div><div><h2>${it.t} ${tags}</h2></div><span class="passed" id="passtag">${isP(it.id)?'✔ 已通過':''}</span></div>
+  <div class="req"><div class="lbl">題目說明</div><p>${it.d}</p><div class="lbl">本卷指定值（工作崗位 ${XX}）</div><div class="specv">${it.spec()}</div></div>
+  <div class="tabs"><button class="on">🖱 模擬作答</button></div>
+  <div class="panel" id="panel"></div>
+  <div class="row" style="justify-content:space-between;margin-top:14px">${cur>1?`<button class="cbtn ghost" data-go="${cur-1}">← 第 ${cur-1} 項</button>`:'<span></span>'}${cur<15?`<button class="cbtn ghost" data-go="${cur+1}">第 ${cur+1} 項 →</button>`:''}</div>`;
+  $$('[data-go]').forEach(b=>b.onclick=()=>{cur=+b.dataset.go;renderNav();renderMain();window.scrollTo(0,0)});
+  renderPanel();
+}
+function renderPanel(){
+  const p=$('#panel');if(!p)return;p.innerHTML='';
+  if(!simCache[cur]){const box=document.createElement('div');SIM[cur](box);simCache[cur]=box}
+  p.appendChild(simCache[cur]);
+}
+
+/* ---------- 測驗：狀態、計時、交卷 ---------- */
+function saveEx(){store.set(EXKEY,EX)}
+function rec(id){if(!EX.items[id])EX.items[id]={passed:false,attempts:0,firstPassSec:null};return EX.items[id]}
+function elapsedSec(){return Math.max(0,Math.round((Date.now()-Date.parse(EX.startedAt))/1000))}
+function deadline(){return EX&&EX.min>0?Date.parse(EX.startedAt)+EX.min*60000:0}
+const hms=s=>{s=Math.max(0,Math.floor(s));return [s/3600,s/60%60,s%60].map(x=>String(Math.floor(x)).padStart(2,'0')).join(':')};
+function tick(){
+  if(!EX){$('#timer').textContent='00:00:00';return}
+  const end=EX.submittedAt?Date.parse(EX.submittedAt):Date.now();
+  if(EX.min>0){const left=(deadline()-end)/1000;$('#tlabel').textContent='剩餘';$('#timer').textContent=hms(left);
+    if(!EX.submittedAt&&left<=0)doSubmit(true)}
+  else{$('#tlabel').textContent='經過';$('#timer').textContent=hms((end-Date.parse(EX.startedAt))/1000)}
+}
+function buildResult(){
+  const items={};let n=0;
+  for(let i=1;i<=15;i++){const r=EX.items[i]||{};const p=!!r.passed;if(p)n++;
+    items[String(i)]={passed:p,attempts:Math.max(0,r.attempts|0),firstPassSec:p&&typeof r.firstPassSec==='number'?r.firstPassSec:null}}
+  return {v:1,exam:'hdfix3',name:EX.name,sid:EX.sid,seat:EX.seat,startedAt:EX.startedAt,submittedAt:EX.submittedAt,
+    durationSec:Math.max(0,Math.round((Date.parse(EX.submittedAt)-Date.parse(EX.startedAt))/1000)),score:Math.round(n/15*100),items};
+}
+function doSubmit(auto){
+  if(!EX||EX.submittedAt)return;
+  let t=Date.now();const dl=deadline();if(dl&&t>dl)t=dl;
+  EX.submittedAt=new Date(t).toISOString();EX.auto=!!auto;saveEx();
+  $$('.brwwrap').forEach(x=>x.remove());simCache={};
+  updTop();renderNav();renderMain();tick();window.scrollTo(0,0);
+  if(QF)qfUpload();
+  if(auto)setTimeout(()=>alert('時間到，已自動交卷。'),50);
+}
+const safeName=s=>String(s).replace(/[\\/:*?"<>|\s]+/g,'_')||'_';
+function resultCode(){return 'HDFIX3:'+b64enc(JSON.stringify(buildResult()))}
+function renderResult(){
+  const r=buildResult(),n=Object.values(r.items).filter(x=>x.passed).length;
+  $('#main').innerHTML=`<div class="head"><div class="big">✔</div><div><h2>已交卷${EX.auto?'（時間到自動交卷）':''}</h2></div></div>
+  <div class="req"><div class="lbl">應檢人</div><p>${esc(r.name)}　座號／學號 ${esc(r.sid)}　工作崗位 ${esc(r.seat)}</p>
+  <div class="lbl">成績</div><div class="specv" style="font-size:22px">${r.score} 分　<span style="font-size:15px">（通過 ${n} / 15 題，作答時間 ${hms(r.durationSec)}）</span></div></div>
+  <div class="panel" style="border-radius:12px">
+  ${QF?'<div class="result" id="qfup" style="margin:0 0 12px"></div>':''}
+  <table class="dk"><thead><tr><th>題</th><th>項目</th><th>結果</th><th>檢查次數</th><th>首次通過</th></tr></thead><tbody>
+  ${ITEMS.map(it=>{const x=r.items[it.id];return `<tr><td>${it.id}</td><td>${it.t}</td><td style="color:${x.passed?'var(--ok)':'var(--bad)'};font-weight:700">${x.passed?'✔ 通過':'✘ 未通過'}</td><td>${x.attempts}</td><td>${x.firstPassSec==null?'—':hms(x.firstPassSec)}</td></tr>`}).join('')}
+  </tbody></table>
+  <div class="checkbar"><button class="cbtn go" id="dljson">⬇ 下載成績檔</button><button class="cbtn go" id="cpcode">📋 複製成績碼</button></div>
+  <div class="note" style="margin-top:10px">把「成績檔」或「成績碼」交給老師（例如貼到 Google Classroom）。成績碼：</div>
+  <textarea class="code" id="codebox" readonly style="height:90px">${esc(resultCode())}</textarea>
+  <div class="result" id="cpmsg"></div></div>`;
+  $('#dljson').onclick=()=>{const b=new Blob([JSON.stringify(buildResult(),null,2)],{type:'application/json'});const a=document.createElement('a');
+    a.href=URL.createObjectURL(b);a.download=`hdfix3_${safeName(EX.sid)}_${safeName(EX.name)}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000)};
+  $('#cpcode').onclick=()=>{const code=resultCode(),m=$('#cpmsg'),ok=()=>{m.className='result ok';m.textContent='✔ 已複製成績碼，請貼給老師。'};
+    const fb=()=>{const t=$('#codebox');t.focus();t.select();let s=false;try{s=document.execCommand('copy')}catch(e){}if(s)ok();else{m.className='result bad';m.textContent='無法自動複製，請手動全選上方文字後複製。'}};
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(code).then(ok,fb);else fb()};
+  qfStatus();
+}
+function updTop(){
+  $('#who').textContent=EX?`${EX.name}（${EX.sid}）・${EX.submittedAt?'已交卷':'測驗中'}`:'測驗模式・不提供解答';
+  $('#submit').style.display=EX&&!EX.submittedAt?'':'none';
+  $('#site').style.display=EX&&!EX.submittedAt?'':'none';
+  $('#restart').style.display=EX?'':'none';
+}
+function showStart(){
+  $('#f_xx').value=rndXX();
+  const info=[];
+  if(QF){info.push(`QuizFlow 連線測驗「${QF.title}」：本卷指定值由老師設定，交卷後成績會自動上傳給老師。`);
+    const m=store.get(QF_STU);if(m&&typeof m==='object'){if(m.name)$('#f_name').value=m.name;if(m.sid)$('#f_sid').value=m.sid;if(/^\d{2}$/.test(m.seat||''))$('#f_xx').value=m.seat}}
+  else if(Q.get('spec'))info.push(Object.keys(URLSPEC).length?'本卷指定值由老師設定。':'⚠ 老師提供的指定值參數無法讀取，已使用預設值（表 A）。');
+  if(MIN>0)info.push(`限時 ${MIN} 分鐘，時間到自動交卷。`);
+  $('#f_info').textContent=info.join(' ');
+  $('#startm').classList.add('show');$('#f_name').focus();
+}
+$('#f_rnd').onclick=()=>{$('#f_xx').value=rndXX()};
+$('#f_go').onclick=()=>{
+  const name=$('#f_name').value.trim(),sid=$('#f_sid').value.trim(),xv=$('#f_xx').value.trim(),xn=parseInt(xv,10),err=$('#f_err');
+  if(!name)return err.textContent='請輸入姓名';
+  if(!sid)return err.textContent='請輸入座號／學號';
+  if(!/^\d{1,2}$/.test(xv)||xn<1||xn>24)return err.textContent='工作崗位號碼需為 01–24';
+  XX=String(xn).padStart(2,'0');
+  EX={v:1,name,sid,seat:XX,startedAt:new Date().toISOString(),submittedAt:null,min:MIN,spec:S,items:{}};saveEx();
+  if(QF)store.set(QF_STU,{name,sid,seat:XX});
+  $('#startm').classList.remove('show');simCache={};resetShared();cur=1;updTop();renderNav();renderMain();tick();
+};
+$('#submit').onclick=()=>{if(!EX||EX.submittedAt)return;const n=ITEMS.filter(it=>isP(it.id)).length;
+  if(confirm(`確定要交卷嗎？交卷後就不能再作答。\n目前通過 ${n} / 15 題。`))doSubmit(false)};
+$('#restart').onclick=()=>{if(!confirm(EX&&EX.submittedAt?'重新開始會清除這次的成績，確定嗎？（請先確認已下載或複製成績）':'重新開始會清除所有作答紀錄，確定嗎？'))return;
+  try{localStorage.removeItem(EXKEY)}catch(e){}location.reload()};
+$('#site').onclick=()=>{if(EX&&!EX.submittedAt)openSite()};
+
+/* ---------- QuizFlow 連線模式 ---------- */
+function qfBanner(html,kind){let b=$('#qfbar');if(!b){b=document.createElement('div');b.id='qfbar';$('.top').after(b)}
+  b.style.cssText='padding:8px 20px;font-size:13.5px;border-bottom:1px solid var(--line);'+(kind==='bad'?'background:var(--badbg);color:var(--bad)':'background:var(--acc2);color:var(--ink)');b.innerHTML=html}
+let qfBusy=false;
+async function qfUpload(){
+  if(!QF||!EX||!EX.submittedAt||qfBusy)return;
+  qfBusy=true;EX.qf={pending:true};qfStatus();
+  try{
+    const r=await fetch(`/api/sim/${encodeURIComponent(QF.code)}/submit`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(buildResult())});
+    let j=null;try{j=await r.json()}catch(e){}
+    if(!r.ok||!j||!j.ok)throw new Error((j&&(j.error||j.message))||('HTTP '+r.status));
+    EX.qf={ok:true,score:j.score,attemptNo:j.attemptNo};
+  }catch(e){EX.qf={ok:false,error:String(e&&e.message||e)}}
+  qfBusy=false;saveEx();qfStatus();
+}
+function qfStatus(){
+  const el=$('#qfup');if(!el||!QF||!EX)return;const s=EX.qf||{};
+  if(s.pending){el.className='result ok';el.innerHTML='⏳ 正在上傳成績到老師的 QuizFlow…';return}
+  if(s.ok){el.className='result ok';el.innerHTML=`<b>✅ 已上傳到老師的 QuizFlow</b>　${typeof s.score==='number'?esc(s.score)+' 分':''}${s.attemptNo?'・第 '+esc(s.attemptNo)+' 次交卷':''}`;return}
+  el.className='result bad';
+  el.innerHTML=`<b>⚠ 成績上傳失敗</b>（${esc(s.error||'未知錯誤')}）<br>請按「🔁 重新上傳」，或用下方「下載成績檔」／「複製成績碼」交給老師。<div style="margin-top:8px"><button class="cbtn go" id="qfretry">🔁 重新上傳</button></div>`;
+  $('#qfretry').onclick=qfUpload;
+}
+async function qfInit(){
+  $('#main').innerHTML='<div class="req">正在連線到 QuizFlow，讀取老師設定的測驗…</div>';
+  try{
+    const r=await fetch(`/api/sim/${encodeURIComponent(QF.code)}`,{headers:{Accept:'application/json'}});
+    let j=null;try{j=await r.json()}catch(e){}
+    if(!r.ok||!j||typeof j!=='object')throw new Error((j&&(j.error||j.message))||('HTTP '+r.status));
+    QF.title=String(j.title||'');QF.timeLimitMin=Math.max(0,+j.timeLimitMin||0);
+    URLSPEC=cleanSpec(j.spec);MIN=QF.timeLimitMin;
+    S=Object.assign({},DEF,EX&&EX.spec?EX.spec:URLSPEC);
+    qfBanner(`🔗 QuizFlow 連線測驗：<b>${esc(QF.title||'實作模擬')}</b>　指定值由老師設定${MIN>0?`・限時 ${MIN} 分鐘`:''}・交卷後成績自動上傳`);
+  }catch(e){
+    console.warn('QuizFlow 連線失敗，改用離線模式',e);
+    QF=null;URLSPEC=urlSpec();MIN=Math.max(0,parseFloat(Q.get('min'))||0);
+    S=Object.assign({},DEF,EX&&EX.spec?EX.spec:URLSPEC);
+    qfBanner(`⚠ 無法連線到 QuizFlow（${esc(e&&e.message||e)}），已改用離線模式：成績不會自動上傳，交卷後請下載成績檔或複製成績碼交給老師。`,'bad');
+  }
+  boot();
+}
+function boot(){
+  resetShared();updTop();renderNav();renderMain();tick();setInterval(tick,1000);
+  if(!EX)showStart();
+  else if(QF&&EX.submittedAt&&!(EX.qf&&EX.qf.ok))qfUpload(); // 交卷後重新整理／上次上傳中斷 → 補傳
+}
+if(QF)qfInit();else boot();
+</script>
+</body>
+</html>
