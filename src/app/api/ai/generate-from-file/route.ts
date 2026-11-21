@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { PDFDocument } from 'pdf-lib';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
+import { AI_TIMEOUT_MESSAGE, AIDeadlineError, callWithDeadline, canStartAttempt, createDeadline, type Deadline } from '@/lib/ai/aiDeadline';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
 import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
@@ -18,7 +19,19 @@ import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// Vercel Hobby + Fluid compute 的上限是 300 秒（同 generate-subject-from-file）。
+// 60 秒時 PDF 多模態出題常常剛好卡線被平台砍掉（2026-11-18 production / preview 逾時）
+export const maxDuration = 300;
+
+// 時間預算：從收到請求起算，比 maxDuration 少 30 秒，留給 JSON 後處理與回應，
+// 讓 route 自己回 504 JSON，而不是被平台砍掉回非 JSON 的錯誤頁
+const ROUTE_BUDGET_MS = 270_000;
+// 單次 AI 呼叫上限：卡住的連線不會吃光整個預算，還能重試 / fallback
+const ATTEMPT_CAP_MS = 150_000;
+// 剩不到這麼多時間就不開新的一次 AI 呼叫（PDF 多模態出題很少在 20 秒內完成）
+const MIN_ATTEMPT_MS = 20_000;
+// 截斷 / 失敗後改走另一個模型「整份重出」至少要留的時間
+const MIN_FALLBACK_MS = 45_000;
 
 type ModelChoice = QuizModelChoice;
 const DEFAULT_MODEL: ModelChoice = 'gemini';
@@ -38,27 +51,39 @@ const genAI = hasGeminiKey
   : null;
 const anthropic = hasAnthropicKey ? new Anthropic() : null;
 
-// 過載 / 限流自動重試，最多 3 次遞增 backoff
-async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      return await fn();
-    } catch (err) {
+// 過載 / 限流自動重試，最多 3 次遞增 backoff；全部受時間預算約束（見 src/lib/ai/aiDeadline.ts）
+// fn 收到這次呼叫的 AbortSignal 與 timeoutMs，必須轉交給 SDK
+function callWithRetry<T>(
+  deadline: Deadline,
+  fn: (signal: AbortSignal, timeoutMs: number) => Promise<T>,
+): Promise<T> {
+  return callWithDeadline(fn, {
+    deadline,
+    maxRetries: 3,
+    baseDelayMs: 1500,
+    attemptCapMs: ATTEMPT_CAP_MS,
+    minAttemptMs: MIN_ATTEMPT_MS,
+    isRetryable: (err) => {
       const status = (err as { status?: number; code?: number }).status
         ?? (err as { code?: number }).code;
       // Anthropic 529、Gemini 429 / 5xx 都視為可重試
-      const retryable
-        = status === 429
+      return status === 429
         || status === 529
         || (typeof status === 'number' && status >= 500)
         || (err instanceof Error && err.message.includes('overloaded'));
-      if (!retryable || i === maxRetries - 1) {
-        throw err;
-      }
-      await new Promise(r => setTimeout(r, (i + 1) * 1500));
-    }
+    },
+  });
+}
+
+// 分段計時 log：下次逾時可直接從 Vercel logs 看出卡在哪一段
+// 測試環境不輸出（vitest-fail-on-console 會把 console.info 當失敗，其他 route 測試不必為此 spy）
+function logStage(deadline: Deadline, stage: string, extra = '') {
+  if (process.env.VITEST) {
+    return;
   }
-  throw new Error('AI API 目前過載，請稍後再試');
+  // 正常流程的計時資訊用 info level（不是 warning），方便在 Vercel logs 依 level 篩
+  // eslint-disable-next-line no-console
+  console.info(`[generate-from-file] stage=${stage} ms=${deadline.elapsedMs()}${extra ? ` ${extra}` : ''}`);
 }
 
 // 一份多模態素材：mimeType + base64
@@ -69,11 +94,13 @@ type Media = { mimeType: string; base64: string };
 async function generateWithGemini(
   media: Media[],
   prompt: string,
+  deadline: Deadline,
 ): Promise<string> {
   if (!genAI) {
     throw new Error('GEMINI_API_KEY_MISSING');
   }
-  const response = await callWithRetry(() =>
+  const t0 = deadline.elapsedMs();
+  const response = await callWithRetry(deadline, (signal, timeoutMs) =>
     genAI.models.generateContent({
       model: GEMINI_MODEL_NAME,
       contents: [
@@ -90,11 +117,15 @@ async function generateWithGemini(
         maxOutputTokens: 16384,
         responseMimeType: 'application/json',
         thinkingConfig: { thinkingBudget: 0 },
+        abortSignal: signal,
+        httpOptions: { timeout: timeoutMs },
       },
     }));
 
-  // finishReason 非 STOP = 輸出被截斷,丟 sentinel error 讓外層 catch 改走 Claude 重出
   const finishReason = response.candidates?.[0]?.finishReason;
+  logStage(deadline, 'ai', `model=${GEMINI_MODEL_NAME} callMs=${deadline.elapsedMs() - t0} finish=${finishReason} chars=${(response.text ?? '').length}`);
+
+  // finishReason 非 STOP = 輸出被截斷,丟 sentinel error 讓外層 catch 改走 Claude 重出
   if (finishReason && finishReason !== 'STOP') {
     console.warn(`[generate-from-file] Gemini finishReason=${finishReason}（${(response.text ?? '').length} 字），改走 Claude 重出`);
     throw new Error('GEMINI_TRUNCATED');
@@ -107,6 +138,7 @@ async function generateWithGemini(
 async function generateWithClaude(
   media: Media[],
   prompt: string,
+  deadline: Deadline,
 ): Promise<string> {
   if (!anthropic) {
     throw new Error('ANTHROPIC_API_KEY_MISSING');
@@ -131,12 +163,16 @@ async function generateWithClaude(
     { type: 'text', text: prompt },
   ];
 
-  const message = await callWithRetry(() =>
+  const t0 = deadline.elapsedMs();
+  // maxRetries: 0 —— SDK 預設自己會再重試 2 次，疊上外層 callWithRetry 3 次 = 最多 9 次，
+  // 重試只交給受時間預算約束的 callWithRetry
+  const message = await callWithRetry(deadline, (signal, timeoutMs) =>
     anthropic.messages.create({
       model: CLAUDE_MODEL_NAME,
       max_tokens: 4096,
       messages: [{ role: 'user', content }],
-    }));
+    }, { signal, timeout: timeoutMs, maxRetries: 0 }));
+  logStage(deadline, 'ai', `model=${CLAUDE_MODEL_NAME} callMs=${deadline.elapsedMs() - t0} stop=${message.stop_reason}`);
 
   return (message.content[0] as { type: string; text: string }).text ?? '';
 }
@@ -170,6 +206,7 @@ const TYPE_EXAMPLES: Record<string, string> = {
 };
 
 export async function POST(request: Request) {
+  const deadline = createDeadline(ROUTE_BUDGET_MS);
   const { userId } = await auth();
   if (!userId) {
     return NextResponse.json({ error: '未登入' }, { status: 401 });
@@ -417,20 +454,25 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     });
   }
 
+  logStage(deadline, 'prepare', `model=${effectiveModel} files=${uploaded.length} bytes=${media.reduce((n, m) => n + m.base64.length, 0)} types=${types.join(',')} count=${count}`);
+
   try {
     let raw: string;
     try {
       raw = effectiveModel === 'claude'
-        ? await generateWithClaude(media, prompt)
-        : await generateWithGemini(media, prompt);
+        ? await generateWithClaude(media, prompt, deadline)
+        : await generateWithGemini(media, prompt, deadline);
     } catch (err) {
-      if (err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey && allowClaude) {
+      // 整份重出至少要留 MIN_FALLBACK_MS，不夠就直接回原本的錯誤（不硬撐到被平台砍掉）
+      const canFallback = !(err instanceof AIDeadlineError)
+        && canStartAttempt(deadline, { minAttemptMs: MIN_FALLBACK_MS });
+      if (canFallback && err instanceof Error && err.message === 'GEMINI_TRUNCATED' && hasAnthropicKey && allowClaude) {
         // Gemini 截斷自動 fallback Claude（要有 ANTHROPIC_API_KEY，且限 Pro）
-        raw = await generateWithClaude(media, prompt);
-      } else if (effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
+        raw = await generateWithClaude(media, prompt, deadline);
+      } else if (canFallback && effectiveModel === 'claude' && hasGeminiKey && !isAudio) {
         // Claude 失敗（額度不足/過載等）→ fallback Gemini（音檔本來就只走 Gemini，不會進這裡）
         console.warn('[generate-from-file] Claude 失敗，fallback Gemini：', err instanceof Error ? err.message : err);
-        raw = await generateWithGemini(media, prompt);
+        raw = await generateWithGemini(media, prompt, deadline);
       } else {
         throw err;
       }
@@ -472,8 +514,18 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
       attachDiagramSvgs(result.questions);
     }
 
+    logStage(deadline, 'done', `model=${effectiveModel} questions=${result.questions?.length ?? 0}`);
     return NextResponse.json(result);
   } catch (err) {
+    // 時間預算用完：回 504 JSON，前端能顯示具體建議（而不是平台逾時的非 JSON 錯誤頁）
+    if (err instanceof AIDeadlineError) {
+      console.error(`[generate-from-file] stage=deadline ms=${deadline.elapsedMs()} model=${effectiveModel} 時間預算用完`, err.cause ?? '');
+      return NextResponse.json(
+        { error: AI_TIMEOUT_MESSAGE, retryable: true },
+        { status: 504 },
+      );
+    }
+
     const status = (err as { status?: number; code?: number }).status
       ?? (err as { code?: number }).code;
     const overloaded

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 
+import { describeAiHttpFailure } from '@/lib/ai/httpFailureMessage';
 import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
 
 import { AIModelPicker } from './AIModelPicker';
@@ -172,9 +173,10 @@ export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
       fd.append('model', resolveQuizModelChoice(model, isPro));
 
       const res = await fetch('/api/ai/generate-from-file', { method: 'POST', body: fd });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || '命題失敗');
+      // Vercel 逾時等平台錯誤回的不是 JSON：解析失敗時改用狀態碼給具體訊息
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data) {
+        throw new Error(data?.error || describeAiHttpFailure(res.status));
       }
       setResult(data);
     } catch (e: unknown) {
