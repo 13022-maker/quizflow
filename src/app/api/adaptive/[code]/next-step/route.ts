@@ -8,11 +8,16 @@
  */
 import type { AdaptiveService } from '@/libs/adaptive/service';
 import { getServiceByCode, toClientStep, toErrorResponse } from '@/libs/adaptive/service';
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
 
 export async function GET(
   request: Request,
   { params }: { params: { code: string } },
 ) {
+  const limited = await enforcePublicAiLimit(request, 'adaptive-next-step');
+  if (limited) {
+    return limited;
+  }
   const studentKey = new URL(request.url).searchParams.get('student')?.trim();
   if (!studentKey) {
     return Response.json({ error: '缺少 ?student= 學號參數' }, { status: 400 });

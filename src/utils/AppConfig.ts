@@ -32,18 +32,21 @@ export const PricingPlanList: Record<string, PricingPlan> = {
   [PLAN_ID.FREE]: {
     id: PLAN_ID.FREE,
     price: 0,
+    yearlyPrice: 0,
     interval: BILLING_INTERVAL.MONTH,
     features: {
       teamMember: 1,
-      website: 10, // 最多 10 個測驗
+      website: 999, // 2026-11 起不設測驗總數上限
+      dailyQuizLimit: 5, // 試用期結束後每天最多建立 5 份，第 6 份導向定價頁
       storage: 0,
       transfer: 0,
-      aiQuota: 10, // 免費用戶每月 10 次 AI 出題
+      aiQuota: 30, // 免費用戶每月 30 次 AI 出題
     },
   },
   [PLAN_ID.PREMIUM]: {
     id: PLAN_ID.PREMIUM,
     price: 299, // Pro 老師：NT$299/月（年繳 NT$2,490），無限測驗 + AI 出題
+    yearlyPrice: 2490,
     interval: BILLING_INTERVAL.MONTH,
     features: {
       teamMember: 1,
@@ -56,6 +59,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
   [PLAN_ID.ENTERPRISE]: {
     id: PLAN_ID.ENTERPRISE,
     price: 1990, // 學校方案：NT$1,990/月（年繳 NT$16,990），最多 30 位老師
+    yearlyPrice: 16990,
     interval: BILLING_INTERVAL.MONTH,
     features: {
       teamMember: 30, // 最多 30 位老師帳號（學校方案）
@@ -68,6 +72,7 @@ export const PricingPlanList: Record<string, PricingPlan> = {
   [PLAN_ID.PUBLISHER]: {
     id: PLAN_ID.PUBLISHER,
     price: 990, // 書商方案：NT$990/月（年繳 NT$9,900），位於 Pro 與 Enterprise 之間
+    yearlyPrice: 9900,
     interval: BILLING_INTERVAL.MONTH,
     features: {
       teamMember: 5, // 書商編輯席次（小型編輯團隊）

@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { probeAudioDuration } from '@/lib/audioDuration';
 import { extractClozeAnswers } from '@/lib/cloze';
+import { MISSING_FIGURE_WARNING, needsFigure } from '@/lib/figureReference';
 import { orderRankingOptions } from '@/lib/quiz/answerNormalize';
 
 import { ClozeEditor } from './ClozeEditor';
@@ -434,6 +435,14 @@ export function QuestionForm({ defaultValues, onSubmit, onCancel, isPending, qui
         </div>
         {uploadError && (
           <p className="mt-1 text-xs text-destructive">{uploadError}</p>
+        )}
+        {/* 題目提到「如右圖」等卻沒附圖：學生端看不到圖、無法作答 */}
+        {needsFigure({ body: form.watch('body') ?? '', imageUrl: form.watch('imageUrl') }) && (
+          <p className="mt-1 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            ⚠️
+            {' '}
+            {MISSING_FIGURE_WARNING}
+          </p>
         )}
         {(() => {
           const { warning } = normalizeImageUrl(form.watch('imageUrl') ?? '');

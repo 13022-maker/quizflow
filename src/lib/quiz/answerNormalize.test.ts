@@ -118,6 +118,24 @@ describe('resolveShortAnswerReference', () => {
   it('兩者都沒有時回傳 null', () => {
     expect(resolveShortAnswerReference({ referenceAnswer: null, correctAnswers: null })).toBeNull();
   });
+
+  it('多格填空題：correctAnswers 每格一筆時，參考答案要列出全部空格（對應學生答案的編號格式）', () => {
+    expect(resolveShortAnswerReference({
+      type: 'short_answer',
+      body: '光合作用需要 ___ 與 ___。',
+      referenceAnswer: null,
+      correctAnswers: ['二氧化碳', '水'],
+    })).toBe('(1) 二氧化碳；(2) 水');
+  });
+
+  it('多格填空題仍以老師填的 referenceAnswer 優先', () => {
+    expect(resolveShortAnswerReference({
+      type: 'short_answer',
+      body: '光合作用需要 ___ 與 ___。',
+      referenceAnswer: '二氧化碳、水',
+      correctAnswers: ['二氧化碳', '水'],
+    })).toBe('二氧化碳、水');
+  });
 });
 
 describe('normalizeFreeText', () => {

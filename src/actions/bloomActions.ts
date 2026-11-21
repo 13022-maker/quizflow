@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
+import { getDailyQuizQuota } from '@/libs/quizQuota-dao';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 // Bloom API 回傳的題目格式
@@ -72,6 +73,11 @@ export async function createQuizWithBloomQuestions(
   const titleResult = TitleSchema.safeParse(title);
   if (!titleResult.success) {
     return { error: titleResult.error.errors[0]?.message ?? '標題格式錯誤' };
+  }
+
+  // 每日建立上限（試用結束後的 Free 每天 5 份），與 quizActions.createQuiz 一致
+  if ((await getDailyQuizQuota(userId)).exceeded) {
+    return { error: 'QUOTA_EXCEEDED' };
   }
 
   // 建立測驗

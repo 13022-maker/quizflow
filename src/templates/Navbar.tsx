@@ -32,12 +32,7 @@ export const Navbar = () => {
           </>
         )}
       >
-        {/* Paddle production 上線前先隱藏定價連結 */}
-        {process.env.NEXT_PUBLIC_PRICING_ENABLED === 'true' && (
-          <li>
-            <Link href="/pricing">{t('pricing')}</Link>
-          </li>
-        )}
+        {/* 2026-11：公開頁訪客皆為新使用者，navbar 不顯示定價入口（footer 保留，Paddle 審核需要） */}
         <li>
           <Link href="/blog">{t('blog')}</Link>
         </li>

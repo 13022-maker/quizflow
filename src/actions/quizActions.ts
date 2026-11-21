@@ -1,7 +1,7 @@
 'use server';
 
 import { auth } from '@clerk/nextjs/server';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
@@ -10,10 +10,9 @@ import { z } from 'zod';
 import { ensureUniqueSlug, generateSlug } from '@/lib/slug';
 import { db } from '@/libs/DB';
 import { insertDuplicatedQuiz, loadSourceQuiz } from '@/libs/fork-dao';
-import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
+import { getDailyQuizQuota } from '@/libs/quizQuota-dao';
 import { recordStreakActivity } from '@/libs/streak';
 import { quizSchema } from '@/models/Schema';
-import { PricingPlanList } from '@/utils/AppConfig';
 
 // 生成 6 碼大寫英數房間碼（A-Z, 0-9）
 function generateRoomCode(): string {
@@ -63,25 +62,10 @@ export async function createQuiz(data: CreateQuizInput) {
     return { error: parsed.error.errors[0]?.message ?? '資料格式錯誤' };
   }
 
-  // VIP 白名單不限制
-  const { isVipUser } = await import('@/libs/vip');
-  if (await isVipUser()) {
-    // VIP 直接跳過 quota 檢查
-  } else if (await isProOrAbove(userId)) {
-    // 試用中老師享 Pro 待遇（與 isProOrAbove 一致）
-  } else {
-  // 檢查免費方案測驗數量上限（999 代表無限制，即 Pro/Enterprise）
-    const planId = await getUserPlanId(userId);
-    const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
-    if (quizLimit < 999) {
-      const [row] = await db
-        .select({ total: count() })
-        .from(quizSchema)
-        .where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot')));
-      if ((row?.total ?? 0) >= quizLimit) {
-        return { error: 'QUOTA_EXCEEDED' };
-      }
-    }
+  // 每日建立上限：試用結束後的 Free 每天最多 5 份（VIP / Pro / 試用中不限），超過由前端導向定價頁
+  const dailyQuota = await getDailyQuizQuota(userId);
+  if (dailyQuota.exceeded) {
+    return { error: 'QUOTA_EXCEEDED' };
   }
 
   const roomCode = await generateUniqueRoomCode();

@@ -1,5 +1,6 @@
 'use client';
 
+import { QuestionBody } from '@/components/quiz/QuestionBody';
 import { Button } from '@/components/ui/button';
 import { useServerNow } from '@/hooks/useServerNow';
 import { latestBuzzEvent } from '@/services/live/buzzer';
@@ -65,7 +66,7 @@ export function LiveBuzzerHostScreen({ state, onReveal, onNext, onEnd, pending }
       </div>
 
       <div className="rounded-2xl border bg-card p-6">
-        <h2 className="text-2xl font-bold leading-relaxed md:text-3xl">{currentQuestion.body}</h2>
+        <QuestionBody text={currentQuestion.body} className="text-2xl font-bold leading-relaxed md:text-3xl" />
         {currentQuestion.imageUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={currentQuestion.imageUrl} alt="" className="mt-4 max-h-72 rounded-lg" />

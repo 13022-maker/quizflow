@@ -6,6 +6,7 @@ import { useCallback, useState, useTransition } from 'react';
 
 import { type BloomQuestion, createQuizWithBloomQuestions } from '@/actions/bloomActions';
 import { matchChoiceAnswerId } from '@/lib/quiz/answerNormalize';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH } from '@/libs/quizQuota';
 
 // ---------- 常數 ----------
 
@@ -199,6 +200,10 @@ export function BloomQuizGenerator() {
     startTransition(async () => {
       const result = await createQuizWithBloomQuestions(title, output.questions);
       if ('error' in result) {
+        if (result.error === 'QUOTA_EXCEEDED') {
+          router.push(DAILY_QUIZ_LIMIT_PRICING_PATH);
+          return;
+        }
         setImportError(result.error);
         return;
       }

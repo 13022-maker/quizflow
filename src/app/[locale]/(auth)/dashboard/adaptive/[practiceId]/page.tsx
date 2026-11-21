@@ -3,6 +3,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
+import { calcAdaptiveScore } from '@/libs/adaptive/adaptiveScore';
 import {
   filterActiveStudentKeys,
   lastMonthRangeInTaipei,
@@ -18,6 +19,7 @@ import { adaptiveEventSchema, adaptivePracticeSchema, adaptiveStudentStateSchema
 
 import { AutoRefresh } from '../AutoRefresh';
 import { CopyLinkButton } from '../CopyLinkButton';
+import { ShareClassroomButton } from '../ShareClassroomButton';
 import { AdaptiveExportButtons } from './AdaptiveExportButtons';
 import { DeletePracticeButton } from './DeleteButton';
 import { GenerateWeakpointFlashcardsButton } from './GenerateWeakpointFlashcardsButton';
@@ -142,21 +144,10 @@ export default async function AdaptiveBoardPage({
     })
     .filter((v): v is { prompt: string; wrongCount: number; knowledgeName: string } => v !== null);
 
-  // 每位學生先算好學習後分數＝已解鎖知識點（已精熟＋學習中）的精熟度平均 ×100
-  // 鎖定中的知識點從未派過題、mastery 永遠停在初始值，排除在外才能反映個別學生的實際差異
-  const scoredStudents = students.map((s) => {
-    const unlocked = s.diagnosis.filter(d => d.status !== 'locked');
-    return {
-      ...s,
-      score: unlocked.length > 0
-        ? Math.round(
-          (unlocked.reduce((sum, d) => sum + d.mastery, 0) / unlocked.length) * 100,
-        )
-        : null,
-      // 總作答次數：加總所有知識點的作答次數，直接反映每位學生實際花的次數差異
-      totalAttempts: s.diagnosis.reduce((sum, d) => sum + d.attempts, 0),
-    };
-  });
+  const scoredStudents = students.map(s => ({
+    ...s,
+    ...calcAdaptiveScore(s.diagnosis),
+  }));
 
   // 依網址 ?sort= 排序（無分數者視為最低分排在後面）；未指定則維持加入順序
   const sort = searchParams.sort === 'score_asc' || searchParams.sort === 'score_desc'
@@ -222,10 +213,11 @@ export default async function AdaptiveBoardPage({
           {' '}
           {practice.title}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StartLiveModeButton practiceId={practice.id} itemCount={service.subject.itemBank.items.length} />
           <GenerateWeakpointFlashcardsButton subjectName={service.subject.name} topWrongItems={topWrongItems} />
           <CopyLinkButton path={`/adaptive/${practice.accessCode}`} />
+          <ShareClassroomButton path={`/adaptive/${practice.accessCode}`} title={practice.title} />
           <AdaptiveExportButtons csvHref={exportHref} sheetHref={sheetHref} />
           <DeletePracticeButton id={practice.id} />
         </div>

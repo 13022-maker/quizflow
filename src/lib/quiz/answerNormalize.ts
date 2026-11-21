@@ -6,6 +6,7 @@
  * 所有「AI 回傳 → 存進 DB」的轉存點都應該經過這裡，不要各自手寫比對。
  */
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { getMultiBlankCount, joinBlankAnswers, resolveBlankAnswers } from '@/lib/fillBlank';
 
 type Option = { id: string; text: string };
 
@@ -104,11 +105,21 @@ export function orderRankingOptions<T extends Option>(options: T[], correctAnswe
  * 沒有時退回 correctAnswers[0]（AI 匯入的填充題答案存在這裡）。
  */
 export function resolveShortAnswerReference(q: {
+  type?: string;
+  body?: string | null;
   referenceAnswer: string | null;
   correctAnswers: string[] | null;
 }): string | null {
   if (q.referenceAnswer) {
     return q.referenceAnswer;
+  }
+  // 多格填空題：各格正解組成「(1) 甲；(2) 乙」，與學生答案的編號格式一致，不能只取第一格
+  const blankCount = q.type ? getMultiBlankCount({ type: q.type, body: q.body }) : 0;
+  if (blankCount > 0) {
+    const blanks = resolveBlankAnswers(q.correctAnswers, blankCount);
+    if (blanks) {
+      return joinBlankAnswers(blanks);
+    }
   }
   return q.correctAnswers?.[0] || null;
 }
