@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>步步驚心：Range 陷阱｜APCS Python range() 陷阱題 · QuizFlow</title>
+<meta name="description" content="用 range(start, stop, step) 打爆金磚、避開炸彈！10 關 APCS Python 陷阱題＋60 秒挑戰，免登入直接玩。">
+<meta property="og:title" content="步步驚心：Range 陷阱｜APCS Python range() 陷阱題">
+<meta property="og:description" content="stop 不含、負 step、step=0…10 關陷阱題，免登入直接玩。">
+<meta property="og:type" content="website">
+<link rel="icon" href="/favicon.ico">
+<style>
+:root{--bg:#0d121c;--card:#161d2b;--line:#2a3447;--txt:#e8ecf3;--dim:#8a94a8;--yel:#f5c84b;--blue:#5aa9ff;--red:#ef5a5a;--grn:#3ddc97;--pur:#a78bfa}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow-x:hidden;overscroll-behavior:none;touch-action:manipulation;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif}
+body{background-image:radial-gradient(#ffffff10 1px,transparent 1px);background-size:22px 22px;display:flex;justify-content:center}
+.app{width:100%;max-width:480px;min-height:100vh;min-height:100dvh;padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));display:flex;flex-direction:column;gap:8px;position:relative}
+.mono{font-family:ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.badge{border:2px solid var(--yel);color:var(--yel);border-radius:999px;padding:4px 12px;font-weight:800;font-size:15px;white-space:nowrap}
+.hud{display:flex;gap:10px;font-size:13px;color:var(--dim);align-items:center}
+.hud b{color:var(--txt);font-size:15px}
+.balls span{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--yel);margin-left:3px}
+.balls span.used{background:#333c4f}
+.icon-btn{background:var(--card);border:1px solid var(--line);color:var(--txt);border-radius:10px;padding:5px 9px;font-size:14px;cursor:pointer}
+.code{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:clamp(14px,4.3vw,18px);line-height:1.7;white-space:nowrap;overflow-x:auto}
+.kw{color:#c792ea}.fn{color:var(--blue)}.na{color:var(--yel);font-weight:700}.nb{color:var(--red);font-weight:700}.nc{color:var(--grn);font-weight:700}.pr{color:#c792ea}
+.goal{font-size:13px;color:var(--dim);text-align:center;min-height:18px}
+.cond{text-align:center;min-height:58px}
+.cond .big{font-size:clamp(24px,7.5vw,32px);font-weight:800}
+.cond .sub{font-size:12.5px;color:var(--dim)}
+.ok{color:var(--grn)}.bad{color:var(--red)}
+.app>*{flex-shrink:0}
+.stage{flex:1 1 auto;min-height:170px;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.out{display:flex;gap:8px;align-items:center;overflow-x:auto;min-height:52px;padding:2px 0}
+.out .lab{background:#2a3242;color:var(--dim);border-radius:8px;padding:6px 10px;font-size:13px;flex:none}
+.out .box{flex:none;min-width:44px;height:46px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;border:2px solid var(--blue);background:#1d2a40;animation:pop .25s}
+.out .box:nth-child(odd){border-color:var(--pur);background:#2a2440}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+.ctrls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:7px 5px;text-align:center;min-width:0}
+.st .nm{white-space:nowrap;font-size:clamp(10px,3.1vw,12px);font-weight:700;letter-spacing:.5px}
+.st .row{display:flex;align-items:center;justify-content:space-between;gap:2px;margin-top:4px}
+.st button{flex:none;width:clamp(30px,9vw,38px);height:40px;border-radius:9px;border:none;background:#263046;color:var(--txt);font-size:20px;font-weight:700;cursor:pointer;touch-action:manipulation}
+.st button:active{background:#33405c}
+.st .v{flex:1;min-width:0;font-size:clamp(18px,5.6vw,24px);font-weight:800}
+.fire{width:100%;padding:13px;border:none;border-radius:14px;background:linear-gradient(180deg,#ffd76a,#f0b429);color:#2a1d00;font-size:19px;font-weight:900;cursor:pointer;box-shadow:0 4px 0 #a87a10}
+.fire:active{transform:translateY(2px);box-shadow:0 2px 0 #a87a10}
+.fire:disabled{opacity:.5}
+.sub-row{display:flex;gap:8px}
+.sub-row button{flex:1}
+.toast{position:fixed;left:50%;top:18px;transform:translateX(-50%);background:#2b1520;border:1px solid var(--red);color:#ffd1d1;padding:8px 14px;border-radius:10px;font-size:14px;z-index:30;opacity:0;transition:opacity .2s;pointer-events:none;max-width:92%;text-align:center}
+.toast.show{opacity:1}
+.toast.good{background:#10281f;border-color:var(--grn);color:#c8ffe6}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+.overlay{position:fixed;inset:0;background:#070a10e6;display:flex;align-items:center;justify-content:center;z-index:20;padding:20px}
+.overlay[hidden]{display:none}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;max-width:400px;width:100%;text-align:center}
+.panel h1{margin:0 0 4px;font-size:26px;color:var(--yel)}
+.panel h2{margin:0 0 8px;font-size:22px}
+.panel p{color:var(--dim);font-size:14px;line-height:1.6;margin:8px 0}
+.btn{display:block;width:100%;padding:12px;margin-top:10px;border-radius:12px;border:1px solid var(--line);background:#222b3d;color:var(--txt);font-size:16px;font-weight:700;cursor:pointer}
+.btn.pri{background:var(--yel);color:#2a1d00;border:none}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}
+.grid button{aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background:#222b3d;color:var(--txt);font-weight:800;font-size:16px;cursor:pointer;line-height:1.1}
+.grid button small{display:block;font-size:10px;color:var(--yel)}
+.grid button:disabled{opacity:.35}
+.stars{font-size:34px;letter-spacing:4px;margin:6px 0}
+.legend{display:flex;gap:10px;justify-content:center;font-size:11px;color:var(--dim);white-space:nowrap}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+@media (max-height:720px){.app{gap:6px}.stage{min-height:140px}.legend{display:none}.sub-row button{padding:4px 8px}.fire{padding:11px}.st button{height:36px}.cond{min-height:50px}.cond .big{font-size:26px}.out{min-height:44px}.out .box{height:40px;font-size:18px}.code{line-height:1.5}.goal{min-height:0}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top">
+    <span class="badge" id="title">步步驚心</span>
+    <div class="hud">
+      <span id="hudL">關卡 <b id="lvTxt">1</b></span>
+      <span>分數 <b id="scTxt">0</b></span>
+      <span class="balls" id="balls"></span>
+    </div>
+  </div>
+  <div class="code mono" id="code"></div>
+  <div class="goal" id="goal"></div>
+  <div class="cond" id="cond"><div class="big">&nbsp;</div><div class="sub">&nbsp;</div></div>
+  <div class="stage"><canvas id="cv"></canvas></div>
+  <div class="legend"><span><i style="background:var(--yel)"></i>金磚：數字＝要打幾次</span><span><i style="background:var(--red)"></i>炸彈：碰到就失敗</span></div>
+  <div class="out mono" id="out"><span class="lab">印出</span></div>
+  <div class="ctrls mono">
+    <div class="st"><div class="nm" style="color:var(--yel)">start 包含</div><div class="row"><button data-k="a" data-d="-1">−</button><span class="v" id="va">0</span><button data-k="a" data-d="1">+</button></div></div>
+    <div class="st"><div class="nm" style="color:var(--red)">stop 不含</div><div class="row"><button data-k="b" data-d="-1">−</button><span class="v" id="vb">1</span><button data-k="b" data-d="1">+</button></div></div>
+    <div class="st"><div class="nm" style="color:var(--grn)">step 步長</div><div class="row"><button data-k="s" data-d="-1">−</button><span class="v" id="vs">1</span><button data-k="s" data-d="1">+</button></div></div>
+  </div>
+  <button class="fire" id="fire">發射 🚀</button>
+  <div class="sub-row">
+    <button class="icon-btn" id="hintBtn">💡 提示</button>
+    <button class="icon-btn" id="resetBtn">↺ 重來</button>
+    <button class="icon-btn" id="menuBtn">☰ 選單</button>
+    <button class="icon-btn" id="muteBtn">🔊</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="overlay" id="menu">
+  <div class="panel">
+    <h1>步步驚心</h1><p style="margin:0;color:var(--yel);font-weight:800">Range 陷阱</p>
+    <p>設定 <span class="mono" style="color:var(--yel)">range(start, stop, step)</span>，<br>彈珠會照 <span class="mono">for i in range(...)</span> 一格一格跳。<br>打爆所有<b style="color:var(--yel)">金磚</b>、避開<b style="color:var(--red)">炸彈</b>！</p>
+    <p style="font-size:12px">⚠ stop 不含・負 step 往左跳・step 不能是 0</p>
+    <button class="btn pri" id="goLevels">🧱 關卡模式（10 關）</button>
+    <button class="btn" id="goTimed">⏱ 60 秒挑戰</button>
+    <div class="grid" id="lvGrid"></div>
+    <p id="bestTxt" style="font-size:12px"></p>
+    <p style="font-size:12px;margin-top:14px">由 <a href="/" style="color:var(--yel)">QuizFlow</a> 提供・老師用 AI 一鍵出題</p>
+  </div>
+</div>
+
+<div class="overlay" id="result" hidden>
+  <div class="panel">
+    <h2 id="rTitle">過關！</h2>
+    <div class="stars" id="rStars"></div>
+    <p id="rMsg"></p>
+    <button class="btn pri" id="rNext">下一關 ▶</button>
+    <button class="btn" id="rRetry">再玩一次</button>
+    <button class="btn" id="rMenu">回選單</button>
+  </div>
+</div>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const LO=-1,HI=16,BMIN=0,BMAX=15;
+const LEVELS=[
+ {t:{0:1,1:1,2:1,3:1,4:1},bombs:[5],shots:1,goal:"打爆 0～4，別碰 5 的炸彈",hint:"stop 不含！要印到 4，stop 要寫 5"},
+ {t:{2:1,4:1,6:1,8:1},bombs:[10,3],shots:1,goal:"打偶數磚 2、4、6、8",hint:"step = 2，stop 不能讓 10 被打到"},
+ {t:{1:1,4:1,7:1,10:1},bombs:[13,2],shots:1,goal:"每隔 3 格一塊",hint:"range(1, ?, 3)，stop 要 >10 但 ≤13"},
+ {t:{10:1,7:1,4:1,1:1},bombs:[13,0,9],shots:1,goal:"從右往左跳（APCS 陷阱題 #8）",hint:"step 是負的，i > stop 才繼續：range(10, ?, -3)"},
+ {t:{5:1,4:1,3:1,2:1,1:1,0:1},bombs:[6],shots:1,goal:"倒數到 0（含 0！）",hint:"要印到 0，負 step 的 stop 要寫 -1"},
+ {t:{15:1,11:1,7:1,3:1},bombs:[14,13,12],shots:1,goal:"從 15 每次 -4",hint:"start 15、step -4，stop 介於 -1～2"},
+ {t:{0:1,3:2,6:2,9:1},bombs:[12,1],shots:2,goal:"金磚上的數字＝要打幾次，你有 2 顆彈珠",hint:"第一發 range(0,10,3)，第二發只打 3 和 6"},
+ {t:{1:1,3:1,5:1,7:1,9:1,10:1,12:1,14:1},bombs:[11,15],shots:2,goal:"奇數一段、偶數一段",hint:"range(1,10,2) ＋ range(10,15,2)"},
+ {t:{12:1,7:1,2:1},bombs:[13,8,1,0],shots:1,goal:"大步往左，別踩到 1",hint:"range(12, ?, -5)，下一個會是 -3，stop 怎麼設都行嗎？"},
+ {t:{0:2,5:2,10:2,15:1},bombs:[3,12],shots:2,goal:"最終關：去程＋回程",hint:"range(0,16,5) 去，range(10,-1,-5) 回"}
+];
+let mode='level',lv=0,board={},shots=0,maxShots=1,a=0,b=1,s=1,busy=false,score=0,attempts=0,usedHint=false;
+let timeLeft=60,timerId=null,solved=0,muted=false;
+let ball=null,parts=[],shakeT=0;
+const store={get(k,d){try{const v=localStorage.getItem('rb_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('rb_'+k,JSON.stringify(v))}catch(e){}}};
+let prog=store.get('prog',{}); // lv->stars
+
+// ---------- audio
+let ac=null;
+function beep(f,d=.08,type='square',v=.05){if(muted)return;try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.value=v;o.connect(g);g.connect(ac.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,ac.currentTime+d);o.stop(ac.currentTime+d)}catch(e){}}
+
+// ---------- canvas
+const cv=$('cv'),cx=cv.getContext('2d');let W=0,H=0;
+function resize(){const r=cv.getBoundingClientRect(),dp=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*dp;cv.height=H*dp;cx.setTransform(dp,0,0,dp,0,0);BH=Math.round(Math.max(28,Math.min(42,H*.085)))}
+window.addEventListener('resize',resize);try{new ResizeObserver(resize).observe(cv.parentElement)}catch(e){}
+const X=p=>16+(p-LO)*(W-32)/(HI-LO);
+let BH=30;const lineY=()=>Math.min(H-56,Math.round(H*.62)+20);
+function cellW(){return (W-32)/(HI-LO)}
+function brickAt(p){const c=board[p];return c&&(c.type==='b'&&!c.dead||c.type==='t'&&c.hp>0)?c:null}
+function landY(p){return lineY()-(brickAt(p)?BH+3:0)-10}
+
+function draw(){
+  cx.clearRect(0,0,W,H);
+  const ox=shakeT>0?(Math.random()-.5)*8:0;shakeT=Math.max(0,shakeT-1);
+  cx.save();cx.translate(ox,0);
+  const ly=lineY(),cw=cellW();
+  // line
+  cx.strokeStyle='#8a94a8';cx.lineWidth=2;cx.beginPath();cx.moveTo(X(LO)-8,ly);cx.lineTo(X(HI)+8,ly);cx.stroke();
+  const fs=Math.min(12,Math.max(7,cw/1.55));cx.textAlign='center';
+  for(let p=LO;p<=HI;p++){
+    const x=X(p);cx.strokeStyle='#8a94a8';cx.beginPath();cx.moveTo(x,ly-6);cx.lineTo(x,ly+6);cx.stroke();
+    cx.font=`600 ${Math.round(p>=10?fs*.88:fs)}px ui-monospace,Menlo,monospace`;cx.fillStyle=p===a?'#5aa9ff':(p<0||p>15?'#4a5468':'#8a94a8');cx.fillText(p,x,ly+22);
+  }
+  // start marker
+  if(a>=LO&&a<=HI){cx.fillStyle='#5aa9ff';cx.beginPath();cx.arc(X(a),ly,5,0,7);cx.fill();cx.font='700 10px system-ui';cx.fillText('start',Math.max(20,Math.min(W-20,X(a))),ly+36)}
+  // stop marker
+  if(b>=LO&&b<=HI){const x=X(b);cx.strokeStyle='#ef5a5a';cx.lineWidth=2;cx.strokeRect(x-4,ly-24,8,36);cx.fillStyle='#ef5a5a';cx.font='700 10px system-ui';cx.fillText('stop不含',Math.max(28,Math.min(W-28,x)),ly+(Math.abs(a-b)<2?50:36))}
+  // bricks
+  for(const k in board){const c=board[k],p=+k,x=X(p),w=Math.min(cw-4,34);
+    if(c.type==='t'&&c.hp>0){cx.fillStyle=c.hp>1?'#f0a020':'#f5c84b';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.fillStyle='#2a1d00';cx.font=`800 ${Math.round(BH*.5)}px system-ui`;cx.fillText(c.hp,x,ly-BH/2+BH*.18)}
+    else if(c.type==='t'&&c.hp<=0){cx.strokeStyle='#3ddc9755';cx.lineWidth=1.5;rr(x-w/2,ly-BH-3,w,BH,6);cx.stroke()}
+    if(c.type==='b'&&!c.dead){cx.fillStyle='#ef5a5a';rr(x-w/2,ly-BH-3,w,BH,6);cx.fill();cx.font=`${Math.round(BH*.5)}px system-ui`;cx.fillText('💣',x,ly-BH/2+BH*.18)}
+  }
+  // ball
+  if(ball){cx.fillStyle='#f5c84b';cx.beginPath();cx.arc(ball.x,ball.y,13,0,7);cx.fill();cx.fillStyle='#2a1d00';cx.font='800 13px ui-monospace,monospace';cx.fillText(ball.label,ball.x,ball.y+4.5);
+    cx.fillStyle='#f5c84b';cx.font='700 12px ui-monospace,monospace';cx.fillText('i',ball.x,ball.y-18);
+    if(ball.trail){cx.strokeStyle='#f5c84b99';cx.setLineDash([2,5]);cx.lineWidth=2;cx.beginPath();ball.trail.forEach((q,i)=>i?cx.lineTo(q[0],q[1]):cx.moveTo(q[0],q[1]));cx.stroke();cx.setLineDash([]);}
+    if(ball.stepLbl){cx.fillStyle='#f5c84b';cx.font='800 14px ui-monospace,Menlo,monospace';cx.fillText(ball.stepLbl[0],ball.stepLbl[1],ball.stepLbl[2])}
+  }
+  // particles
+  parts=parts.filter(q=>q.l>0);parts.forEach(q=>{q.x+=q.vx;q.y+=q.vy;q.vy+=.25;q.l--;cx.globalAlpha=Math.min(1,q.l/20);cx.fillStyle=q.c;cx.fillRect(q.x,q.y,4,4)});cx.globalAlpha=1;
+  cx.restore();
+  requestAnimationFrame(draw);
+}
+function rr(x,y,w,h,r){cx.beginPath();cx.moveTo(x+r,y);cx.arcTo(x+w,y,x+w,y+h,r);cx.arcTo(x+w,y+h,x,y+h,r);cx.arcTo(x,y+h,x,y,r);cx.arcTo(x,y,x+w,y,r);cx.closePath()}
+function burst(x,y,c,n=18){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*6,vy:-Math.random()*5,l:30+Math.random()*20,c})}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function tween(ms,fn){return new Promise(res=>{const t0=performance.now();(function f(t){const k=Math.min(1,(t-t0)/ms);fn(k);k<1?requestAnimationFrame(f):res()})(t0)})}
+
+// ---------- UI
+function esc(n){return n<0?`${n}`:n}
+function renderCode(){
+  $('code').innerHTML=`<span class="kw">for</span> i <span class="kw">in</span> <span class="fn">range</span>(<span class="na">${esc(a)}</span>, <span class="nb">${esc(b)}</span>, <span class="nc">${esc(s)}</span>):<br>&nbsp;&nbsp;&nbsp;&nbsp;<span class="pr">print</span>(i, end=<span style="color:#9ece6a">' '</span>)`;
+  $('va').textContent=a;$('vb').textContent=b;$('vs').textContent=s;
+}
+function renderHud(){
+  $('lvTxt').textContent=mode==='level'?(lv+1):`${Math.ceil(timeLeft)}s`;
+  $('hudL').firstChild.textContent=mode==='level'?'關卡 ':'剩 ';
+  $('scTxt').textContent=score;
+  $('balls').innerHTML=Array.from({length:maxShots},(_,i)=>`<span class="${i<maxShots-shots?'used':''}"></span>`).join('');
+}
+function setCond(big,sub,cls=''){$('cond').innerHTML=`<div class="big mono ${cls}">${big}</div><div class="sub">${sub}</div>`}
+function clearOut(){$('out').innerHTML='<span class="lab">印出</span>'}
+function addOut(v){const d=document.createElement('div');d.className='box mono';d.textContent=v;$('out').appendChild(d);d.scrollIntoView({block:'nearest',inline:'end'})}
+let toastT;function toast(m,good){const t=$('toast');t.textContent=m;t.className='toast show'+(good?' good':'');clearTimeout(toastT);toastT=setTimeout(()=>t.className='toast',2200)}
+
+document.querySelectorAll('.st button').forEach(bt=>bt.addEventListener('click',()=>{
+  if(busy)return;const k=bt.dataset.k,d=+bt.dataset.d;
+  if(k==='a')a=Math.max(LO,Math.min(HI,a+d));
+  if(k==='b')b=Math.max(LO,Math.min(HI,b+d));
+  if(k==='s')s=Math.max(-6,Math.min(6,s+d));
+  beep(520,.04,'sine',.03);renderCode();preview();
+}));
+function preview(){
+  if(s===0){setCond('step = 0 ⚠','發射會 ValueError！','bad');return}
+  const op=s>0?'<':'>';setCond(`${a} ${op} ${b} ${(s>0?a<b:a>b)?'✓':'✗'}`,s>0?'step 是正的 → 往右數，i < stop 才繼續':'step 是負的 → 往左數，i > stop 才繼續',(s>0?a<b:a>b)?'ok':'bad');
+}
+
+function pyRange(a,b,s){if(s===0)throw new Error('zero');const r=[];if(s>0)for(let i=a;i<b&&r.length<60;i+=s)r.push(i);else for(let i=a;i>b&&r.length<60;i+=s)r.push(i);return r}
+
+// ---------- level setup
+function loadLevel(i){
+  mode='level';lv=i;const L=LEVELS[i];board={};
+  for(const k in L.t)board[k]={type:'t',hp:L.t[k]};L.bombs.forEach(p=>board[p]={type:'b'});
+  maxShots=shots=L.shots;$('goal').textContent='🎯 '+L.goal;$('title').textContent=`陷阱題 #${i+1}`;
+  ball=null;clearOut();renderCode();renderHud();preview();
+}
+function genPuzzle(){
+  for(;;){
+    const st=[-4,-3,-2,-1,1,2,3,4,5,-5][Math.floor(Math.random()*10)];const n=2+Math.floor(Math.random()*4);const a0=Math.floor(Math.random()*16);
+    const seq=[];for(let k=0;k<n;k++){const v=a0+k*st;if(v<0||v>15)break;seq.push(v)}
+    if(seq.length<2)continue;board={};seq.forEach(v=>board[v]={type:'t',hp:1});
+    const nx=seq[seq.length-1]+st,pv=seq[0]-st;
+    if(nx>=0&&nx<=15)board[nx]={type:'b'};if(pv>=0&&pv<=15&&Math.random()<.6)board[pv]={type:'b'};
+    for(let t=0;t<10;t++){const r=Math.floor(Math.random()*16);if(!board[r]&&!(Math.abs(st)>1&&(r-a0)%st===0)){board[r]={type:'b'};break}}
+    break;
+  }
+  maxShots=shots=1;ball=null;clearOut();renderCode();renderHud();preview();
+  $('goal').textContent=`🎯 第 ${solved+1} 題：一發打爆全部金磚`;
+}
+
+// ---------- shoot
+async function shoot(){
+  if(busy||shots<=0)return;
+  let seq;try{seq=pyRange(a,b,s)}catch(e){toast('ValueError: range() arg 3 must not be zero');$('app').classList.add('shake');setTimeout(()=>$('app').classList.remove('shake'),400);beep(120,.25,'sawtooth');return}
+  busy=true;$('fire').disabled=true;shots--;renderHud();clearOut();
+  const op=s>0?'<':'>';let bomb=false;
+  if(!seq.length){
+    setCond(`${a} ${op} ${b} ✗`,'第一次檢查就不成立 → 迴圈一次都沒跑！','bad');beep(160,.3,'triangle');await wait(1300);
+  }else{
+    // drop in
+    ball={x:X(seq[0]),y:-20,label:seq[0],trail:null};
+    await tween(320,k=>{ball.y=-20+(landY(seq[0])+20)*k*k});
+    for(let n=0;n<seq.length;n++){
+      const i=seq[n];
+      if(n>0){const p0=seq[n-1],x0=X(p0),x1=X(i),y0=landY(p0),y1=landY(i),peak=Math.min(y0,y1)-Math.max(45,Math.min(100,(H-110)*.5));
+        ball.trail=[];ball.stepLbl=[(s>0?'+':'')+s,(x0+x1)/2,peak-8];
+        await tween(380,k=>{ball.x=x0+(x1-x0)*k;ball.y=(1-k)*(1-k)*y0+2*(1-k)*k*peak+k*k*y1;ball.trail.push([ball.x,ball.y]);if(k>.5)ball.label=i});
+        ball.stepLbl=null;
+      }
+      setCond(`${i} ${op} ${b} ✓`,s>0?'i < stop → 執行 print(i)':'i > stop → 執行 print(i)','ok');
+      addOut(i);
+      const c=board[i];
+      if(c&&c.type==='b'&&!c.dead){c.dead=true;bomb=true;burst(X(i),lineY()-18,'#ef5a5a',40);burst(X(i),lineY()-18,'#ffb020',30);shakeT=18;beep(90,.4,'sawtooth',.08);break}
+      if(c&&c.type==='t'&&c.hp>0){c.hp--;burst(X(i),lineY()-18,c.hp?'#f0a020':'#f5c84b');beep(660+n*60,.08);if(mode==='timed'||true)score+=10;renderHud()}
+      else beep(330,.05,'sine',.03);
+      await wait(120);
+    }
+    if(!bomb){const nx=seq[seq.length-1]+s;setCond(`${nx} ${op} ${b} ✗ 停`,`下一個 i = ${nx}，條件不成立 → 迴圈結束（stop 不含）`,'bad');}
+    await wait(700);ball=null;
+  }
+  const left=Object.values(board).some(c=>c.type==='t'&&c.hp>0);
+  busy=false;$('fire').disabled=false;
+  if(bomb)return fail('💥 踩到炸彈！');
+  if(!left)return win();
+  if(shots<=0)return fail('彈珠用完了，還有金磚沒打掉');
+  toast(`還有金磚！剩 ${shots} 顆彈珠`,true);preview();
+}
+
+function win(){
+  beep(784,.1,'square');setTimeout(()=>beep(1046,.18,'square'),110);
+  if(mode==='timed'){score+=100;solved++;timeLeft+=3;toast('✓ 正確！+100 分 +3 秒',true);renderHud();setTimeout(genPuzzle,500);return}
+  const stars=attempts===0&&!usedHint?3:attempts<=1?2:1;score+=stars*100;
+  prog[lv]=Math.max(prog[lv]||0,stars);store.set('prog',prog);
+  showResult('過關！','⭐'.repeat(stars)+'☆'.repeat(3-stars),`你的解：range(${a}, ${b}, ${s})`+(stars<3?'<br>不用提示、一次過關可拿 3 星':''),lv<LEVELS.length-1);
+}
+function fail(msg){
+  if(mode==='timed'){timeLeft=Math.max(0,timeLeft-5);toast(msg+'　-5 秒');renderHud();setTimeout(genPuzzle,700);return}
+  attempts++;toast(msg);setTimeout(()=>{const keep=[a,b,s];loadLevel(lv);[a,b,s]=keep;renderCode();preview()},900);
+}
+function showResult(t,st,msg,next){
+  $('rTitle').textContent=t;$('rStars').textContent=st;$('rMsg').innerHTML=msg;$('rNext').hidden=!next;$('result').hidden=false;
+  try{parent.postMessage({type:'quizflow-game',game:'range-breakout',mode,score,level:lv+1},'*')}catch(e){}
+}
+
+// ---------- modes
+function startLevel(i){stopTimer();score=mode==='level'?score:0;mode='level';attempts=0;usedHint=false;a=0;b=1;s=1;loadLevel(i);$('menu').hidden=true;$('result').hidden=true;$('hintBtn').hidden=false;$('resetBtn').hidden=false}
+function startTimed(){stopTimer();mode='timed';score=0;solved=0;timeLeft=60;a=0;b=1;s=1;$('title').textContent='60 秒挑戰';$('menu').hidden=true;$('result').hidden=true;$('hintBtn').hidden=true;$('resetBtn').hidden=true;genPuzzle();
+  let last=performance.now();timerId=setInterval(()=>{const now=performance.now();if(!busy)timeLeft-=(now-last)/1000;last=now;renderHud();if(timeLeft<=0){stopTimer();endTimed()}},200)}
+function stopTimer(){if(timerId){clearInterval(timerId);timerId=null}}
+function endTimed(){const best=store.get('best',0);if(score>best)store.set('best',score);
+  showResult('時間到！',`${score} 分`,`答對 ${solved} 題${score>best?'<br>🏆 新紀錄！':`<br>最佳紀錄 ${Math.max(best,score)} 分`}`,false)}
+function buildMenu(){
+  const g=$('lvGrid');g.innerHTML='';const unlocked=Object.keys(prog).length;
+  LEVELS.forEach((_,i)=>{const bt=document.createElement('button');bt.innerHTML=`${i+1}<small>${prog[i]?'⭐'.repeat(prog[i]):''}</small>`;bt.disabled=i>unlocked;bt.onclick=()=>{score=0;startLevel(i)};g.appendChild(bt)});
+  $('bestTxt').textContent=`60 秒挑戰最佳：${store.get('best',0)} 分`;
+}
+
+$('fire').onclick=shoot;
+$('hintBtn').onclick=()=>{if(mode!=='level')return;usedHint=true;toast('💡 '+LEVELS[lv].hint,true)};
+$('resetBtn').onclick=()=>{if(!busy&&mode==='level')loadLevel(lv)};
+$('menuBtn').onclick=()=>{if(busy)return;stopTimer();buildMenu();$('menu').hidden=false};
+$('muteBtn').onclick=()=>{muted=!muted;$('muteBtn').textContent=muted?'🔇':'🔊'};
+$('goLevels').onclick=()=>{score=0;const u=Math.min(Object.keys(prog).length,LEVELS.length-1);startLevel(u)};
+$('goTimed').onclick=startTimed;
+$('rNext').onclick=()=>startLevel(lv+1);
+$('rRetry').onclick=()=>mode==='timed'?startTimed():startLevel(lv);
+$('rMenu').onclick=()=>{$('result').hidden=true;buildMenu();$('menu').hidden=false};
+document.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();shoot()}});
+
+resize();loadLevel(0);buildMenu();requestAnimationFrame(draw);
+})();
+</script>
+</body>
+</html>

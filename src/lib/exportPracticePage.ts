@@ -11,7 +11,11 @@
  * 純函式：不碰 DB、不碰 Request，方便測試；由 export-practice-page/route.ts 呼叫。
  */
 
-import { PRACTICE_PAGE_SUBMIT_CLIENT_JS, PRACTICE_PAGE_SUBMIT_CSS } from './practicePageSubmitClient';
+import {
+  PRACTICE_PAGE_SUBMIT_CLIENT_JS,
+  PRACTICE_PAGE_SUBMIT_CSS,
+  upgradeLegacyPracticePageSubmitJs,
+} from './practicePageSubmitClient';
 
 export type PracticePageOption = string | { img: string; alt?: string };
 
@@ -121,6 +125,7 @@ export type PracticePageRuntimeConfig = {
   endpoint: string; // 作答事件 POST 網址
   signupUrl: string; // 身分選「老師」時顯示的 QuizFlow 註冊連結
   submitEndpoint?: string; // 「確認送出」成績回傳網址（/api/p/[id]/submit）；沒有就不顯示班級姓名欄與送出按鈕
+  submitTimeoutMs?: number; // 送出逾時毫秒數；不帶就用練習頁內建預設值（測試用來縮短等待）
 };
 
 export function hasPracticePageAnalytics(html: string): boolean {
@@ -131,7 +136,8 @@ export function injectPracticePageConfig(html: string, config: PracticePageRunti
   if (!hasPracticePageAnalytics(html)) {
     return html;
   }
-  return html.replace(
+  // 已寫進 Blob 的舊版頁面（PR #90–#99）：把送出程式換成新版（逾時 + 成功後保證顯示結果），老師不用重新匯出
+  return upgradeLegacyPracticePageSubmitJs(html).replace(
     PRACTICE_PAGE_CONFIG_MARKER,
     `<script>window.__QF_PRACTICE__=${toEmbeddableJson(config)};</script>`,
   );
@@ -183,6 +189,7 @@ ${PRACTICE_PAGE_CONFIG_MARKER}
   .grouplabel{background:var(--blue-soft);border-bottom:1px solid var(--blue-line);padding:10px 18px;font-weight:700;color:var(--blue-dark);font-size:13.5px}
   .qbody{padding:20px 22px 6px}
   .qtext{font-size:16px;font-weight:700;margin:0 0 14px;white-space:pre-wrap}
+  .qcode{margin:0 0 14px;padding:12px 14px;background:#f3f6fa;border:1px solid var(--blue-line);border-radius:8px;overflow-x:auto;white-space:pre;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,"Courier New",monospace;text-align:left}
   .qimg{margin:0 0 16px;display:flex;justify-content:center}
   .qimg svg{max-width:100%;height:auto}
   .qimg img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--blue-line);background:#fff}
@@ -297,6 +304,25 @@ ${PRACTICE_PAGE_SUBMIT_CSS}
 (function(){
   "use strict";
   function esc(s){return (''+s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  // 程式題：題目內 markdown 圍欄（三個反引號）包住的程式碼改用等寬 <pre> 顯示，保留縮排；內容一律 esc
+  function qtextHtml(s){
+    var F='\\x60\\x60\\x60';
+    var parts=(''+s).replace(/\\r\\n?/g,'\\n').split(F);
+    if(parts.length<3){return '<p class="qtext">'+esc(s)+'</p>';}
+    var h='';
+    for(var i=0;i<parts.length;i++){
+      var p=parts[i];
+      if(i%2===1){
+        var nl=p.indexOf('\\n');
+        var code=(nl===-1?p:p.slice(nl+1)).replace(/^\\n+|\\n+$/g,'');
+        if(code){h+='<pre class="qcode"><code>'+esc(code)+'</code></pre>';}
+      }else{
+        p=p.replace(/^\\n+|\\n+$/g,'');
+        if(p){h+='<p class="qtext">'+esc(p)+'</p>';}
+      }
+    }
+    return h;
+  }
 
   var QUESTIONS=${toEmbeddableJson(questions)};
 
@@ -433,7 +459,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     qcard.className='qcard'+(isAnswered?' answered':'');
     qcard.innerHTML=
       '<div class="grouplabel">'+esc(q.groupLabel)+'　第 '+(cur+1)+' 題</div>'+
-      '<div class="qbody"><p class="qtext">'+esc(q.question)+'</p>'+imgHtml+'</div>'+
+      '<div class="qbody">'+qtextHtml(q.question)+imgHtml+'</div>'+
       '<div class="opts'+(isShortOptions(q.options)?' grid2':'')+'">'+optsHtml+'</div>'+
       explainHtml;
 
@@ -535,22 +561,24 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     var cls=classInput.value.trim(), nm=nameInput.value.trim();
     if(!cls||!nm){
       submitState.error='請先在頁面最上方填寫班級、姓名再送出';
-      renderEnd();
+      renderEnd(true);
       try{ classInput.focus(); }catch(e){}
       return;
     }
     submitState.sending=true;
     submitState.error='';
-    renderEnd();
+    renderEnd(true);
     qfSubmit({sessionId:SID,className:cls,studentName:nm,answers:answered.slice()},function(err,data){
       submitState.sending=false;
       if(err){ submitState.error=err; }
       else{ submitState.result=data; classInput.disabled=true; nameInput.disabled=true; }
-      if(showEnd) renderEnd();
+      if(showEnd) renderEnd(true);
     });
   }
 
-  function renderEnd(){
+  /* keepScroll===true：送出流程的重繪不捲回頂端（手機上送出中／結果／錯誤訊息會被推到畫面外，學生以為當掉）；
+     注意 addEventListener 會傳 event 物件進來，所以用嚴格等於判斷 */
+  function renderEnd(keepScroll){
     showEnd=true;
     leaveCurrent();
     var n=QUESTIONS.length, c=correctCount(), wrong=[];
@@ -609,7 +637,7 @@ ${PRACTICE_PAGE_SUBMIT_CLIENT_JS}
     nextBtn.disabled=true;
     nextBtn.textContent='下一題 →';
     renderJump();
-    try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){}
+    if(keepScroll!==true){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){} }
   }
 
   prevBtn.addEventListener('click',goPrev);

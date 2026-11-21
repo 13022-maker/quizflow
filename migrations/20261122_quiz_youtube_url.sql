@@ -1,0 +1,1 @@
+ALTER TABLE "quiz" ADD COLUMN IF NOT EXISTS "youtube_url" text;

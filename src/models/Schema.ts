@@ -16,6 +16,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
+import type { SimItems } from '@/libs/sim/types';
+
 // This file defines the structure of your database tables using the Drizzle ORM.
 
 // To modify the database schema:
@@ -1057,3 +1059,73 @@ export const practicePageLeadSchema = pgTable(
     shareEmailUnique: uniqueIndex('practice_page_lead_share_email_idx').on(table.shareId, table.email),
   }),
 );
+
+// ==================== 實作模擬（Simulator，第一個是 hdfix3 電腦硬體裝修丙級）====================
+// 老師建立「實作模擬」（練習 / 測驗模式）取得 8 碼分享連結；學生免登入，輸入姓名＋學號＋崗位作答。
+// 型別與成績解析在 src/libs/sim/。sim_kind / mode 用 text + CHECK（比照 adaptive_subject.status）。
+export const simPracticeSchema = pgTable(
+  'sim_practice',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: text('owner_id').notNull(), // Clerk userId（建立的老師）
+    simKind: text('sim_kind').$type<'hdfix3'>().default('hdfix3').notNull(), // 模擬器種類，之後可擴充
+    mode: text('mode').$type<'practice' | 'exam'>().notNull(), // practice = 有步驟教學與參考答案；exam = 無解答、交卷
+    title: text('title').notNull(),
+    accessCode: text('access_code').unique().notNull(), // 8 碼隨機英數，學生連結用（防猜測）
+    spec: jsonb('spec').$type<Record<string, unknown>>(), // 監評指定內容：覆蓋 hdfix3 DEF 的欄位；null = 用預設
+    timeLimitMin: integer('time_limit_min'), // 限時（分鐘），null = 不限時
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    ownerIdx: index('sim_practice_owner_idx').on(table.ownerId),
+    simKindCheck: check('sim_practice_sim_kind_check', sql`${table.simKind} IN ('hdfix3')`),
+    modeCheck: check('sim_practice_mode_check', sql`${table.mode} IN ('practice', 'exam')`),
+  }),
+);
+
+// 學生成績：exam 每次交卷新增一筆（attempt_no 遞增、is_final=true）；
+// practice 每位學生只有一筆（attempt_no=1、is_final=false），每通過一題 upsert 最新進度。
+// score 由 server 依 items 重算（src/libs/sim/result.ts computeSimScore）。
+export const simSubmissionSchema = pgTable(
+  'sim_submission',
+  {
+    id: serial('id').primaryKey(),
+    practiceId: integer('practice_id')
+      .notNull()
+      .references(() => simPracticeSchema.id, { onDelete: 'cascade' }),
+    studentKey: text('student_key').notNull(), // 學號
+    displayName: text('display_name').notNull(),
+    seat: text('seat').notNull(), // 崗位號碼 "01"~"24"
+    attemptNo: integer('attempt_no').notNull(),
+    isFinal: boolean('is_final').notNull(),
+    startedAt: timestamp('started_at', { mode: 'date' }).notNull(),
+    submittedAt: timestamp('submitted_at', { mode: 'date' }).notNull(),
+    durationSec: integer('duration_sec').notNull(),
+    score: integer('score').notNull(),
+    items: jsonb('items').$type<SimItems>().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    practiceStudentAttemptIdx: uniqueIndex('sim_submission_practice_student_attempt_idx').on(
+      table.practiceId,
+      table.studentKey,
+      table.attemptNo,
+    ),
+    practiceSubmittedIdx: index('sim_submission_practice_submitted_idx').on(table.practiceId, table.submittedAt),
+  }),
+);
+
+// ---------- rate limit ----------
+// 公開（免登入）AI 端點的固定視窗限流計數器。不另外接 Redis，直接用 Postgres 原子 upsert。
+// key = `${bucket}:${ip}:${windowStart}`，視窗過期後由 src/libs/rateLimit.ts 不定期清除。
+export const rateLimitSchema = pgTable('rate_limit', {
+  key: text('key').primaryKey(),
+  count: integer('count').default(0).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+}, table => ({
+  expiresAtIdx: index('rate_limit_expires_at_idx').on(table.expiresAt),
+}));

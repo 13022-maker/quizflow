@@ -2,8 +2,8 @@
  * textModel.ts — AI 文字生成統一入口（provider 分流與備援）
  *
  * 規則：付費（isProOrAbove）且有 ANTHROPIC_API_KEY → Claude，失敗自動 fallback Gemini；
- *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini；
- *       Gemini 失敗且非 forceGemini 時也會補打一次 Claude；
+ *       免費 / 未登入 / 無 auth context（學生端、CLI）→ 直接 Gemini，**永遠不會用到 Claude**
+ *       （成本閘門見 canUseClaude；2026-11 前曾在 Gemini 失敗時補打 Claude，已移除）；
  *       Gemini 本身失敗（含 Gemini 帳號 key pool 都試過）會先補打 Grok；
  *       Claude／Gemini／Grok 全部（含各自備用帳號）都失敗，最後補打 OpenAI（gpt-4o-mini）。
  * 每個 provider 內部還有一層帳號 key pool（見 getApiKeyPool）：主帳號額度用完
@@ -66,20 +66,6 @@ export function buildGeminiMediaParts(
 /** 決定首選 provider（純函式，可測） */
 export function resolveAIProvider(isPro: boolean, hasClaudeKey: boolean): 'claude' | 'gemini' {
   return isPro && hasClaudeKey ? 'claude' : 'gemini';
-}
-
-/**
- * 判斷 Gemini 失敗後要不要補打一次 Claude 當最後手段（純函式，可測）。
- * 只有「這次呼叫本來就沒試過 Claude」（provider !== 'claude'，即免費方案自然分流到 Gemini）
- * 且「呼叫端沒有主動要求 forceGemini」（forceGemini 是呼叫端為了控制成本刻意跳過 Claude，
- * 例如生成學科避免試用戶燒 Opus token，這裡要尊重那個決定）且「有設定 Claude 金鑰」時才補打。
- */
-export function shouldFallbackToClaudeAfterGemini(
-  opts: { forceGemini?: boolean },
-  provider: 'claude' | 'gemini',
-  hasClaudeKey: boolean,
-): boolean {
-  return !opts.forceGemini && provider !== 'claude' && hasClaudeKey;
 }
 
 /**
@@ -173,6 +159,18 @@ export async function isProSafe(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Claude 成本閘門：這次請求能不能用到 Claude（不論首選或備援）。
+ * 只有 Pro 以上（含 30 天試用）才可以；Free / 未登入 / 無 auth context（學生端公開端點）一律 false。
+ * 所有 AI route 的「Gemini 失敗 → Claude」備援都要先過這關，避免免費用戶與匿名請求花到 Claude 的錢。
+ */
+export async function canUseClaude(): Promise<boolean> {
+  return isProSafe();
+}
+
+/** Free / 未登入請求在非 Claude provider 全部失敗時回給使用者的訊息（不會再往 Claude 備援） */
+export const FREE_AI_UNAVAILABLE_MESSAGE = 'AI 服務目前忙碌，請稍後再試一次';
 
 /**
  * 嚴格付費判定：只認 Paddle 訂閱（active/trialing/past_due），30 天免費試用不算。
@@ -337,8 +335,7 @@ async function callGeminiThenGrok(
 
 /**
  * 付費走 Claude（失敗自動 fallback Gemini）、免費走 Gemini
- * （Gemini 失敗且非 forceGemini 時，會補打一次 Claude 當最後手段，見
- * shouldFallbackToClaudeAfterGemini）。Gemini 本身失敗時會先試 Grok
+ * （免費 Gemini 失敗不會補打 Claude，見 canUseClaude）。Gemini 本身失敗時會先試 Grok
  * （callGeminiThenGrok），Grok 也失敗才算 Gemini 這條路徹底斷了。
  * 每個 provider 內部先跑 key pool（主帳號＋ *_API_KEY_BACKUP 逗號分隔的備用帳號，
  * 見 getApiKeyPool／callWithKeyPool）：單一帳號額度用完就換下一組帳號的 key；
@@ -366,14 +363,6 @@ async function generateWithClaudeAndGemini(
     return callGeminiThenGrok(opts, geminiKeys, grokKeys);
   }
 
-  try {
-    return await callGeminiThenGrok(opts, geminiKeys, grokKeys);
-  } catch (err) {
-    if (shouldFallbackToClaudeAfterGemini(opts, provider, hasClaudeKey)) {
-      console.warn('[textModel] Gemini／Grok 皆失敗，fallback Claude：', err instanceof Error ? err.message : err);
-      const text = await callWithKeyPool(claudeKeys, key => withAIRetry(() => callClaude(opts, key)));
-      return { text, usedModel: 'claude' };
-    }
-    throw err;
-  }
+  // 免費 / 未登入 / forceGemini：只走 Gemini → Grok，失敗直接拋出（不補打 Claude，成本閘門）
+  return callGeminiThenGrok(opts, geminiKeys, grokKeys);
 }

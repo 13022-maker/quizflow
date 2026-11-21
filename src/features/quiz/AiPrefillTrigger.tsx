@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 
 import { createQuiz } from '@/actions/quizActions';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH } from '@/libs/quizQuota';
 
 // 由市集空狀態 CTA 進入 /dashboard/quizzes/new?ai=1[&prefill=...]
 // mount 後立刻呼叫 createQuiz(server action),成功時 server-side redirect 到 edit?ai=1&prefill=...
@@ -33,7 +34,7 @@ export function AiPrefillTrigger({ prefill }: { prefill: string }) {
       // 成功時 server action 會 redirect(throw NEXT_REDIRECT),不會 return
       // 走到這裡代表失敗
       if (result?.error === 'QUOTA_EXCEEDED') {
-        router.push('/dashboard/billing');
+        router.push(DAILY_QUIZ_LIMIT_PRICING_PATH);
         return;
       }
       if (result?.error) {

@@ -1,1 +1,0 @@
-ALTER TABLE "quiz" ADD COLUMN "youtube_url" text;

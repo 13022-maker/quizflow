@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getTranslations } from 'next-intl/server';
 
+import { stripCodeFences } from '@/lib/codeBlock';
 import { formatTaipeiTime } from '@/lib/practicePageSubmission';
 import { db } from '@/libs/DB';
 import { getPracticePageStats, getPracticePageSubmissions, listOwnedPracticeShares } from '@/libs/practicePageStatsQuery';
@@ -221,7 +222,7 @@ export default async function PracticeStatsPage({
                               <td className="max-w-[260px] px-3 py-2">
                                 <div className="font-medium">{t('question_number', { n: q.questionIndex + 1 })}</div>
                                 <div className="line-clamp-2 text-xs text-muted-foreground">
-                                  {q.body ?? t('question_missing')}
+                                  {q.body != null ? stripCodeFences(q.body) : t('question_missing')}
                                 </div>
                               </td>
                               <td className="px-3 py-2">

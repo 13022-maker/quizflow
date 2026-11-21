@@ -3,6 +3,7 @@ import { useTranslations } from 'next-intl';
 
 import { CenteredFooter } from '@/features/landing/CenteredFooter';
 import { Section } from '@/features/landing/Section';
+import { isPricingEnabled } from '@/libs/paddleConfig';
 import { AppConfig } from '@/utils/AppConfig';
 
 import { Logo } from './Logo';
@@ -88,8 +89,8 @@ export const Footer = () => {
           </>
         )}
       >
-        {/* Paddle production 上線前先隱藏定價連結 */}
-        {process.env.NEXT_PUBLIC_PRICING_ENABLED === 'true' && (
+        {/* 2026-11 正式收費：定價入口常態顯示；NEXT_PUBLIC_PRICING_ENABLED=false 可緊急隱藏 */}
+        {isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED) && (
           <li>
             <Link href="/pricing">{t('pricing')}</Link>
           </li>
@@ -98,6 +99,17 @@ export const Footer = () => {
         <li>
           <a href="/practice/circuit-diagram.html" target="_blank" rel="noopener noreferrer">
             {t('practice')}
+          </a>
+        </li>
+        {/* 免費題庫的填充題版本（20 題一回），同樣是 public/practice/ 下的靜態頁 */}
+        <li>
+          <a href="/practice/circuit-diagram-fill-1.html" target="_blank" rel="noopener noreferrer">
+            {t('practice_fill_1')}
+          </a>
+        </li>
+        <li>
+          <a href="/practice/circuit-diagram-fill-2.html" target="_blank" rel="noopener noreferrer">
+            {t('practice_fill_2')}
           </a>
         </li>
       </CenteredFooter>

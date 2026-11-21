@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
 import { createQuiz } from '@/actions/quizActions';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH } from '@/libs/quizQuota';
 
 function getDefaultTitle(): string {
   const d = new Date();
@@ -32,7 +33,7 @@ export function CreateQuizWithAIButton({
       // server action 成功時會 server-side redirect，此分支只有失敗才會走到
       if (result?.error) {
         if (result.error === 'QUOTA_EXCEEDED') {
-          router.push('/dashboard/billing');
+          router.push(DAILY_QUIZ_LIMIT_PRICING_PATH);
           return;
         }
         // eslint-disable-next-line no-alert
