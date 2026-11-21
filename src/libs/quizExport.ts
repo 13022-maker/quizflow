@@ -38,8 +38,8 @@ function textRunsWithLineBreaks(text: string): TextRun[] {
     i === 0 ? new TextRun({ text: line }) : new TextRun({ text: line, break: 1 }));
 }
 
-// 排序題教師版正解：依印出的選項順序附上字母，例如「(B) 工業革命 → (A) 文藝復興」
-function rankingAnswerWithLetters(printed: { id: string; text: string }[], ids: string[] | null): string {
+// 教師版正解附字母：依印出的選項順序標 (A)(B)…；排序題用「→」表示順序，其他題型用「、」列出正解
+function formatAnswerWithLetters(printed: { id: string; text: string }[], ids: string[] | null, sep: string): string {
   if (!ids || ids.length === 0) {
     return '—';
   }
@@ -48,7 +48,17 @@ function rankingAnswerWithLetters(printed: { id: string; text: string }[], ids: 
       const i = printed.findIndex(o => o.id === id);
       return i === -1 ? id : `(${String.fromCharCode(65 + i)}) ${stripOptionLabel(printed[i]!.text)}`;
     })
-    .join(' → ');
+    .join(sep);
+}
+
+// 排序題：例如「(B) 工業革命 → (A) 文藝復興」
+function rankingAnswerWithLetters(printed: { id: string; text: string }[], ids: string[] | null): string {
+  return formatAnswerWithLetters(printed, ids, ' → ');
+}
+
+// 單選 / 多選 / 是非：例如「(A) 甲、(C) 丙」
+export function formatChoiceAnswer(printed: { id: string; text: string }[], ids: string[] | null): string {
+  return formatAnswerWithLetters(printed, ids, '、');
 }
 
 // 單一題目轉 paragraphs
@@ -166,7 +176,7 @@ function questionToParagraphs(question: Question, index: number, variant: Export
           spacing: { before: 80 },
           children: [
             new TextRun({ text: '答案：', bold: true, color: '047857' }),
-            new TextRun({ text: rankingAnswerWithLetters(options, question.correctAnswers), color: '047857' }),
+            new TextRun({ text: formatChoiceAnswer(options, question.correctAnswers), color: '047857' }),
           ],
         }),
       );
