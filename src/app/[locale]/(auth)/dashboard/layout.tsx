@@ -3,6 +3,9 @@ import { getTranslations } from 'next-intl/server';
 
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
+import { isPricingEnabled } from '@/libs/paddleConfig';
+import { shouldShowPricingNav } from '@/libs/pricingNav';
+import { countPublishedQuizzes } from '@/libs/pricingNavQuery';
 import { ensureTrialRecord } from '@/libs/trial';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -26,6 +29,11 @@ export default async function DashboardLayout(props: { children: React.ReactNode
     await ensureTrialRecord(userId);
   }
 
+  // 定價入口：實際出卷超過 57 份才顯示（新使用者先不看到收費）
+  const showPricingNav = isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED)
+    && !!userId
+    && shouldShowPricingNav(await countPublishedQuizzes(userId));
+
   return (
     <>
       <div className="shadow-md">
@@ -40,6 +48,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 href: '/dashboard/adaptive',
                 label: '適性學習',
                 badge: '熱門',
+              },
+              {
+                href: '/dashboard/sims',
+                label: '實作模擬',
               },
               {
                 href: '/dashboard/quizzes',
@@ -57,6 +69,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
                 href: '/marketplace',
                 label: '市集',
               },
+              // 定價入口（取代舊 PR #58；部落格 / 範本不加，避免 dashboard nav 過擠）
+              ...(showPricingNav
+                ? [{ href: '/pricing', label: '定價' }]
+                : []),
             ]}
           />
         </div>

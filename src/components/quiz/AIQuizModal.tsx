@@ -14,8 +14,11 @@
 
 import { useRef, useState } from 'react';
 
+import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { probeAudioDuration } from '@/lib/audioDuration';
 
+import { AIModelPicker } from './AIModelPicker';
+import { MissingCodeWarning } from './MissingCodeWarning';
 import { buildChapters, type PdfChapter } from './pdfChapters';
 
 // ─── Types ───────────────────────────────────────────────
@@ -56,6 +59,8 @@ type Props = {
   defaultTopic?: string;
   onImport: (questions: GeneratedQuestion[], title: string) => void;
   onClose: () => void;
+  /** Pro 或以上（含 30 天試用）；非 Pro 時 Claude 模型選項 disabled */
+  isPro: boolean;
 };
 
 // ─── Constants ────────────────────────────────────────────
@@ -158,7 +163,7 @@ function buildFrameworkPrefix(value: string) {
 }
 
 // ─── Component ────────────────────────────────────────────
-export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) {
+export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: Props) {
   // Mode
   const [mode, setMode] = useState<Mode>('text');
 
@@ -205,7 +210,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
   const [chapters, setChapters] = useState<PdfChapter[]>([]);
 
   // AI 模型選擇（僅檔案模式會用到，預設 Gemini 省錢快速）
-  const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
+  const [model, setModel] = useState<QuizModelChoice>('gemini');
 
   // 聽力題 TTS 參數
   const [ttsVoice, setTtsVoice] = useState('zh-tw-female');
@@ -510,7 +515,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
         fd.append('types', JSON.stringify(types));
         fd.append('count', String(effectiveCount));
         fd.append('difficulty', difficulty);
-        fd.append('model', model);
+        fd.append('model', resolveQuizModelChoice(model, isPro));
         setStep('AI 分析內容中…');
         const res = await fetch('/api/ai/generate-from-file', { method: 'POST', credentials: 'include', body: fd });
         if (!res.ok) {
@@ -581,7 +586,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
             types,
             count: effectiveCount,
             difficulty,
-            model,
+            model: resolveQuizModelChoice(model, isPro),
           }),
         });
         if (!res.ok) {
@@ -1268,30 +1273,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-amber-700">
                 AI 模型
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setModel('gemini')}
-                  className={`flex items-start gap-2 rounded-xl border-2 p-3 text-left transition-all ${model === 'gemini' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'}`}
-                >
-                  <span className="text-lg">⚡</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">Gemini 2.5 Flash</p>
-                    <p className="text-xs text-gray-400">快速省錢 · 預設</p>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModel('claude')}
-                  className={`flex items-start gap-2 rounded-xl border-2 p-3 text-left transition-all ${model === 'claude' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'}`}
-                >
-                  <span className="text-lg">🤖</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">Claude Sonnet 4</p>
-                    <p className="text-xs text-gray-400">品質優 · 較慢</p>
-                  </div>
-                </button>
-              </div>
+              <AIModelPicker isPro={isPro} value={model} onChange={setModel} />
             </div>
           )}
 
@@ -1430,6 +1412,9 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose }: Props) 
               </p>
             </div>
           )}
+
+          {/* ── 程式題缺程式碼警告（題目寫「下列程式」卻沒附程式碼） ── */}
+          {result && <MissingCodeWarning questions={result.questions} />}
 
           {/* ── 題庫匯入的解析報告：有解析不出來的段落 / 圖片配對結果，列出來讓老師自己確認 ── */}
           {result && parseReport && (

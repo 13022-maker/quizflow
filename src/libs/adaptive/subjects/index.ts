@@ -18,6 +18,7 @@
 import type { ItemBank, KnowledgeGraph } from '../engine';
 import { calculusSubject } from './calculus';
 import { cppSubject } from './cpp';
+import { DZB_SUBJECTS } from './digital-b-c';
 import { pythonSubject } from './python';
 
 /** 導師提示詞的學科客製段落（LLM 生成課文與即答時使用） */
@@ -36,6 +37,10 @@ export type TutorProfile = {
 export type Subject = {
   id: string; // subjectId，用於 API 與儲存檔名（如 'cpp'）
   name: string; // 顯示名稱（如 'C++ 程式設計'）
+  /** 分類（學科選單分組用，如「數位乙級 C語言」）；未設定時歸入「程式設計與數學」（見 subjectPicker.ts 的 DEFAULT_BUILT_IN_CATEGORY） */
+  category?: string;
+  /** 一句話說明這個學科練什麼、適合誰（學科選單預覽用） */
+  description?: string;
   graph: KnowledgeGraph;
   itemBank: ItemBank;
   tutor: TutorProfile;
@@ -44,11 +49,13 @@ export type Subject = {
 /** 預設學科：未指定 subjectId 時使用（維持既有流程完全不變） */
 export const DEFAULT_SUBJECT_ID = 'cpp';
 
-/** 註冊表：新增學科在此加一行 */
+/** 註冊表：新增學科在此加一行（Map 保留插入順序＝學科選單順序） */
 const SUBJECTS = new Map<string, Subject>([
   [cppSubject.id, cppSubject],
   [pythonSubject.id, pythonSubject],
   [calculusSubject.id, calculusSubject],
+  // 數位乙級 C 語言：8 個主題學科＋總複習（題庫由 scripts/generate-digital-b-c-subjects.ts 產生）
+  ...DZB_SUBJECTS.map(s => [s.id, s] as const),
 ]);
 
 /** 依 subjectId 取得學科設定；不存在時列出可用學科方便除錯 */

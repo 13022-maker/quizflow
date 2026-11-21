@@ -1,0 +1,1693 @@
+{
+  "title": "數位乙級 C語言學科題庫（第2–80題）",
+  "source": "勞動部勞動力發展署 數位電子乙級 學科題庫",
+  "topics": {
+    "PTR": "指標與陣列",
+    "BIT": "位元運算與進位制",
+    "MEM": "記憶體區段與變數生命週期",
+    "CMP": "編譯流程與開發工具",
+    "OPR": "運算子、運算式與型態轉換",
+    "FLOW": "流程控制（迴圈、switch、break）",
+    "FUNC": "函式、巨集與參數傳遞",
+    "TYPE": "資料型態、宣告、關鍵字與字串",
+    "STRUCT": "結構、union、記憶體對齊",
+    "ARCH": "計算機組織概念（旗標、BCD）"
+  },
+  "questions": [
+    {
+      "id": "Q2",
+      "no": 2,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "巨集（Macro）指令可",
+      "code": null,
+      "options": [
+        "加快執行速度",
+        "加速編譯速度",
+        "方便程式撰寫",
+        "節省記憶體空間"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "巨集在預處理階段做文字替換，主要好處是以有意義的名稱代表常數或短程式碼，讓程式撰寫方便、易讀易改。巨集在每個使用處展開複製，程式碼反而變大，不能節省記憶體；多了預處理工作也不會加速編譯。雖然展開後省去函式呼叫負擔，官方答案取最主要的優點 ③。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q3",
+      "no": 3,
+      "type": "single",
+      "topic": "ARCH",
+      "topicName": "計算機組織概念（旗標、BCD）",
+      "stem": "有關 CPU 內的旗標暫存器敘述，下列何者錯誤？",
+      "code": null,
+      "options": [
+        "溢位旗標為 1 時，表示運算結果超出範圍",
+        "陷阱（Trap）旗標為 1 時表示進入單步執行",
+        "中斷旗標為 0 時表示不接受罩幕式中斷",
+        "零值旗標為 1 時表示邏輯運算結果為 1"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "零值旗標 ZF=1 表示運算結果為 0，不是「結果為 1」，故 ④ 錯。溢位旗標 OF=1 表示有號運算超出範圍；陷阱旗標 TF=1 進入單步執行（除錯用）；中斷旗標 IF=0 時 CPU 不回應可遮罩中斷（NMI 不受影響）。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q4",
+      "no": 4,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "在程式語言中，下列何者不是「副程式」與「巨集」的共同優點？",
+      "code": null,
+      "options": [
+        "可避免程式重複",
+        "程式易讀、易除錯",
+        "程式撰寫易",
+        "可節省程式及記憶體空間"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "副程式只存一份程式碼，以呼叫方式重複使用，可節省程式空間；巨集則在每個使用處展開複製一份，程式碼變大。所以「節省程式及記憶體空間」只是副程式的優點，不是兩者共同優點；避免重複、易讀、易撰寫則兩者皆有。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q5",
+      "no": 5,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "連結（link）程式執行後，如果無誤，將產生可重置（Relocatable）的",
+      "code": null,
+      "options": [
+        "目的檔",
+        "執行檔",
+        "列表檔",
+        "函數檔"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "編譯／組譯產生的是目的檔（.o/.obj），它是 linker 的輸入；連結器把多個目的檔與函式庫合併、解析外部符號後產生執行檔。題目「可重置的執行檔」沿用傳統說法（如 DOS .EXE 含重定位表，可載入到任意位址）。陷阱：別把 linker 的輸入當成輸出。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q6",
+      "no": 6,
+      "type": "single",
+      "topic": "ARCH",
+      "topicName": "計算機組織概念（旗標、BCD）",
+      "stem": "一個位元組（Byte）可以儲存一個 ASCII 字碼或幾個 BCD 碼？",
+      "code": null,
+      "options": [
+        "1",
+        "2",
+        "3",
+        "4"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "BCD 碼以 4 bits 表示一個十進位數字，1 byte = 8 bits，因此可存 2 個 BCD 碼（packed BCD）；一個 ASCII 字碼則佔 1 byte。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q7",
+      "no": 7,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "執行下列 C 語言程式，其輸出結果為何？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main( void)\n{ int a=6,b=013;\n  printf(\"%d\\n\",b=b/a);\n  system(\"pause\");\n  return 0 ;\n}",
+      "options": [
+        "2",
+        "7",
+        "1",
+        "6"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "013 以 0 開頭是八進位，值為 1×8+3=11，不是 13。b=b/a 為整數除法 11/6=1，指定運算式的值就是 1，輸出 1。陷阱：前導 0 代表八進位。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q8",
+      "no": 8,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "C 語言中，下列何者是有效的識別字（identifier）？",
+      "code": null,
+      "options": [
+        "_name",
+        "1_name",
+        "#name",
+        "my name"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "識別字只能由英文字母、數字、底線組成，不能以數字開頭，不可含空白或 # 等符號，也不能是關鍵字。_name 合法；1_name 以數字開頭、#name 含非法字元、my name 含空白，皆不合法。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q9",
+      "no": 9,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "下列何者可作為 C 語言合法的整數？",
+      "code": null,
+      "options": [
+        "10101B",
+        "5AH",
+        "0X55",
+        "058"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "C 整數常值有十進位、0 開頭的八進位、0x/0X 開頭的十六進位，故 0X55（=85）合法。10101B、5AH 是組合語言的二進位／十六進位寫法；058 以 0 開頭被視為八進位，但 8 不是八進位數字，會編譯錯誤。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q10",
+      "no": 10,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "已知二維陣列 a[2][4]={1,2,3,4,5,6,7,8,}，則 a[1][2] 之值為何？",
+      "code": null,
+      "options": [
+        "5",
+        "6",
+        "7",
+        "8"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "二維陣列依列優先（row-major）填值：a[0]={1,2,3,4}、a[1]={5,6,7,8}。a[1][2] 是第 2 列第 3 個元素，值為 7。初值串列最後多一個逗號是合法的。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q11",
+      "no": 11,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "執行下列 C 語言程式，其中 do…while 迴圈會執行幾次？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{ int i=1,sum=0;\n  do\n  { sum+=i;\n    i+=2;\n  } while (i<10);\n  printf(\"%d\\n\",sum);\n  printf(\"%d\\n\",i);\n  system(\"pause\");\n  return 0 ;\n}",
+      "options": [
+        "3",
+        "4",
+        "5",
+        "6"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "i 依序為 1、3、5、7、9 時執行迴圈本體，第 5 次執行後 i=11，條件 i<10 不成立而結束，共 5 次。sum=1+3+5+7+9=25，程式輸出 25 與 11。陷阱：i=9 時條件仍成立，別少算一次。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q12",
+      "no": 12,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "不論判斷條件是否成立，至少會執行一次的迴圈為",
+      "code": null,
+      "options": [
+        "while 迴圈",
+        "do…while 迴圈",
+        "for 迴圈",
+        "巢狀 while 迴圈"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "do…while 是後測式迴圈，先執行本體再判斷條件，所以至少執行一次；while、for 為前測式，條件一開始不成立就一次都不執行。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q13",
+      "no": 13,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "執行運算式 a=5*3>4*3 後，a 之值為何？",
+      "code": null,
+      "options": [
+        "0",
+        "1",
+        "15",
+        "12"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "算術運算子優先於關係運算子，先算 5*3=15、4*3=12，再算 15>12 為真；C 的關係運算結果真為 1、假為 0，最後才指定，所以 a=1。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q14",
+      "no": 14,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "下列 C 語言程式中，for 迴圈的執行次數，何者正確？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nmain( )\n{\n  int x,y ;\n  int i=0;\n  for (x = y = 0; (y != 5) && (x < 4); x++)\n    i++ ;\n  printf(\"%d\\n\",i);\n  return 0 ;\n}",
+      "options": [
+        "是無窮迴圈",
+        "執行 5 次",
+        "執行 4 次",
+        "執行 3 次"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "x=y=0 後，y 在迴圈中從未改變，y!=5 恆為真，條件只取決於 x<4。x=0、1、2、3 各執行一次，共 4 次，輸出 i=4。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q15",
+      "no": 15,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "執行下列 C 語言程式，其輸出結果為何？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{\n  int n=2;\n  switch (n)\n  { case 1: printf(\"a\");\n    case 2: printf(\"b\");\n    case 3: printf(\"c\"); break;\n    default: printf(\"d\"); break;\n  }\n  system(\"pause\");\n  return 0 ;\n}",
+      "options": [
+        "a",
+        "b",
+        "bc",
+        "bcd"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "n=2 跳到 case 2 印出 b；case 2 沒有 break，會貫穿（fall-through）到 case 3 印出 c，遇到 break 才離開 switch，輸出 bc。陷阱：漏寫 break 會繼續執行下一個 case。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q16",
+      "no": 16,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "執行下列 for 巢狀迴圈的程式，其中 printf(\"\\n\") 共執行幾次？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{\n  int i,j;\n  for (i=1; i<=3; i++)\n  {  for (j=1; j<4 ; j++)\n        printf(\"*\");\n     printf(\"\\n\");\n  }\n  system(\"pause\");\n  return 0;\n}",
+      "options": [
+        "12 次",
+        "9 次",
+        "4 次",
+        "3 次"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "printf(\"\\n\") 位於外層迴圈本體、內層迴圈之後，只隨外層迴圈執行；外層 i=1~3 共 3 次。內層的 printf(\"*\") 才是 3×3=9 次。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q17",
+      "no": 17,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "執行下列 C 語言程式，其輸出結果為何？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{ int x=5,y=6;\n  x+=x+y++;\n  printf(\"x=%d,y=%d\\n\",x,y);\n  system(\"pause\");\n  return 0 ;\n}",
+      "options": [
+        "x=16,y=7",
+        "x=17,y=7",
+        "x=12,y=7",
+        "x=11,y=7"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "x+=expr 等同 x = x + (expr)。y++ 是後置遞增，先取值 6 再加 1：x = 5 + (5+6) = 16，y 變為 7，輸出 x=16,y=7。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q18",
+      "no": 18,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "執行下列 C 語言程式，其輸出結果為何？",
+      "code": "#include<stdio.h>\n#include <stdlib.h>\nint f(int x)\n{ if(x--<5) return x;\n  else return (x++);\n}\n\nint main(void)\n{\n  int a=5,b=0;\n  b=f(a);\n  printf(\"b=%d\\n\",b);\n  system(\"pause\");\n  return 0;\n}",
+      "options": [
+        "b=0",
+        "b=3",
+        "b=4",
+        "b=5"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "f(5)：x--<5 先以原值 5 比較（5<5 不成立）再遞減，x=4；進入 else，return (x++) 傳回遞增前的值 4（遞增對回傳值無影響）。b=4。陷阱：後置運算子是「先用後改」。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q19",
+      "no": 19,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "x 為大於 1 的奇數，下列判斷式何者正確？",
+      "code": null,
+      "options": [
+        "x%2==1",
+        "x%2==0",
+        "x/2==1",
+        "x/2==0"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "奇數除以 2 餘數為 1，所以 x%2==1 可判斷奇數；x%2==0 判斷偶數。x/2 為整數除法，x 為大於 1 的奇數時只有 x=3 才使 x/2==1，不能作為通用判斷。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q20",
+      "no": 20,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "當變數 w,x,y,z 分別宣告為 char w;int x;float y;double z;，則表示式 w*x/y-z 的執行結果，其資料型態為",
+      "code": null,
+      "options": [
+        "char",
+        "int",
+        "float",
+        "double"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "混合型態運算依通常算術轉換往較寬型態提升：w*x 中 char 先提升為 int；結果再除以 float y 轉為 float；最後減 double z 轉為 double，整個表示式型態為 double。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q21",
+      "no": 21,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "執行下列 C 語言程式，其輸出結果為",
+      "code": "#include<stdio.h>\n#include <stdlib.h>\nvoid swap(int x, int y) {\n  int tmp;\n  tmp = x;\n  x = y;\n  y = tmp;\n}\n\nint main(void) {\n  int a = 10, b = 20;\n  swap(a, b);\n  printf(\"a=%d, b=%d\\n\", a, b);\n  system(\"pause\");\n  return 0;\n}",
+      "options": [
+        "a=10, b=20",
+        "a=20, b=10",
+        "a=10, b=10",
+        "a=20, b=20"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "swap 採傳值呼叫，x、y 只是 a、b 的複本，交換的是函式內的區域複本，函式結束即消失，main 中的 a、b 不變，輸出 a=10, b=20。要真正交換須傳位址：void swap(int *x,int *y) 搭配 swap(&a,&b)。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q22",
+      "no": 22,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "執行下列 C 語言程式，其輸出結果為",
+      "code": "#include<stdio.h>\n#include <stdlib.h>\n#define MAX(a, b) a>b?a:b\nint main()\n{\n  int m = 10, n = 10;\n  printf(\"%d\\n\", MAX(++n, m));\n  system(\"pause\");\n  return 0;\n}",
+      "options": [
+        "10",
+        "11",
+        "12",
+        "13"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "巨集是純文字替換：MAX(++n, m) 展開為 ++n>m?++n:m。先執行條件中的 ++n 使 n=11，11>10 成立，再執行第二個 ++n 使 n=12，輸出 12。陷阱：帶副作用的參數在巨集中可能被求值兩次，這是巨集與函式最大的差異。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q23",
+      "no": 23,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "一次只能讀取、翻譯，並執行一列程式敘述的程式為何？",
+      "code": null,
+      "options": [
+        "鏈結器（Linker）",
+        "編譯器（Compiler）",
+        "直譯器（Interpreter）",
+        "組譯器（Assembler）"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "直譯器（Interpreter）逐列讀取、翻譯並立即執行；編譯器把整個原始程式一次翻譯成目的碼；組譯器把組合語言翻成機器碼；鏈結器負責合併目的檔與函式庫。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q24",
+      "no": 24,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "執行下列 C 語言程式，其輸出結果為",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main( void)\n{ char s[]=\"abcdef\";\n  s[3]='\\0';\n  printf(\"%s\\n\",s);\n  system(\"pause\");\n  return 0 ;\n}",
+      "options": [
+        "ab",
+        "abc",
+        "abcd",
+        "abcdef"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "s[3]='\\0' 把第 4 個字元 'd' 改成字串結束字元，%s 印到 '\\0' 為止，所以只輸出 abc。陷阱：索引從 0 開始，s[3] 是第 4 個字元。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q25",
+      "no": 25,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "一個字元佔用記憶體一個位元組（byte），字串 \"my_name\" 佔用記憶體幾個位元組？",
+      "code": null,
+      "options": [
+        "7",
+        "8",
+        "9",
+        "10"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "字串常值結尾會自動加上結束字元 '\\0'，\"my_name\" 有 7 個字元加 1 個 '\\0'，共 8 bytes（sizeof(\"my_name\")==8，而 strlen 為 7）。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q26",
+      "no": 26,
+      "type": "single",
+      "topic": "FUNC",
+      "topicName": "函式、巨集與參數傳遞",
+      "stem": "程式設計中，採 \"Call by value\" 的參數傳遞方式，下列何者正確？",
+      "code": null,
+      "options": [
+        "將參數的資料型態，傳送給被呼叫的函數",
+        "將參數的位址，傳送給被呼叫的函數",
+        "將參數的值，傳送給被呼叫的函數",
+        "將參數的名稱，傳送給被呼叫的函數"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "Call by value 把實際參數的「值」複製給被呼叫函式的形式參數，函式內修改形式參數不影響呼叫端的變數。傳送位址則是 call by address（call by reference）。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q27",
+      "no": 27,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "在 C 語言中，執行 printf(\"%d\", 10>5) 的輸出結果為",
+      "code": null,
+      "options": [
+        "1",
+        "10",
+        "5",
+        "0"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "關係運算的結果型態為 int，真為 1、假為 0；10>5 為真，輸出 1。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q28",
+      "no": 28,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "下列迴圈 k 的初值為 10，終值 2，增值為 -2，下列何者正確？",
+      "code": null,
+      "options": [
+        "for(k=10;k<=2;k-=2)",
+        "for(k=10;k<=2;k-2)",
+        "for(k=10;k<=2;k=--k)",
+        "for(k=10;k<=2;k=-2)"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "題意 k 由 10 遞減到 2、每次減 2，正確寫法應為 for(k=10;k>=2;k-=2)。題庫原文條件為 k<=2，10<=2 一開始即不成立，四個選項的迴圈都一次也不執行，屬命題／印刷瑕疵；官方答案取 ① 是因為只有 ① 的「增值」寫法 k-=2 正確。其餘：k-2 沒有存回 k（條件成立時會變無窮迴圈）、k=--k 每次只減 1 且屬未定義行為、k=-2 是把 k 設為 -2。教學時須特別指出此瑕疵。",
+      "difficulty": 2,
+      "note": "題庫原文條件為 k<=2，10<=2 一開始即不成立，迴圈一次都不執行；正確寫法應為 for(k=10;k>=2;k-=2)。官方答案取 ① 是因為只有 ① 的「增值」寫法 k-=2 正確。教學時須特別指出此題印刷/命題瑕疵。"
+    },
+    {
+      "id": "Q29",
+      "no": 29,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "執行下列 C 語言程式，其輸出結果為",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{\n  int i,sum=0;\n  for(i=1;i<=10;i++)\n  { sum+=i;\n    if(i%3==0)\n      break;\n  }\n  printf(\"i=%d,sum=%d\\n\",i,sum);\n  system(\"pause\");\n  return 0;\n}",
+      "options": [
+        "i=2,sum=3",
+        "i=3,sum=6",
+        "i=10,sum=45",
+        "i=11,sum=55"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "i=1 時 sum=1；i=2 時 sum=3；i=3 時 sum=6，且 i%3==0 成立執行 break，直接跳出迴圈，for 的 i++ 不再執行，所以輸出 i=3,sum=6。陷阱：break 離開時不會執行遞增部分。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q30",
+      "no": 30,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "表示條件：10<x<100 或 x<0 的 C 語言表達式，下列何者正確？",
+      "code": null,
+      "options": [
+        "x>10&&x<100||x<0",
+        "10<x<100||x<0",
+        "10<x,x<100||x<0",
+        "x>10||x<100&&x<0"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "C 不支援數學式的連續比較，10<x<100 會先算 (10<x) 得 0 或 1，再與 100 比較，結果恆為真。應寫 x>10&&x<100，再用 || 連接 x<0；&& 優先權高於 ||，① 不加括號也正確。④ 中 && 先結合成 x<100&&x<0，語意錯誤。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q31",
+      "no": 31,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "執行下列 C 語言程式，其輸出結果為",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void)\n{\n  unsigned char a = 054;\n  unsigned char b = 0xa2;\n  unsigned char c = 55;\n  unsigned char x,y ;\n  x = a & (~b);\n  y = c | b;\n  printf(\"x=%x,y=%u\\n\", x,y);\n  return 0;\n}",
+      "options": [
+        "x=c,y=183",
+        "x=12,y=183",
+        "x=c,y=b7",
+        "x=c,y=267"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "a=054 為八進位 = 44 = 0b00101100；b=0xa2=0b10100010，~b 取低 8 位為 0b01011101；x=a&~b=0b00001100=0xc，%x 輸出 c。c=55=0b00110111，y=c|b=0b10110111=183，%u 輸出 183。陷阱：054 是八進位；%x 輸出小寫十六進位且不加 0x。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q32",
+      "no": 32,
+      "type": "single",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "為達到模組化程式的設計目標，使用下列何種變數較佳？",
+      "code": null,
+      "options": [
+        "全域變數",
+        "區域變數",
+        "外部變數",
+        "字串變數"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "區域變數只在所屬函式內有效，模組之間不會互相干擾，資料透過參數與回傳值交換，符合模組化「高內聚、低耦合」的目標。全域／外部變數任何函式都能修改，增加模組耦合與除錯難度。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q33",
+      "no": 33,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "要得到介於 1～6 的亂數值，並置於已宣告過的整數變數 x 內。下列何者正確？",
+      "code": null,
+      "options": [
+        "x=rand()%6;",
+        "x=rand()%6+1;",
+        "x=rand()%7;",
+        "x=rand()%7+1;"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "rand()%6 的結果為 0~5，加 1 平移為 1~6，故選 ②。rand()%7 為 0~6，rand()%7+1 為 1~7，範圍都不對。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q34",
+      "no": 34,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "變數 x,z 為 unsigned char x=0b01100010;於 C 語言中，執行 z=x<<2;則變數 z 內的值為",
+      "code": null,
+      "options": [
+        "0b11000100",
+        "0b10001000",
+        "0b00011000",
+        "0b00110001"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "x<<2 時 x 先提升為 int：0b01100010<<2 = 0b0110001000（0x188）。指定給 8 位元的 unsigned char z 只保留低 8 位，得 0b10001000（0x88）。左移在右邊補 0，超出的高位被捨棄。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q35",
+      "no": 35,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列 C 語言程式，其輸出為何？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nvoid reset(int *arr, int size) {\n    int i;\n    for (i=0; i<size; i+=1)\n      arr[i]= 1;\n}\nvoid print(int *arr, int size) {\n    int i;\n    for (i=0; i<size; i+=1)\n      printf(\"%d\", arr[i]);\n}\nint main(void) {\n  int arr[5] = {1, 2, 3, 4, 0};\n  reset(arr, 3);\n  print(arr, 5);\n  return 0;\n}",
+      "options": [
+        "12340",
+        "11140",
+        "11110",
+        "11111"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "陣列名稱當參數傳入時退化為指向首元素的指標，函式內修改 arr[i] 就是修改原陣列。reset(arr,3) 只把前 3 個元素設為 1，陣列變為 {1,1,1,4,0}，print 依序印出 11140。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q36",
+      "no": 36,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "執行下列 C 語言程式，其輸出為何？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nint main(void) {\n  int a,b,c;\n  a=123.456;\n  b=(int)123.456%4;\n  c=123>>2;\n  printf(\"a=%d,b=%d,c=%d\\n\",a,b,c);\n  return 0;\n}",
+      "options": [
+        "a=123,b=3,c=30",
+        "a=123,b=3,c=1",
+        "a=123,b=30,c=3",
+        "a=123,b=123,c=30"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "a=123.456 隱含轉成 int，小數部分截去得 123。(int)123.456%4：轉型優先權高於 %，先轉成 123 再取餘數，123%4=3。123>>2 相當於 123/4 取整得 30。輸出 a=123,b=3,c=30。陷阱：% 不能用於浮點數，所以必須先轉型。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q37",
+      "no": 37,
+      "type": "single",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "變數宣告為 int a=3,b=4,c=5;則表示式『!(a+b)+c-1 && b+c/2』的值為",
+      "code": null,
+      "options": [
+        "0",
+        "1",
+        "2",
+        "6"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "!(a+b)=!7=0；0+c-1=4；右側 b+c/2=4+5/2=4+2=6（整數除法）。&& 優先權最低最後算，4&&6 兩邊皆非 0，結果為 1。陷阱：! 只作用於括號內的 (a+b)；邏輯運算結果只會是 0 或 1。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q38",
+      "no": 38,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "GCC 全名是",
+      "code": null,
+      "options": [
+        "GNU Compiler Collection",
+        "GNU C Compiler",
+        "Green C Compiler",
+        "Good C Compiler"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "GCC 原名 GNU C Compiler，後來擴充支援 C++、Fortran、Ada、Go 等多種語言，改稱 GNU Compiler Collection。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q39",
+      "no": 39,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "gcc 是何種程式語言的編譯器？",
+      "code": null,
+      "options": [
+        "C",
+        "C++",
+        "GO",
+        "Java"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "gcc 指令是 GCC 的 C 語言編譯器（驅動程式）；C++ 通常使用 g++。題目問 gcc，答案為 C。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q40",
+      "no": 40,
+      "type": "single",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "C 語言程式執行時，主程式於呼叫函數時，暫存返回資料的記憶體稱為",
+      "code": null,
+      "options": [
+        "data",
+        "heap",
+        "code",
+        "stack"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "函式呼叫時，返回位址、參數與區域變數都存放在 stack（堆疊），以後進先出方式管理，函式返回時彈出。heap 用於動態配置，data 放全域／靜態變數，code 放程式指令。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q41",
+      "no": 41,
+      "type": "single",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "標準 C 語言程式中，使用 malloc() 取得的記憶體空間會在哪一個記憶體區段？",
+      "code": null,
+      "options": [
+        "data segment",
+        "heap segment",
+        "code segment",
+        "stack segment"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "malloc()/calloc()/realloc() 動態配置的記憶體位於 heap 區段，須以 free() 釋放；區域變數在 stack，全域與 static 變數在 data/bss，程式指令在 code(text)。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q42",
+      "no": 42,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "gcc 編譯器的執行程序依序為",
+      "code": null,
+      "options": [
+        "preprocessing, compiling, assembling, linking",
+        "compiling, preprocessing, assembling, linking",
+        "compiling, assembling, preprocessing, linking",
+        "preprocessing, compiling, linking, assembling"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "gcc 的流程依序為：預處理（展開 #include、#define，產生 .i）→ 編譯（產生組合語言 .s）→ 組譯（產生目的檔 .o）→ 連結（產生執行檔）。可用 gcc -E、-S、-c 分別停在前三個階段觀察。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q43",
+      "no": 43,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "將 C 語言程式中的 Port 以 P1 取代，是在哪一個編譯過程？",
+      "code": "#include <reg51.h>\n#define Port P1\nvoid delay(int d){\n  for(int i=d; i>0; i--);\n}\nint main(){\n  Port = 0x55;\n  while(1){\n    Port = ~Port;\n    delay(1000);\n  }\n}",
+      "options": [
+        "Assembling",
+        "Compiling",
+        "Linking",
+        "Preprocessing"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "#define Port P1 是巨集定義，由前置處理器在真正編譯之前把程式中所有的 Port 文字替換成 P1，屬於 Preprocessing 階段。此題為 8051 程式，P1 為 reg51.h 中定義的特殊功能暫存器。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q44",
+      "no": 44,
+      "type": "single",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "在 C 語言程式的編譯過程中，哪一過程是將組合語言轉換為 CPU 可讀取並解析的目標碼（object code）？",
+      "code": null,
+      "options": [
+        "Assembler",
+        "Compiler",
+        "Linker",
+        "Preprocessor"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "Assembler（組譯器）把組合語言轉成 CPU 可解析的機器碼目的檔；Compiler 把 C 轉成組合語言；Linker 合併目的檔與函式庫；Preprocessor 處理 # 開頭的指令。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q45",
+      "no": 45,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，宣告整數變數並給予初值 5 之指令？",
+      "code": null,
+      "options": [
+        "int num = 5;",
+        "val num = 5;",
+        "num = 5;",
+        "num = 5 int;"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "C 的宣告格式為「型態 變數名 = 初值;」，int num = 5; 正確。val 不是 C 的關鍵字；num = 5; 只是指定、沒有宣告；型態也不能寫在值的後面。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q46",
+      "no": 46,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，宣告浮點數變數並給予初值 2.8 之指令？",
+      "code": null,
+      "options": [
+        "val num = 2.8;",
+        "float num = 2.8;",
+        "num = 2.8 double;",
+        "num = 2.8 float;"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "float num = 2.8; 宣告浮點數變數並給初值（2.8 本身是 double 常數，會隱含轉為 float）。val 非 C 關鍵字，型態也不能寫在值的後面。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q47",
+      "no": 47,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，輸出格式化字串的函數？",
+      "code": null,
+      "options": [
+        "print()",
+        "printf()",
+        "write()",
+        "output()"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "printf()（print formatted）定義於 stdio.h，用來輸出格式化字串。print() 是 Python 的函式；write() 為 POSIX 系統呼叫，不做格式化；output() 不存在。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q48",
+      "no": 48,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，輸出格式化的字串函數中，指定轉換整數之符號？",
+      "code": null,
+      "options": [
+        "%d",
+        "%s",
+        "%x",
+        "%f"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "%d 以十進位輸出有號整數；%s 輸出字串；%f 輸出浮點數；%x 雖也用於整數，但是以十六進位表示。題目問一般整數轉換，答 %d。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q49",
+      "no": 49,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，可以用來取得資料型態或變數所占用的位元數？",
+      "code": null,
+      "options": [
+        "size()",
+        "sizeof()",
+        "typeof()",
+        "len()"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "sizeof 是運算子（不是函式），在編譯期求值，傳回型態或變數所占的大小。注意：sizeof 實際回傳的是「位元組（byte）數」（型態為 size_t），題目寫「位元數」為用詞不精確。size()、len() 不是標準 C；typeof 是 GCC 擴充（C23 才標準化），取得的是型態而非大小。",
+      "difficulty": 1,
+      "note": "sizeof 實際回傳的是「位元組（byte）數」，題目寫「位元數」為用詞不精確。"
+    },
+    {
+      "id": "Q50",
+      "no": 50,
+      "type": "single",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者為標準 C 語言中，用來指定變數為不可改變或唯讀變數？",
+      "code": null,
+      "options": [
+        "final",
+        "readonly",
+        "constant",
+        "const"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "const 宣告唯讀變數，初始化後不可再修改。final 是 Java、readonly 是 C# 的關鍵字，constant 不是任何 C 關鍵字。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q51",
+      "no": 51,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "下列何者為標準 C 語言指令 int myNumbers[] = {25, 50, 75, 100};的作用？",
+      "code": null,
+      "options": [
+        "宣告整數陣列並給予初值設定",
+        "宣告實數陣列並給予初值設定",
+        "宣告集合變數並給予初值",
+        "宣告串列變數並給予初值"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "int 型態、[] 未指定大小時由初值個數決定（此處 4 個元素），所以是宣告整數陣列並給初值。C 語言沒有內建的集合或串列型態。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q52",
+      "no": 52,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "有關標準 C 語言中之陣列索引（index），下列敘述何者正確？",
+      "code": null,
+      "options": [
+        "索引從 0 開始",
+        "索引從 1 開始",
+        "索引起始由使用者設定",
+        "索引開始於宣告時設定"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "C 的陣列索引一律從 0 開始，n 個元素的合法索引為 0 ~ n-1，起始值不能由使用者自訂。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q53",
+      "no": 53,
+      "type": "single",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "下列何者為標準 C 語言中，停止迴圈執行的指令？",
+      "code": null,
+      "options": [
+        "return",
+        "stop",
+        "break",
+        "continue"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "break 立即跳出最內層的迴圈（或 switch）；continue 只是跳過本輪剩下的敘述、進入下一輪；return 是結束整個函式；stop 不是 C 關鍵字。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q54",
+      "no": 54,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "標準 C 語言指令 int * ptr = &myAge;中，變數 ptr 為何種資料型態？",
+      "code": null,
+      "options": [
+        "整數指標",
+        "整數陣列",
+        "單精確浮點數",
+        "雙精確浮點數"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "int *ptr 宣告一個指向 int 的指標（整數指標），&myAge 取得 myAge 的位址存入 ptr。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q55",
+      "no": 55,
+      "type": "single",
+      "topic": "STRUCT",
+      "topicName": "結構、union、記憶體對齊",
+      "stem": "下列何者為標準 C 語言中，宣告結構的關鍵字？",
+      "code": null,
+      "options": [
+        "structure",
+        "structs",
+        "struct",
+        "str"
+      ],
+      "answer": [
+        3
+      ],
+      "explanation": "C 用 struct 關鍵字宣告結構，例如 struct point { int x, y; };。structure、structs、str 都不是 C 關鍵字。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q56",
+      "no": 56,
+      "type": "single",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "標準 C 語言程式中，使用 malloc() 動態取得記憶體空間後，必須釋放記憶體空間，否則會造成何種問題？",
+      "code": null,
+      "options": [
+        "memory out of bound",
+        "memory leak",
+        "syntax error",
+        "linker error"
+      ],
+      "answer": [
+        2
+      ],
+      "explanation": "malloc 配置的 heap 記憶體不會自動回收；若沒有 free() 而又遺失指標，該空間既無法使用也無法歸還，就是記憶體洩漏（memory leak），長時間執行會耗盡記憶體。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q57",
+      "no": 57,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "下列標準 C 語言指令後加入下列哪一個指令，可將存放於 x[] 字串陣列中的資料複製到 y 所指到的記憶體空間？",
+      "code": "char x[] = \"Hello, world!\";\nchar *y = malloc(14);",
+      "options": [
+        "y = x;",
+        "y = x[];",
+        "strcmp(x, y);",
+        "sprintf(y, x);"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "y = x 只是讓 y 改指向 x 陣列（指標指定），沒有複製資料，而且 malloc 的空間就此遺失；y = x[] 是語法錯誤；strcmp 是比較字串而非複製。sprintf(y, x) 以 x 為格式字串寫入 y，因 \"Hello, world!\" 不含 %，效果等同複製（13 字元 + '\\0' 剛好 14 bytes）。實務上應寫 strcpy(y, x) 或 sprintf(y, \"%s\", x)，避免格式字串漏洞。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q58",
+      "no": 58,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main(void)\n{\n    int b = 20;\n    int* y = &b;\n    char n = 'v';\n    char* z = &n;\n    y[0] = z[0];\n    printf((*y == *z) ? \"True\" : \"False\");\n}",
+      "options": [
+        "True",
+        "False",
+        "編譯時會出現錯誤",
+        "執行時會崩潰（crash）"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "y 指向 b、z 指向 n，p[0] 與 *p 等價。y[0]=z[0] 把 'v'（ASCII 118）存入 b；比較時 *y 為 118，*z 為 'v' 提升為 int 也是 118，兩者相等，輸出 True。程式可正常編譯執行，不會 crash。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q59",
+      "no": 59,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main(void)\n{\n    char x = 'M';\n    char* y;\n    y = &x;\n    for (int i = 0; i < 4; i++) {\n        printf(\"%c\", x);\n        y[0] += 1;\n    }\n}",
+      "options": [
+        "NNNN",
+        "MMMM",
+        "MLKJ",
+        "MNOP"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "y 指向 x，y[0]+=1 等同 x+=1。迴圈每次先印出 x 再加 1，依序印出 M、N、O、P，輸出 MNOP。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q60",
+      "no": 60,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main(void)\n{\n    int a = 20, b = 10;\n    int *x = &a, *y = &b;\n    int c = y[0], d = x[0];\n    x[0] = c;\n    y[0] = d;\n    printf(\"%d %d\", *x, *y);\n}",
+      "options": [
+        "20 20",
+        "20 10",
+        "10 10",
+        "10 20"
+      ],
+      "answer": [
+        4
+      ],
+      "explanation": "x 指向 a(20)、y 指向 b(10)。c=y[0]=10、d=x[0]=20；接著 x[0]=c 使 a=10，y[0]=d 使 b=20，等於完成交換。*x=10、*y=20，輸出 10 20。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q61",
+      "no": 61,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main(void)\n{\n    int a = 100;\n    char* b = (char*)&a;\n    b[0] += 132;\n    b[1] += 3;\n    printf(\"%d\\n\", a);\n}",
+      "options": [
+        "1000",
+        "100",
+        "532",
+        "235"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "以 little-endian（x86/ARM 常見）為前提：a=100=0x00000064，b[0] 是最低位元組 0x64，b[1] 是次低位元組 0x00。b[0]+=132：100+132=232=0xE8，存回 char 時取低 8 位（signed char 會是 -24，但位元樣式仍為 0xE8）；b[1]+=3 得 0x03。a 變成 0x000003E8 = 1000。若為 big-endian 則改到的是高位元組，結果完全不同。",
+      "difficulty": 3,
+      "note": "以 little-endian（x86/ARM 常見）為前提。"
+    },
+    {
+      "id": "Q62",
+      "no": 62,
+      "type": "single",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nstruct A {\n    int a1;\n    struct B {\n        int a1;\n    } A1;\n} B1;\nint main(void)\n{\n    B1.a1 = 10;\n    B1.A1.a1 = 11;\n    int* x = &B1.a1;\n    int* y = &B1.A1.a1;\n    x = y;\n    char** z = (char**)&x;\n    *z[0] = x[0];\n    printf(\"%x\", **z);\n}",
+      "options": [
+        "b",
+        "a",
+        "10",
+        "11"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "內外層結構成員同名 a1 互不衝突：B1.a1=10、B1.A1.a1=11。x=y 後 x 指向 B1.A1.a1（值 11）。z=(char**)&x，所以 z[0] 就是 x 本身被當成 char*；*z[0]（[] 優先於 *）是 x 所指 int 的最低位元組。*z[0]=x[0] 把 11 寫入該位元組（值不變），**z 為 char 11，%x 輸出 b。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q63",
+      "no": 63,
+      "type": "single",
+      "topic": "STRUCT",
+      "topicName": "結構、union、記憶體對齊",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nstruct {\n    unsigned short int w : 1;\n    unsigned short int h : 1;\n} S;\nint main( ) {\n    printf( \"%d\\n\", sizeof(S));\n}",
+      "options": [
+        "2",
+        "4",
+        "1",
+        "8"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "w、h 都是 1 bit 的位元欄位，兩者合計 2 bits，可放進同一個 unsigned short 儲存單元（2 bytes），GCC/x86-64 下 sizeof(S)=2。位元欄位配置屬實作定義，但一般以宣告的型態為配置單位。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q64",
+      "no": 64,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main() {\n    unsigned char a = 201, b = 123;\n    printf(\"%d\\n\", a ^ b);\n}",
+      "options": [
+        "178",
+        "179",
+        "77",
+        "17"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "201=0b11001001，123=0b01111011，XOR 為「相同得 0、不同得 1」：0b10110010 = 128+32+16+2 = 178。運算時雖提升為 int，高位皆為 0，結果不變。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q65",
+      "no": 65,
+      "type": "single",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "執行下列標準 C 語言程式，輸出為何？",
+      "code": "#include <stdio.h>\nint main() {\n    unsigned char a = 201, b = 1;\n    printf(\"%d\\n\", a >> b);\n}",
+      "options": [
+        "100",
+        "202",
+        "146",
+        "200"
+      ],
+      "answer": [
+        1
+      ],
+      "explanation": "201=0b11001001 右移 1 位得 0b01100100 = 100，等同整數除以 2 取整（201/2=100）。unsigned 值右移時左邊補 0。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q66",
+      "no": 66,
+      "type": "multiple",
+      "topic": "BIT",
+      "topicName": "位元運算與進位制",
+      "stem": "C 語言程式中，x=0x26，y=0xe2，下列敘述何者正確？",
+      "code": null,
+      "options": [
+        "執行 z=x&y 後，z=0x22",
+        "執行 z=x|y 後，z=0x66",
+        "執行 z=x<<3 後，z=0x30",
+        "執行 z=y>>2 後，z=0x38"
+      ],
+      "answer": [
+        1,
+        3,
+        4
+      ],
+      "explanation": "x=0x26=0b00100110，y=0xe2=0b11100010。① x&y=0b00100010=0x22，正確；② x|y=0b11100110=0xe6，不是 0x66，錯；③ 0x26<<3=0x130，需假設 z 為 8 位元（unsigned char），截去高位成 0x30 才正確（若 z 為 int 則是 0x130）；④ y>>2=0b00111000=0x38，正確。答 ①③④。",
+      "difficulty": 3,
+      "note": "③ 需假設 z 為 8 位元（unsigned char），0x26<<3=0x130 截去高位成 0x30。"
+    },
+    {
+      "id": "Q67",
+      "no": 67,
+      "type": "multiple",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "下列何者是 C 語言提供的關鍵字（keyword）？",
+      "code": null,
+      "options": [
+        "break",
+        "while",
+        "character",
+        "integer"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "break、while 都是 C 的關鍵字。C 的字元型態關鍵字是 char、整數是 int，character 與 integer 都不是關鍵字。",
+      "difficulty": 1,
+      "note": null
+    },
+    {
+      "id": "Q68",
+      "no": 68,
+      "type": "multiple",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "C 語言程式中，if(y<0) x=-y; else x=y;使用『?:』替換，可寫成",
+      "code": null,
+      "options": [
+        "x=y<0?-y:y",
+        "x=y<0?y:-y",
+        "y=y<0?x:-x",
+        "x=y>0?y:-y"
+      ],
+      "answer": [
+        1,
+        4
+      ],
+      "explanation": "條件運算子 cond?A:B，條件成立取 A、否則取 B。原式：y<0 時 x=-y，否則 x=y，即 ① x=y<0?-y:y。④ x=y>0?y:-y：y>0 取 y、y<0 取 -y、y=0 時 -0=0，結果與原式完全相同，也正確。② 正負顛倒；③ 指定對象錯成 y。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q69",
+      "no": 69,
+      "type": "multiple",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "程式執行中，變數的存取範圍（scope）和生命週期（life time），下列何者正確？",
+      "code": null,
+      "options": [
+        "區域（local）變數：僅能在該變數的宣告函式內存取",
+        "靜態（static）變數：其生命週期跟程式一樣長，可以在宣告的函式外存取",
+        "全域（global）變數：整個程式中都可以存取",
+        "變數是存放位置在 stack 或 heap 記憶體中"
+      ],
+      "answer": [
+        1,
+        3
+      ],
+      "explanation": "① 區域變數只能在宣告它的函式（區塊）內存取，正確。② static 區域變數生命週期與程式相同，但 scope 仍限於宣告的函式內，函式外不能存取，錯。③ 全域變數整個程式都可存取（其他檔案需 extern 宣告），正確。④ 全域與 static 變數存放在 data/bss 區段，不只 stack 或 heap，錯。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q70",
+      "no": 70,
+      "type": "multiple",
+      "topic": "FLOW",
+      "topicName": "流程控制（迴圈、switch、break）",
+      "stem": "C 語言程式中，已知 a=10，b=5，下列何者會造成無窮迴圈？",
+      "code": null,
+      "options": [
+        "while (a>b) { a=a-b; b=b-a; printf(\"*\"); }",
+        "for (a=0; a<b; a--) printf(\"*\");",
+        "for (a=0; a<b; ++a) { printf(\"*\"); }",
+        "while (a==b) { for (a=0;;) }"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "① a=10,b=5 → a=5,b=0 → a=5,b=-5 → a=10,b=-15 → a=25,b=-40…，a 恆正、b 恆負，a>b 永遠成立，無窮迴圈（實際上 int 終究會溢位，屬未定義行為，題意視為無窮）。② a 從 0 遞減，a<b 永遠成立，無窮迴圈。③ a=0~4 印 5 次後結束。④ a==b（10==5）不成立，根本不進入迴圈，且 for(a=0;;) 後缺少敘述，語法也不完整。答 ①②。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q71",
+      "no": 71,
+      "type": "multiple",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "下列 C 語言程式，何者正確？",
+      "code": "#include <stdio.h>\n#include <stdlib.h>\nvoid func(void);\nint a=50;\nint b=100;\nint main(void)\n{\n    int a=100;\n    b=10;\n    printf(\"a=%d,b=%d\\n\",a,b);   /* 第 10 列 */\n    func();\n    printf(\"a=%d,b=%d\\n\",a,b);   /* 第 12 列 */\n    return 0;\n}\nvoid func(void)\n{\n    a=a+300;\n    b=a+b;\n}",
+      "options": [
+        "執行至第 10 列後，其輸出為：a=100,b=10",
+        "執行至第 10 列，其輸出為：a=50,b=10",
+        "執行至第 12 列，其輸出為：a=350,b=360",
+        "執行至第 12 列，其輸出為：a=100,b=360"
+      ],
+      "answer": [
+        1,
+        4
+      ],
+      "explanation": "main 內宣告的區域 a=100 遮蔽（shadow）了全域 a；b=10 改的是全域 b。第 10 列印出 a=100,b=10。func() 內沒有區域變數，操作的都是全域：a=50+300=350，b=350+10=360。回到 main，a 仍是區域 a=100，b 是全域 360，第 12 列印出 a=100,b=360。答 ①④。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q72",
+      "no": 72,
+      "type": "multiple",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "若變數 a,b 皆為整數，且 a 和 b 的值皆為 0，則下列運算結果何者為 true？",
+      "code": null,
+      "options": [
+        "a=b",
+        "a==b",
+        "a!=b",
+        "a<=b"
+      ],
+      "answer": [
+        2,
+        4
+      ],
+      "explanation": "① a=b 是指定運算，運算式的值為指定後的值 0，視為 false；② a==b 為真；③ a!=b 為假；④ a<=b（0<=0）為真。答 ②④。陷阱：= 與 == 混淆。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q73",
+      "no": 73,
+      "type": "multiple",
+      "topic": "TYPE",
+      "topicName": "資料型態、宣告、關鍵字與字串",
+      "stem": "char、short int 分別佔用記憶體為 1 個及 2 個位元組（byte），變數 a,b,c,d 分別宣告為 char a; unsigned char b; short int c; unsigned short int d;下列何者正確？",
+      "code": null,
+      "options": [
+        "執行 a=28+100;結果 a=128",
+        "執行 b=28+100;結果 b=128",
+        "執行 c=30000+2768;結果 c=32768",
+        "執行 d=30000+2768;結果 d=32768"
+      ],
+      "answer": [
+        2,
+        4
+      ],
+      "explanation": "char（x86 上為 signed）範圍 -128~127，128 超出範圍，在二補數下 a=-128，① 錯；unsigned char 範圍 0~255，b=128，② 對；short 範圍 -32768~32767，32768 轉回後得 -32768，③ 錯；unsigned short 範圍 0~65535，d=32768，④ 對。答 ②④。注意 char 是否有號屬實作定義（ARM 上預設 unsigned）。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q74",
+      "no": 74,
+      "type": "multiple",
+      "topic": "PTR",
+      "topicName": "指標與陣列",
+      "stem": "已知 ASCII Code a=97, A=65，若下列程式執行結果為 King 或 KING，程式中之 n[4] 陣列初值要如何設定？",
+      "code": "#include <stdio.h>\nint main(void)\n{\n    int a = 75;\n    int* b = &a;\n    int n[4] = {0, 0, 0, 0};\n    for (int i = 0; i < 4; i++) {\n        printf(\"%c\", b[0]);\n        b[0] += n[i];\n    }\n}",
+      "options": [
+        "{30, 5, -7}",
+        "{-2, 5, -7}",
+        "{32, 5, -7}",
+        "{22, 5, -7}"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "a=75 即 'K'，b 指向 a。迴圈每次先印 b[0] 再加 n[i]，印 4 個字元只用到 n[0]~n[2]。King：K(75)→i(105) 需 +30 →n(110) 需 +5 →g(103) 需 -7，即 {30,5,-7}；KING：K(75)→I(73) 需 -2 →N(78) 需 +5 →G(71) 需 -7，即 {-2,5,-7}。未列出的 n[3] 自動補 0。答 ①②。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q75",
+      "no": 75,
+      "type": "multiple",
+      "topic": "STRUCT",
+      "topicName": "結構、union、記憶體對齊",
+      "stem": "有關標準 C 語言中，union 執行下列程式後，請選出正確結果",
+      "code": "#include <stdio.h>\nunion A {\n    int a;\n    long long int b;\n} A1;\nint main(void)\n{\n    A1.a = 10;\n    A1.b = 100;\n    int * a = (int *)&A1;\n}",
+      "options": [
+        "a[0] = 0x64",
+        "sizeof(A1) = 8",
+        "A1.a = 10",
+        "sizeof(A1) = 12"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "union 的成員共用同一塊記憶體，大小取最大成員 long long（8 bytes），sizeof(A1)=8，② 對、④ 錯。A1.b=100 覆蓋整塊記憶體，A1.a 不再是 10，③ 錯；little-endian 下 a 指向的前 4 bytes 值為 100=0x64，a[0]=0x64，① 對。答 ①②。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q76",
+      "no": 76,
+      "type": "multiple",
+      "topic": "STRUCT",
+      "topicName": "結構、union、記憶體對齊",
+      "stem": "有關標準 C 語言中，結構（struct）定義的記憶體安排，下列程式中，sizeof(A)與 sizeof(B)分別為",
+      "code": "#include <stdio.h>\nstruct a {\n    int x;\n    double z;\n    short int y;\n} A;\nstruct b {\n    double z;\n    int x;\n    short int y;\n} B;\nint main() {\n    printf(\"sizeod(A): %d, sizeof(B): %d\", sizeof(A), sizeof(B));\n}",
+      "options": [
+        "sizeof(A)=24",
+        "sizeof(B)=16",
+        "sizeof(A)=14",
+        "sizeof(B)=14"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "x86-64 下 double 需 8-byte 對齊。struct a：int x 佔 0~3、補 4 bytes、double z 佔 8~15、short y 佔 16~17，結尾補齊到 8 的倍數 → 24。struct b：double z 佔 0~7、int x 佔 8~11、short y 佔 12~13，補 2 → 16。成員依大小遞減排列可減少 padding。答 ①②（原碼字串 \"sizeod\" 為原題拼字）。",
+      "difficulty": 3,
+      "note": null
+    },
+    {
+      "id": "Q77",
+      "no": 77,
+      "type": "multiple",
+      "topic": "MEM",
+      "topicName": "記憶體區段與變數生命週期",
+      "stem": "C 語言程式中，執行時的靜態記憶體（Static Memory）區段有",
+      "code": null,
+      "options": [
+        "code(text)",
+        "data/bss",
+        "stack",
+        "heap"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "靜態記憶體指程式載入時即配置、大小固定、整個執行期間都存在的區段：code(text) 放程式指令，data/bss 放已初始化／未初始化的全域與 static 變數。stack 與 heap 在執行時動態增減，屬動態記憶體。答 ①②。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q78",
+      "no": 78,
+      "type": "multiple",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "相較標準 C 編譯器，有關 SDCC（Small Device C Compiler）編譯器的說明，下列何者正確？",
+      "code": null,
+      "options": [
+        "結構（struct）不可以作為函數傳入參數",
+        "不支援可變長度陣列（variable-length arrays）",
+        "支援雙精確浮點數",
+        "結構（struct）可以作為函數回傳值"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "SDCC 針對 8051 等小型 MCU，依題庫所據的 SDCC 手冊說明：struct/union 不能作為函式參數，也不能作為回傳值（① 對、④ 錯）；不支援 C99 的可變長度陣列 VLA（② 對）；double 被當成 float 處理，只支援單精度（③ 錯）。答 ①②。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q79",
+      "no": 79,
+      "type": "multiple",
+      "topic": "CMP",
+      "topicName": "編譯流程與開發工具",
+      "stem": "相較於標準 C 語言，有關 Embedded C 新增定義的功能，下列何者正確？",
+      "code": null,
+      "options": [
+        "定點數學運算（fixed-point arithmetic）",
+        "地址空間命名（named address spaces）",
+        "物件導向（object-oriented）",
+        "巢狀結構體（nested-structure）"
+      ],
+      "answer": [
+        1,
+        2
+      ],
+      "explanation": "Embedded C（ISO/IEC TR 18037）在標準 C 上新增：定點數運算（_Fract、_Accum 型態）、命名位址空間（named address spaces，如區分 flash/RAM）、命名暫存器與基本 I/O 硬體定址。物件導向不屬於 C；巢狀結構標準 C 本來就支援，不是新增。答 ①②。",
+      "difficulty": 2,
+      "note": null
+    },
+    {
+      "id": "Q80",
+      "no": 80,
+      "type": "multiple",
+      "topic": "OPR",
+      "topicName": "運算子、運算式與型態轉換",
+      "stem": "C 語言程式中，a=13，b=6，num=0，下列敘述何者正確？",
+      "code": null,
+      "options": [
+        "執行 num=(++a)+(++b)後，num=21、a=14、b=7",
+        "執行 num=(a++)+(b++)後，num=21、a=14、b=7",
+        "執行 a+=a+(b++)後，num=0、a=32、b=7",
+        "執行 a*=b--後，num=0、a=65、b=5"
+      ],
+      "answer": [
+        1,
+        3
+      ],
+      "explanation": "各選項皆從 a=13,b=6,num=0 開始。① 前置遞增先加再用：a=14、b=7，num=21，正確。② 後置遞增先用再加：num=13+6=19（a、b 雖變 14、7），錯。③ a=a+(a+b++)=13+(13+6)=32，b=7，num 仍為 0，正確。④ a*=b-- → a=13×6=78，b=5，不是 65，錯。答 ①③。",
+      "difficulty": 3,
+      "note": null
+    }
+  ]
+}

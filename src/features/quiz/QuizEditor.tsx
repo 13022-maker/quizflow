@@ -30,6 +30,7 @@ import {
 } from '@/actions/questionActions';
 import { updateQuiz, updateQuizSettings } from '@/actions/quizActions';
 import AIQuizModal from '@/components/quiz/AIQuizModal';
+import { ExportFillBlankPracticePageDialog } from '@/components/quiz/ExportFillBlankPracticePageDialog';
 import { ExportPracticePageDialog } from '@/components/quiz/ExportPracticePageDialog';
 import FileQuizGenerator from '@/components/quiz/FileQuizGenerator';
 import { PublishMarketplaceDialog } from '@/components/quiz/PublishMarketplaceDialog';
@@ -40,7 +41,10 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Switch } from '@/components/ui/switch';
@@ -48,6 +52,7 @@ import { LiveStartDialog } from '@/features/live/LiveStartDialog';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { type AiUsageInfo, formatAiUsageMessage } from '@/lib/aiUsageMessage';
 import { stripClozeMarkers } from '@/lib/cloze';
+import { stripCodeFences } from '@/lib/codeBlock';
 import { EXAM_COMPOSER_IMPORT_KEY, EXAM_COMPOSER_URL, quizToComposerImport } from '@/libs/examComposerMapper';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -55,6 +60,11 @@ import { InlineQuestionCard } from './InlineQuestionCard';
 import { QuestionCard } from './QuestionCard';
 import type { QuestionFormValues } from './QuestionForm';
 import { QuestionForm } from './QuestionForm';
+
+// 「⋯ 更多」選單樣式：分組標題、合併變體的一列、列內小膠囊按鈕
+const MENU_SECTION_LABEL = 'px-2 pb-1 pt-2 text-[11px] font-medium tracking-wider text-muted-foreground';
+const MENU_PILL_ROW = 'flex items-center justify-between gap-2 px-2 py-1 text-sm';
+const MENU_PILL = 'cursor-pointer rounded-full border px-2.5 py-0.5 text-xs';
 
 // FileQuizGenerator 回傳的題目格式（純文字 answer，不含 rank）
 type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short';
@@ -372,6 +382,8 @@ export function QuizEditor({
 
   // 控制「匯出成靜態練習頁」Dialog 顯示
   const [showExportPracticeDialog, setShowExportPracticeDialog] = useState(false);
+  // 控制「匯出成填空練習頁」Dialog 顯示
+  const [showExportFillBlankDialog, setShowExportFillBlankDialog] = useState(false);
 
   // 新建測驗的提示 banner：顯示在頂部，引導「審完題後再分享」
   // 不自動彈 ShareModal，避免打斷老師審題
@@ -743,54 +755,94 @@ export function QuizEditor({
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="outline">⋯ 更多</Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            {isPro && (
-              <>
-                <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
-                  📂 上傳講義命題
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowVocabModal(true)}>
-                  🔤 AI 單字卡
-                </DropdownMenuItem>
-              </>
+          <DropdownMenuContent align="end" className="w-72">
+            {/* 建立內容 */}
+            {(isPro || questions.length > 0) && (
+              <DropdownMenuGroup>
+                <DropdownMenuLabel className={MENU_SECTION_LABEL}>建立內容</DropdownMenuLabel>
+                {isPro && (
+                  <>
+                    <DropdownMenuItem onClick={() => setShowFileGenerator(true)}>
+                      📂 上傳講義命題
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShowVocabModal(true)}>
+                      🔤 AI 單字卡
+                    </DropdownMenuItem>
+                  </>
+                )}
+                {questions.length > 0 && (
+                  <DropdownMenuItem onClick={openExamComposer}>
+                    🧮 段考命題助手
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuGroup>
             )}
-            <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
-              {initialQuiz.visibility === 'public' ? '✅ 管理市集上架' : '📤 分享到市集'}
-            </DropdownMenuItem>
+
+            {/* 匯出／列印：同類變體合併成一列，右側小膠囊按鈕各自是可聚焦的 menu item */}
             {questions.length > 0 && (
               <>
-                <DropdownMenuItem asChild>
-                  <a href={`/api/quizzes/${initialQuiz.id}/export?variant=teacher`}>
-                    📥 匯出 Word（老師版）
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}>
-                    📄 匯出 Word（學生版）
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=student`}>
-                    📝 段考考卷（學生卷）
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=teacher`}>
-                    📝 段考考卷（老師卷）
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)}>
-                  🌐 匯出成靜態練習頁
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={openExamComposer}>
-                  🧮 段考命題助手
-                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel className={MENU_SECTION_LABEL}>匯出／列印</DropdownMenuLabel>
+                  <div className={MENU_PILL_ROW}>
+                    <span>📥 匯出 Word</span>
+                    <div className="flex gap-1">
+                      <DropdownMenuItem asChild className={MENU_PILL}>
+                        <a href={`/api/quizzes/${initialQuiz.id}/export?variant=teacher`}>老師版</a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className={MENU_PILL}>
+                        <a href={`/api/quizzes/${initialQuiz.id}/export?variant=student`}>學生版</a>
+                      </DropdownMenuItem>
+                    </div>
+                  </div>
+                  <div className={MENU_PILL_ROW}>
+                    <span>📝 段考考卷</span>
+                    <div className="flex gap-1">
+                      <DropdownMenuItem asChild className={MENU_PILL}>
+                        <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=student`}>學生卷</a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className={MENU_PILL}>
+                        <a href={`/api/quizzes/${initialQuiz.id}/export?format=exam&variant=teacher`}>老師卷</a>
+                      </DropdownMenuItem>
+                    </div>
+                  </div>
+                  <div className={MENU_PILL_ROW}>
+                    <span>🌐 練習頁</span>
+                    <div className="flex gap-1">
+                      <DropdownMenuItem onClick={() => setShowExportPracticeDialog(true)} className={MENU_PILL}>
+                        靜態
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowExportFillBlankDialog(true)} className={MENU_PILL}>
+                        填空
+                      </DropdownMenuItem>
+                    </div>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <a href={`/api/quizzes/${initialQuiz.id}/export-questions-csv`}>
+                      📊 匯出 CSV
+                    </a>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
               </>
             )}
-            {status === 'published' && (
-              <DropdownMenuItem onClick={() => handleStatusChange('closed')} className="text-destructive">
-                🚫 關閉作答
+
+            {/* 分享 */}
+            {(isPro || questions.length > 0) && <DropdownMenuSeparator />}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel className={MENU_SECTION_LABEL}>分享</DropdownMenuLabel>
+              <DropdownMenuItem onClick={() => setShowMarketplace(true)}>
+                {initialQuiz.visibility === 'public' ? '✅ 管理市集上架' : '📤 分享到市集'}
               </DropdownMenuItem>
+            </DropdownMenuGroup>
+
+            {/* 危險操作 */}
+            {status === 'published' && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => handleStatusChange('closed')} className="text-destructive">
+                  🚫 關閉作答
+                </DropdownMenuItem>
+              </>
             )}
           </DropdownMenuContent>
         </DropdownMenu>
@@ -825,6 +877,16 @@ export function QuizEditor({
         />
       )}
 
+      {/* 匯出成填空練習頁 Dialog */}
+      {showExportFillBlankDialog && (
+        <ExportFillBlankPracticePageDialog
+          quizId={initialQuiz.id}
+          quizTitle={initialQuiz.title}
+          totalQuestions={questions.length}
+          onClose={() => setShowExportFillBlankDialog(false)}
+        />
+      )}
+
       {/* AI 出題 Modal（vocab 模式用專屬單字生成器） */}
       {showAIModal && initialQuiz.quizMode === 'vocab' && (
         <VocabAIModal
@@ -838,6 +900,7 @@ export function QuizEditor({
           defaultTopic={aiPrefill || buildDefaultTopic(initialQuiz.description)}
           onImport={handleAIImport}
           onClose={() => setShowAIModal(false)}
+          isPro={isPro}
         />
       )}
 
@@ -846,6 +909,7 @@ export function QuizEditor({
         <FileQuizGenerator
           onImport={handleFileImport}
           onClose={() => setShowFileGenerator(false)}
+          isPro={isPro}
         />
       )}
 
@@ -1233,7 +1297,7 @@ export function QuizEditor({
                     </span>
                   </div>
                   <p className="line-clamp-2 text-sm font-medium text-foreground/80">
-                    {pq.body}
+                    {stripCodeFences(pq.body)}
                   </p>
                   {pq.hasOptions && pq.options.length > 0 && (
                     <div className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">

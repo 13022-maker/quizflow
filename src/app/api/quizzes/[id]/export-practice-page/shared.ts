@@ -6,6 +6,7 @@
 import { and, asc, eq } from 'drizzle-orm';
 
 import { buildPracticePageHtml, selectPracticeQuestions } from '@/lib/exportPracticePage';
+import { buildChoiceAnswerKey, type ChoiceAnswerKey } from '@/lib/practicePageSubmission';
 import { db } from '@/libs/DB';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
@@ -13,6 +14,7 @@ export type BuildQuizPracticeHtmlResult =
   | {
     ok: true;
     html: string;
+    answerKey: ChoiceAnswerKey; // 跟 html 同一份題目資料產生，分享連結存進 DB 給「確認送出」server 重算分數
     quizTitle: string;
     total: number;
     imported: number;
@@ -70,13 +72,13 @@ export async function buildQuizPracticeHtml(
   const html = buildPracticePageHtml({
     title: quiz.title,
     kick: 'QuizFlow 測驗匯出．靜態練習頁',
-    noteHtml: '<b>免登入、不計時</b>，答題後立即顯示對錯。這份頁面是獨立檔案，離線也能開；把它放到任何網頁空間都能用。',
     questions: practiceQuestions,
   });
 
   return {
     ok: true,
     html,
+    answerKey: buildChoiceAnswerKey(practiceQuestions),
     quizTitle: quiz.title,
     total: picked.length,
     imported: practiceQuestions.length,

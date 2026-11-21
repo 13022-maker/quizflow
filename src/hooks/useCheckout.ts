@@ -24,17 +24,27 @@ export function useCheckout() {
         body: JSON.stringify({ priceId }),
       });
 
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        // 訪客在定價頁點訂閱 → 先登入，登入後回到原頁
+        window.location.href = `/sign-in?redirect_url=${encodeURIComponent(window.location.href)}`;
+        return;
+      }
       if (!res.ok) {
-        const data = await res.json();
         throw new Error(data.error ?? '結帳初始化失敗');
       }
 
-      const { customerId } = await res.json();
       const paddleInstance = getPaddleInstance();
+      if (!paddleInstance) {
+        // PaddleProvider 未初始化（多半是 NEXT_PUBLIC_PADDLE_CLIENT_TOKEN 未設定）
+        throw new Error('付款元件尚未載入，請重新整理頁面後再試');
+      }
 
-      paddleInstance?.Checkout.open({
-        customer: { id: customerId },
+      paddleInstance.Checkout.open({
+        customer: { id: data.customerId },
         items: [{ priceId, quantity: 1 }],
+        // webhook 優先用 customData.clerkUserId 對應用戶（customer_id 反查為備援）
+        customData: data.clerkUserId ? { clerkUserId: data.clerkUserId } : undefined,
         settings: {
           successUrl: `${window.location.origin}/dashboard?checkout=success`,
         },

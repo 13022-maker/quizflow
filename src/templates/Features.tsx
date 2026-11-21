@@ -51,7 +51,7 @@ export const Features = () => {
     {
       title: t('feature3_title'),
       description: t('feature3_description'),
-      // 閃電（即時結果）
+      // 閃電（交卷即批改 / Live Mode）
       icon: (
         <Icon>
           <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
@@ -61,7 +61,7 @@ export const Features = () => {
     {
       title: t('feature4_title'),
       description: t('feature4_description'),
-      // 魔法星（AI）
+      // 魔法星（多種題型）
       icon: (
         <Icon>
           <path d="M9 2v6M6 5h6" />

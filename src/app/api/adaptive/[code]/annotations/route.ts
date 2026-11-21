@@ -4,6 +4,11 @@
  * 前置條件：學生必須有進行中的補強課文（next-step 回傳 type: "lesson"），否則 409。
  */
 import { getServiceByCode, toErrorResponse } from '@/libs/adaptive/service';
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
+
+// 劃線文字與提問長度上限（公開端點，每次都會呼叫 AI）
+const MAX_HIGHLIGHT_CHARS = 2000;
+const MAX_QUESTION_CHARS = 500;
 
 type AnnotationBody = {
   studentKey?: string;
@@ -15,6 +20,10 @@ export async function POST(
   request: Request,
   { params }: { params: { code: string } },
 ) {
+  const limited = await enforcePublicAiLimit(request, 'adaptive-annotations');
+  if (limited) {
+    return limited;
+  }
   try {
     const body = (await request.json()) as AnnotationBody;
     const studentKey = body.studentKey?.trim();
@@ -26,6 +35,10 @@ export async function POST(
     }
     if (!body.question || typeof body.question !== 'string') {
       return Response.json({ error: '缺少必填欄位 question（字串）' }, { status: 400 });
+    }
+
+    if (body.highlightedText.length > MAX_HIGHLIGHT_CHARS || body.question.length > MAX_QUESTION_CHARS) {
+      return Response.json({ error: '劃線文字或提問過長' }, { status: 400 });
     }
 
     const { service } = await getServiceByCode(params.code);

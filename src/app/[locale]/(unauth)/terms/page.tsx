@@ -60,7 +60,7 @@ const TermsPage = (props: { params: { locale: string } }) => {
             <ul className="list-disc space-y-2 pl-5">
               <li>
                 <strong>免費方案：</strong>
-                可建立最多 10 份測驗，不含 AI 自動生題功能。
+                新帳號享 30 天 Pro 完整功能試用；試用結束後每天最多可建立 5 份測驗，每月可使用 AI 出題 30 次。
               </li>
               <li>
                 <strong>Pro 方案：</strong>

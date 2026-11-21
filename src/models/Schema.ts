@@ -16,6 +16,8 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
+import type { SimItems } from '@/libs/sim/types';
+
 // This file defines the structure of your database tables using the Drizzle ORM.
 
 // To modify the database schema:
@@ -967,9 +969,162 @@ export const practicePageShareSchema = pgTable(
     ownerId: text('owner_id').notNull(), // Clerk userId，比照 quizSchema.ownerId
     url: text('url').notNull(), // Vercel Blob 公開網址
     questionRange: text('question_range').notNull(), // 例如 "1-20"
+    // 'choice' = 單選/是非題練習頁、'fillblank' = 填空題練習頁。
+    // 兩種練習頁的歷史記錄查詢各自依這個欄位過濾，避免混在一起顯示。
+    kind: text('kind').notNull().default('choice'),
+    // 學生「確認送出」時 server 重算分數用的答案表（見 lib/practicePageSubmission.ts PracticePageAnswerKey）。
+    // 產生/更新分享連結時跟 HTML 同一份題目資料一起寫入；加這欄之前產生的舊連結為 null → 送出 API 回 409。
+    answerKey: jsonb('answer_key').$type<Record<string, unknown>>(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   table => ({
     quizIdIdx: index('practice_page_share_quiz_id_idx').on(table.quizId),
   }),
 );
+
+// 練習頁線上分享版「確認送出」的學生成績：班級/姓名由學生自填（免登入、不驗證身分），
+// 分數由 server 依 practice_page_share.answer_key 重算（填空題的看答案次數為 client 回報）。
+// 同一份練習頁同一個 session（頁面開啟時產生的隨機 UUID）只收一筆，重送回傳同一筆的結果連結。
+// result_token 是唯讀結果頁網址的不可猜憑證（學生貼到 Google Classroom 繳交用）。
+export const practicePageSubmissionSchema = pgTable(
+  'practice_page_submission',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    className: text('class_name').notNull(),
+    studentName: text('student_name').notNull(),
+    score: integer('score').notNull(),
+    maxScore: integer('max_score').notNull(),
+    detail: jsonb('detail').$type<Record<string, unknown>>().notNull(), // 逐題對錯（lib/practicePageSubmission.ts SubmissionDetail）
+    resultToken: text('result_token').notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareSessionUnique: uniqueIndex('practice_page_submission_share_session_idx').on(table.shareId, table.sessionId),
+    resultTokenUnique: uniqueIndex('practice_page_submission_result_token_idx').on(table.resultToken),
+    shareCreatedIdx: index('practice_page_submission_share_created_idx').on(table.shareId, table.createdAt),
+  }),
+);
+
+// 靜態練習頁（/api/p/[id]）匿名作答事件：學生免登入，不存 IP / cookie / 任何個資，
+// sessionId 是頁面每次開啟時在瀏覽器記憶體產生的隨機 UUID。
+// type 用 text + CHECK（比照 adaptive_subject.status，避免 PG enum 加值要 ALTER TYPE）；
+// question_index / question_id 拉成獨立欄位方便聚合，其餘欄位放 payload jsonb。
+export const practicePageEventSchema = pgTable(
+  'practice_page_event',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    quizId: integer('quiz_id')
+      .notNull()
+      .references(() => quizSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    type: text('type').notNull(), // session_start | answer | complete | profile
+    questionIndex: integer('question_index'), // 只有 answer 事件有值（0-based，練習頁內題序）
+    questionId: integer('question_id'), // answer 事件對應的 question.id（舊版匯出沒有）；刻意不設 FK，題目刪了統計照留
+    payload: jsonb('payload').$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareCreatedIdx: index('practice_page_event_share_created_idx').on(table.shareId, table.createdAt),
+    shareSessionIdx: index('practice_page_event_share_session_idx').on(table.shareId, table.sessionId),
+    typeCheck: check(
+      'practice_page_event_type_check',
+      sql`${table.type} IN ('session_start', 'answer', 'complete', 'profile')`,
+    ),
+  }),
+);
+
+// 練習頁結束畫面「留 email」名單：只存 email + 同意時間 + sessionId + shareId，
+// 不收姓名/學校/電話。同一份練習頁同一個 email 只留一筆（unique）。
+export const practicePageLeadSchema = pgTable(
+  'practice_page_lead',
+  {
+    id: serial('id').primaryKey(),
+    shareId: integer('share_id')
+      .notNull()
+      .references(() => practicePageShareSchema.id, { onDelete: 'cascade' }),
+    sessionId: text('session_id').notNull(),
+    email: text('email').notNull(),
+    consentAt: timestamp('consent_at', { mode: 'date' }).notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    shareEmailUnique: uniqueIndex('practice_page_lead_share_email_idx').on(table.shareId, table.email),
+  }),
+);
+
+// ==================== 實作模擬（Simulator，第一個是 hdfix3 電腦硬體裝修丙級）====================
+// 老師建立「實作模擬」（練習 / 測驗模式）取得 8 碼分享連結；學生免登入，輸入姓名＋學號＋崗位作答。
+// 型別與成績解析在 src/libs/sim/。sim_kind / mode 用 text + CHECK（比照 adaptive_subject.status）。
+export const simPracticeSchema = pgTable(
+  'sim_practice',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: text('owner_id').notNull(), // Clerk userId（建立的老師）
+    simKind: text('sim_kind').$type<'hdfix3'>().default('hdfix3').notNull(), // 模擬器種類，之後可擴充
+    mode: text('mode').$type<'practice' | 'exam'>().notNull(), // practice = 有步驟教學與參考答案；exam = 無解答、交卷
+    title: text('title').notNull(),
+    accessCode: text('access_code').unique().notNull(), // 8 碼隨機英數，學生連結用（防猜測）
+    spec: jsonb('spec').$type<Record<string, unknown>>(), // 監評指定內容：覆蓋 hdfix3 DEF 的欄位；null = 用預設
+    timeLimitMin: integer('time_limit_min'), // 限時（分鐘），null = 不限時
+    updatedAt: timestamp('updated_at', { mode: 'date' })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    ownerIdx: index('sim_practice_owner_idx').on(table.ownerId),
+    simKindCheck: check('sim_practice_sim_kind_check', sql`${table.simKind} IN ('hdfix3')`),
+    modeCheck: check('sim_practice_mode_check', sql`${table.mode} IN ('practice', 'exam')`),
+  }),
+);
+
+// 學生成績：exam 每次交卷新增一筆（attempt_no 遞增、is_final=true）；
+// practice 每位學生只有一筆（attempt_no=1、is_final=false），每通過一題 upsert 最新進度。
+// score 由 server 依 items 重算（src/libs/sim/result.ts computeSimScore）。
+export const simSubmissionSchema = pgTable(
+  'sim_submission',
+  {
+    id: serial('id').primaryKey(),
+    practiceId: integer('practice_id')
+      .notNull()
+      .references(() => simPracticeSchema.id, { onDelete: 'cascade' }),
+    studentKey: text('student_key').notNull(), // 學號
+    displayName: text('display_name').notNull(),
+    seat: text('seat').notNull(), // 崗位號碼 "01"~"24"
+    attemptNo: integer('attempt_no').notNull(),
+    isFinal: boolean('is_final').notNull(),
+    startedAt: timestamp('started_at', { mode: 'date' }).notNull(),
+    submittedAt: timestamp('submitted_at', { mode: 'date' }).notNull(),
+    durationSec: integer('duration_sec').notNull(),
+    score: integer('score').notNull(),
+    items: jsonb('items').$type<SimItems>().notNull(),
+    createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
+  },
+  table => ({
+    practiceStudentAttemptIdx: uniqueIndex('sim_submission_practice_student_attempt_idx').on(
+      table.practiceId,
+      table.studentKey,
+      table.attemptNo,
+    ),
+    practiceSubmittedIdx: index('sim_submission_practice_submitted_idx').on(table.practiceId, table.submittedAt),
+  }),
+);
+
+// ---------- rate limit ----------
+// 公開（免登入）AI 端點的固定視窗限流計數器。不另外接 Redis，直接用 Postgres 原子 upsert。
+// key = `${bucket}:${ip}:${windowStart}`，視窗過期後由 src/libs/rateLimit.ts 不定期清除。
+export const rateLimitSchema = pgTable('rate_limit', {
+  key: text('key').primaryKey(),
+  count: integer('count').default(0).notNull(),
+  expiresAt: timestamp('expires_at', { mode: 'date' }).notNull(),
+}, table => ({
+  expiresAtIdx: index('rate_limit_expires_at_idx').on(table.expiresAt),
+}));

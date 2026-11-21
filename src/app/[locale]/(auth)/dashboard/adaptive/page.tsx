@@ -2,15 +2,15 @@ import { auth } from '@clerk/nextjs/server';
 import { desc, eq, sql } from 'drizzle-orm';
 import Link from 'next/link';
 
-import { createAdaptivePractice, listAvailableSubjects } from '@/actions/adaptiveActions';
+import { listAvailableSubjects } from '@/actions/adaptiveActions';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { db } from '@/libs/DB';
 import { adaptivePracticeSchema, adaptiveStudentStateSchema } from '@/models/Schema';
 
 import { AdaptiveListControls } from './AdaptiveListControls';
 import { CopyLinkButton } from './CopyLinkButton';
+import { CreatePracticeForm } from './CreatePracticeForm';
 import { ShareClassroomButton } from './ShareClassroomButton';
-import { SubjectCombobox } from './SubjectCombobox';
 
 const SORT_OPTIONS = ['created_desc', 'created_asc', 'title_asc', 'students_desc'] as const;
 type SortOption = typeof SORT_OPTIONS[number];
@@ -36,10 +36,8 @@ export default async function AdaptiveListPage({
     return null;
   }
 
-  const subjects = await listAvailableSubjects(); // 內建三科 ＋ 老師自建學科
+  const subjects = await listAvailableSubjects(); // 內建學科 ＋ 老師自建學科（含分類、統計、最近使用）
   const subjectNames = new Map(subjects.map(s => [s.id, s.name]));
-  const builtInSubjects = subjects.filter(s => s.group === 'built-in');
-  const customSubjects = subjects.filter(s => s.group === 'custom');
 
   // 練習清單＋各練習的學生數（未套篩選排序前的全部資料，SQL orderBy 只是穩定的預設順序）
   const allPractices = await db
@@ -113,35 +111,15 @@ export default async function AdaptiveListPage({
             ＋ 建立新練習
           </span>
         </summary>
-        <form
-          action={createAdaptivePractice}
-          className="mt-3 flex flex-wrap items-end gap-3"
-        >
-          <div className="flex flex-col gap-1">
-            <label htmlFor="adaptive-title" className="text-sm font-medium">練習名稱</label>
-            <input
-              id="adaptive-title"
-              name="title"
-              required
-              maxLength={100}
-              placeholder="例如：一年甲班 迴圈練習"
-              className="h-9 w-56 rounded-lg border px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          <SubjectCombobox builtInSubjects={builtInSubjects} customSubjects={customSubjects} />
-          <button
-            type="submit"
-            className="h-9 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          >
-            ＋ 建立練習
-          </button>
-        </form>
+        <CreatePracticeForm subjects={subjects} />
       </details>
 
       {/* 練習清單：篩選排序控制項，只在原本就有練習時顯示（避免空清單也放一排沒用的下拉選單） */}
       {allPractices.length > 0 && (
         <div className="mb-4 flex justify-end">
-          <AdaptiveListControls subjects={subjects.map(s => ({ id: s.id, name: s.name }))} />
+          <AdaptiveListControls
+            subjects={subjects.map(s => ({ id: s.id, name: s.name, group: s.group, category: s.category }))}
+          />
         </div>
       )}
 
