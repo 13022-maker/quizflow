@@ -4,9 +4,9 @@ import { unstable_setRequestLocale } from 'next-intl/server';
 import { Footer } from '@/templates/Footer';
 import { Navbar } from '@/templates/Navbar';
 
-// 草稿：【】內為待經營者填寫或確認的資料，上線前必須全部替換
+// 草稿：【法定名稱】待經營者填寫，上線前必須替換（只需改 OPERATOR 常數）
 const OPERATOR = '【法定名稱】（以 QuizFlow 名義經營）';
-const CONTACT_EMAIL = '【聯絡信箱】';
+const CONTACT_EMAIL = 'prpispace@gmail.com';
 
 // 資料處理者（依程式實際使用的服務列出）
 const PROCESSORS: { name: string; purpose: string; url: string }[] = [
@@ -54,11 +54,6 @@ const PROCESSORS: { name: string; purpose: string; url: string }[] = [
     name: 'Ably',
     purpose: '即時競賽（Live Mode）的即時通知；只傳送「狀態已更新」訊號，不傳送作答內容或分數。',
     url: 'https://ably.com/privacy',
-  },
-  {
-    name: 'Sentry、Better Stack',
-    purpose: '錯誤監控與系統紀錄，用於找出並修正程式問題（畫面重播預設遮蔽所有文字與圖片）。【待確認：production 是否已設定 NEXT_PUBLIC_SENTRY_DSN／LOGTAIL_SOURCE_TOKEN，未啟用則刪除此項】',
-    url: 'https://sentry.io/privacy/',
   },
 ];
 
@@ -181,8 +176,10 @@ const PrivacyPage = (props: { params: { locale: string } }) => {
             <p className="mt-3">
               <strong>關於 AI 服務：</strong>
               老師上傳的講義與輸入的出題指示、學生的作答內容（例如需要 AI 批改的簡答題、弱點分析所需的作答紀錄），
-              可能會傳送到上述 AI 服務處理。我們只傳送完成該功能所需的內容，不會附上學生的姓名、學號或 email。
-              【待確認：Gemini API 是否為付費層級——Google 對免費層級 API 的資料可能用於改善其產品，若仍使用免費層級，請改寫本段或改用付費層級】
+              可能會傳送到上述 AI 服務處理，其中免費方案與學生端的 AI 功能一律由 Google Gemini API 處理。
+              我們只傳送完成該功能所需的內容，不會附上學生的姓名、學號或 email。
+              依 Google 的服務條款，傳送給 Gemini API 的內容可能會被 Google 保留並用於改善其產品與服務（包括由人員審閱）。
+              因此請勿在講義、出題指示或作答內容中輸入任何個人資料（例如姓名、身分證字號、聯絡方式、健康狀況）或機密資訊。
             </p>
             <p className="mt-2">上述部分服務商位於台灣以外（例如美國），資料可能因此在境外處理與儲存。</p>
           </section>
@@ -198,7 +195,8 @@ const PrivacyPage = (props: { params: { locale: string } }) => {
               </li>
               <li>學生作答資料只提供給建立該測驗或活動的老師查看。</li>
               <li>
-                QuizFlow 不會將學生資料用於訓練 AI 模型，也不會用於廣告。
+                QuizFlow 本身不會將學生資料用於訓練 AI 模型，也不會用於廣告；
+                但傳送給 AI 服務的作答內容，仍適用上述「關於 AI 服務」的說明，請勿讓學生在作答內容中輸入個人資料。
                 唯一例外是學生在練習頁自願留下 email 並勾選同意時，該 email 才會用於寄送練習題與考試提醒。
               </li>
             </ul>
@@ -256,7 +254,7 @@ const PrivacyPage = (props: { params: { locale: string } }) => {
           </section>
 
           <p className="text-xs text-muted-foreground">
-            最後更新日期：2026-11-14
+            最後更新日期：2026-11-21
           </p>
 
         </div>

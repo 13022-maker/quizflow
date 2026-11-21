@@ -4,8 +4,8 @@ import { unstable_setRequestLocale } from 'next-intl/server';
 import { Footer } from '@/templates/Footer';
 import { Navbar } from '@/templates/Navbar';
 
-// 草稿：【】內為待經營者填寫的資料，上線前必須全部替換
-const CONTACT_EMAIL = '【聯絡信箱】';
+const CONTACT_EMAIL = 'prpispace@gmail.com';
+const PADDLE_ORDER_LOOKUP_URL = 'https://paddle.net';
 const PADDLE_BUYER_TERMS_URL = 'https://www.paddle.com/legal/checkout-buyer-terms';
 
 export function generateMetadata() {
@@ -65,7 +65,15 @@ const RefundPage = (props: { params: { locale: string } }) => {
             <h2 className="mb-3 text-lg font-semibold">三、如何申請退款</h2>
             <p className="mb-2">以下兩種方式擇一即可：</p>
             <ol className="list-decimal space-y-2 pl-5">
-              <li>開啟 Paddle 寄給您的付款收據 email，點選其中的連結管理訂單並申請退款。</li>
+              <li>
+                開啟 Paddle 寄給您的付款收據 email，點選其中的連結管理訂單並申請退款；或前往
+                {' '}
+                <a href={PADDLE_ORDER_LOOKUP_URL} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                  paddle.net
+                </a>
+                {' '}
+                以付款 email 查詢訂單。
+              </li>
               <li>
                 來信
                 {' '}
@@ -108,7 +116,7 @@ const RefundPage = (props: { params: { locale: string } }) => {
           </section>
 
           <p className="text-xs text-muted-foreground">
-            最後更新日期：2026-11-14
+            最後更新日期：2026-11-21
           </p>
 
         </div>

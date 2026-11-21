@@ -17,6 +17,8 @@ import { YoutubeTranscript } from 'youtube-transcript';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
+import { QUIZ_MODEL_OPTIONS } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
@@ -240,7 +242,7 @@ ${typesPrompt}
   ]
 }
 每種題型各出 ${count} 題，只出勾選的題型，所有文字使用繁體中文。
-單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}`;
+單選題（mc）的正確答案（A/B/C/D）位置務必平均分散在四個字母之間，不要讓多題答案集中在同一個字母（尤其避免全部落在 A 或 C）。${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}`;
 
   // 成本閘門：只有 Pro 才能用到 Claude（首選或備援都算）
   const allowClaude = await canUseClaude();
@@ -278,7 +280,7 @@ ${typesPrompt}
     if (effectiveModel === 'claude') {
       const message = await callWithRetry(() =>
         anthropic!.messages.create({
-          model: 'claude-sonnet-4-6',
+          model: QUIZ_MODEL_OPTIONS.claude.id,
           max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
         }));
@@ -286,7 +288,7 @@ ${typesPrompt}
     } else {
       const response = await callWithRetry(() =>
         genAI!.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: QUIZ_MODEL_OPTIONS.gemini.id,
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           // 關掉 thinking 讓 100% token 給 JSON;上限提到 16384 防長題截斷
           config: {
@@ -303,7 +305,7 @@ ${typesPrompt}
         if (hasAnthropicKey && allowClaude) {
           const message = await callWithRetry(() =>
             anthropic!.messages.create({
-              model: 'claude-sonnet-4-6',
+              model: QUIZ_MODEL_OPTIONS.claude.id,
               max_tokens: 4096,
               messages: [{ role: 'user', content: prompt }],
             }));

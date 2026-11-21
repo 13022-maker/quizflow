@@ -4,9 +4,10 @@ import { unstable_setRequestLocale } from 'next-intl/server';
 import { Footer } from '@/templates/Footer';
 import { Navbar } from '@/templates/Navbar';
 
-// 草稿：【】內為待經營者填寫的資料，上線前必須全部替換
+// 草稿：【法定名稱】待經營者填寫，上線前必須替換（只需改 OPERATOR 常數）
 const OPERATOR = '【法定名稱】（以 QuizFlow 名義經營）';
-const CONTACT_EMAIL = '【聯絡信箱】';
+const CONTACT_EMAIL = 'prpispace@gmail.com';
+const JURISDICTION_COURT = '臺灣桃園地方法院';
 const PADDLE_BUYER_TERMS_URL = 'https://www.paddle.com/legal/checkout-buyer-terms';
 
 export function generateMetadata() {
@@ -59,7 +60,7 @@ const TermsPage = (props: { params: { locale: string } }) => {
             <ul className="list-disc space-y-2 pl-5">
               <li>
                 <strong>免費方案：</strong>
-                每月 30 次 AI 出題，最多建立 10 份測驗。
+                每月 30 次 AI 出題；測驗總數不設上限，但試用期結束後每天最多建立 5 份測驗（以台灣時間計日）。
               </li>
               <li>
                 <strong>Pro 試用：</strong>
@@ -173,7 +174,7 @@ const TermsPage = (props: { params: { locale: string } }) => {
             <h2 className="mb-3 text-lg font-semibold">九、準據法與管轄</h2>
             <p>
               本條款以中華民國法律為準據法。因本條款或使用本服務所生爭議，雙方同意以
-              【管轄法院】
+              {JURISDICTION_COURT}
               為第一審管轄法院；但法律另有強制規定者（例如消費者保護法）從其規定。
             </p>
           </section>
@@ -197,7 +198,7 @@ const TermsPage = (props: { params: { locale: string } }) => {
           </section>
 
           <p className="text-xs text-muted-foreground">
-            最後更新日期：2026-11-14
+            最後更新日期：2026-11-21
           </p>
 
         </div>

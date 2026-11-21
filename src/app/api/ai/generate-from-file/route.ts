@@ -10,6 +10,8 @@ import { PDFDocument } from 'pdf-lib';
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
+import { QUIZ_MODEL_OPTIONS, type QuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
@@ -18,11 +20,12 @@ import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type ModelChoice = 'gemini' | 'claude';
+type ModelChoice = QuizModelChoice;
 const DEFAULT_MODEL: ModelChoice = 'gemini';
 
-const GEMINI_MODEL_NAME = 'gemini-2.5-flash';
-const CLAUDE_MODEL_NAME = 'claude-sonnet-4-6';
+// 與前端 AIModelPicker 顯示名稱同一來源
+const GEMINI_MODEL_NAME = QUIZ_MODEL_OPTIONS.gemini.id;
+const CLAUDE_MODEL_NAME = QUIZ_MODEL_OPTIONS.claude.id;
 
 // 判斷伺服器端是否已配置對應 API 金鑰
 const hasGeminiKey = Boolean(process.env.GEMINI_API_KEY?.trim());
@@ -288,7 +291,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`
-  : ''}${buildCodeSnippetRule()}${buildSingleAnswerRule()}
+  : ''}${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}
 
 若某題(限選擇題 mc、是非題 tf、填空題 fill)的內容適合用圖表輔助理解（流程步驟、兩者比較、時間先後、概念之間的關係），在該題 JSON 加一個 "diagram" 欄位，格式為以下 4 種之一（不適合就完全不要加這個欄位，不是每題都需要圖，大部分題目不需要）：
 - 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）

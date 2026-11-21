@@ -61,7 +61,13 @@ function validateFile(filePath) {
   if (!html.includes('var QUESTIONS=')) {
     // 這支腳本只認得「var QUESTIONS=[...]」這種資料格式,不是每個 public/practice 頁面
     // 都長這樣(例如 forms.html 是表單練習,沒有題目陣列)—— 沒有這個標記就當作不適用,跳過。
-    return { errors: [], warnings: [], count: 0, skipped: true };
+    return { errors: [], warnings: [], count: 0, skipped: '沒有 QUESTIONS 資料,不是這個格式的練習頁' };
+  }
+
+  if (html.includes('function blankId(')) {
+    // 填充題練習頁(例如 circuit-diagram-fill.html)由 scripts/build-*-fill.ts 透過
+    // src/lib/exportFillBlankPracticePage.ts 產生,題目在產生時已驗證,格式也跟單選題不同
+    return { errors: [], warnings: [], count: 0, skipped: '填充題練習頁(由 build 腳本產生,格式不同)' };
   }
 
   const questions = extractQuestions(html);
@@ -156,7 +162,7 @@ function main() {
     const rel = filePath.replace(`${repoRoot}/`, '');
     const { errors, warnings, count, skipped } = validateFile(filePath);
     if (skipped) {
-      console.log(`\n📄 ${rel} —— 跳過(沒有 QUESTIONS 資料,不是這個格式的練習頁)`);
+      console.log(`\n📄 ${rel} —— 跳過(${skipped})`);
       continue;
     }
     console.log(`\n📄 ${rel}(共 ${count} 題)`);
