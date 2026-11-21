@@ -5,6 +5,8 @@
  * 生成期間鎖住按鈕並顯示提示；成功後顯示摘要並提供「回去建立練習」入口。
  * 教材來源二選一：貼文字（走 server action）或上傳 PDF/圖片（走 API route，
  * 因為 Server Action 預設 body 上限 1MB，檔案上傳需要走 Route Handler）。
+ * 檔案模式的 route 回傳 NDJSON 串流（生成期間送心跳），避免 iOS Safari 約 60 秒沒收到資料就斷線
+ * 顯示「Load failed」，讀取邏輯見 readSubjectGenerationResponse。
  */
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -13,6 +15,10 @@ import { useRef, useState } from 'react';
 import { generateAdaptiveSubject, generateAdaptiveSubjectFromYoutube } from '@/actions/adaptiveActions';
 import { searchYoutubeVideos } from '@/actions/youtubeSearchActions';
 import { validateSubjectUploadFiles } from '@/libs/adaptive/subjectFileValidation';
+import {
+  friendlySubjectUploadError,
+  readSubjectGenerationResponse,
+} from '@/libs/adaptive/subjectGenerationStream';
 import { extractYouTubeId, validateYoutubeImportUrls } from '@/libs/youtube';
 import { EDUCATION_CATEGORY_ID, type RankedCandidate } from '@/libs/youtubeSearch';
 
@@ -253,14 +259,12 @@ export function NewSubjectForm({ youtubeSearchEnabled }: { youtubeSearchEnabled:
       }
 
       const apiRes = await fetch('/api/ai/generate-subject-from-file', { method: 'POST', body: fd });
-      const data = await apiRes.json();
-      if (!apiRes.ok) {
-        throw new Error(data.error || '生成失敗');
-      }
+      const data = await readSubjectGenerationResponse<Result>(apiRes);
       setResult(data);
       router.refresh();
     } catch (e) {
-      setError((e as Error).message);
+      // fetch 本身失敗（iOS Safari「Load failed」等 TypeError）轉成繁中說明，不顯示原始英文訊息
+      setError(friendlySubjectUploadError(e));
     } finally {
       setGenerating(false);
     }

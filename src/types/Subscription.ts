@@ -15,10 +15,12 @@ export type BillingInterval = EnumValues<typeof BILLING_INTERVAL>;
 export type PricingPlan = {
   id: PlanId;
   price: number; // 月繳價（NT$）
+  yearlyPrice: number; // 年繳價（NT$），須與 Paddle 年繳 Price 金額一致
   interval: BillingInterval;
   features: {
     teamMember: number;
     website: number; // 測驗數量上限（999 = 無限）
+    dailyQuizLimit?: number; // 每日建立測驗上限（台北時間計日；undefined = 不限）
     storage: number;
     transfer: number;
     aiQuota: number; // 每月 AI 出題次數上限（999 = 無限）

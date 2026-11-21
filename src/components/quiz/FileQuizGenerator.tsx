@@ -2,6 +2,9 @@
 
 import { useRef, useState } from 'react';
 
+import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
+
+import { AIModelPicker } from './AIModelPicker';
 import { MissingCodeWarning } from './MissingCodeWarning';
 
 type QuestionType = 'mc' | 'tf' | 'fill' | 'short';
@@ -23,6 +26,8 @@ type GeneratedResult = {
 type Props = {
   onImport: (questions: GeneratedQuestion[], title: string) => void;
   onClose: () => void;
+  /** Pro 或以上（含 30 天試用）；非 Pro 時 Claude 模型選項 disabled */
+  isPro: boolean;
 };
 
 const TYPE_CONFIG = [
@@ -56,7 +61,7 @@ function formatSize(bytes: number) {
 // Vercel Serverless request body 上限 ~4.5MB，超過就要在前端裁切
 const MAX_UPLOAD_SIZE = 4.5 * 1024 * 1024;
 
-export default function FileQuizGenerator({ onImport, onClose }: Props) {
+export default function FileQuizGenerator({ onImport, onClose, isPro }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [types, setTypes] = useState<QuestionType[]>(['mc']);
   const [count, setCount] = useState(5);
@@ -74,7 +79,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
   const [pageLoading, setPageLoading] = useState(false);
 
   // AI 模型選擇（預設 Gemini 較省錢快速）
-  const [model, setModel] = useState<'gemini' | 'claude'>('gemini');
+  const [model, setModel] = useState<QuizModelChoice>('gemini');
 
   async function handleFile(f: File) {
     setFile(f);
@@ -164,7 +169,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
       fd.append('types', JSON.stringify(types));
       fd.append('count', String(count));
       fd.append('difficulty', difficulty);
-      fd.append('model', model);
+      fd.append('model', resolveQuizModelChoice(model, isPro));
 
       const res = await fetch('/api/ai/generate-from-file', { method: 'POST', body: fd });
       const data = await res.json();
@@ -374,30 +379,7 @@ export default function FileQuizGenerator({ onImport, onClose }: Props) {
           {/* AI 模型選擇 */}
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-widest text-amber-700">AI 模型</p>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setModel('gemini')}
-                className={`flex items-start gap-2 rounded-xl border-2 p-3 text-left transition-all ${model === 'gemini' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'}`}
-              >
-                <span className="text-lg">⚡</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-800">Gemini 2.5 Flash</p>
-                  <p className="text-xs text-gray-400">快速省錢 · 預設</p>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setModel('claude')}
-                className={`flex items-start gap-2 rounded-xl border-2 p-3 text-left transition-all ${model === 'claude' ? 'border-amber-500 bg-amber-50' : 'border-gray-200 hover:border-amber-300'}`}
-              >
-                <span className="text-lg">🤖</span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-gray-800">Claude Sonnet 4</p>
-                  <p className="text-xs text-gray-400">品質優 · 較慢</p>
-                </div>
-              </button>
-            </div>
+            <AIModelPicker isPro={isPro} value={model} onChange={setModel} />
           </div>
 
           {/* Error */}

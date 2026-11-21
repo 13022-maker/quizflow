@@ -4,6 +4,7 @@ import { getTranslations } from 'next-intl/server';
 import { QuizTaker } from '@/features/quiz/QuizTaker';
 import { VocabTaker } from '@/features/quiz/VocabTaker';
 import { db } from '@/libs/DB';
+import { prepareQuestionsForTaker } from '@/libs/quizRedaction';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export async function generateMetadata({ params }: { params: { accessCode: string } }) {
@@ -110,7 +111,8 @@ export default async function QuizTakePage({ params }: { params: { accessCode: s
   return (
     <div className="min-h-screen bg-gradient-to-b from-indigo-50/60 via-white to-emerald-50/30 pb-24 pt-10 md:py-16 md:pb-24">
       <div className="mx-auto max-w-2xl px-4">
-        <QuizTaker quiz={quiz} questions={questions} />
+        {/* 考試模式／不顯示解答時，答案欄位在 server 端就拿掉，不會出現在 RSC payload */}
+        <QuizTaker quiz={quiz} questions={prepareQuestionsForTaker(quiz, questions)} />
       </div>
     </div>
   );

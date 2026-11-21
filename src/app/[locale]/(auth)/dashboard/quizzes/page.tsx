@@ -9,9 +9,9 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
-import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH, type DailyQuizQuota } from '@/libs/quizQuota';
+import { getDailyQuizQuota } from '@/libs/quizQuota-dao';
 import { quizSchema, responseSchema } from '@/models/Schema';
-import { PricingPlanList } from '@/utils/AppConfig';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
   const t = await getTranslations({
@@ -26,16 +26,15 @@ export default async function QuizzesPage() {
   const t = await getTranslations('Quizzes');
 
   let quizzes: (typeof quizSchema.$inferSelect)[] = [];
-  let quizCount = 0;
-  let quizLimit = 999;
-  let planId = 'free';
+  // 每日建立額度（試用結束後的 Free 每天 5 份；VIP / Pro / 試用中不限）
+  let dailyQuota: DailyQuizQuota | null = null;
 
   try {
     if (userId) {
       // 並行查詢：測驗清單、方案資訊
       // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
-      [planId, quizzes] = await Promise.all([
-        getUserPlanId(userId),
+      [dailyQuota, quizzes] = await Promise.all([
+        getDailyQuizQuota(userId),
         db.select({
           id: quizSchema.id,
           ownerId: quizSchema.ownerId,
@@ -57,12 +56,6 @@ export default async function QuizzesPage() {
           createdAt: quizSchema.createdAt,
         }).from(quizSchema).where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot'))).orderBy(quizSchema.createdAt) as any,
       ]);
-      quizLimit = PricingPlanList[planId]?.features.website ?? 10;
-      // 試用中老師享 Pro 待遇（與 quizActions 的 isProOrAbove 待遇一致）
-      if (await isProOrAbove(userId)) {
-        quizLimit = 999;
-      }
-      quizCount = quizzes.length;
     }
   } catch (err) {
     console.error('[QuizzesPage] DB query failed:', err);
@@ -81,8 +74,10 @@ export default async function QuizzesPage() {
     responseCounts = new Map(rows.map(r => [r.quizId, r.total]));
   }
 
-  const isFree = quizLimit < 999;
-  const isAtLimit = isFree && quizCount >= quizLimit;
+  const isFree = dailyQuota?.limited ?? false;
+  const isAtLimit = dailyQuota?.exceeded ?? false;
+  const dailyUsed = dailyQuota?.used ?? 0;
+  const dailyLimit = dailyQuota?.limit ?? 5;
 
   return (
     <>
@@ -97,25 +92,25 @@ export default async function QuizzesPage() {
         {isFree && (
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <span>測驗額度：</span>
+              <span>今日建立：</span>
               <span className={`font-medium ${isAtLimit ? 'text-red-600' : 'text-foreground'}`}>
-                {quizCount}
+                {dailyUsed}
                 {' '}
                 /
                 {' '}
-                {quizLimit}
+                {dailyLimit}
               </span>
             </div>
             {/* 視覺進度條 */}
             <div className="hidden h-2 w-20 overflow-hidden rounded-full bg-muted sm:block">
               <div
                 className={`h-full rounded-full transition-all ${isAtLimit ? 'bg-red-500' : 'bg-primary'}`}
-                style={{ width: `${Math.min((quizCount / quizLimit) * 100, 100)}%` }}
+                style={{ width: `${Math.min((dailyUsed / dailyLimit) * 100, 100)}%` }}
               />
             </div>
             {isAtLimit && (
               <Link
-                href="/dashboard/billing"
+                href={DAILY_QUIZ_LIMIT_PRICING_PATH}
                 className="text-xs font-medium text-primary hover:underline"
               >
                 升級 Pro →
@@ -128,11 +123,11 @@ export default async function QuizzesPage() {
         {isAtLimit
           ? (
               <Link
-                href="/dashboard/billing"
+                href={DAILY_QUIZ_LIMIT_PRICING_PATH}
                 className={buttonVariants({ size: 'sm', variant: 'outline' })}
-                title="免費方案已達測驗上限，請升級 Pro 繼續建立"
+                title="今天已達免費方案每日建立上限，明天可再建立，或升級 Pro 不限份數"
               >
-                🔒 已達上限 · 升級
+                🔒 今日已達上限 · 升級
               </Link>
             )
           : (

@@ -21,11 +21,11 @@ QuizFlow 是專為**台灣老師**設計的 AI 測驗 SaaS 平台。
 
 ## 技術架構
 - **Framework**: Next.js 14+ App Router + TypeScript (Strict Mode)
-- **Auth**: Clerk（以 Organization 為 tenant，`ownerId = orgId`，多租戶）
+- **Auth**: Clerk（已移除 Clerk Organization，所有資源以 Clerk `userId` 為單位，`ownerId = userId`；見 `src/libs/Plan.ts`）
 - **Database**: Drizzle ORM + PostgreSQL（本地開發用 PGlite in-memory）
 - **UI**: Tailwind CSS + Shadcn UI（基於 Radix primitives）
-- **i18n**: next-intl（預設 `zh` 繁體中文，支援 `en`）
-- **AI 出題**: Gemma 4 E4B（透過 Ollama 本地運行）／Claude API（分析功能）
+- **i18n**: next-intl（預設 `zh` 繁體中文，支援 `en`、`ja`）
+- **AI 出題**: Gemini 2.5 Flash 為主；付費方案首選 Claude，備援 Grok → OpenAI（統一入口 `src/lib/ai/textModel.ts`，詳見下方「模型指定」）
 - **其他**: Zod 驗證、Playwright 測試
 
 ## 專案結構重點
@@ -40,10 +40,10 @@ src/
 │   └── dashboard/       # TitleBar、MessageState、DashboardHeader
 ├── components/
 │   └── onboarding/      # OnboardingSteps（新手引導）
-├── lib/ai/              # 所有 AI 提示詞與生成邏輯（統一放這裡）
+├── lib/ai/              # 共用 AI 邏輯（textModel.ts provider 分流、prompt 規則片段）
 ├── models/Schema.ts     # Drizzle 所有資料表定義
 ├── actions/             # Server Actions（quizActions、questionActions、responseActions）
-└── locales/             # zh.json / en.json
+└── locales/             # zh.json / en.json / ja.json
 ```
 
 ## 常用指令
@@ -68,10 +68,10 @@ npm run db:studio              # 開啟 Drizzle Studio
 
 **Server Actions**
 - 所有寫入操作必須透過 Server Action
-- 必須先驗證 `orgId`，使用 Zod 進行嚴格輸入驗證
+- 必須先驗證 `userId`（`auth()`），使用 Zod 進行嚴格輸入驗證
 
 **i18n**
-- 新增任何翻譯 key，**必須**同時更新 `src/locales/zh.json` 與 `src/locales/en.json`
+- 新增任何翻譯 key，**必須**同時更新 `src/locales/zh.json`、`src/locales/en.json` 與 `src/locales/ja.json`（`src/locales/locales.test.ts` 會檢查三語 key 對齊）
 
 **資料庫**
 - 修改 `src/models/Schema.ts` 後，**必須**執行 `npm run db:generate` 並 commit migration
@@ -82,7 +82,7 @@ npm run db:studio              # 開啟 Drizzle Studio
   4. 改完跑一次 `npm run db:generate` 確認顯示「No schema changes, nothing to migrate」，代表 drizzle-kit 認得重新命名後的狀態
 
 **安全性**
-- 絕對禁止在 Client Component 直接呼叫 AI/Ollama
+- 絕對禁止在 Client Component 直接呼叫 AI 服務（Gemini / Claude / Grok / OpenAI）
 - 必須走 Server Action 或 API Route
 
 **API Routes**
@@ -119,12 +119,21 @@ QuizFlow 專屬觸發:
 
 ## AI 出題核心規則（最重要部分）
 
-AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗）。
+Free 方案**可以**使用 AI 出題，有每月額度：每月 30 次（`src/utils/AppConfig.ts` 的 `aiQuota`；PR #107 由 10 改為 30，merge 前 main 仍為 10），最多建立 10 份測驗（`website: 10`）。Pro／學校方案與 30 天 Pro 試用中的帳號 AI 無限次（`isProOrAbove`）。
 
 **模型指定**
-- Ollama 本地模型名稱：`gemma4:e4b`
-- 分析類功能（弱點分析、班級建議）：Claude API（`claude-sonnet-4-20250514`）
-- 所有 AI 相關邏輯統一放在 `src/lib/ai/` 目錄下
+- 統一入口 `generateAIText()`（`src/lib/ai/textModel.ts`）分流：
+  - 付費（`isProOrAbove`，含試用中）且有 `ANTHROPIC_API_KEY` → Claude 優先，失敗 fallback Gemini
+  - 免費／未登入／學生端 → 直接 Gemini，**永遠不會用到 Claude**（成本閘門，PR #106）
+  - Gemini 失敗 → Grok（`grok-4-fast`，`api.x.ai`）→ 最後 OpenAI（`gpt-4o-mini`）
+  - 每個 provider 另有帳號 key pool（`*_API_KEY_BACKUP`，逗號分隔）
+- Gemini 模型：`gemini-2.5-flash`（`generate-questions`、`generate-from-file` 等出題 route 預設）
+- Claude 模型 id：
+  - `claude-sonnet-4-6`：`generateAIText` 預設，涵蓋出題、簡答批改、弱點分析、班級建議
+  - `claude-opus-4-8`：適性學習科目生成（`src/libs/adaptive/`，開 adaptive thinking）
+  - `claude-haiku-4-5-20251001`：`bloom-studio`
+- 語音合成：OpenAI `tts-1`；客語走 Google Translate TTS（`/api/ai/tts`）
+- 共用 AI 邏輯放在 `src/lib/ai/`；各功能的 API route 在 `src/app/api/ai/`，適性學習在 `src/libs/adaptive/`
 
 **生成輸出格式（標準 JSON Schema）**
 每題必須包含以下欄位：
@@ -147,13 +156,13 @@ AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗
 }
 ```
 
-**Gemma 4 多模態提示規則**
-- 先放置 `<image>`、`<audio>` 等多模態內容，再接文字指令
+**多模態提示規則（Gemini / Claude）**
+- 先放置圖片／PDF 等多模態內容，再接文字指令（`textModel.ts` 的 `buildClaudeMediaBlocks` / `buildGeminiMediaParts` 已照此順序組裝）
 - 明確要求輸出結構化 JSON，包含題目、選項、正確答案、解析
-- 建議使用 Thinking Mode（step by step）提升生成品質
+- Gemini 端關閉 thinking 讓 token 全給輸出；Claude Opus 4.8 需以 `claudeThinking: true` 開 adaptive thinking
 
 **提示詞管理**
-- 所有 Gemma 4 / Claude 提示詞統一放在 `src/lib/ai/prompts.ts`
+- 共用的 prompt 規則片段放在 `src/lib/ai/`（如 `singleAnswerPrompt.ts`、`codeSnippetPrompt.ts`、`lessonPrepPromptBuilder.ts`），各功能主 prompt 寫在各自的 route（例如 `generate-questions/route.ts` 的 `FRAMEWORK_PROMPTS`）；不存在 `src/lib/ai/prompts.ts`
 
 ## 重要設定檔
 
@@ -163,7 +172,7 @@ AI 出題功能**僅限 Pro 方案**使用（Free 方案最多建立 3 個測驗
 | `src/libs/Env.ts` | 環境變數驗證（Zod） |
 | `src/models/Schema.ts` | Drizzle 所有資料表定義 |
 | `src/locales/zh.json` | 主要翻譯檔（繁體中文） |
-| `src/lib/ai/` | Gemma 4 / Claude 相關程式碼與提示詞 |
+| `src/lib/ai/` | AI provider 分流（`textModel.ts`）與共用 prompt 規則 |
 
 ## 環境變數（開發環境）
 開發時只需 `.env.local`，`DATABASE_URL` 可省略（自動使用 PGlite）：
@@ -172,7 +181,10 @@ CLERK_SECRET_KEY=
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 STRIPE_SECRET_KEY=any_fake_value
-# ANTHROPIC_API_KEY= （analyze-weak-points / analyze-class-performance 需要）
+# GEMINI_API_KEY= （AI 出題主力；免費用戶與學生端只走 Gemini）
+# ANTHROPIC_API_KEY= （付費方案首選 Claude；未設則全部走 Gemini）
+# GROK_API_KEY= （Gemini 失敗時的備援，可省略）
+# OPENAI_API_KEY= （TTS 語音 + 最後一道 AI 備援）
 # YOUTUBE_API_KEY= （適性學習「搜尋教學影片」需要，Google Cloud Console 啟用 YouTube Data API v3
 #   後建立；未設則「搜尋影片」入口整個隱藏，不影響 YouTube 匯入既有的貼網址流程）
 ```
@@ -188,12 +200,13 @@ STRIPE_SECRET_KEY=any_fake_value
 - **.next 快取損壞**：修復方式 `rm -rf .next && npm run dev`
 - **手機版 PDF 頁數範圍選擇器**：flex 不 wrap 在 375px 溢出，改 `flex-wrap` + 調整 padding
 - **程式題缺程式碼**：出題 prompt 從沒要求附程式碼又規定「不要 markdown」，AI 出「下列程式的輸出為何？」卻不給程式碼。修法：各出題 prompt 加 `buildCodeSnippetRule()`（`src/lib/ai/codeSnippetPrompt.ts`），程式碼一律以 ```lang 圍欄存在題目 body（不加 DB 欄位）；`ensureCodeSnippets()`（`src/lib/codeBlock.ts`）把 AI 放錯欄位的程式碼併回並偵測缺漏；顯示端一律用 `QuestionBody` 元件（等寬 `<pre><code>`，React escape 無 XSS），Word / 練習頁匯出同步支援
+- **單選題出現兩個正解**：否定題幹（「下列何者不是網域名稱的一部分？」）AI 拿相鄰概念（URL 的「協定」）當干擾項，結果也成立。修法：各選擇題出題 prompt（generate-questions / from-file / from-url / regenerate / remedial / bloom-studio / aiActions / 備課助手）串接 `buildSingleAnswerRule()`（`src/lib/ai/singleAnswerPrompt.ts`）：正解唯一、否定題幹干擾項須符合正向條件、選項用語精確、輸出前逐題自我檢查、explanation 說明各干擾項為何錯（無詳解欄位時傳 `explanationField: null`，不新增輸出欄位）
 
 ## 功能規格（已實作）
 
 - **題型**：single_choice、multiple_choice、true_false、short_answer、ranking（排序題）
 - **排序題（ranking）**：學生端用 `survey-react-ui` ranking widget（`next/dynamic` + `ssr:false` 動態載入），老師端輸入順序即正確答案，批改為全對才給分，學生端永遠強制打亂選項
-- **AI quota**：免費版每月 10 次，Pro 無限（4 月測試期全 Pro）
+- **AI quota**：免費版每月 30 次（PR #107，merge 前 main 為 10），Pro／學校方案無限；新帳號 30 天 Pro 試用期間也無限（`src/libs/trial.ts`，`TRIAL_DAYS = 30`）
 - **AI 出題**：文字模式 + 檔案模式（PDF/圖片），支援 mc/tf/fill/short/rank 五種題型
 - **快閃卡**（`FlashCard.tsx`）：3D 翻牌 + 進度追蹤
 - **考試模式防作弊**：`quiz.preventLeave` boolean 控制；學生端 `beforeunload` 攔截 + `visibilitychange` 偵測切換分頁；`response.leaveCount` 記錄離開次數；老師成績頁顯示「⚠️ 離開 N 次」紅色標記 + CSV 匯出
@@ -213,11 +226,11 @@ STRIPE_SECRET_KEY=any_fake_value
 ## 目前完成進度
 
 ### ✅ 已完成
-- 品牌設定、雙語支援（zh/en）、定價方案
+- 品牌設定、多語支援（zh/en/ja）、定價方案
 - 資料模型：quiz、question、response、answer + ai_usage
 - 測驗 CRUD + 拖曳排序 + 平均配分（總分 100）
 - 學生公開作答頁面（`/quiz/[accessCode]`）與自動批改
-- AI 出題（文字提示 + PDF/圖片上傳，使用 Claude API，支援 5 種題型含排序題）
+- AI 出題（文字提示 + PDF/圖片上傳，Gemini 2.5 Flash 為主、付費方案 Claude 優先，支援 5 種題型含排序題）
 - AI 出題完成後自動把試卷主題接到預設標題後面（「AI 出題 4/26 - 光合作用」，≤7 字，僅當標題仍是預設 pattern 才覆寫，PR #49）
 - AI 出題命題框架下拉選單（`src/components/quiz/AIQuizModal.tsx` select + `src/app/api/ai/generate-questions/route.ts` `FRAMEWORK_PROMPTS`），分組：
   - 108 課綱素養（國中／高中各 6 科）
@@ -230,7 +243,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 學生成績頁 AI 弱點分析（`/api/ai/analyze-weak-points`）
 - 錯題重做功能（本機批改，不計入統計）
 - 老師成績報表：可排序表格、CSV 匯出（含離開次數）、前 3 難題、AI 班級建議
-- AI 出題 quota 限制（Free 10次/月，Pro 無限）
+- AI 出題 quota 限制（Free 30 次/月〔PR #107〕，Pro 無限）
 - Billing 方案頁面（用量顯示 + 方案比較表）
 - 題目插入圖片功能（URL 貼上 + Google 搜尋 + 預覽）
 - 是非題選項修復（自動補上預設「正確/錯誤」選項）
@@ -244,8 +257,12 @@ STRIPE_SECRET_KEY=any_fake_value
 - Paddle Billing 整合（sandbox smoke test 全通過）：
   - `/zh/pricing` 頁用 `components/pricing/PricingSection`，三方案 + 月/年切換
   - `POST /api/paddle/checkout` 建立 customer（含 try/catch），`useCheckout` hook 開 overlay
-  - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 created/updated/canceled
-  - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix）
+  - Webhook `/api/webhook`（已從 Clerk middleware 排除）處理 subscription.created/updated/activated/canceled/past_due/paused/resumed/trialing，以 `paddle_subscription_id` 原子 upsert
+  - `sub.customData` 為 null 時用 `customer_id` 反查 `paddle_customer` 表取得 clerkUserId（關鍵 fix，有整合測試 `src/app/api/webhook/route.integration.test.ts` 守門）
+  - 2026-11 production-ready：env 判斷集中在 `src/libs/paddleConfig.ts`（純函數）；Paddle SDK 改 lazy `getPaddle()`；checkout 只收 env 白名單 price（`INVALID_PRICE`）、缺 `PADDLE_API_KEY` 回 503 `PADDLE_NOT_CONFIGURED`；webhook 缺 secret 回 503；前端缺 client token / price ID 時按鈕顯示「即將開放」
+  - `/dashboard/billing`：`UpgradeProButton`（月/年切換，取代舊 PR #32）+ `ManageSubscriptionButton` → `POST /api/paddle/portal`（Paddle Customer Portal：取消、換卡、收據）
+  - 定價入口（navbar / footer / 首頁區塊 / dashboard nav「定價」/ `/pricing`）預設顯示；`NEXT_PUBLIC_PRICING_ENABLED=false` 為緊急 kill switch。`/pricing` 對所有訪客顯示完整方案（Paddle domain approval 要求），首頁區塊仍走 `getPricingVisibility`
+  - `Plan.ts` 用 `pickEffectiveSubscription`：同用戶多筆訂閱時有效狀態優先、取最新，不再 `.limit(1)` 拿到任意一筆
 - **Live Mode**（Kahoot 風格直播競賽 MVP）：6 碼 PIN 加入、老師主控 + 學生同步、Kahoot 式計分（500 底分 + 最多 500 速度加成）、即時排行榜
   - Realtime：**抽象 adapter 介面**（`src/services/live/realtimeAdapter.ts`）雙實作
     - Polling（預設）：setInterval + REST fetch，host 每 1.5s、player 每 2s
@@ -276,7 +293,7 @@ STRIPE_SECRET_KEY=any_fake_value
 - 適性學習班級儀表板「匯出班級成績」新增 Google Sheet 匯出選項（借用 Clerk 既有 Google 登入連線 + Sheets API v4，每次建一張新表；CSV 下載維持原樣）
 
 ### 🔥 下一步優先順序（依序開發）
-1. **Paddle production 上線**（階段 2）：過時分支 `feature/paddle-sandbox` 已刪（程式碼早已在 main），env + webhook destination 待破 100 用戶且命題人數超過 10 人時再補
+1. **Paddle production 上線**（階段 2）：使用者 2026-11 決定正式上線（取代原「破 100 用戶」觸發條件）。程式碼端已就緒（PR `feat/paddle-production-ready`），剩 Dashboard / Vercel env 手動步驟，照 `docs/paddle-production-go-live.md` 逐項勾選
 2. ~~免費試用機制（Pro 功能 30 天體驗，到期自動降級）~~ ✅ 2026-04-30 完成 4 缺口修補（Fix 1: AI quota 走 isProOrAbove；Fix 2: billing 頁試用狀態四分支；Fix 3: 到期 banner 限期 7 天；Fix 4: dashboard layout eager trigger，30 天從進 dashboard 起算）。spec: `docs/superpowers/specs/2026-04-30-pro-trial-fixes-design.md`、plan: `docs/superpowers/plans/2026-04-30-pro-trial-fixes.md`
 3. 多語系擴展（日語、韓語、英語、簡體中文）
    - **Phase 1：日文 (ja)** ✅ 2026-05-21 完成（commit c2af1cb）。spec: `docs/superpowers/specs/2026-05-20-i18n-japanese-design.md`、譯者註記: `src/locales/ja.translation-notes.md`、工具: `scripts/translate-locale.ts`（可重用於 Phase 2/3）
@@ -298,14 +315,14 @@ STRIPE_SECRET_KEY=any_fake_value
   - 單 channel 即可（不用依 host/player 分），channel 計費 = 遊戲數
   - 無隱私洩漏（player 分數 / 排名走 REST 認證層，channel 全 public subscribe）
   - REST endpoint 仍是權威 state 來源，adapter 僅替換「何時觸發 fetch」
-- **Token endpoint**：單一 `/api/live/ably-auth` 用 `?role=host|player` 分流；host 驗 Clerk orgId 擁有 game、player 驗 playerToken
+- **Token endpoint**：單一 `/api/live/ably-auth` 用 `?role=host|player` 分流；host 驗 Clerk userId 擁有 game（`game.hostUserId`）、player 驗 playerToken
 - **Middleware 陷阱（踩過 2 次，謹記）**：
   - 不可把 `/api/live/ably-auth` 放進 `isPublicApiRoute`（會整個 skip `clerkMiddleware`，endpoint 內 `auth()` 炸 500）
   - 正解：`isOptionalAuthRoute` matcher + 條件式 `if (isProtectedRoute && !isOptionalAuthRoute) auth.protect(...)` → 保留 Clerk context 但不強制登入
 - **所有 publish 只在 server 端**（`ablyServer.publishTick`），client token capability 只含 `subscribe`，防訊息偽造
 - **reactionMs 由 server 計算**（`Date.now() - game.questionStartedAt`），client 傳來的時間戳完全不信任（防竄改瀏覽器時鐘拉分）
 - **Server fallback**：`ABLY_API_KEY` 未設時 `publishTick` 直接 no-op，不會 throw；也就是拔掉 env 即自動回滾 polling
-- Ably 免費 tier：200 併發、3M msg/月，tick-only 模式訊息量低（每 mutation 一則），規劃**跟 Paddle production 同 trigger**（用戶破 100 再評估付費方案）
+- Ably 免費 tier：200 併發、3M msg/月，tick-only 模式訊息量低（每 mutation 一則），用戶破 100 再評估付費方案（原本與 Paddle production 同 trigger；Paddle 已於 2026-11 提前上線，Ably 維持原條件）
 
 ### Drizzle migration snapshot 脫鉤（已存在問題，非本次造成）
 `migrations/meta/` 缺 0015/0016/0017 的 snapshot，導致下次 `npm run db:generate` 會把 vocab 表、quiz marketplace 欄位等既有內容當 diff 又塞一次到新產 migration 裡。**每次產新 migration 後必須檢視 SQL，手動刪除不屬於本次改動的 CREATE TABLE / ALTER TABLE**（本次 `0018_flashy_pete_wisdom.sql` 已處理）。長期解法：重建 snapshot，但要在本機 PGlite + Neon 都驗證。
@@ -319,14 +336,14 @@ STRIPE_SECRET_KEY=any_fake_value
 目前前端用 pdf-lib 裁切後上傳（繞過 Vercel 4.5MB body 限制）。
 長期改法：改用 Vercel Blob 直傳，server 端從 Blob URL 讀取，不受 body size 限制。尚未實作。
 
-### Stripe 金鑰
-目前用測試金鑰（`STRIPE_SECRET_KEY`），5 月替換為正式金鑰。
+### ~~Stripe 金鑰~~（已過時）
+金流已改由 Paddle（Merchant of Record）處理，`src/` 已無任何 Stripe 呼叫；`STRIPE_*` 只剩 `src/libs/Env.ts` 的 optional 欄位與 `package.json` 的 `stripe` 依賴，可擇期清除。
 
-### ECPay 金流
-5 月整合，需綠界商店帳號與 API 金鑰。
+### ~~ECPay 金流~~（已過時）
+未整合，金流改走 Paddle，不再規劃。
 
-### GitHub Actions CI 紅燈
-`.github/workflows/CI.yml` 的 `Next.js Build 檢查` 缺少 `NEXT_PUBLIC_CLERK_SIGN_IN_URL` secret，需到 GitHub repo Settings → Secrets 補上。Vercel deploy 不受影響。
+### ~~GitHub Actions CI 紅燈~~（已解決）
+`.github/workflows/CI.yml` 已直接帶 `NEXT_PUBLIC_CLERK_SIGN_IN_URL: /sign-in`，不再依賴 secret；main 上 CI 為綠燈。
 
 ### Paddle Sandbox 測試分支（smoke test 已通過 2026-04-15，分支已刪 2026-04-30）
 `feature/paddle-sandbox` 分支綁 Paddle Sandbox 環境，完整 flow 驗證：訂閱 → webhook → DB upsert → 取消 → status=canceled。
@@ -335,19 +352,25 @@ STRIPE_SECRET_KEY=any_fake_value
 - Paddle Sandbox webhook destination：`ntfset_01kp66qw6wj7f3z0htq5ktg2qy`（目前指到 preview URL）
 - production merge 前要處理：移除 Vercel preview 的 sandbox env（或窄化成只綁該分支）、刪 Neon preview branch、Paddle sandbox webhook destination 移除或獨立
 
-### Paddle production 上線清單（階段 2，未做）
-**Trigger 條件**：用戶數破 100 **且** 命題人數超過 10 人（避免 production webhook 過早啟用導致誤觸發訂閱）。
-production Vercel env 目前**完全沒有 PADDLE_*** 變數，正式上線當天再一次性補齊：
-1. `vercel env add PADDLE_API_KEY production`（production key `pdl_apikey_*`）
-2. `vercel env add NEXT_PUBLIC_PADDLE_CLIENT_TOKEN production`（live_*）
-3. `vercel env add NEXT_PUBLIC_PADDLE_ENV production` value=`production`
-4. `vercel env add PADDLE_WEBHOOK_SECRET production`（取自 production Paddle Dashboard）
-5. 4 個 production Price ID：
-   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`
-   - `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`
-   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`
-   - `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`
-6. 更新 Paddle **Production** Dashboard webhook destination 指到 `https://quizflow-psi.vercel.app/api/webhook`（與 sandbox 那條不同個）
+### Paddle production 上線清單（階段 2）
+**Trigger 條件**：使用者 2026-11 決定正式上線（覆蓋原本「用戶數破 100 且命題人數超過 10 人」的條件）。
+**完整可勾選清單**：`docs/paddle-production-go-live.md`（法務頁修正、Paddle 驗證 / domain approval、Vercel env 指令、webhook 事件、smoke test、回滾）。
+
+Vercel env 現況（2026-11-14 只讀檢查，值未讀取）：
+- production **已有**：`NEXT_PUBLIC_PADDLE_ENV`、4 個 `NEXT_PUBLIC_PADDLE_PRICE_*`（2026-04-20 建立、sensitive 無法讀回 → 清單建議刪掉重設）
+- production **缺**：`PADDLE_API_KEY`、`NEXT_PUBLIC_PADDLE_CLIENT_TOKEN`、`PADDLE_WEBHOOK_SECRET`
+- preview：sandbox 那組全部只綁 `feature/paddle-sandbox` 分支（已刪分支），實際無作用，清單附刪除指令
+
+4 個 production Price ID（金額需與 `AppConfig.ts` / `PricingSection.tsx` 一致，`AppConfig.pricing.test.ts` 守門）：
+- `NEXT_PUBLIC_PADDLE_PRICE_PRO_MONTHLY` = `pri_01kp3nbts21fh1saqfxgat7kgb`（NT$299/月）
+- `NEXT_PUBLIC_PADDLE_PRICE_PRO_YEARLY` = `pri_01kp3nerfqeama1ga5b54vgpk6`（NT$2,490/年）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY` = `pri_01kp3nhjp1xw9g1jyxvxynhtp4`（NT$1,990/月）——**暫不設定**（學校方案未開放）
+- `NEXT_PUBLIC_PADDLE_PRICE_TEAM_YEARLY` = `pri_01kp3nnjdzkj64jv7ra0ygtaf1`（NT$16,990/年）——**暫不設定**（學校方案未開放）
+
+**學校方案（Team）暫不開放結帳**：上線時**不要**設 `NEXT_PUBLIC_PADDLE_PRICE_TEAM_MONTHLY/YEARLY`（席次 / 團隊功能尚未實作）；未設時定價頁學校卡顯示「即將開放」、checkout 拒收 team priceId（`PricingCard.test.tsx` / `route.test.ts` 守門）。Paddle 端 Team price 保留但不對外。
+
+Production webhook destination：`https://quizflow-psi.vercel.app/api/webhook`（與 sandbox `ntfset_01kp66qw6wj7f3z0htq5ktg2qy` 不同條），事件勾 `subscription.*` 8 種。
+`NEXT_PUBLIC_*` 是 build 時 inline，改完 env 一定要 redeploy。
 
 ## Agent 任務工作流
 1. 開場先跑 `gh issue list --label "狀態:待處理" --json number,title,body` 找任務

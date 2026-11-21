@@ -3,6 +3,36 @@ import { describe, expect, it } from 'vitest';
 import { buildFillBlankPracticePageHtml, selectFillBlankQuestions } from './exportFillBlankPracticePage';
 
 describe('selectFillBlankQuestions', () => {
+  it('多格題：題幹切成 N+1 段，正解依頓號拆成每格答案，answer 用「／」串起', () => {
+    const { practiceQuestions, skipped } = selectFillBlankQuestions({
+      groupLabel: 'g',
+      questions: [
+        { type: 'short_answer', body: '光合作用在___中進行，產生___。', correctAnswers: ['葉綠體、氧氣'] },
+      ],
+    });
+
+    expect(skipped).toBe(0);
+    expect(practiceQuestions[0]).toMatchObject({
+      before: '光合作用在',
+      after: '。',
+      segments: ['光合作用在', '中進行，產生', '。'],
+      answers: ['葉綠體', '氧氣'],
+      answer: '葉綠體／氧氣',
+    });
+  });
+
+  it('多格題但正解拆不出對應格數：略過（避免學生怎麼填都對不上）', () => {
+    const { practiceQuestions, skipped } = selectFillBlankQuestions({
+      groupLabel: 'g',
+      questions: [
+        { type: 'short_answer', body: '光合作用在___中進行，產生___。', correctAnswers: ['葉綠體'] },
+      ],
+    });
+
+    expect(practiceQuestions).toHaveLength(0);
+    expect(skipped).toBe(1);
+  });
+
   it('short_answer 題型且 body 含 ___ 標記時會被轉成填空題資料，空格前後文字正確切開', () => {
     const { practiceQuestions, skipped } = selectFillBlankQuestions({
       groupLabel: '第一組',
@@ -57,6 +87,34 @@ describe('selectFillBlankQuestions', () => {
     expect(practiceQuestions).toHaveLength(0);
     expect(skipped).toBe(1);
   });
+
+  it('題目有圖片（imageUrl）或 AI 圖解（diagramSvg）時要帶進練習頁資料，不能丟掉', () => {
+    const { practiceQuestions } = selectFillBlankQuestions({
+      groupLabel: 'g',
+      questions: [
+        {
+          type: 'short_answer',
+          body: '如右圖所示之電路，若讀值為 0.5A，則 R 值應為 ___ Ω。',
+          correctAnswers: ['8'],
+          imageUrl: 'https://example.com/circuit.png',
+        },
+        {
+          type: 'short_answer',
+          body: '光合作用在___中進行。',
+          correctAnswers: ['葉綠體'],
+          diagramSvg: '<svg viewBox="0 0 10 10"></svg>',
+        },
+        { type: 'short_answer', body: '水的化學式是___。', correctAnswers: ['H2O'], imageUrl: null, diagramSvg: null },
+      ],
+    });
+
+    expect(practiceQuestions[0]!.image).toBe('https://example.com/circuit.png');
+    expect(practiceQuestions[0]!.diagramSvg).toBeUndefined();
+    expect(practiceQuestions[1]!.image).toBeUndefined();
+    expect(practiceQuestions[1]!.diagramSvg).toBe('<svg viewBox="0 0 10 10"></svg>');
+    expect(practiceQuestions[2]!.image).toBeUndefined();
+    expect(practiceQuestions[2]!.diagramSvg).toBeUndefined();
+  });
 });
 
 describe('buildFillBlankPracticePageHtml', () => {
@@ -99,5 +157,22 @@ describe('buildFillBlankPracticePageHtml', () => {
     const html = buildFillBlankPracticePageHtml({ ...baseParams, hintPenaltyPercent: 5 });
 
     expect(html).toContain('HINT_PENALTY_PERCENT=5');
+  });
+
+  it('題目附圖與圖解會內嵌進頁面，並有渲染圖解的邏輯', () => {
+    const html = buildFillBlankPracticePageHtml({
+      ...baseParams,
+      questions: [{
+        groupLabel: 'g',
+        before: '如右圖所示之電路，R 值應為 ',
+        after: ' Ω。',
+        answer: '8',
+        image: 'https://example.com/circuit.png',
+        diagramSvg: '<svg viewBox="0 0 10 10"></svg>',
+      }],
+    });
+
+    expect(html).toContain('https://example.com/circuit.png');
+    expect(html).toContain('q.diagramSvg');
   });
 });

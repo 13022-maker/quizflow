@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 
 import { stripClozeMarkers } from '@/lib/cloze';
 import { db } from '@/libs/DB';
+import { enforcePublicAiLimit } from '@/libs/rateLimit';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export const runtime = 'nodejs';
@@ -65,6 +66,10 @@ export async function POST(
   _req: Request,
   { params }: { params: { quizId: string } },
 ) {
+  const limited = await enforcePublicAiLimit(_req, 'generate-hints');
+  if (limited) {
+    return limited;
+  }
   // 從 request body 讀 lang（可選），預設繁中
   let lang = 'zh-TW';
   try {

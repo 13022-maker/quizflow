@@ -9,7 +9,10 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
+import { isProOrAbove } from '@/libs/Plan';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -58,7 +61,7 @@ const SYSTEM_PROMPT = `你是台灣教育專家，幫助教師生成高品質的
 type 值只能是 "multiple_choice" 或 "short_answer"。
 correct_answer 對 multiple_choice 是選項索引（0-based），對 short_answer 是參考答案字串。
 multiple_choice 的 correct_answer 索引務必平均分散在 0~3 之間，不要讓多題答案集中在同一個索引（尤其避免全部是 0）。
-必須輸出純 JSON，不要加 markdown code block。${buildCodeSnippetRule('content')}`;
+必須輸出純 JSON，不要加 markdown code block。${buildCodeSnippetRule('content')}${buildSingleAnswerRule()}${buildNoFigureReferenceRule('content')}`;
 
 // difficulty → Bloom 層級提示
 const DIFFICULTY_HINTS: Record<string, string> = {
@@ -73,6 +76,14 @@ export async function POST(request: Request) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: '未登入' }, { status: 401 });
+    }
+
+    // Pro 限定：本 route 固定用 Claude，Free 用戶不可花到 Claude 的錢（先擋方案再扣額度）
+    if (!(await isProOrAbove(userId))) {
+      return NextResponse.json(
+        { error: 'Bloom 認知層次出題為 Pro 方案功能，請升級後再使用', upgradeRequired: true },
+        { status: 403 },
+      );
     }
 
     const quota = await checkAndIncrementAiUsage(userId);

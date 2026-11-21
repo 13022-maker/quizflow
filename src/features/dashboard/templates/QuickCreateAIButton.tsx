@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 
 import { createQuiz } from '@/actions/quizActions';
+import { DAILY_QUIZ_LIMIT_PRICING_PATH } from '@/libs/quizQuota';
 
 // Dashboard 的「AI 智慧出題」卡片：直接 createQuiz（用當日日期為預設標題），成功後
 // createQuiz 的 server-side redirect 會把使用者帶到 /edit?ai=1&just_created=1，AI Modal 自動開啟。
@@ -24,7 +25,7 @@ export function QuickCreateAIButton() {
       // 只有失敗時才有 return value
       if (result?.error) {
         if (result.error === 'QUOTA_EXCEEDED') {
-          router.push('/dashboard/billing');
+          router.push(DAILY_QUIZ_LIMIT_PRICING_PATH);
           return;
         }
         // eslint-disable-next-line no-alert

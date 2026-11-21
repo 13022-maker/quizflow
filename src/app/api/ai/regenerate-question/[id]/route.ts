@@ -12,7 +12,9 @@ import { NextResponse } from 'next/server';
 
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
@@ -135,7 +137,7 @@ ${hint ? `老師額外要求：${hint}` : ''}
   "options": ["(A)...", "(B)...", "(C)...", "(D)..."],
   "answer": ${isMulti ? '"A,C"' : '"A"'},
   "explanation": "解析說明"
-}${buildCodeSnippetRule()}`;
+}${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}`;
 
   // 主用 Gemini，過載時 fallback Claude
   let raw = '';

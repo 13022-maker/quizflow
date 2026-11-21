@@ -20,6 +20,7 @@ import { useState } from 'react';
 
 import { createVocabSet } from '@/actions/vocabActions';
 import { Button } from '@/components/ui/button';
+import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
 type Difficulty = 'easy' | 'medium' | 'hard';
 
@@ -93,7 +94,7 @@ export function VocabTopicMode({ initialTopic = '' }: { initialTopic?: string })
       if (!res.ok) {
         // quota 超額 → 引導升級
         if (data.upgradeRequired) {
-          setError('AI 配額已用完。免費方案每月 10 次,升級 Pro 解鎖無限。');
+          setError(`AI 配額已用完。免費方案每月 ${PricingPlanList[PLAN_ID.FREE]!.features.aiQuota} 次,升級 Pro 解鎖無限。`);
         } else {
           throw new Error(data.error ?? '生成失敗');
         }

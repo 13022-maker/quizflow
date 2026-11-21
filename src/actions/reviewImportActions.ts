@@ -2,14 +2,14 @@
 
 // 協作批閱「小組出一道題目」→ 老師一鍵把該組題目匯入正式題庫
 import { auth } from '@clerk/nextjs/server';
-import { and, count, eq, ne } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { db } from '@/libs/DB';
 import { generateRoomCode } from '@/libs/fork';
-import { getUserPlanId, isProOrAbove } from '@/libs/Plan';
+import { getDailyQuizQuota } from '@/libs/quizQuota-dao';
 import {
   questionSchema,
   quizSchema,
@@ -19,7 +19,6 @@ import {
   reviewTeamSchema,
 } from '@/models/Schema';
 import { buildQuestionInsertFromCreated, parseCreatedQuestion } from '@/services/review/createModes';
-import { PricingPlanList } from '@/utils/AppConfig';
 
 const ImportInputSchema = z.object({
   gameId: z.number().int().positive(),
@@ -46,22 +45,9 @@ async function generateUniqueRoomCode(): Promise<string> {
   return generateRoomCode() + generateRoomCode().slice(0, 1);
 }
 
-// 免費方案測驗數量上限，規則同 quizActions.createQuiz（VIP / Pro / 試用中不限）
+// 每日建立測驗上限，規則同 quizActions.createQuiz（VIP / Pro / 試用中不限）
 async function isQuizQuotaExceeded(userId: string): Promise<boolean> {
-  const { isVipUser } = await import('@/libs/vip');
-  if (await isVipUser() || await isProOrAbove(userId)) {
-    return false;
-  }
-  const planId = await getUserPlanId(userId);
-  const quizLimit = PricingPlanList[planId]?.features.website ?? 10;
-  if (quizLimit >= 999) {
-    return false;
-  }
-  const [row] = await db
-    .select({ total: count() })
-    .from(quizSchema)
-    .where(and(eq(quizSchema.ownerId, userId), ne(quizSchema.quizMode, 'live_snapshot')));
-  return (row?.total ?? 0) >= quizLimit;
+  return (await getDailyQuizQuota(userId)).exceeded;
 }
 
 export async function importReviewSubmissionToQuiz(
@@ -137,7 +123,7 @@ export async function importReviewSubmissionToQuiz(
   }
 
   if (await isQuizQuotaExceeded(userId)) {
-    return { ok: false, error: '已達免費方案的測驗數量上限，請升級方案或改加入既有測驗' };
+    return { ok: false, error: '今天已建立 5 份測驗（免費方案每日上限），請明天再試、升級 Pro，或改加入既有測驗' };
   }
 
   const roomCode = await generateUniqueRoomCode();
