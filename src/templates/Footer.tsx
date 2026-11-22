@@ -112,6 +112,12 @@ export const Footer = () => {
             {t('practice_fill_2')}
           </a>
         </li>
+        {/* C++ 程式語言實習期末考類似題填充練習（含個人儀表板與全班觀測），獨立靜態頁 */}
+        <li>
+          <a href="/practice/cpp-final-fill.html" target="_blank" rel="noopener noreferrer">
+            {t('practice_fill_cpp')}
+          </a>
+        </li>
       </CenteredFooter>
     </Section>
   );

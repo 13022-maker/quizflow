@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>C++ 類似題填充練習</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;600&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: a clear, calm exam sheet for 僑生 — short words, big blanks, no clutter.
+   IDEA: an answer sheet beside a code listing; after grading it becomes a scoreboard.
+   PICTURE: the questions themselves, then the score ring, topic meters and the 25-cell heat grid.
+   COLOUR and TYPE: ice ground, ink text, hot pink for traps/wrong, teal for correct; Space Grotesk + Noto Sans TC, JetBrains Mono for code.
+   LAYOUT: sticky header with name + progress + tabs; one column of questions; dashboard in two columns above 900px. */
+:root{color-scheme:light dark;--bg:light-dark(#dff1f7,#06222e);--card:light-dark(#ffffff,#0c3141);--ink:light-dark(#06222e,#e3f3f8);--mute:light-dark(#4a6672,#8fb1bd);--line:light-dark(#b9dbe6,#1d4a5c);--pink:#ff2e7e;--ok:light-dark(#0b7f8a,#3fd0c9);--code:light-dark(#f1f9fc,#082a38)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Inter,"Noto Sans TC",system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:"Space Grotesk","Noto Sans TC",sans-serif;line-height:1.1;margin:0;text-wrap:balance}
+h1{font-size:clamp(28px,4.4vw,44px)}h2{font-size:24px;margin-bottom:14px}h3{font-size:17px}
+.band{padding:clamp(20px,3vw,40px) max(5vw,16px)}.wrap{max-width:1040px;margin:0 auto}
+header{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);padding:12px max(5vw,16px)}
+.hrow{max-width:1040px;margin:0 auto;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.tabs{display:flex;gap:6px;margin-inline-start:auto}
+.tabs a{padding:10px 16px;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:600;border:1px solid var(--line)}
+.tabs a[aria-current]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.prog{flex:1 1 160px;display:flex;align-items:center;gap:10px;font-size:14px;color:var(--mute)}
+.bar{flex:1;height:8px;background:var(--line);border-radius:8px;overflow:hidden}.bar i{display:block;height:100%;background:var(--pink);width:0;transition:width .3s}
+input,button{font:inherit;font-size:16px}
+.who{display:flex;gap:8px;flex-wrap:wrap}.who input{width:9em}
+input[type=text]{padding:8px 10px;border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);min-height:44px}
+input:focus-visible,button:focus-visible,a:focus-visible{outline:3px solid var(--pink);outline-offset:2px}
+button{min-height:44px;padding:0 20px;border-radius:10px;border:2px solid var(--ink);background:var(--ink);color:var(--bg);font-weight:600;cursor:pointer}
+button.ghost{background:transparent;color:var(--ink)}
+.lead{color:var(--mute);max-width:62ch;margin:10px 0 0}
+.q{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:14px 0}
+.qh{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.num{font-family:"Space Grotesk";font-weight:700;font-size:22px}
+.tag{font-size:13px;padding:2px 10px;border-radius:999px;background:var(--code);border:1px solid var(--line);color:var(--mute)}
+pre{background:var(--code);border-radius:10px;padding:12px 14px;margin:10px 0;overflow-x:auto;font:14px/1.6 "JetBrains Mono",monospace}
+code{font-family:"JetBrains Mono",monospace;font-size:.92em;overflow-wrap:anywhere}
+.blank{display:inline-flex;align-items:center;gap:6px;margin:4px 6px 4px 0}
+.blank input{width:7.5em;font-family:"JetBrains Mono",monospace;text-align:center;border-style:dashed}
+.blank input.ok{border:2px solid var(--ok)}.blank input.no{border:2px solid var(--pink)}
+.fb{margin-top:10px;font-size:15px;display:none}.graded .fb{display:block}
+.fb b.ok{color:var(--ok)}.fb b.no{color:var(--pink)}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:24px 0 8px}
+.grid2{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+@media(min-width:900px){.grid2{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.ring{display:flex;gap:20px;align-items:center;flex-wrap:wrap}
+.ring svg{width:150px;height:150px;flex:none}
+.big{font-family:"Space Grotesk";font-size:clamp(40px,7vw,60px);font-weight:700;line-height:1}
+.meter{display:grid;grid-template-columns:7.5em minmax(0,1fr) 3.5em;gap:10px;align-items:center;margin:10px 0;font-size:15px}
+.meter .bar{height:14px}.meter .bar i{background:var(--ok)}.meter .bar i.low{background:var(--pink)}
+.meter span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.cells{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin-top:8px}
+@media(min-width:600px){.cells{grid-template-columns:repeat(10,minmax(0,1fr))}}
+.cell{aspect-ratio:1;border-radius:8px;display:grid;place-items:center;font:600 14px "Space Grotesk";border:1px solid var(--line);color:var(--ink);text-decoration:none}
+.cell small{font-size:11px;font-weight:400;display:block;text-align:center;line-height:1.1}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--mute);margin-top:10px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.review li{margin:10px 0}.muted{color:var(--mute);font-size:14px}
+.hist{display:flex;align-items:flex-end;gap:8px;height:160px;margin-top:10px}
+.hist div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:13px}
+.hist b{width:100%;background:var(--ink);border-radius:6px 6px 0 0;min-height:2px}
+.hist div.fail b{background:var(--pink)}
+table{width:100%;border-collapse:collapse;font-size:15px}th,td{padding:8px;border-bottom:1px solid var(--line);text-align:left}td.n{text-align:right;font-variant-numeric:tabular-nums}
+textarea{width:100%;min-height:90px;font:14px "JetBrains Mono",monospace;padding:10px;border:2px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:12px}
+.kpis div{background:var(--code);border-radius:12px;padding:12px}.kpis b{display:block;font:700 30px "Space Grotesk"}
+.empty{padding:20px;text-align:center;color:var(--mute);border:2px dashed var(--line);border-radius:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:10px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.scroll{overflow-x:auto}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:600px){.tabs{margin-inline-start:0;width:100%}.tabs a{flex:1;text-align:center}.meter{grid-template-columns:5.5em minmax(0,1fr) 3em}table{font-size:13px}}
+</style>
+</head>
+<body>
+<header><div class="hrow">
+  <div class="who"><input type="text" id="seat" placeholder="座號" aria-label="座號" inputmode="numeric"><input type="text" id="name" placeholder="姓名" aria-label="姓名"></div>
+  <div class="prog"><span id="progtxt">已作答 0 / 25</span><div class="bar"><i id="progbar"></i></div></div>
+  <nav class="tabs"><a href="#practice" id="t-practice">練習卷</a><a href="#dashboard" id="t-dashboard">觀測儀表板</a></nav>
+</div></header>
+
+<main>
+<section id="v-practice" class="band"><div class="wrap">
+  <h1>程式語言實習・期末考類似題填充練習</h1>
+  <p class="lead">25 題，每題 4 分，每格依比例給分。題目和期末考同一個觀念，數字和陷阱換過。答案只填結果，不用寫單位或引號。可貼到 <a href="https://www.onlinegdb.com/online_c++_compiler">OnlineGDB</a> 執行驗證。</p>
+  <div id="qs"></div>
+  <div class="actions"><button id="submit">交卷並看儀表板</button><button class="ghost" id="reset">清空重作</button></div>
+  <p class="muted">作答內容只存在這台裝置的瀏覽器。</p>
+</div></section>
+
+<section id="v-dashboard" class="band" hidden><div class="wrap">
+  <h1 id="dtitle">還沒交卷</h1>
+  <p class="lead" id="dlead">先到「練習卷」作答並交卷，這裡會顯示你的分數、各主題答對率和錯題解析。</p>
+  <div class="grid2" id="mine" hidden style="margin-top:20px">
+    <div class="panel">
+      <div class="ring"><svg viewBox="0 0 120 120" id="ring"></svg><div><div class="big" id="score">0</div><div class="muted">分（滿分 100）</div><div id="rank" style="margin-top:6px;font-weight:600"></div></div></div>
+      <h3 style="margin-top:18px">各主題答對率</h3><div id="topics"></div>
+    </div>
+    <div class="panel">
+      <h3>25 題作答地圖</h3><p class="muted" style="margin:4px 0 0">點格子跳到該題解析</p>
+      <div class="cells" id="cells"></div>
+      <div class="legend"><span><i style="background:var(--ok)"></i>全對</span><span><i style="background:#ffd166"></i>部分對</span><span><i style="background:var(--pink)"></i>錯／未答</span></div>
+      <div class="actions"><button id="retry">只重作錯題</button><button class="ghost" id="copycode">複製成績碼</button></div>
+      <p class="muted" id="savenote">成績碼可貼給老師，老師在下方「全班觀測」貼上就能彙整。</p>
+    </div>
+  </div>
+  <div class="panel" id="revbox" hidden style="margin-top:18px"><h2>錯題解析</h2><ol class="review" id="review"></ol></div>
+
+  <div class="panel" style="margin-top:28px" id="classbox">
+    <h2>全班觀測（教師用）</h2>
+    <p class="muted" id="classsrc">把學生的成績碼一行一個貼在下面，按「彙整」。</p>
+    <textarea id="codes" placeholder="QF1.xxxxx（一行一個）" aria-label="成績碼"></textarea>
+    <div class="actions"><button id="agg">彙整</button><button class="ghost" id="clearcodes">清空</button></div>
+    <div id="classout"><div class="empty">還沒有資料</div></div>
+  </div>
+</div></section>
+</main>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+{
+const TOPICS={op:"運算子",arr:"陣列與指標",sel:"選擇結構",loop:"迴圈",lib:"亂數與函式庫"};
+const Q=[
+{t:"arr",s:1,p:"下列程式會產生編譯錯誤，因為陣列名稱代表首元素的 {0}，不能用 = 指定字串。",c:'char s[5];\ns = "dog";',a:[["位址","地址","address","記憶體位址","位置"]],e:"陣列名稱是首元素的位址（常數），不能被指定。要在宣告時給初值 char s[5]=\"dog\"; 或用 strcpy。"},
+{t:"arr",s:2,p:"宣告後 a[3] 的值為 {0}。",c:"int a[6] = {4, 5};",a:[["0"]],e:"初值沒給滿的元素自動補 0：{4,5,0,0,0,0}。"},
+{t:"op",s:3,p:"執行後 a 的值為 {0}。",c:"int a = (15 - 9) != (18 / 3);",a:[["0"]],e:"6 != 6 為假，關係運算結果是 0。"},
+{t:"sel",s:4,p:"輸出結果為 {0}。",c:'int a = 3;\nif (a = 0)\n    cout << "X";\nelse\n    cout << "Y";',a:[["Y","y"]],e:"a = 0 是「指定」，括號的值是 0（假），所以走 else 印 Y。和期末考第 4 題相反：指定 10 是真，指定 0 是假。"},
+{t:"op",s:5,p:"執行後 b = {0}，a = {1}。",c:"int a = 7, b = 12;\nb -= a++;",a:[["5"],["8"]],e:"後置 a++ 先用舊值 7：b = 12 − 7 = 5，之後 a 變 8。"},
+{t:"loop",s:6,p:"輸出結果為 {0}（不含空白）。",c:"char ch;\nfor (ch = 'b'; ch <= 'f'; ch += 2)\n    cout << ch;",a:[["bdf"]],e:"ch 從 'b' 每次加 2：b → d → f → h（h > f 停止）。"},
+{t:"op",s:7,p:"輸出結果為 {0}。",c:"cout << (36 >> 3);",a:[["4"]],e:"右移 3 位 = 除以 2³ = 8，36 ÷ 8 = 4.5，取整數 4。"},
+{t:"lib",s:8,p:"rand() % 8 + 3 會產生 {0} 到 {1} 之間的整數。",c:"",a:[["3"],["10"]],e:"rand() % 8 是 0～7，再加 3 變成 3～10。"},
+{t:"arr",s:9,p:"第一行輸出 {0}，第二行輸出 {1}。",c:"int i = 7;\nint *p = &i;\ncout << *p / 2 << endl;\ncout << *p / 2.0 << endl;",a:[["3"],["3.5"]],e:"*p 是 7。7/2 兩邊都是整數，結果 3；7/2.0 有浮點數，結果 3.5。"},
+{t:"lib",s:10,p:"rand() 與 srand() 的原型在標頭檔 {0} 內。",c:"",a:[["cstdlib","<cstdlib>","stdlib.h","<stdlib.h>"]],e:"rand、srand 在 <cstdlib>；time() 才在 <ctime>。"},
+{t:"op",s:11,p:"把 if/else 改成條件運算子：max = (a > b {0} a {1} b);",c:"if (a > b) max = a;\nelse       max = b;",a:[["?"],[":"]],e:"條件 ? 真的值 : 假的值。"},
+{t:"arr",s:12,p:"sizeof(s1) = {0}，sizeof(s2) = {1}。",c:"char s1[] = {'C', '+', '+'};\nchar s2[] = \"C++\";",a:[["3"],["4"]],e:"字元列表沒有結尾字元，3 個；雙引號字串自動加 '\\0'，4 個。"},
+{t:"sel",s:13,p:"執行後 a = {0}，b = {1}。",c:"int a = 6, b = 7;\nif (a % 2 == 1)\n    a++;\nelse if (b % 3 == 0)\n    b += 3;\nelse {\n    a += 2;\n    b++;\n}",a:[["8"],["8"]],e:"6%2 = 0 不成立；7%3 = 1 不成立；走 else：a = 8，b = 8。"},
+{t:"sel",s:14,p:"輸出結果為 {0}。",c:"int a = 5, b = 9, c = 2, t;\nif (a > b) { t = a; a = b; b = t; }\nif (b > c) { t = b; b = c; c = t; }\nif (a > b) { t = a; a = b; b = t; }\ncout << a << b << c;",a:[["259"]],e:"(5,9) 不換；(9,2) 換成 b=2,c=9；(5,2) 換成 a=2,b=5 → 259。"},
+{t:"loop",s:15,p:"輸出結果為 {0}。",c:"int i;\nfor (i = 0; i < 20; i += 3);\n    cout << i;",a:[["21"]],e:"for 後面有分號，迴圈空跑：i = 0,3,…,18，再加 3 變 21 時條件不成立，結束後印一次 21。"},
+{t:"loop",s:16,p:"輸出 s 的值為 {0}。",c:"int a = 1, s = 0;\nwhile (a <= 12) {\n    if (a % 4 == 0) s += 3;\n    a++;\n}\ncout << s;",a:[["9"]],e:"a = 4、8、12 時成立，共 3 次，s = 9。注意條件是 <= 12，12 也算。"},
+{t:"op",s:17,p:"四行合起來的輸出為 {0}。",c:"cout << (4 >= 4);\ncout << (3 == 5);\ncout << (2 != 2);\ncout << (7 > 1 || 0);",a:[["1001"]],e:"真 1、假 0、假 0、真 1 → 1001。"},
+{t:"op",s:18,p:"75 & 45 = {0}，6 | 3 = {1}。",c:"",a:[["9"],["7"]],e:"75 = 1001011、45 = 0101101，AND = 0001001 = 9；6 = 110、3 = 011，OR = 111 = 7。"},
+{t:"arr",s:19,p:"*(p+3) 為 {0}，*(p+7) 為 {1}（注意大小寫）。",c:'char s[] = "Taipei City";\nchar *p = s;',a:[["p"],["C"]],cs:true,e:"索引從 0：T0 a1 i2 p3 e4 i5 空白6 C7。"},
+{t:"op",s:20,p:"運算式的結果為 {0}。",c:"!(8 > 3) || 5 < 2 && 4 > 1",a:[["0"]],e:"&& 比 || 先算：!(1) = 0；(0 && 1) = 0；0 || 0 = 0。"},
+{t:"loop",s:21,p:"輸出 c 的值為 {0}。",c:"int a, b, c = 0;\nfor (a = 2; a <= 20; a += 2)\n    for (b = 1; b <= 10; b++)\n        if (a == b) c++;\ncout << c;",a:[["5"]],e:"a 是 2～20 的偶數，但 b 只到 10，只有 a = 2,4,6,8,10 配得到，c = 5。"},
+{t:"op",s:22,p:"執行後 a 的值為 {0}。",c:"int a = 6;\na *= 3;\na -= 4;\na = a % 5;",a:[["4"]],e:"6 → 18 → 14 → 14 % 5 = 4。"},
+{t:"sel",s:23,p:"輸出結果為 {0}。",c:'if (3 > 8 && 2 < 5)\n    cout << "P";\nelse\n    cout << "Q";',a:[["Q","q"]],e:"3 > 8 為假，&& 短路直接為假，印 Q。"},
+{t:"arr",s:24,p:"陣列註標必須是 {0} 型態；int a[10] 的最後一個元素是 a[{1}]。",c:"",a:[["整數","int","integer","整數型態"],["9"]],e:"註標必為整數，從 0 開始，10 個元素最後是 a[9]。"},
+{t:"op",s:25,p:"執行後 a = {0}，b = {1}。",c:"int a, b;\nb = 10 - (a = 2 * 3);",a:[["6"],["4"]],e:"括號內先把 6 存進 a，括號的值是 6，b = 10 − 6 = 4。"}
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const toast=m=>{const t=$("toast");t.textContent=m;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),1800)};
+const norm=(v,cs)=>{let s=String(v||"").replace(/[！-～]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).replace(/[\s'"“”‘’;<>]/g,"");return cs?s:s.toLowerCase()};
+const ok=(q,i,v)=>v!=null&&String(v).trim()!==""&&q.a[i].some(x=>norm(x,q.cs)===norm(v,q.cs));
+
+let ans=store.get("qf_ans")||Q.map(q=>q.a.map(()=>""));
+let graded=store.get("qf_graded")||false;
+$("seat").value=store.get("qf_seat")||"";$("name").value=store.get("qf_name")||"";
+
+$("qs").innerHTML=Q.map((q,qi)=>{
+  const p=esc(q.p).replace(/\{(\d)\}/g,(m,i)=>`<span class="blank"><input type="text" data-q="${qi}" data-i="${i}" aria-label="第${qi+1}題第${+i+1}格" autocomplete="off" autocapitalize="off" spellcheck="false"></span>`);
+  return `<article class="q" id="q${qi+1}"><div class="qh"><span class="num">${qi+1}.</span><span class="tag">${TOPICS[q.t]}</span><span class="tag">對應期末考第 ${q.s} 題</span></div>
+  <div>${p}</div>${q.c?`<pre><code>${esc(q.c)}</code></pre>`:""}<div class="fb" id="fb${qi}"></div></article>`}).join("");
+const inputs=[...document.querySelectorAll("#qs input")];
+inputs.forEach(el=>{el.value=ans[el.dataset.q][el.dataset.i]||"";el.addEventListener("input",()=>{ans[el.dataset.q][el.dataset.i]=el.value;store.set("qf_ans",ans);prog()})});
+["seat","name"].forEach(k=>$(k).addEventListener("input",()=>store.set("qf_"+k,$(k).value)));
+
+function prog(){const n=ans.filter(r=>r.every(v=>String(v).trim()!=="")).length;$("progtxt").textContent=`已作答 ${n} / 25`;$("progbar").style.width=n/25*100+"%"}
+
+function grade(a){
+  const per=Q.map((q,qi)=>{const hits=q.a.map((_,i)=>ok(q,i,(a[qi]||[])[i]));const c=hits.filter(Boolean).length;return{hits,c,n:q.a.length,full:c===q.a.length}});
+  const score=Math.round(per.reduce((s,r)=>s+4*r.c/r.n,0)*10)/10;
+  const topic={};Object.keys(TOPICS).forEach(k=>topic[k]={got:0,tot:0});
+  per.forEach((r,qi)=>{const t=topic[Q[qi].t];t.got+=r.c/r.n;t.tot+=1});
+  return{per,score,topic};
+}
+
+function paintSheet(){
+  const g=grade(ans);
+  inputs.forEach(el=>{el.classList.remove("ok","no");if(graded)el.classList.add(g.per[el.dataset.q].hits[el.dataset.i]?"ok":"no")});
+  document.querySelectorAll(".q").forEach((el,qi)=>{el.classList.toggle("graded",graded);const r=g.per[qi];
+    $("fb"+qi).innerHTML=graded?`<b class="${r.full?"ok":"no"}">${r.full?"答對":"正解："+Q[qi].a.map(x=>esc(x[0])).join("、")}</b>　${esc(Q[qi].e)}`:""});
+}
+
+function ringSVG(score){const r=50,C=2*Math.PI*r,f=score/100;return `<circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="60" cy="60" r="${r}" fill="none" stroke="${score>=60?"var(--ok)":"var(--pink)"}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C*f} ${C}" transform="rotate(-90 60 60)"/>`}
+const meter=(label,pct)=>`<div class="meter"><span>${esc(label)}</span><div class="bar"><i class="${pct<60?"low":""}" style="width:${pct}%"></i></div><span>${pct}%</span></div>`;
+
+function paintDash(){
+  const has=graded;$("mine").hidden=!has;$("revbox").hidden=!has;
+  if(!has){$("dtitle").textContent="還沒交卷";$("dlead").hidden=false;return}
+  const g=grade(ans),who=[$("seat").value,$("name").value].filter(Boolean).join(" ")||"你";
+  const tk=Object.keys(TOPICS).map(k=>({k,p:Math.round(g.topic[k].got/g.topic[k].tot*100)})).sort((a,b)=>a.p-b.p);
+  $("dtitle").textContent=`${who}：${g.score} 分，最需要加強的是「${TOPICS[tk[0].k]}」`;$("dlead").hidden=true;
+  $("score").textContent=g.score;$("ring").innerHTML=ringSVG(g.score);
+  const full=g.per.filter(r=>r.full).length;$("rank").textContent=`全對 ${full} 題・錯 ${25-full} 題`;
+  $("topics").innerHTML=Object.keys(TOPICS).map(k=>meter(TOPICS[k],Math.round(g.topic[k].got/g.topic[k].tot*100))).join("");
+  $("cells").innerHTML=g.per.map((r,qi)=>{const bg=r.full?"var(--ok)":r.c>0?"#ffd166":"var(--pink)",fg=r.c>0&&!r.full?"#06222e":"#fff";return `<a class="cell" href="#practice" data-go="${qi+1}" style="background:${bg};color:${fg};border-color:${bg}">${qi+1}</a>`}).join("");
+  const wrong=g.per.map((r,qi)=>({r,qi})).filter(x=>!x.r.full);
+  $("review").innerHTML=wrong.length?wrong.map(({qi})=>`<li value="${qi+1}"><b>${TOPICS[Q[qi].t]}</b>　你填：<code>${ans[qi].map(v=>esc(v||"（空白）")).join("、")}</code>　正解：<code>${Q[qi].a.map(x=>esc(x[0])).join("、")}</code><br><span class="muted">${esc(Q[qi].e)}</span></li>`).join(""):"<li>全部答對，太強了！</li>";
+}
+
+function route(){const v=location.hash==="#dashboard"?"dashboard":"practice";
+  ["practice","dashboard"].forEach(x=>{$("v-"+x).hidden=x!==v;const t=$("t-"+x);v===x?t.setAttribute("aria-current","page"):t.removeAttribute("aria-current")});
+  if(v==="dashboard")paintDash();window.scrollTo(0,0)}
+window.addEventListener("hashchange",route);
+
+$("cells").addEventListener("click",e=>{const a=e.target.closest("[data-go]");if(!a)return;e.preventDefault();location.hash="#practice";setTimeout(()=>$("q"+a.dataset.go).scrollIntoView({block:"start"}),50)});
+
+$("submit").addEventListener("click",async()=>{
+  if(!$("name").value.trim()){toast("請先在最上方填姓名");$("name").focus();return}
+  const blank=ans.filter(r=>r.some(v=>!String(v).trim())).length;
+  if(blank&&!$("submit").dataset.sure){$("submit").dataset.sure=1;$("submit").textContent=`還有 ${blank} 題沒填完，再按一次確定交卷`;return}
+  delete $("submit").dataset.sure;$("submit").textContent="交卷並看儀表板";
+  graded=true;store.set("qf_graded",true);paintSheet();location.hash="#dashboard";saveRemote();
+});
+$("reset").addEventListener("click",()=>{if(!$("reset").dataset.sure){$("reset").dataset.sure=1;$("reset").textContent="確定清空？再按一次";return}
+  delete $("reset").dataset.sure;$("reset").textContent="清空重作";ans=Q.map(q=>q.a.map(()=>""));graded=false;store.set("qf_ans",ans);store.set("qf_graded",false);inputs.forEach(el=>el.value="");paintSheet();prog()});
+$("retry").addEventListener("click",()=>{const g=grade(ans);g.per.forEach((r,qi)=>{if(!r.full)ans[qi]=ans[qi].map(()=>"")});inputs.forEach(el=>el.value=ans[el.dataset.q][el.dataset.i]);graded=false;store.set("qf_ans",ans);store.set("qf_graded",false);paintSheet();prog();location.hash="#practice"});
+
+const encode=()=>"QF1."+btoa(unescape(encodeURIComponent(JSON.stringify({s:$("seat").value,n:$("name").value,a:ans,t:Date.now()}))));
+const decode=line=>{try{const s=line.trim();if(!s.startsWith("QF1."))return null;const o=JSON.parse(decodeURIComponent(escape(atob(s.slice(4)))));return Array.isArray(o.a)?o:null}catch(e){return null}};
+$("copycode").addEventListener("click",async()=>{const c=encode();try{await navigator.clipboard.writeText(c);toast("已複製成績碼")}catch(e){$("codes").value=c;toast("無法自動複製，成績碼已放在下方欄位")}});
+
+/* ---- 全班觀測 ---- */
+let pasted=store.get("qf_codes")||"",remote=[];
+$("codes").value=pasted;
+$("agg").addEventListener("click",()=>{pasted=$("codes").value;store.set("qf_codes",pasted);paintClass()});
+$("clearcodes").addEventListener("click",()=>{$("codes").value="";pasted="";store.set("qf_codes","");paintClass()});
+
+function paintClass(){
+  const fromPaste=pasted.split(/\n+/).map(decode).filter(Boolean);
+  const map=new Map();[...remote,...fromPaste].forEach(o=>{const k=(o.s||"")+"|"+(o.n||"");const old=map.get(k);if(!old||(o.t||0)>(old.t||0))map.set(k,o)});
+  const rows=[...map.values()].map(o=>({o,g:grade(o.a)}));
+  if(!rows.length){$("classout").innerHTML='<div class="empty">還沒有資料</div>';return}
+  const n=rows.length,sc=rows.map(r=>r.g.score),avg=Math.round(sc.reduce((a,b)=>a+b,0)/n*10)/10,pass=sc.filter(s=>s>=60).length;
+  const bands=[[0,59,"0–59"],[60,69,"60–69"],[70,79,"70–79"],[80,89,"80–89"],[90,100,"90–100"]].map(([lo,hi,l])=>({l,c:sc.filter(s=>s>=lo&&s<=hi+.99).length,f:lo<60}));
+  const mx=Math.max(...bands.map(b=>b.c),1);
+  const tp=Object.keys(TOPICS).map(k=>({k,p:Math.round(rows.reduce((s,r)=>s+r.g.topic[k].got/r.g.topic[k].tot,0)/n*100)}));
+  const qs=Q.map((q,qi)=>{const right=rows.filter(r=>r.g.per[qi].full).length;const wr={};rows.forEach(r=>{if(!r.g.per[qi].full){const k=(r.o.a[qi]||[]).map(v=>String(v).trim()||"空白").join("、");wr[k]=(wr[k]||0)+1}});
+    const top=Object.entries(wr).sort((a,b)=>b[1]-a[1])[0];return{qi,p:Math.round(right/n*100),top}});
+  const hard=[...qs].sort((a,b)=>a.p-b.p).slice(0,5);
+  const heat=p=>p>=80?"var(--ok)":p>=60?"#7cc8c2":p>=40?"#ffd166":"var(--pink)";
+  $("classout").innerHTML=`
+  <h3 style="margin:18px 0 10px">全班 ${n} 人，平均 ${avg} 分；最弱主題「${TOPICS[[...tp].sort((a,b)=>a.p-b.p)[0].k]}」</h3>
+  <div class="kpis"><div><span class="muted">人數</span><b>${n}</b></div><div><span class="muted">平均</span><b>${avg}</b></div><div><span class="muted">及格率</span><b>${Math.round(pass/n*100)}%</b></div><div><span class="muted">最高／最低</span><b>${Math.max(...sc)}／${Math.min(...sc)}</b></div></div>
+  <div class="grid2"><div><h3>分數分布</h3><div class="hist">${bands.map(b=>`<div class="${b.f?"fail":""}"><span>${b.c}</span><b style="height:${b.c/mx*100}%"></b><span class="muted">${b.l}</span></div>`).join("")}</div>
+  <h3 style="margin-top:18px">各主題平均答對率</h3>${tp.map(t=>meter(TOPICS[t.k],t.p)).join("")}</div>
+  <div><h3>各題全班答對率</h3><div class="cells">${qs.map(x=>`<div class="cell" style="background:${heat(x.p)};border-color:${heat(x.p)};color:#06222e" title="第${x.qi+1}題 ${x.p}%"><span>${x.qi+1}<small>${x.p}%</small></span></div>`).join("")}</div>
+  <h3 style="margin-top:18px">最該講解的 5 題</h3><div class="scroll"><table><thead><tr><th>題</th><th>主題</th><th>答對率</th><th>最常見錯答</th></tr></thead><tbody>${hard.map(x=>`<tr><td>${x.qi+1}</td><td>${TOPICS[Q[x.qi].t]}</td><td class="n">${x.p}%</td><td>${x.top?`<code>${esc(x.top[0])}</code>（${x.top[1]} 人）`:"—"}</td></tr>`).join("")}</tbody></table></div></div></div>
+  <h3 style="margin-top:22px">學生名單</h3><div class="scroll"><table><thead><tr><th>座號</th><th>姓名</th><th>分數</th><th>最弱主題</th></tr></thead><tbody>${rows.sort((a,b)=>(+a.o.s||999)-(+b.o.s||999)).map(r=>{const w=Object.keys(TOPICS).sort((x,y)=>r.g.topic[x].got-r.g.topic[y].got)[0];return `<tr><td>${esc(r.o.s||"")}</td><td>${esc(r.o.n||"")}</td><td class="n" style="color:${r.g.score<60?"var(--pink)":"inherit"};font-weight:600">${r.g.score}</td><td>${TOPICS[w]}</td></tr>`}).join("")}</tbody></table></div>`;
+}
+
+/* ---- 線上同步（登入 claude.ai 時才有） ---- */
+let db=null,uid=null;
+async function saveRemote(){if(!db||!uid)return;try{await db.doc("subs/"+uid).set({s:$("seat").value,n:$("name").value,a:ans,t:Date.now()});$("savenote").textContent="成績已自動上傳給老師，也可以複製成績碼備用。"}catch(e){}}
+(async()=>{try{
+  if(!window.claude||!claude.use)return;
+  const [d,u]=await Promise.all([claude.use("db"),claude.use("user")]);db=d;if(!db||!u)return;uid=await u.id();
+  if(graded)saveRemote();
+  if(await u.canEdit()){$("classsrc").textContent="已自動讀取線上交卷的學生；未登入的學生可用成績碼貼在下面補上。";
+    const timer=setTimeout(()=>{$("classsrc").textContent+="（線上資料暫時讀不到）"},10000);
+    db.collection("subs").onSnapshot(snap=>{clearTimeout(timer);remote=snap.docs.map(x=>x.data()).filter(o=>o&&Array.isArray(o.a));paintClass()},()=>clearTimeout(timer));}
+}catch(e){}})();
+
+prog();paintSheet();paintClass();route();
+}
+</script>
+</body>
+</html>
