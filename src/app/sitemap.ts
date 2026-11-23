@@ -1,6 +1,7 @@
 import { and, eq, isNotNull } from 'drizzle-orm';
 import type { MetadataRoute } from 'next';
 
+import { getLearnPath, learnPages } from '@/content/learn';
 import { blogPosts } from '@/data/blog';
 import { quizTemplates } from '@/data/templates';
 import { db } from '@/libs/DB';
@@ -40,6 +41,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     },
     {
+      url: `${base}/learn`,
+      lastModified: now,
+      changeFrequency: 'weekly',
+      priority: 0.8,
+    },
+    {
       url: `${base}/marketplace`,
       lastModified: now,
       changeFrequency: 'weekly',
@@ -57,6 +64,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const templateRoutes: MetadataRoute.Sitemap = quizTemplates.map(t => ({
     url: `${base}/templates/${t.slug}`,
     lastModified: now,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  // SEO 長尾公開練習頁（src/content/learn/pages/*.json）
+  const learnRoutes: MetadataRoute.Sitemap = learnPages.map(p => ({
+    url: `${base}${getLearnPath(p)}`,
+    lastModified: new Date(p.updatedAt),
     changeFrequency: 'monthly',
     priority: 0.7,
   }));
@@ -87,5 +102,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.6,
     }));
 
-  return [...staticRoutes, ...blogRoutes, ...templateRoutes, ...quizRoutes];
+  return [...staticRoutes, ...blogRoutes, ...templateRoutes, ...learnRoutes, ...quizRoutes];
 }
