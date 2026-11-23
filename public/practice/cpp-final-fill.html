@@ -168,6 +168,9 @@ $("qs").innerHTML=Q.map((q,qi)=>{
   return `<article class="q" id="q${qi+1}"><div class="qh"><span class="num">${qi+1}.</span><span class="tag">${TOPICS[q.t]}</span><span class="tag">對應期末考第 ${q.s} 題</span></div>
   <div>${p}</div>${q.c?`<pre><code>${esc(q.c)}</code></pre>`:""}<div class="fb" id="fb${qi}"></div></article>`}).join("");
 const inputs=[...document.querySelectorAll("#qs input")];
+// 作答格禁止貼上、拖放（要自己打出答案）；座號姓名與教師貼成績碼的欄位不受影響
+["paste","drop"].forEach(ev=>$("qs").addEventListener(ev,e=>{if(e.target.matches("input[data-q]")){e.preventDefault();toast("答案要自己打，不能貼上")}}));
+$("qs").addEventListener("beforeinput",e=>{if(e.target.matches("input[data-q]")&&/^insertFrom(Paste|Drop)/.test(e.inputType||"")){e.preventDefault();toast("答案要自己打，不能貼上")}});
 inputs.forEach(el=>{el.value=ans[el.dataset.q][el.dataset.i]||"";el.addEventListener("input",()=>{ans[el.dataset.q][el.dataset.i]=el.value;store.set("qf_ans",ans);prog()})});
 ["seat","name"].forEach(k=>$(k).addEventListener("input",()=>store.set("qf_"+k,$(k).value)));
 
