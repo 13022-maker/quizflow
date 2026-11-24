@@ -84,4 +84,16 @@ describe('validateYoutubeSemantics', () => {
 
     expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow();
   });
+
+  it('解析結論與答案鍵矛盾：丟錯並指出題目 id（交給重試迴圈回饋給模型）', () => {
+    const generated = {
+      ...baseGenerated,
+      items: [
+        { ...baseGenerated.items[0]!, options: ['0', '3', '9', '18'], answerIndex: 2, explanation: 'j 只有 0 和 3，所以答案是 3。' },
+        ...baseGenerated.items.slice(1),
+      ],
+    };
+
+    expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow(/item0/);
+  });
 });
