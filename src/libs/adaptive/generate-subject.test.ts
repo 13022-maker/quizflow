@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildUserPrompt, friendlyAIGenerationError } from './generate-subject';
+import { buildUserPrompt, friendlyAIGenerationError, SYSTEM_PROMPT } from './generate-subject';
 
 describe('buildUserPrompt', () => {
   it('沒有 material 也沒有 media：只帶主題', () => {
@@ -59,5 +59,13 @@ describe('friendlyAIGenerationError', () => {
 
   it('非 Error 物件不會炸，回傳通用提示', () => {
     expect(friendlyAIGenerationError('plain string')).toBe('AI 服務暫時無法使用，請稍後再試');
+  });
+});
+
+describe('SYSTEM_PROMPT', () => {
+  it('含「正解唯一」與「程式碼圍欄」規則（item-integrated-002 兩個正解、程式碼擠成一行）', () => {
+    expect(SYSTEM_PROMPT).toContain('正解唯一');
+    expect(SYSTEM_PROMPT).toContain('【程式題規則】');
+    expect(SYSTEM_PROMPT).toContain('"prompt": "下列 C++ 程式');
   });
 });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildYoutubeUserPrompt, validateYoutubeSemantics } from './generate-subject-from-youtube';
+import { buildYoutubeUserPrompt, validateYoutubeSemantics, YOUTUBE_SYSTEM_PROMPT } from './generate-subject-from-youtube';
 
 describe('buildYoutubeUserPrompt', () => {
   it('帶入主題與逐字稿內容', () => {
@@ -83,5 +83,34 @@ describe('validateYoutubeSemantics', () => {
     };
 
     expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow();
+  });
+
+  it('解析結論與答案鍵矛盾：丟錯並指出題目 id（交給重試迴圈回饋給模型）', () => {
+    const generated = {
+      ...baseGenerated,
+      items: [
+        { ...baseGenerated.items[0]!, options: ['0', '3', '9', '18'], answerIndex: 2, explanation: 'j 只有 0 和 3，所以答案是 3。' },
+        ...baseGenerated.items.slice(1),
+      ],
+    };
+
+    expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow(/item0/);
+  });
+
+  it('題幹寫「下列程式」卻沒附程式碼圍欄：丟錯並指出題目 id', () => {
+    const generated = {
+      ...baseGenerated,
+      items: [
+        { ...baseGenerated.items[0]!, prompt: '下列程式片段執行後，何者正確？ 1 int a = 1; 2 a++;' },
+        ...baseGenerated.items.slice(1),
+      ],
+    };
+
+    expect(() => validateYoutubeSemantics(generated, ['abc123'])).toThrow(/item0.*圍欄/);
+  });
+
+  it('YouTube 生成 prompt 含「正解唯一」與「程式碼圍欄」規則', () => {
+    expect(YOUTUBE_SYSTEM_PROMPT).toContain('正解唯一');
+    expect(YOUTUBE_SYSTEM_PROMPT).toContain('【程式題規則】');
   });
 });

@@ -7,9 +7,12 @@
  */
 import { z } from 'zod';
 
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import type { Media } from '@/lib/ai/textModel';
 import { generateAIText, isPaidSubscriberSafe } from '@/lib/ai/textModel';
 
+import { findAnswerKeyConflicts, findCodeFormatProblems } from './answerKeyCheck';
 import { AdaptiveEngine, type ItemBank, type KnowledgeGraph } from './engine';
 import type { Subject } from './subjects';
 
@@ -57,7 +60,10 @@ export const generateSubjectSchema = z.object({
   material: z.string().trim().max(20000).optional(),
 });
 
-const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適性學習系統」設計學科內容。
+// 程式碼圍欄與正解唯一規則（item-integrated-002 事故：程式碼連行號擠成一行、B／D 兩個選項都成立）
+const CODE_AND_SINGLE_ANSWER_RULES = `${buildCodeSnippetRule('prompt')}${buildSingleAnswerRule()}`;
+
+export const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適性學習系統」設計學科內容。
 系統原理：BKT 精熟度模型沿知識圖譜的前置依賴逐點教學，依學生表現動態調整題目難度；
 學生連錯兩題會觸發 AI 補強課文。你設計的內容品質直接決定診斷準確度。
 
@@ -100,7 +106,8 @@ const SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適
 4. answerIndex 必須平均分散在 0、1、2、3 之間，每個知識點內不要讓多題答案集中在同一個索引（尤其避免像上面範例一樣全部是 0）；生成完後自我檢查一次這個知識點所有題目的 answerIndex 分布，發現集中就手動調整
 5. 所有內容使用繁體中文（台灣用語）
 6. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號（x²、√x、f′(x)、∫₀¹、lim(x→0)、π），絕對禁止 LaTeX（\\frac、$…$ 等），因為閱讀介面不支援 LaTeX 渲染；多步推導放在程式碼區塊逐行對齊
-7. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號／電路圖時，一律改用純文字具體描述（例如不要畫二極體符號，改寫「一個三角形指向一條直線，箭頭方向代表電流方向」）`;
+7. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號／電路圖時，一律改用純文字具體描述（例如不要畫二極體符號，改寫「一個三角形指向一條直線，箭頭方向代表電流方向」）
+8. 答案鍵自洽：程式輸出題、計算題必須先逐步追蹤每一輪迴圈／每一步運算（特別注意 < 與 <= 的邊界），explanation 最後一句固定用「所以答案是 X」作結，X 必須逐字等於 options[answerIndex]；輸出前逐題核對解析結論與 answerIndex 是否指向同一個選項，不一致就以推導結果為準修正 answerIndex。系統會自動比對兩者，不一致整份退回重做${CODE_AND_SINGLE_ANSWER_RULES}`;
 
 export function buildUserPrompt(topic: string, material?: string, hasMedia?: boolean): string {
   if (hasMedia) {
@@ -179,6 +186,15 @@ function validateSemantics(generated: GeneratedSubject): void {
     if (count < 3) {
       throw new Error(`知識點 ${kId} 只有 ${count} 題（至少 3 題才能適性派題）`);
     }
+  }
+
+  // 答案鍵 ↔ 解析結論自洽（item-for-loop-step-005 事故：解析推出 3，答案鍵卻標 9）
+  const keyConflicts = [
+    ...findAnswerKeyConflicts(generated.items),
+    ...findCodeFormatProblems(generated.items),
+  ];
+  if (keyConflicts.length > 0) {
+    throw new Error(keyConflicts.join('\n'));
   }
 
   // 引擎建構時做拓撲排序，循環依賴會在這裡丟錯
