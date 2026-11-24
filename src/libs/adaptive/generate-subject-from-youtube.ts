@@ -5,9 +5,11 @@
  */
 import { z } from 'zod';
 
+import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
+import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { generateAIText, isPaidSubscriberSafe } from '@/lib/ai/textModel';
 
-import { findAnswerKeyConflicts } from './answerKeyCheck';
+import { findAnswerKeyConflicts, findCodeFormatProblems } from './answerKeyCheck';
 import { AdaptiveEngine } from './engine';
 import { extractJson } from './generate-subject';
 
@@ -54,7 +56,10 @@ const youtubeGeneratedSubjectSchema = z.object({
 
 export type YoutubeGeneratedSubject = z.infer<typeof youtubeGeneratedSubjectSchema>;
 
-const YOUTUBE_SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適性學習系統」設計學科內容。
+// 程式碼圍欄與正解唯一規則（item-integrated-002 事故：程式碼連行號擠成一行、B／D 兩個選項都成立）
+const CODE_AND_SINGLE_ANSWER_RULES = `${buildCodeSnippetRule('prompt')}${buildSingleAnswerRule()}`;
+
+export const YOUTUBE_SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，為「適性學習系統」設計學科內容。
 教材來源是一份或多份 YouTube 教學影片的逐字稿，每段都標有 [t=秒數s] 時間戳與所屬影片 videoId
 （格式：=== 影片 N：{videoId} === 開頭，後面接該影片的分段逐字稿）。
 系統原理：BKT 精熟度模型沿知識圖譜的前置依賴逐點教學，依學生表現動態調整題目難度；
@@ -99,7 +104,7 @@ const YOUTUBE_SYSTEM_PROMPT = `你是台灣中學／大學教材設計專家，�
 7. 所有內容使用繁體中文（台灣用語）
 8. 格式鐵則（一律寫進 tutor.formatRule）：數學內容一律用純文字與 Unicode 符號，絕對禁止 LaTeX
 9. prompt／explanation／tutor 任何欄位絕對禁止輸出 Markdown 圖片語法（\`![說明](網址)\`）或 <img> 標籤——這個系統沒有任何真實圖片素材可用，你生成的網址一定是假的，學生端只會看到破圖示。需要描述圖像／符號時，一律改用純文字具體描述
-10. 答案鍵自洽：程式輸出題、計算題必須先逐步追蹤每一輪迴圈／每一步運算（特別注意 < 與 <= 的邊界），explanation 最後一句固定用「所以答案是 X」作結，X 必須逐字等於 options[answerIndex]；輸出前逐題核對解析結論與 answerIndex 是否指向同一個選項，不一致就以推導結果為準修正 answerIndex。系統會自動比對兩者，不一致整份退回重做`;
+10. 答案鍵自洽：程式輸出題、計算題必須先逐步追蹤每一輪迴圈／每一步運算（特別注意 < 與 <= 的邊界），explanation 最後一句固定用「所以答案是 X」作結，X 必須逐字等於 options[answerIndex]；輸出前逐題核對解析結論與 answerIndex 是否指向同一個選項，不一致就以推導結果為準修正 answerIndex。系統會自動比對兩者，不一致整份退回重做${CODE_AND_SINGLE_ANSWER_RULES}`;
 
 export function buildYoutubeUserPrompt(topic: string, transcript: string): string {
   return `請為以下單元主題設計學科：「${topic.trim()}」\n\n以下是老師提供的 YouTube 影片逐字稿，知識點劃分與題目範圍以此為準（不要超出逐字稿範圍出題）：\n<影片逐字稿>\n${transcript}\n</影片逐字稿>`;
@@ -148,7 +153,10 @@ export function validateYoutubeSemantics(
   }
 
   // 答案鍵 ↔ 解析結論自洽（item-for-loop-step-005 事故：解析推出 3，答案鍵卻標 9）
-  const keyConflicts = findAnswerKeyConflicts(generated.items);
+  const keyConflicts = [
+    ...findAnswerKeyConflicts(generated.items),
+    ...findCodeFormatProblems(generated.items),
+  ];
   if (keyConflicts.length > 0) {
     throw new Error(keyConflicts.join('\n'));
   }

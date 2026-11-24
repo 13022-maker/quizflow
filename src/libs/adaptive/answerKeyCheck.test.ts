@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  buildAssertionProgram,
   extractCppSnippet,
   findAnswerKeyConflicts,
+  findCodeFormatProblems,
   findExplanationKeyConflict,
   matchOutputToOption,
+  parseAssertionOutput,
+  parseStateAssertion,
+  repairInlineCodePrompt,
   wrapCppProgram,
 } from './answerKeyCheck';
 
@@ -117,5 +122,94 @@ describe('matchOutputToOption', () => {
 
   it('對不到任何選項：回傳 -1', () => {
     expect(matchOutputToOption('7', ['0', '3', '9', '18'])).toBe(-1);
+  });
+});
+
+// 真實案例：item-integrated-002，B（name[3]='y'）與 D（used[3]=5）都成立；
+// 題幹把程式碼連行號擠成一行、沒有圍欄
+const integratedItem = {
+  id: 'item-integrated-002',
+  prompt: '下列程式片段執行後的陣列內容，何者正確？ 1 int used[6] = {1, 2, 3, 4}, i; 2 char name[6] = "Alex"; 3 for(i = 1; i < 4; i++){ 4 used[i] = used[i] + 1; 5 name[i] = name[i] + 1; }',
+  options: ['name[1]=\'B\'', 'name[3]=\'y\'', 'used[1]=2', 'used[3]=5'],
+  answerIndex: 3,
+  explanation: '所以used[3]=5是正確的。',
+};
+
+describe('extractCppSnippet：無圍欄、行號擠成一行的舊題', () => {
+  it('去掉行號、每個陳述式換行，取出可編譯的程式碼', () => {
+    const code = extractCppSnippet(integratedItem.prompt);
+
+    expect(code).toContain('int used[6] = {1, 2, 3, 4}, i;');
+    expect(code).toContain('char name[6] = "Alex";');
+    expect(code).toContain('name[i] = name[i] + 1;');
+    expect(code).not.toMatch(/(^|\n)\s*\d+\s+(int|char|for|used|name)/);
+  });
+
+  it('題幹沒有引用程式：不硬抽，回傳 null', () => {
+    expect(extractCppSnippet('1 個位元組等於幾個位元？')).toBeNull();
+  });
+});
+
+describe('parseStateAssertion', () => {
+  it('「name[3]=\'y\'」解析成左值與期望值', () => {
+    expect(parseStateAssertion('name[3]=\'y\'')).toEqual({ lhs: 'name[3]', rhs: '\'y\'' });
+  });
+
+  it('「used[3] == 5」也可以', () => {
+    expect(parseStateAssertion('used[3] == 5')).toEqual({ lhs: 'used[3]', rhs: '5' });
+  });
+
+  it('字串常值（陣列不能用 == 比較）：不解析', () => {
+    expect(parseStateAssertion('name="Bmfy"')).toBeNull();
+  });
+
+  it('不是「變數＝值」的選項：不解析', () => {
+    expect(parseStateAssertion('3')).toBeNull();
+    expect(parseStateAssertion('編譯錯誤')).toBeNull();
+  });
+});
+
+describe('buildAssertionProgram / parseAssertionOutput', () => {
+  it('在片段後面逐一印出每個選項是否成立', () => {
+    const program = buildAssertionProgram('int a = 1;', [{ lhs: 'a', rhs: '1' }, { lhs: 'a', rhs: '2' }]);
+
+    expect(program).toContain('((a) == (1))');
+    expect(program).toContain('((a) == (2))');
+    expect(program).toContain('__QF_ASSERT__');
+  });
+
+  it('解析輸出：只看標記之後的結果，忽略片段本身印的東西', () => {
+    expect(parseAssertionOutput('hello\n__QF_ASSERT__\n0\n1\n1\n0\n')).toEqual([false, true, true, false]);
+  });
+
+  it('沒有標記（程式中途結束）：回傳 null', () => {
+    expect(parseAssertionOutput('hello')).toBeNull();
+  });
+});
+
+describe('findCodeFormatProblems', () => {
+  it('題幹寫「下列程式」卻沒有程式碼圍欄：回報', () => {
+    const messages = findCodeFormatProblems([integratedItem]);
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toContain('item-integrated-002');
+  });
+
+  it('有圍欄：不回報', () => {
+    expect(findCodeFormatProblems([forLoopItem])).toEqual([]);
+  });
+});
+
+describe('repairInlineCodePrompt', () => {
+  it('行號擠成一行的舊題：改寫成題目＋```cpp 圍欄', () => {
+    const repaired = repairInlineCodePrompt(integratedItem.prompt);
+
+    expect(repaired).toBe(
+      '下列程式片段執行後的陣列內容，何者正確？\n```cpp\nint used[6] = {1, 2, 3, 4}, i;\nchar name[6] = "Alex";\nfor(i = 1; i < 4; i++){\n    used[i] = used[i] + 1;\n    name[i] = name[i] + 1;\n}\n```',
+    );
+  });
+
+  it('已有圍欄：不改，回傳 null', () => {
+    expect(repairInlineCodePrompt(forLoopItem.prompt)).toBeNull();
   });
 });

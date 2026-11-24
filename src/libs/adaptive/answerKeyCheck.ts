@@ -10,7 +10,7 @@
  *   2. extractCppSnippet / wrapCppProgram / matchOutputToOption：給 scripts/audit-adaptive-answer-keys.ts
  *      真的編譯執行 C/C++ 程式輸出題，用實際輸出比對答案鍵（Vercel 沒有編譯器，只能離線跑）
  */
-import { parseCodeBlocks } from '@/lib/codeBlock';
+import { needsCodeSnippet, parseCodeBlocks, referencesCode } from '@/lib/codeBlock';
 
 export type CheckableItem = {
   id: string;
@@ -125,21 +125,114 @@ export function findAnswerKeyConflicts(items: CheckableItem[]): string[] {
 
 const CPP_LANGS = new Set(['c', 'cpp', 'c++', 'cc', 'cxx']);
 
-/** 取出題幹中的 C/C++ 程式碼（第一個 c/cpp 圍欄）；沒有就回傳 null */
+/**
+ * 取出題幹中的 C/C++ 程式碼：優先取第一個 c/cpp 圍欄；
+ * 沒有圍欄但題幹引用程式（舊題常見「1 int a; 2 for(...){ 3 ... }」行號擠成一行）時，
+ * 去掉行號、每個陳述式換行後回傳。都不是就回傳 null。
+ */
 export function extractCppSnippet(prompt: string): string | null {
   const block = parseCodeBlocks(prompt).find(
     seg => seg.kind === 'code' && CPP_LANGS.has(seg.lang.toLowerCase()),
   );
-  return block && block.kind === 'code' ? block.code : null;
+  if (block && block.kind === 'code') {
+    return block.code;
+  }
+  return extractInlineNumberedCode(prompt);
 }
 
-/** 把程式片段包成可編譯的完整程式（已有 main 就只補 include） */
-export function wrapCppProgram(snippet: string): string {
+/** 行號擠成一行的舊題：改寫成「題目＋```cpp 圍欄」；不需要修就回傳 null */
+export function repairInlineCodePrompt(prompt: string): string | null {
+  const code = extractInlineNumberedCode(prompt);
+  if (!code) {
+    return null;
+  }
+  const stem = prompt.slice(0, /[？?]\s*1\s+\S/.exec(prompt)!.index + 1).trim();
+  return `${stem}\n\`\`\`cpp\n${code}\n\`\`\``;
+}
+
+function extractInlineNumberedCode(prompt: string): string | null {
+  if (!needsCodeSnippet(prompt) || !referencesCode(prompt)) {
+    return null;
+  }
+  // 題幹與程式碼的分界：第一個問號之後、且以行號「1 」開頭
+  const match = /[？?]\s*1\s+(\S[\s\S]*)$/.exec(prompt);
+  if (!match) {
+    return null;
+  }
+  // 陳述式結尾（; { }）後面跟著的「數字＋空白」視為行號，換成換行
+  const lines = match[1]!
+    .replace(/([;{}])\s*\d+\s+/g, '$1\n')
+    .replace(/;[ \t]*\}/g, ';\n}') // 「...; }」的右大括號獨立一行
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+  if (!lines.some(line => line.includes(';'))) {
+    return null;
+  }
+  // 依大括號深度補四格縮排
+  let depth = 0;
+  return lines
+    .map((line) => {
+      if (line.startsWith('}')) {
+        depth = Math.max(0, depth - 1);
+      }
+      const indented = `${'    '.repeat(depth)}${line}`;
+      depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length + (line.startsWith('}') ? 1 : 0);
+      depth = Math.max(0, depth);
+      return indented;
+    })
+    .join('\n');
+}
+
+/** 把程式片段包成可編譯的完整程式（已有 main 就只補 include）；epilogue 接在片段之後、return 之前 */
+export function wrapCppProgram(snippet: string, epilogue = ''): string {
   const header = '#include <bits/stdc++.h>\nusing namespace std;\n';
   if (/\bmain\s*\(/.test(snippet)) {
     return `${header}${snippet}\n`;
   }
-  return `${header}int main() {\n${snippet}\nreturn 0;\n}\n`;
+  return `${header}int main() {\n${snippet}\n${epilogue}return 0;\n}\n`;
+}
+
+export type StateAssertion = { lhs: string; rhs: string };
+
+const ASSERT_MARKER = '__QF_ASSERT__';
+
+/**
+ * 「變數狀態」型選項（name[3]='y'、used[3] == 5）解析成左值與期望值；其他選項回傳 null。
+ * 字串常值不解析：char 陣列用 == 比的是位址，會得到錯的結果。
+ */
+export function parseStateAssertion(option: string): StateAssertion | null {
+  const m = /^\s*([A-Za-z_]\w*(?:\[\d+\])*)\s*={1,2}\s*(-?\d+(?:\.\d+)?|'(?:\\.|[^'\\])'|true|false)\s*$/.exec(normalize(option));
+  return m ? { lhs: m[1]!, rhs: m[2]! } : null;
+}
+
+/** 在程式片段後逐一印出每個選項是否成立（標記行之後每行一個 0/1） */
+export function buildAssertionProgram(snippet: string, assertions: StateAssertion[]): string {
+  const checks = assertions
+    .map(a => `cout << ((${a.lhs}) == (${a.rhs})) << "\\n";`)
+    .join('\n');
+  return wrapCppProgram(snippet, `cout << "\\n${ASSERT_MARKER}\\n";\n${checks}\n`);
+}
+
+/** 解析 buildAssertionProgram 的輸出；沒有標記（程式中途結束）回傳 null */
+export function parseAssertionOutput(stdout: string): boolean[] | null {
+  const idx = stdout.indexOf(ASSERT_MARKER);
+  if (idx === -1) {
+    return null;
+  }
+  return stdout
+    .slice(idx + ASSERT_MARKER.length)
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
+    .map(line => line === '1');
+}
+
+/** 題幹引用程式（「下列程式…」）卻沒附程式碼圍欄：回傳可回饋給模型的錯誤訊息 */
+export function findCodeFormatProblems(items: { id: string; prompt: string }[]): string[] {
+  return items
+    .filter(item => needsCodeSnippet(item.prompt))
+    .map(item => `題目 ${item.id} 的題幹引用程式碼，但沒有用 \`\`\`cpp 圍欄附上完整程式碼（不可把行號與程式擠在同一行）`);
 }
 
 /** 實際輸出對應到哪個選項（忽略頭尾與多重空白）；對不到回傳 -1 */
