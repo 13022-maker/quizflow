@@ -1,11 +1,12 @@
 /**
  * TrialBanner — Dashboard 顯示 Pro 試用倒數 / 已到期提示
- * 僅在 (a) 沒有付費訂閱 且 (b) 有試用紀錄 時顯示
+ * 僅在 (a) 沒有付費訂閱 且 (b) 有試用紀錄 且 (c) 已過定價訊息門檻（pricingGate.ts）時顯示
  */
 
 import Link from 'next/link';
 
 import { getUserPlanId } from '@/libs/Plan';
+import { canShowPricingMessages } from '@/libs/pricingGateQuery';
 import { getTrialStatus } from '@/libs/trial';
 import { PLAN_ID } from '@/utils/AppConfig';
 
@@ -17,6 +18,11 @@ export async function TrialBanner({ clerkUserId }: Props) {
   // 已付費用戶不顯示試用 banner
   const planId = await getUserPlanId(clerkUserId);
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
+    return null;
+  }
+
+  // 新使用者（出卷 ≤ 10 份或連續使用 ≤ 3 天）不顯示任何升級／方案訊息
+  if (!(await canShowPricingMessages(clerkUserId))) {
     return null;
   }
 

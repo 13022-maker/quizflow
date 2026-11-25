@@ -11,7 +11,8 @@ describe('evaluateVisibility', () => {
     const result = evaluateVisibility({
       isAuthed: false,
       planId: PLAN_ID.FREE,
-      quizCount: 0,
+      publishedQuizCount: 0,
+      longestStreak: 0,
     });
 
     expect(result).toEqual({ showPaidPlans: false, reason: 'guest' });
@@ -21,7 +22,8 @@ describe('evaluateVisibility', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.PREMIUM,
-      quizCount: 0,
+      publishedQuizCount: 0,
+      longestStreak: 0,
     });
 
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
@@ -31,7 +33,8 @@ describe('evaluateVisibility', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.ENTERPRISE,
-      quizCount: 0,
+      publishedQuizCount: 0,
+      longestStreak: 0,
     });
 
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
@@ -41,47 +44,52 @@ describe('evaluateVisibility', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.PUBLISHER,
-      quizCount: 0,
+      publishedQuizCount: 0,
+      longestStreak: 0,
     });
 
     expect(result).toEqual({ showPaidPlans: true, reason: 'paid' });
   });
 
-  it('已登入 FREE + quiz 數 = 10（剛達門檻）→ reached 分支', () => {
+  it('已登入 FREE + 出卷 11 份 + 連續 4 天 → reached 分支', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.FREE,
-      quizCount: 10,
+      publishedQuizCount: 11,
+      longestStreak: 4,
     });
 
     expect(result).toEqual({ showPaidPlans: true, reason: 'reached' });
   });
 
-  it('已登入 FREE + quiz 數 = 11（超過門檻）→ reached 分支', () => {
+  it('已登入 FREE + 剛好出卷 10 份（沒超過）+ 連續 4 天 → under 分支', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.FREE,
-      quizCount: 11,
-    });
-
-    expect(result).toEqual({ showPaidPlans: true, reason: 'reached' });
-  });
-
-  it('已登入 FREE + quiz 數 = 9（差一份）→ under 分支', () => {
-    const result = evaluateVisibility({
-      isAuthed: true,
-      planId: PLAN_ID.FREE,
-      quizCount: 9,
+      publishedQuizCount: 10,
+      longestStreak: 4,
     });
 
     expect(result).toEqual({ showPaidPlans: false, reason: 'under' });
   });
 
-  it('已登入 FREE + quiz 數 = 0 → under 分支', () => {
+  it('已登入 FREE + 出卷 30 份但連續只有 3 天 → under 分支', () => {
     const result = evaluateVisibility({
       isAuthed: true,
       planId: PLAN_ID.FREE,
-      quizCount: 0,
+      publishedQuizCount: 30,
+      longestStreak: 3,
+    });
+
+    expect(result).toEqual({ showPaidPlans: false, reason: 'under' });
+  });
+
+  it('已登入 FREE + 0 份 → under 分支', () => {
+    const result = evaluateVisibility({
+      isAuthed: true,
+      planId: PLAN_ID.FREE,
+      publishedQuizCount: 0,
+      longestStreak: 0,
     });
 
     expect(result).toEqual({ showPaidPlans: false, reason: 'under' });
