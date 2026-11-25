@@ -7,7 +7,7 @@
  * 用 longestStreak 而非 currentStreak：一旦達標就維持顯示，不會因為斷連又消失。
  * 已付費用戶一律顯示（要能看到方案、管理訂閱）。
  *
- * 管控範圍：TrialBanner、AiQuotaBanner、測驗列表與編輯器的「升級」提示、首頁定價區塊的付費方案卡。
+ * 管控範圍：TrialBanner 的升級按鈕（到期提醒本身一律顯示，見 trialBanner.ts）、AiQuotaBanner、測驗列表與編輯器的「升級」提示、首頁定價區塊的付費方案卡。
  * dashboard navbar「定價」入口另有自己的規則（實際出卷 > 57 份，見 pricingNav.ts）。
  * 不管控：/pricing 頁本身與 footer 連結（Paddle domain approval 要求網站能找到定價頁），
  * 以及已達額度上限時的硬性阻擋訊息。

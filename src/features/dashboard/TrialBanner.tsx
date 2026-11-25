@@ -1,6 +1,7 @@
 /**
  * TrialBanner — Dashboard 顯示 Pro 試用倒數 / 已到期提示
- * 僅在 (a) 沒有付費訂閱 且 (b) 有試用紀錄 且 (c) 已過定價訊息門檻（pricingGate.ts）時顯示
+ * 僅在 (a) 沒有付費訂閱 且 (b) 有試用紀錄 時顯示；顯示時機見 src/libs/trialBanner.ts
+ * 到期提醒一律顯示（不讓老師不知不覺被降級），但未過定價訊息門檻（pricingGate.ts）時不帶升級按鈕
  */
 
 import Link from 'next/link';
@@ -8,11 +9,25 @@ import Link from 'next/link';
 import { getUserPlanId } from '@/libs/Plan';
 import { canShowPricingMessages } from '@/libs/pricingGateQuery';
 import { getTrialStatus } from '@/libs/trial';
+import { getTrialBannerState } from '@/libs/trialBanner';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 type Props = {
   clerkUserId: string;
 };
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+function UpgradeLink() {
+  return (
+    <Link
+      href="/dashboard/billing"
+      className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+    >
+      升級 Pro
+    </Link>
+  );
+}
 
 export async function TrialBanner({ clerkUserId }: Props) {
   // 已付費用戶不顯示試用 banner
@@ -21,22 +36,32 @@ export async function TrialBanner({ clerkUserId }: Props) {
     return null;
   }
 
-  // 新使用者（出卷 ≤ 10 份或連續使用 ≤ 3 天）不顯示任何升級／方案訊息
-  if (!(await canShowPricingMessages(clerkUserId))) {
-    return null;
-  }
-
   const trial = await getTrialStatus(clerkUserId);
   if (!trial) {
     return null;
   }
 
-  // 試用中：只在剩 ≤ 7 天才顯示 banner（避免每天都看到干擾）
-  if (trial.inTrial) {
-    if (trial.daysLeft > 7) {
-      return null;
-    }
-    const urgent = trial.daysLeft <= 3;
+  const daysSinceEnd = !trial.inTrial && trial.endsAt
+    ? Math.floor((Date.now() - trial.endsAt.getTime()) / MS_PER_DAY)
+    : 0;
+
+  // 先用不需查 DB 的條件判斷要不要顯示，不顯示就省掉門檻查詢
+  if (!getTrialBannerState({ inTrial: trial.inTrial, daysLeft: trial.daysLeft, daysSinceEnd, showPricing: false })) {
+    return null;
+  }
+
+  const state = getTrialBannerState({
+    inTrial: trial.inTrial,
+    daysLeft: trial.daysLeft,
+    daysSinceEnd,
+    showPricing: await canShowPricingMessages(clerkUserId),
+  });
+  if (!state) {
+    return null;
+  }
+
+  if (state.kind === 'trial') {
+    const { urgent } = state;
     return (
       <div
         className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border p-4 ${
@@ -62,23 +87,9 @@ export async function TrialBanner({ clerkUserId }: Props) {
             </p>
           </div>
         </div>
-        <Link
-          href="/dashboard/billing"
-          className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          升級 Pro
-        </Link>
+        {state.showUpgrade && <UpgradeLink />}
       </div>
     );
-  }
-
-  // 試用已到期：限期 7 天顯示，之後讓 AiQuotaBanner 接手提醒
-  const MS_PER_DAY = 24 * 60 * 60 * 1000;
-  const daysSinceEnd = trial.endsAt
-    ? Math.floor((Date.now() - trial.endsAt.getTime()) / MS_PER_DAY)
-    : 0;
-  if (daysSinceEnd > 7) {
-    return null;
   }
 
   return (
@@ -88,16 +99,13 @@ export async function TrialBanner({ clerkUserId }: Props) {
         <div>
           <p className="text-sm font-semibold text-foreground">Pro 試用已結束</p>
           <p className="text-xs text-muted-foreground">
-            已自動降級為免費方案，升級解鎖無限測驗與 AI 出題
+            {state.showUpgrade
+              ? '已自動降級為免費方案，升級解鎖無限測驗與 AI 出題'
+              : '已自動降級為免費方案'}
           </p>
         </div>
       </div>
-      <Link
-        href="/dashboard/billing"
-        className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-      >
-        升級 Pro
-      </Link>
+      {state.showUpgrade && <UpgradeLink />}
     </div>
   );
 }
