@@ -4,7 +4,8 @@ import { getTranslations } from 'next-intl/server';
 import { InAppBrowserBanner } from '@/components/InAppBrowserBanner';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
 import { isPricingEnabled } from '@/libs/paddleConfig';
-import { canShowPricingMessages } from '@/libs/pricingGateQuery';
+import { countPublishedQuizzes } from '@/libs/pricingGateQuery';
+import { shouldShowPricingNav } from '@/libs/pricingNav';
 import { ensureTrialRecord } from '@/libs/trial';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -28,10 +29,10 @@ export default async function DashboardLayout(props: { children: React.ReactNode
     await ensureTrialRecord(userId);
   }
 
-  // 定價入口：實際出卷 > 10 份且連續使用 > 3 天才顯示（新使用者先不看到收費，規則見 pricingGate.ts）
+  // 定價入口：實際出卷超過 57 份才顯示（navbar 專用規則，比 pricingGate.ts 的其他升級訊息門檻更嚴）
   const showPricingNav = isPricingEnabled(process.env.NEXT_PUBLIC_PRICING_ENABLED)
     && !!userId
-    && await canShowPricingMessages(userId);
+    && shouldShowPricingNav(await countPublishedQuizzes(userId));
 
   return (
     <>
