@@ -1,5 +1,6 @@
 import '@/styles/global.css';
 
+import { Analytics } from '@vercel/analytics/next';
 import type { Metadata } from 'next';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
@@ -62,6 +63,9 @@ export default function RootLayout(props: {
 
           <PaddleProvider />
         </NextIntlClientProvider>
+
+        {/* Vercel Web Analytics：只記錄頁面瀏覽（不送自訂事件、不含個資），用來看首頁 → 註冊 → dashboard 的流失點 */}
+        <Analytics />
       </body>
     </html>
   );
