@@ -163,6 +163,26 @@ describe('填空練習頁：線上送出', () => {
     (doc.getElementById('checkBtn') as HTMLElement).click();
   }
 
+  it('核對答案：正確答案是 n² 時輸入 n2 顯示答對', () => {
+    const supHtml = buildFillBlankPracticePageHtml({
+      title: '數學',
+      kick: 'k',
+      questions: [
+        { groupLabel: 'g', before: '平方是', after: '', answer: 'n²' },
+        { groupLabel: 'g', before: '平方是', after: '', answer: 'n²' },
+      ],
+    });
+    const { doc } = load(supHtml);
+    fillAndCheck(doc, 0, 'n2');
+
+    expect(doc.getElementById('qcard')?.textContent).toContain('✅ 答對了！');
+
+    // 答對後該格會鎖定，所以答錯案例用第 2 題驗證
+    fillAndCheck(doc, 1, 'n3');
+
+    expect(doc.getElementById('qcard')?.textContent).toContain('❌ 還不對，再試一次');
+  });
+
   it('HTML 有 config 佔位註解，讓分享代理能注入送出端點', () => {
     expect(html).toContain(PRACTICE_PAGE_CONFIG_MARKER);
   });

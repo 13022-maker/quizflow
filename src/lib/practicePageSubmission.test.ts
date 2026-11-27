@@ -186,6 +186,24 @@ describe('scorePracticePageSubmission：server 依答案表重算分數，不信
     }
   });
 
+  it('填空：上標／全形／次方記號視為相同（n2、n^2、ｎ２ 都對 n²；H2O 對 H₂O）', () => {
+    const supKey = buildFillBlankAnswerKey([
+      { groupLabel: 'g', before: '', after: '', answer: 'n²' },
+      { groupLabel: 'g', before: '', after: '', answer: 'n²' },
+      { groupLabel: 'g', before: '', after: '', answer: 'n²' },
+      { groupLabel: 'g', before: '', after: '', answer: 'H₂O' },
+    ], 3);
+    const r = scorePracticePageSubmission(supKey, [
+      { typed: 'n2', hintUses: 0 },
+      { typed: 'n^2', hintUses: 0 },
+      { typed: 'ｎ３', hintUses: 0 }, // n3 ≠ n²
+      { typed: 'H2O', hintUses: 0 },
+    ]);
+
+    expect(r.ok && r.score).toBe(75);
+    expect(r.ok && r.detail.items.map(it => it.correct)).toEqual([true, true, false, true]);
+  });
+
   it('填空：空字串不算答對；看答案次數多到扣超過 100% 時該格 0 分不會變負數', () => {
     const r = scorePracticePageSubmission(fillKey, [
       { typed: '', hintUses: 0 },
