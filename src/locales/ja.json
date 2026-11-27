@@ -424,5 +424,33 @@
     "col_result": "結果ページ",
     "view_result": "表示",
     "fillblank_no_analytics": "穴埋め練習ページは匿名の解答統計を収集しません。ここには提出された成績のみ表示されます。"
+  },
+  "Demo": {
+    "meta_title": "サンプル：AIが作成したクイズ - QuizFlow",
+    "meta_description": "登録不要。QuizFlowが先生のために作成した中学理科のクイズと、生徒がスマホで回答し自動採点される画面をご覧いただけます。",
+    "eyebrow": "登録不要、まずは成果をチェック",
+    "title": "QuizFlowが作成したクイズの例",
+    "description": "先生が入力したのは1行のテーマだけ。AIが問題・正解・解説を作成し、先生が確認して生徒に配信します。「生徒の回答画面」に切り替えると、実際に回答できます。",
+    "tabs_label": "表示の切り替え",
+    "tab_teacher": "先生が見る問題",
+    "tab_student": "生徒の回答画面",
+    "teacher_prompt_label": "先生の入力：",
+    "teacher_meta": "全{count}問・正解、解説、学習指導要領とブルーム分類のタグ付き",
+    "type_single_choice": "単一選択",
+    "type_multiple_choice": "複数選択",
+    "type_true_false": "〇×",
+    "explanation_label": "解説：",
+    "student_intro": "生徒はQRコードを読み取るか6桁のルームコードを入力するだけで回答でき、提出後すぐに点数と解説を確認できます。試してみましょう：",
+    "student_no_login": "生徒は登録・ログイン不要",
+    "multi_hint": "（複数選択可）",
+    "submit_button": "提出",
+    "retry_button": "もう一度回答する",
+    "score_unit": "点",
+    "score_detail": "{total}問中{correct}問正解",
+    "result_correct": "✓ 正解。",
+    "result_wrong": "✗ 不正解。",
+    "cta_title": "来週の単元で試してみましょう",
+    "cta_description": "新規アカウントは最初の30日間、Proの全機能を利用できます。クレジットカード不要。",
+    "cta_button": "無料で始めて最初のクイズを作る"
   }
 }

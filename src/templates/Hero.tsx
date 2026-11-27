@@ -26,9 +26,10 @@ export const Hero = () => {
         description={t('description')}
         buttons={(
           <>
+            {/* 不用登入的範例頁：先看到出好的卷子與學生作答畫面，再決定註冊 */}
             <a
               className={buttonVariants({ variant: 'outline', size: 'lg' })}
-              href="/sign-up"
+              href="/demo"
             >
               {t('secondary_button')}
             </a>

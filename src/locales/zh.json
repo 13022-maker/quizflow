@@ -424,5 +424,33 @@
     "col_result": "結果頁",
     "view_result": "查看",
     "fillblank_no_analytics": "填空練習頁不收集匿名作答統計，這裡只顯示學生送出的成績。"
+  },
+  "Demo": {
+    "meta_title": "範例：AI 出好的一份卷子 - QuizFlow",
+    "meta_description": "不用註冊，直接看 QuizFlow 幫老師出好的一份國中自然測驗，以及學生用手機作答、自動批改的畫面。",
+    "eyebrow": "不用註冊，先看成果",
+    "title": "這是 QuizFlow 出好的一份卷子",
+    "description": "老師只輸入一行主題，AI 出好題目、正解和詳解，老師挑過就能發給學生。切到「學生作答」可以親自作答一次。",
+    "tabs_label": "切換檢視",
+    "tab_teacher": "老師看到的題目",
+    "tab_student": "學生作答畫面",
+    "teacher_prompt_label": "老師輸入：",
+    "teacher_meta": "共 {count} 題・含正解、詳解、108 課綱素養與 Bloom 層次標籤",
+    "type_single_choice": "單選",
+    "type_multiple_choice": "多選",
+    "type_true_false": "是非",
+    "explanation_label": "詳解：",
+    "student_intro": "學生掃 QR code 或輸入 6 碼房間碼就能作答，交卷馬上看到分數和詳解。試試看：",
+    "student_no_login": "學生不用註冊、不用登入",
+    "multi_hint": "（可複選）",
+    "submit_button": "交卷",
+    "retry_button": "再作答一次",
+    "score_unit": "分",
+    "score_detail": "答對 {correct} / {total} 題",
+    "result_correct": "✓ 答對。",
+    "result_wrong": "✗ 答錯。",
+    "cta_title": "換成你下週要考的單元",
+    "cta_description": "新帳號前 30 天享有 Pro 完整功能，不用信用卡。",
+    "cta_button": "免費開始，出我的第一份卷子"
   }
 }
