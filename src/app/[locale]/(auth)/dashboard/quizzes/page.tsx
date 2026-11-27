@@ -9,6 +9,7 @@ import { TitleBar } from '@/features/dashboard/TitleBar';
 import { CreateQuizWithAIButton } from '@/features/quiz/CreateQuizWithAIButton';
 import { QuizCardList } from '@/features/quiz/QuizCardList';
 import { db } from '@/libs/DB';
+import { canShowPricingMessages } from '@/libs/pricingGateQuery';
 import { DAILY_QUIZ_LIMIT_PRICING_PATH, type DailyQuizQuota } from '@/libs/quizQuota';
 import { getDailyQuizQuota } from '@/libs/quizQuota-dao';
 import { quizSchema, responseSchema } from '@/models/Schema';
@@ -28,13 +29,16 @@ export default async function QuizzesPage() {
   let quizzes: (typeof quizSchema.$inferSelect)[] = [];
   // 每日建立額度（試用結束後的 Free 每天 5 份；VIP / Pro / 試用中不限）
   let dailyQuota: DailyQuizQuota | null = null;
+  // 新使用者（出卷 ≤ 10 份或連續使用 ≤ 3 天）不顯示「升級」引導，見 pricingGate.ts
+  let showPricing = false;
 
   try {
     if (userId) {
       // 並行查詢：測驗清單、方案資訊
       // 明確列出欄位，避免 SELECT * 撈到尚未 migrate 的欄位導致 crash
-      [dailyQuota, quizzes] = await Promise.all([
+      [dailyQuota, showPricing, quizzes] = await Promise.all([
         getDailyQuizQuota(userId),
+        canShowPricingMessages(userId),
         db.select({
           id: quizSchema.id,
           ownerId: quizSchema.ownerId,
@@ -108,7 +112,7 @@ export default async function QuizzesPage() {
                 style={{ width: `${Math.min((dailyUsed / dailyLimit) * 100, 100)}%` }}
               />
             </div>
-            {isAtLimit && (
+            {isAtLimit && showPricing && (
               <Link
                 href={DAILY_QUIZ_LIMIT_PRICING_PATH}
                 className="text-xs font-medium text-primary hover:underline"
@@ -122,13 +126,24 @@ export default async function QuizzesPage() {
         {/* 建立按鈕：達上限時顯示 disabled 樣式並引導升級 */}
         {isAtLimit
           ? (
-              <Link
-                href={DAILY_QUIZ_LIMIT_PRICING_PATH}
-                className={buttonVariants({ size: 'sm', variant: 'outline' })}
-                title="今天已達免費方案每日建立上限，明天可再建立，或升級 Pro 不限份數"
-              >
-                🔒 今日已達上限 · 升級
-              </Link>
+              showPricing
+                ? (
+                    <Link
+                      href={DAILY_QUIZ_LIMIT_PRICING_PATH}
+                      className={buttonVariants({ size: 'sm', variant: 'outline' })}
+                      title="今天已達免費方案每日建立上限，明天可再建立，或升級 Pro 不限份數"
+                    >
+                      🔒 今日已達上限 · 升級
+                    </Link>
+                  )
+                : (
+                    <span
+                      className={buttonVariants({ size: 'sm', variant: 'outline', className: 'pointer-events-none opacity-60' })}
+                      title="今天已達每日建立上限，明天可再建立"
+                    >
+                      🔒 今日已達上限，明天再來
+                    </span>
+                  )
             )
           : (
               // 主按鈕直達 AI 命題；旁邊加小字「手動建立」副入口連到 /new 頁（手動 / vocab）

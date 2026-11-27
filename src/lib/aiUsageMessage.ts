@@ -4,6 +4,7 @@
 //   - quota <  999 且 remaining >  2  → 「本月 N / Q 次 · 還剩 R 次」
 //   - quota <  999 且 remaining <= 2  → 「本月 N / Q 次 · 只剩 R 次,升級 Pro 解鎖無限」(紅字)
 // remaining === 0 不會走到此 helper(API route 已先擋下)
+// showUpgrade: false(未過定價訊息門檻的新使用者,見 src/libs/pricingGate.ts)→ 低額時只提醒剩餘次數,不帶「升級」字樣
 
 export type AiUsageInfo = {
   quota: number;
@@ -19,8 +20,12 @@ export type AiUsageMessage = {
 const PRO_THRESHOLD = 999;
 const LOW_REMAINING_THRESHOLD = 2;
 
-export function formatAiUsageMessage(usage: AiUsageInfo): AiUsageMessage {
+export function formatAiUsageMessage(
+  usage: AiUsageInfo,
+  options: { showUpgrade?: boolean } = {},
+): AiUsageMessage {
   const { quota, used, remaining } = usage;
+  const showUpgrade = options.showUpgrade ?? true;
 
   if (quota >= PRO_THRESHOLD) {
     // 註: getAiUsageRemaining 對 Pro 分支 short-circuit 不查 DB(回 used: 0),
@@ -33,7 +38,9 @@ export function formatAiUsageMessage(usage: AiUsageInfo): AiUsageMessage {
 
   if (remaining <= LOW_REMAINING_THRESHOLD) {
     return {
-      text: `本月 ${used} / ${quota} 次 · 只剩 ${remaining} 次,升級 Pro 解鎖無限`,
+      text: showUpgrade
+        ? `本月 ${used} / ${quota} 次 · 只剩 ${remaining} 次,升級 Pro 解鎖無限`
+        : `本月 ${used} / ${quota} 次 · 只剩 ${remaining} 次`,
       isWarning: true,
     };
   }

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { QuizEditor } from '@/features/quiz/QuizEditor';
 import { db } from '@/libs/DB';
 import { isProOrAbove } from '@/libs/Plan';
+import { canShowPricingMessages } from '@/libs/pricingGateQuery';
 import { questionSchema, quizSchema } from '@/models/Schema';
 
 export async function generateMetadata({
@@ -87,7 +88,11 @@ export default async function EditQuizPage({
     .orderBy(asc(questionSchema.position));
 
   // 判斷是否為 Pro 方案（決定 AI 出題功能是否可用）
-  const isPro = await isProOrAbove(userId);
+  // 定價訊息門檻（新使用者不顯示升級連結）
+  const [isPro, showPricing] = await Promise.all([
+    isProOrAbove(userId),
+    canShowPricingMessages(userId),
+  ]);
 
   const autoOpenAI = searchParams.ai === '1';
   // 來自市集 CTA → createQuiz redirect 帶過來的主題,優先於 description 推導
@@ -98,6 +103,7 @@ export default async function EditQuizPage({
       quiz={quiz as any}
       questions={questions}
       isPro={isPro}
+      showPricing={showPricing}
       autoOpenAI={autoOpenAI}
       aiPrefill={aiPrefill}
     />

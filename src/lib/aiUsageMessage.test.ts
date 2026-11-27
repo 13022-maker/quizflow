@@ -32,4 +32,11 @@ describe('formatAiUsageMessage', () => {
     expect(result.text).toBe('本月 29 / 30 次 · 只剩 1 次,升級 Pro 解鎖無限');
     expect(result.isWarning).toBe(true);
   });
+
+  it('未過定價門檻（showUpgrade: false）→ 仍提醒剩餘次數，但不出現升級字樣', () => {
+    const result = formatAiUsageMessage({ quota: 30, used: 29, remaining: 1 }, { showUpgrade: false });
+
+    expect(result.text).toBe('本月 29 / 30 次 · 只剩 1 次');
+    expect(result.isWarning).toBe(true);
+  });
 });

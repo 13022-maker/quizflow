@@ -166,12 +166,15 @@ export function QuizEditor({
   quiz: initialQuiz,
   questions: initialQuestions,
   isPro,
+  showPricing = false,
   autoOpenAI = false,
   aiPrefill,
 }: {
   quiz: Quiz;
   questions: Question[];
   isPro: boolean;
+  // 是否已過定價訊息門檻（出卷 > 10 份且連續使用 > 3 天，見 src/libs/pricingGate.ts）；false 時不顯示「升級」連結
+  showPricing?: boolean;
   autoOpenAI?: boolean;
   // 從市集 CTA 帶過來的 AI 主題前置詞;若有則蓋過從 description 推導的 buildDefaultTopic
   aiPrefill?: string;
@@ -1098,7 +1101,7 @@ export function QuizEditor({
       {importSuccess && questions.length > 0 && (() => {
         // 在 render 時從 aiUsage derive 文案,符合 React 最佳實踐
         // 「rerender-derived-state-no-effect」: 能 derive 就不要存 state
-        const aiUsageMsg = aiUsage ? formatAiUsageMessage(aiUsage) : null;
+        const aiUsageMsg = aiUsage ? formatAiUsageMessage(aiUsage, { showUpgrade: showPricing }) : null;
         return (
           <div className="flex items-start gap-3 rounded-xl border border-green-200 bg-green-50 px-5 py-4">
             <span className="mt-0.5 text-lg">✅</span>
@@ -1129,7 +1132,7 @@ export function QuizEditor({
                       : 'text-green-700'
                   }`}
                 >
-                  {aiUsageMsg.isWarning
+                  {aiUsageMsg.isWarning && showPricing
                     ? (
                         <>
                           {aiUsageMsg.text}

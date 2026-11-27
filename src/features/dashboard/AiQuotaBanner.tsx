@@ -3,6 +3,7 @@
  * 觸發條件：
  *  - 方案為免費
  *  - 本月 AI 出題使用率 >= 60%
+ *  - 已過定價訊息門檻（出卷 > 10 份且連續使用 > 3 天，見 pricingGate.ts）
  * 視覺：60~79% 綠、80~94% 琥珀、95%+ 紅
  */
 
@@ -10,6 +11,7 @@ import Link from 'next/link';
 
 import { getAiUsageRemaining } from '@/actions/aiUsageActions';
 import { getUserPlanId } from '@/libs/Plan';
+import { canShowPricingMessages } from '@/libs/pricingGateQuery';
 import { PLAN_ID } from '@/utils/AppConfig';
 
 type Props = {
@@ -24,6 +26,11 @@ export async function AiQuotaBanner({ userId }: Props) {
   const planId = await getUserPlanId(userId);
   // 付費方案不顯示
   if (planId === PLAN_ID.PREMIUM || planId === PLAN_ID.ENTERPRISE || planId === PLAN_ID.PUBLISHER) {
+    return null;
+  }
+
+  // 新使用者不顯示升級提示
+  if (!(await canShowPricingMessages(userId))) {
     return null;
   }
 
