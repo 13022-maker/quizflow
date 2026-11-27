@@ -31,6 +31,7 @@ const mkSource = (overrides: Partial<SourceQuiz> = {}): SourceQuiz => ({
   category: '生物',
   gradeLevel: '高一',
   tags: ['生物', '光合作用'],
+  youtubeUrl: 'https://youtu.be/dQw4w9WgXcQ',
   ...overrides,
 });
 
@@ -85,6 +86,8 @@ describe('buildNewQuizValues', () => {
     expect(values.preventLeave).toBe(source.preventLeave);
     expect(values.scoringMode).toBe(source.scoringMode);
     expect(values.attemptDecayRate).toBe(source.attemptDecayRate);
+    // 題目依賴參考影片作答，複製 / fork 時影片網址必須跟著帶走
+    expect(values.youtubeUrl).toBe(source.youtubeUrl);
   });
 
   it('accessCode / roomCode 用注入的新值（不繼承 source）', () => {
@@ -209,6 +212,8 @@ describe('buildDuplicateQuizValues', () => {
     expect(values.preventLeave).toBe(source.preventLeave);
     expect(values.scoringMode).toBe(source.scoringMode);
     expect(values.attemptDecayRate).toBe(source.attemptDecayRate);
+    // 題目依賴參考影片作答，複製 / fork 時影片網址必須跟著帶走
+    expect(values.youtubeUrl).toBe(source.youtubeUrl);
   });
 });
 

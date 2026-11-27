@@ -1,8 +1,14 @@
 /**
  * YouTube 匯入生成學科（適性學習）專用：保留 timestamp 的抽字幕與清洗。
  * extractYouTubeId／classifyYouTubeError 跟 src/app/api/ai/generate-from-url/route.ts
- * 裡的版本邏輯相同、刻意重複實作，換取不去碰既有已經在跑的一般出題 YouTube 匯入功能。
+ * 裡的版本刻意重複實作，換取不去碰既有已經在跑的一般出題 YouTube 匯入功能。
+ * 注意：這裡的 extractYouTubeId 多支援「watch?…&v=」（v 不是第一個參數），route 版沒有。
+ *
+ * 另外也提供測驗「參考影片」功能用的 buildYoutubeEmbedUrl／quizYoutubeUrlSchema
+ * （學生作答頁頂部嵌入影片、老師設定網址的 Zod 驗證）。
  */
+
+import { z } from 'zod';
 
 const MAX_VIDEOS = 5;
 const MAX_TRANSCRIPT_CHARS = 20000;
@@ -12,6 +18,8 @@ export function extractYouTubeId(url: string): string | null {
   const patterns = [
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([\w-]{11})/,
     /youtube\.com\/shorts\/([\w-]{11})/,
+    // watch 網址 v 不是第一個參數（例：分享連結 watch?feature=share&v=xxx）
+    /youtube\.com\/watch\?(?:[^#]*&)?v=([\w-]{11})/,
   ];
   for (const p of patterns) {
     const match = url.match(p);
@@ -21,6 +29,35 @@ export function extractYouTubeId(url: string): string | null {
   }
   return null;
 }
+
+/** 學生作答頁嵌入用：youtube-nocookie 隱私強化模式（未播放前不寫追蹤 cookie） */
+export function buildYoutubeEmbedUrl(videoId: string): string {
+  return `https://www.youtube-nocookie.com/embed/${videoId}`;
+}
+
+/**
+ * 測驗「參考影片」欄位的輸入驗證（server action 用）。
+ * - null / 空字串 / 純空白 → null（清空影片）
+ * - 非空：去掉前後空白後原樣保留，但必須能解析出 11 碼 video id
+ */
+export const quizYoutubeUrlSchema = z
+  .string()
+  .trim()
+  .max(500, 'YouTube 網址過長')
+  .nullable()
+  .transform((value, ctx) => {
+    if (!value) {
+      return null;
+    }
+    if (!extractYouTubeId(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '無法辨識的 YouTube 影片網址，請貼上 watch?v=、youtu.be/、shorts/ 或 embed/ 格式的連結',
+      });
+      return z.NEVER;
+    }
+    return value;
+  });
 
 export function classifyYouTubeError(err: unknown): string {
   const msg = err instanceof Error ? err.message.toLowerCase() : '';
