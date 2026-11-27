@@ -10,11 +10,12 @@ import { PDFDocument } from 'pdf-lib';
 import { checkAndIncrementAiUsage } from '@/actions/aiUsageActions';
 import { buildCodeSnippetRule } from '@/lib/ai/codeSnippetPrompt';
 import { attachDiagramSvgs } from '@/lib/ai/diagramSvg';
-import { buildNoFigureReferenceRule } from '@/lib/ai/figureReferencePrompt';
+import { buildFigureRuleForSource } from '@/lib/ai/figureReferencePrompt';
 import { QUIZ_MODEL_OPTIONS, type QuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { buildSingleAnswerRule } from '@/lib/ai/singleAnswerPrompt';
 import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
+import { attachFigureLocators } from '@/lib/figureLocator';
 import { resolvePdfPageRange } from '@/libs/pdfPageLimit';
 
 export const runtime = 'nodejs';
@@ -291,7 +292,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 - type 必須為 "listening"
 - 必須提供 listeningText 欄位：根據文件內容改寫成口語化的短文或對話，模擬真實聽力情境
 - listeningText 控制在 50-200 字`
-  : ''}${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildNoFigureReferenceRule()}
+  : ''}${buildCodeSnippetRule()}${buildSingleAnswerRule()}${buildFigureRuleForSource(isImage ? 'image' : 'pdf')}
 
 若某題(限選擇題 mc、是非題 tf、填空題 fill)的內容適合用圖表輔助理解（流程步驟、兩者比較、時間先後、概念之間的關係），在該題 JSON 加一個 "diagram" 欄位，格式為以下 4 種之一（不適合就完全不要加這個欄位，不是每題都需要圖，大部分題目不需要）：
 - 流程：{"type":"flow","steps":["步驟1","步驟2",...]}（2-6 步）
@@ -360,6 +361,10 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
 
   const media: { mimeType: string; base64: string }[] = [];
 
+  // figure 定位欄位驗證用：AI 收到幾頁（PDF 頁數 / 圖片張數），以及 AI 第 1 頁對應上傳檔案第幾頁
+  let figurePageCount = 0;
+  let figurePageOffset = 0;
+
   if (isAudio) {
     const arrayBuffer = await firstFile.arrayBuffer();
     media.push({
@@ -376,6 +381,7 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
         base64: Buffer.from(buf).toString('base64'),
       });
     }
+    figurePageCount = uploaded.length;
   } else {
     // PDF：一律用伺服器端量到的真實頁數判斷上限，不信任前端傳來的 startPage/endPage
     // （前端讀取頁數失敗時不會傳這兩個值，過去這裡會把整份大 PDF 原封不動送給 AI，
@@ -410,6 +416,8 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     const copiedPages = await newDoc.copyPages(srcDoc, indices);
     copiedPages.forEach(page => newDoc.addPage(page));
     const pdfBytes = await newDoc.save();
+    figurePageCount = indices.length;
+    figurePageOffset = range.startPage - 1;
 
     media.push({
       mimeType: 'application/pdf',
@@ -465,6 +473,12 @@ ${hasListening ? '單選題（mc）與聽力題（listening）' : '單選題（m
     const codeCheck = ensureCodeSnippets(result.questions);
     if (codeCheck.repaired || codeCheck.missing.length) {
       console.warn(`[generate-from-file] ${effectiveModel} 程式碼修補 ${codeCheck.repaired} 題,仍缺程式碼題目 index=${JSON.stringify(codeCheck.missing)}`);
+    }
+
+    // 原始檔附圖定位：驗證 AI 的 figure 欄位並換算成上傳檔案頁碼，前端依此裁切截圖成題目圖片
+    // （見 src/lib/figureLocator.ts）；不合法的 figure 直接刪除，前端 needsFigure() 會警告老師
+    if (!isAudio) {
+      attachFigureLocators(result.questions, { pageCount: figurePageCount, pageOffset: figurePageOffset });
     }
 
     // 圖解:mc/tf/fill 題型若 AI 判斷需要,附上 diagramSvg(fail-open,失敗就不附圖)

@@ -16,8 +16,11 @@ import { useRef, useState } from 'react';
 
 import { type QuizModelChoice, resolveQuizModelChoice } from '@/lib/ai/quizModelOptions';
 import { probeAudioDuration } from '@/lib/audioDuration';
+import type { FigureLocator } from '@/lib/figureLocator';
 
 import { AIModelPicker } from './AIModelPicker';
+import { captureFigures, type FigureSourceFiles } from './figureCapture';
+import { FigurePreview } from './FigurePreview';
 import { MissingCodeWarning } from './MissingCodeWarning';
 import { buildChapters, type PdfChapter } from './pdfChapters';
 
@@ -45,7 +48,8 @@ type GeneratedQuestion = {
   listeningText?: string; // 聽力題要念的口語化文字
   audioUrl?: string; // 聽力題 TTS 生成的音檔 URL
   audioDurationSec?: number; // 聽力題音檔秒數（Live Mode 計時用）
-  imageUrl?: string; // 題目圖片網址（目前只有「題庫匯入」PDF 模式會帶，自動比對出的圖已上傳到 Blob）
+  imageUrl?: string; // 題目圖片網址（題庫匯入 PDF 自動配對的圖，或檔案出題依 figure 從原始檔截的圖；皆已上傳到 Blob）
+  figure?: FigureLocator; // 檔案出題：AI 標示的原始檔附圖位置（截圖後即移除，不送進 DB）
   diagramSvg?: string; // AI 自動生成的圖解 SVG(mc/tf/fill 題型才可能有;由 generate-questions/generate-from-file 附上)
 };
 
@@ -163,7 +167,7 @@ function buildFrameworkPrefix(value: string) {
 }
 
 // ─── Component ────────────────────────────────────────────
-export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: Props) {
+export default function AIQuizModal({ quizId, defaultTopic, onImport, onClose, isPro }: Props) {
   // Mode
   const [mode, setMode] = useState<Mode>('text');
 
@@ -479,6 +483,8 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: 
         const firstExt = firstFile.name.split('.').pop()?.toLowerCase() ?? '';
         const isPdf = firstExt === 'pdf';
         const allImagesNow = files.every(isImageFile);
+        // 截圖用：AI 收到的 PDF 第 1 頁對應原始檔第幾頁（前端裁切大 PDF 時才 > 0；伺服器端裁切已在 route 換算過）
+        let figurePageOffset = 0;
 
         if (isPdf && pdfPageCount !== null && firstFile.size > MAX_UPLOAD_SIZE) {
           // 大 PDF 前端先裁切，避免超過 Vercel 4.5MB 限制
@@ -498,6 +504,7 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: 
           const trimmedBytes = await newDoc.save();
           const trimmedFile = new File([trimmedBytes as BlobPart], firstFile.name, { type: 'application/pdf' });
           fd.append('file', trimmedFile);
+          figurePageOffset = safeStart - 1;
         } else if (allImagesNow) {
           // 多張圖片：全部 append 到同一個 'file' 欄位，server 用 getAll('file') 取出
           for (const f of files) {
@@ -532,6 +539,20 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: 
           throw new Error(errMsg);
         }
         data = await res.json();
+
+        // 題目依賴原始檔的圖（電路圖等）：依 AI 標的 figure 位置截圖，上傳成題目圖片
+        const figureSource: FigureSourceFiles | null = isPdf
+          ? { kind: 'pdf', file: firstFile, pageOffset: figurePageOffset }
+          : allImagesNow
+            ? { kind: 'images', files }
+            : null;
+        const questionsWithFigure = data.questions?.filter(q => q.figure) ?? [];
+        if (questionsWithFigure.length > 0 && figureSource && quizId) {
+          setStep(`擷取題目附圖中（${questionsWithFigure.length} 張）…`);
+          await captureFigures(data.questions, figureSource, quizId);
+        } else {
+          data.questions?.forEach(q => delete q.figure);
+        }
       } else if (mode === 'exambank') {
         // 題庫匯入模式：貼上文字 或 上傳題庫 PDF，題幹/選項/正解由後端 examBankParser
         // 直接解析，AI 只補詳解（見 parse-exam-bank/route.ts 開頭註解）
@@ -1415,6 +1436,17 @@ export default function AIQuizModal({ defaultTopic, onImport, onClose, isPro }: 
 
           {/* ── 程式題缺程式碼警告（題目寫「下列程式」卻沒附程式碼） ── */}
           {result && <MissingCodeWarning questions={result.questions} />}
+
+          {/* ── 原始檔截圖附圖預覽 / 提到「如圖」卻沒附圖的警告 ── */}
+          {result && (
+            <FigurePreview
+              questions={result.questions}
+              onRemoveImage={index => setResult(prev => prev && {
+                ...prev,
+                questions: prev.questions.map((q, i) => (i === index ? { ...q, imageUrl: undefined } : q)),
+              })}
+            />
+          )}
 
           {/* ── 題庫匯入的解析報告：有解析不出來的段落 / 圖片配對結果，列出來讓老師自己確認 ── */}
           {result && parseReport && (
