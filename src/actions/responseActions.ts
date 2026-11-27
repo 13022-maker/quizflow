@@ -8,6 +8,7 @@ import type { GradeResult } from '@/lib/ai/gradeShortAnswer';
 import { gradeShortAnswer } from '@/lib/ai/gradeShortAnswer';
 import { gradeClozeAnswers } from '@/lib/cloze';
 import { getMultiBlankCount, joinBlankAnswers, numberBlanks } from '@/lib/fillBlank';
+import { resolveShortAnswerReference } from '@/lib/quiz/answerNormalize';
 import { db } from '@/libs/DB';
 import { isUserProOrAbove } from '@/libs/Plan';
 import type { AnswerKeyEntry } from '@/libs/quizRedaction';
@@ -121,7 +122,8 @@ async function submitQuizResponseInner(data: SubmitInput): Promise<SubmitResult 
         const grade = await gradeShortAnswer({
           // 多格填空題：題幹空格標上 (1)(2)，對應學生答案「(1) 甲；(2) 乙」的編號
           questionBody: getMultiBlankCount(q) > 0 ? numberBlanks(q.body) : q.body,
-          referenceAnswer: q.referenceAnswer ?? null,
+          // 沒有老師填的參考答案時退回 correctAnswers[0]（AI 匯入的填充題答案存在這裡），避免無標準答案的寬鬆評分
+          referenceAnswer: resolveShortAnswerReference(q),
           studentAnswer: studentText,
           maxPoints: q.points,
         });

@@ -4,6 +4,7 @@
 import { sanitizeStoredDiagramSvg } from '@/lib/ai/diagramSvg';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { extractClozeAnswers } from '@/lib/cloze';
+import { matchChoiceAnswerId, orderRankingOptions, parseTrueFalseAnswer } from '@/lib/quiz/answerNormalize';
 import type { questionSchema } from '@/models/Schema';
 
 export type FileQuestionType = 'mc' | 'tf' | 'fill' | 'short' | 'rank' | 'listening' | 'cloze';
@@ -51,6 +52,7 @@ export function buildQuestionInsertRows(
     let type = (DB_TYPE_MAP[q.type] ?? 'short_answer') as QuestionInsertRow['type'];
     let options: { id: string; text: string }[] | null = null;
     let correctAnswers: string[] = [];
+    let referenceAnswer: string | null = null;
 
     if (q.type === 'cloze') {
       // 克漏字題：body 直接是 AI 回傳含 [[詞彙]] 標記的文章，答案從標記反推
@@ -65,13 +67,9 @@ export function buildQuestionInsertRows(
         id: String.fromCharCode(97 + i), // a, b, c, d
         text: stripOptionLabel(text),
       }));
-      // answer 可能是 "A"/"B" 大寫字母，或選項文字本身
-      const ansStr = typeof q.answer === 'string' ? q.answer : '';
-      const answerKey = ansStr.trim().toLowerCase();
-      const byLetter = options.find(o => o.id === answerKey);
-      const byText = options.find(o => o.text === stripOptionLabel(ansStr));
-      const matched = byLetter ?? byText;
-      correctAnswers = matched ? [matched.id] : [];
+      // answer 可能是「A」「(A)」「Ａ」「答案：A」或選項文字本身，統一交給 matchChoiceAnswerId
+      const matchedId = matchChoiceAnswerId(options, q.answer);
+      correctAnswers = matchedId ? [matchedId] : [];
     } else if (q.type === 'rank' && q.options?.length) {
       // 排序題：每個選項配 id，correctAnswers 為依 q.answer 文字順序對映的 id 陣列
       options = q.options.map((text, i) => ({
@@ -86,19 +84,23 @@ export function buildQuestionInsertRows(
       if (correctAnswers.length !== options.length) {
         correctAnswers = options.map(o => o.id);
       }
+      // 老師編輯器以「options 由上到下」當正解，存進 DB 前先把 options 排成正解順序
+      // （學生作答頁本來就會打亂，不影響作答）
+      options = orderRankingOptions(options, correctAnswers);
     } else if (q.type === 'tf') {
       // 是非題：將 AI 回傳的 ○/✕ 轉換為標準選項 ID
       options = [
         { id: 'tf-true', text: '正確' },
         { id: 'tf-false', text: '錯誤' },
       ];
-      const ansStr = typeof q.answer === 'string' ? q.answer.trim() : '';
-      const isTrue = ansStr === '○' || ansStr === 'O' || ansStr.toLowerCase() === 'true' || ansStr === '正確';
-      correctAnswers = [isTrue ? 'tf-true' : 'tf-false'];
+      // 認不得的寫法留空讓老師補，不默默當成「錯誤」
+      const tfAnswer = parseTrueFalseAnswer(q.answer);
+      correctAnswers = tfAnswer ? [tfAnswer] : [];
     } else {
-      // 填空 / 簡答：直接存 answer 字串
+      // 填空 / 簡答：answer 存進 correctAnswers，同時當 referenceAnswer 給 AI 評分對照
       const ansStr = typeof q.answer === 'string' ? q.answer : '';
       correctAnswers = ansStr ? [ansStr] : [];
+      referenceAnswer = ansStr || null;
     }
 
     return {
@@ -109,6 +111,7 @@ export function buildQuestionInsertRows(
       diagramSvg: sanitizeStoredDiagramSvg(q.diagramSvg),
       options,
       correctAnswers: correctAnswers.length ? correctAnswers : null,
+      referenceAnswer,
       audioUrl: q.audioUrl || null,
       audioDurationSec: q.audioDurationSec ?? null,
       audioTranscript: q.listeningText || null,

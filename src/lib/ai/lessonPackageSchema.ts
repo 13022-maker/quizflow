@@ -4,6 +4,7 @@
 import { z } from 'zod';
 
 import { stripOptionLabel } from '@/lib/ai/optionText';
+import { matchChoiceAnswerId, parseTrueFalseAnswer } from '@/lib/quiz/answerNormalize';
 
 const questionTypeValues = ['mc', 'tf', 'fill', 'short', 'rank', 'listening', 'cloze'] as const;
 
@@ -55,18 +56,15 @@ export const lessonPackageQuestionSchema = baseQuestionSchema.superRefine((q, ct
         path: ['options'],
       });
     } else {
-      // 跟 src/lib/quiz/questionRows.ts 的 buildQuestionInsertRows 用同一套比對邏輯，
-      // 直接 import stripOptionLabel 而不是自己重寫一份，避免驗證邏輯跟實際匯入邏輯兜不起來
+      // 跟 src/lib/quiz/questionRows.ts 的 buildQuestionInsertRows 用同一個 matchChoiceAnswerId，
+      // 避免驗證邏輯跟實際匯入邏輯兜不起來
       const options = q.options.map((text, i) => ({
         id: String.fromCharCode(97 + i),
         text: stripOptionLabel(text),
       }));
-      const ansStr = typeof q.answer === 'string' ? q.answer : '';
-      const answerKey = ansStr.trim().toLowerCase();
-      const byLetter = options.some(o => o.id === answerKey);
-      const byText = options.some(o => o.text === stripOptionLabel(ansStr));
+      const matchedId = matchChoiceAnswerId(options, q.answer);
 
-      if (!ansStr.trim() || !(byLetter || byText)) {
+      if (!matchedId) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: `${q.type} 題型的 answer 必須對應到其中一個選項（選項文字或字母 A/B/C...）`,
@@ -74,6 +72,14 @@ export const lessonPackageQuestionSchema = baseQuestionSchema.superRefine((q, ct
         });
       }
     }
+  }
+
+  if (q.type === 'tf' && typeof q.answer === 'string' && q.answer.trim() && !parseTrueFalseAnswer(q.answer)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'tf 題型的 answer 必須是「正確」或「錯誤」',
+      path: ['answer'],
+    });
   }
 
   if (q.type === 'tf' || q.type === 'short' || q.type === 'fill') {

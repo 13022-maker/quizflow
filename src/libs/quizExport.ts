@@ -18,6 +18,7 @@ import type { InferSelectModel } from 'drizzle-orm';
 import { stripOptionLabel } from '@/lib/ai/optionText';
 import { stripClozeMarkers } from '@/lib/cloze';
 import { parseCodeBlocks } from '@/lib/codeBlock';
+import { printOrderForRanking } from '@/lib/quiz/answerNormalize';
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
 type Quiz = InferSelectModel<typeof quizSchema>;
@@ -37,16 +38,27 @@ function textRunsWithLineBreaks(text: string): TextRun[] {
     i === 0 ? new TextRun({ text: line }) : new TextRun({ text: line, break: 1 }));
 }
 
-// 將 option id 陣列翻成顯示文字
-function answerToText(question: Question, ids: string[] | null): string {
+// 教師版正解附字母：依印出的選項順序標 (A)(B)…；排序題用「→」表示順序，其他題型用「、」列出正解
+function formatAnswerWithLetters(printed: { id: string; text: string }[], ids: string[] | null, sep: string): string {
   if (!ids || ids.length === 0) {
     return '—';
   }
-  const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
-    ? TF_DEFAULTS
-    : (question.options ?? []);
-  const sep = question.type === 'ranking' ? ' → ' : '、';
-  return ids.map(id => options.find(o => o.id === id)?.text ?? id).join(sep);
+  return ids
+    .map((id) => {
+      const i = printed.findIndex(o => o.id === id);
+      return i === -1 ? id : `(${String.fromCharCode(65 + i)}) ${stripOptionLabel(printed[i]!.text)}`;
+    })
+    .join(sep);
+}
+
+// 排序題：例如「(B) 工業革命 → (A) 文藝復興」
+function rankingAnswerWithLetters(printed: { id: string; text: string }[], ids: string[] | null): string {
+  return formatAnswerWithLetters(printed, ids, ' → ');
+}
+
+// 單選 / 多選 / 是非：例如「(A) 甲、(C) 丙」
+export function formatChoiceAnswer(printed: { id: string; text: string }[], ids: string[] | null): string {
+  return formatAnswerWithLetters(printed, ids, '、');
 }
 
 // 單一題目轉 paragraphs
@@ -103,9 +115,12 @@ function questionToParagraphs(question: Question, index: number, variant: Export
   }
 
   // 選項（單選 / 多選 / 是非 / 排序）
-  const options = question.type === 'true_false' && (!question.options || question.options.length === 0)
+  // 排序題 DB 裡的 options 已是正解順序，直接印等於洩題；以題目 id 為種子固定打亂，
+  // 教師版與學生版印出同一個順序，教師版答案再用字母對照
+  const rawOptions = question.type === 'true_false' && (!question.options || question.options.length === 0)
     ? TF_DEFAULTS
     : (question.options ?? []);
+  const options = question.type === 'ranking' ? printOrderForRanking(rawOptions, question.id) : rawOptions;
 
   if (['single_choice', 'multiple_choice', 'true_false', 'ranking'].includes(question.type) && options.length > 0) {
     options.forEach((opt, i) => {
@@ -140,7 +155,7 @@ function questionToParagraphs(question: Question, index: number, variant: Export
           spacing: { before: 80 },
           children: [
             new TextRun({ text: '正確順序：', bold: true, color: '047857' }),
-            new TextRun({ text: answerToText(question, question.correctAnswers), color: '047857' }),
+            new TextRun({ text: rankingAnswerWithLetters(options, question.correctAnswers), color: '047857' }),
           ],
         }),
       );
@@ -161,7 +176,7 @@ function questionToParagraphs(question: Question, index: number, variant: Export
           spacing: { before: 80 },
           children: [
             new TextRun({ text: '答案：', bold: true, color: '047857' }),
-            new TextRun({ text: answerToText(question, question.correctAnswers), color: '047857' }),
+            new TextRun({ text: formatChoiceAnswer(options, question.correctAnswers), color: '047857' }),
           ],
         }),
       );

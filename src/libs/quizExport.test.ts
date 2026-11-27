@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { questionSchema, quizSchema } from '@/models/Schema';
 
-import { generateQuizDocx } from './quizExport';
+import { formatChoiceAnswer, generateQuizDocx } from './quizExport';
 
 // jszip 是 docx 的相依套件，專案沒直接安裝，這裡只宣告用到的最小型別
 type MinimalJsZip = {
@@ -49,5 +49,27 @@ describe('generateQuizDocx 程式題', () => {
 
     expect(xml).toContain('光合作用的產物為何？');
     expect(xml).not.toContain('Consolas');
+  });
+});
+
+// 教師版答案文字：排序題用「→」表示順序，其他題型用「、」列出正解，不能混用
+describe('formatChoiceAnswer', () => {
+  const opts = [
+    { id: 'a', text: '甲' },
+    { id: 'b', text: '乙' },
+    { id: 'c', text: '丙' },
+  ];
+
+  it('多選題兩個正解用「、」分隔並附字母，不出現「→」', () => {
+    expect(formatChoiceAnswer(opts, ['a', 'c'])).toBe('(A) 甲、(C) 丙');
+  });
+
+  it('單選題只有一個正解', () => {
+    expect(formatChoiceAnswer(opts, ['b'])).toBe('(B) 乙');
+  });
+
+  it('沒有正解時顯示「—」', () => {
+    expect(formatChoiceAnswer(opts, null)).toBe('—');
+    expect(formatChoiceAnswer(opts, [])).toBe('—');
   });
 });
