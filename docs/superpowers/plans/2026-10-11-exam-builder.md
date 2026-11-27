@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-11-exam-builder-design.md`
 
+> **⚠️ 已暫停：v1 已由 PR #80 取代，保留作為 v2 雲端版藍圖。** 執行前先讀 spec 開頭的說明與解凍條件。
+
 ## Global Constraints
 
 - `points` is stored as `integer` (matches existing `question.points` convention), not `numeric` — the spec's example data never uses decimals, and this avoids drizzle's numeric-as-string footgun. If a future teacher needs half-points, that's a follow-up.
