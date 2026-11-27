@@ -17,7 +17,9 @@ import { canUseClaude, FREE_AI_UNAVAILABLE_MESSAGE } from '@/lib/ai/textModel';
 import { ensureCodeSnippets } from '@/lib/codeBlock';
 
 export const runtime = 'nodejs';
-export const maxDuration = 60;
+// 與 generate-from-file 同樣是「重試 × Gemini 截斷改走 Claude 整份重出」的循序鏈，60 秒容易卡線；
+// 提高到 Vercel Hobby + Fluid compute 上限 300 秒（2026-11-18 generate-from-file 逾時事件）
+export const maxDuration = 300;
 
 const gemini = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' });
 
