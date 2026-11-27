@@ -168,9 +168,30 @@ $("qs").innerHTML=Q.map((q,qi)=>{
   return `<article class="q" id="q${qi+1}"><div class="qh"><span class="num">${qi+1}.</span><span class="tag">${TOPICS[q.t]}</span><span class="tag">對應期末考第 ${q.s} 題</span></div>
   <div>${p}</div>${q.c?`<pre><code>${esc(q.c)}</code></pre>`:""}<div class="fb" id="fb${qi}"></div></article>`}).join("");
 const inputs=[...document.querySelectorAll("#qs input")];
-// 作答格禁止貼上、拖放（要自己打出答案）；座號姓名與教師貼成績碼的欄位不受影響
-["paste","drop"].forEach(ev=>$("qs").addEventListener(ev,e=>{if(e.target.matches("input[data-q]")){e.preventDefault();toast("答案要自己打，不能貼上")}}));
-$("qs").addEventListener("beforeinput",e=>{if(e.target.matches("input[data-q]")&&/^insertFrom(Paste|Drop)/.test(e.inputType||"")){e.preventDefault();toast("答案要自己打，不能貼上")}});
+// 作答格禁止貼上、拖放（要自己打出答案）；座號姓名與教師貼成績碼的欄位不受影響。
+// iPhone 會觸發 paste 事件；Android（Samsung 鍵盤、Gboard 的剪貼簿）是用鍵盤一次「打入」整段文字，
+// 不會有 paste 事件，所以另外偵測：不在注音／輸入法組字中、一次就多出 2 個字以上 → 視為貼上，退回原值。
+{
+  const qsBox=$("qs"),last=new WeakMap(),comp=new WeakMap();
+  const isAns=t=>!!(t&&t.matches&&t.matches("input[data-q]"));
+  const block=()=>toast("答案要自己打，不能貼上");
+  ["paste","drop"].forEach(ev=>qsBox.addEventListener(ev,e=>{if(isAns(e.target)){e.preventDefault();block()}},true));
+  qsBox.addEventListener("focusin",e=>{if(isAns(e.target))last.set(e.target,e.target.value)});
+  qsBox.addEventListener("compositionstart",e=>{const el=e.target;if(isAns(el))comp.set(el,{base:last.has(el)?last.get(el):el.value,steps:0,first:0})},true);
+  qsBox.addEventListener("compositionupdate",e=>{const c=comp.get(e.target);if(c){if(!c.steps++)c.first=(e.data||"").length}},true);
+  qsBox.addEventListener("compositionend",e=>{const el=e.target,c=comp.get(el);if(!c)return;comp.delete(el);
+    // 組字一開始就冒出 2 字以上（或只更新一次就多好幾個字）＝鍵盤剪貼簿貼上；
+    // 注音、拼音、英文逐字組字第一次 update 只有 1 個字，正常放行
+    if(el.value.length-c.base.length>1&&(c.first>1||c.steps<=1)){el.value=c.base;last.set(el,c.base);el.dispatchEvent(new Event("input",{bubbles:true}));block()}
+    else last.set(el,el.value)},true);
+  qsBox.addEventListener("beforeinput",e=>{if(!isAns(e.target))return;const t=e.inputType||"";
+    if(/^insertFrom(Paste|Drop)/.test(t)||(t==="insertText"&&!e.isComposing&&!comp.has(e.target)&&(e.data||"").length>1)){e.preventDefault();block()}},true);
+  // 最後防線：在其他 input 監聽（存答案）之前執行，非組字中一次多出 2 字以上就退回
+  qsBox.addEventListener("input",e=>{const el=e.target;if(!isAns(el)||e.isComposing||comp.has(el))return;
+    const prev=last.has(el)?last.get(el):"";
+    if(el.value.length-prev.length>1){el.value=prev;e.stopImmediatePropagation();block();return}
+    last.set(el,el.value)},true);
+}
 inputs.forEach(el=>{el.value=ans[el.dataset.q][el.dataset.i]||"";el.addEventListener("input",()=>{ans[el.dataset.q][el.dataset.i]=el.value;store.set("qf_ans",ans);prog()})});
 ["seat","name"].forEach(k=>$(k).addEventListener("input",()=>store.set("qf_"+k,$(k).value)));
 
